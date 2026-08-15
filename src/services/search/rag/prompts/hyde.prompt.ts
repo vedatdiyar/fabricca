@@ -24,6 +24,37 @@ export function buildHyDePromptPayload(query: string): PromptPayload {
 
     outputFormat: "Output MUST strictly follow the required JSON schema.",
 
+    examples: `<example>
+<input>
+Kullanıcı Arama Sorgusu: "Kürt siyasal hareketinin 1990'lardaki söylemsel dönüşümü ve mevzi savaşı"
+</input>
+<output>
+{
+  "detectedLanguage": "tr",
+  "targetTranslation": "Discursive transformation of the Kurdish political movement and war of position in the 1990s",
+  "targetKeywords": ["Kurdish political movement", "discursive transformation", "war of position", "Gramsci", "hegemony", "1990s Turkey"],
+  "hypotheticalSnippet": "During the 1990s, the Kurdish political movement in Turkey transitioned from direct confrontational strategies to a Gramscian war of position within the legal parliamentary domain. Pro-Kurdish legal parties such as HEP, DEP, and HADEP articulated discursive demands centered on cultural rights, democratic recognition, and constitutional citizenship."
+}
+</output>
+</example>
+
+<example>
+<input>
+Kullanıcı Arama Sorgusu: "David Harvey urban accumulation and neoliberal governance"
+</input>
+<output>
+{
+  "detectedLanguage": "en",
+  "targetTranslation": "David Harvey kentsel sermaye birikimi ve neoliberal yönetişim",
+  "targetKeywords": ["David Harvey", "kentsel birikim", "neoliberalizm", "mekân üretimi", "yerel yönetimler", "kentsel rant"],
+  "hypotheticalSnippet": "David Harvey'nin mekân üretimi ve sermayenin kentsel alana kayması kuramı, neoliberal dönemde yerel yönetimlerin girişimci bir karaktere bürünüşünü açıklamaktadır. Kentsel mekân, kamusal hizmet alanından ziyade sermaye birikiminin ve rant transferinin temel taşıyıcısı haline gelmiştir."
+}
+</output>
+</example>`,
+
     inputContext: `Kullanıcı Arama Sorgusu (User Search Query): "${query}"`,
+
+    taskTrigger:
+      "Analyze the user search query in <context> and generate the structured translation, keywords, and hypothetical literature snippet according to <instructions>.",
   });
 }

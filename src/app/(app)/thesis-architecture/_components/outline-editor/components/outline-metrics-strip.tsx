@@ -1,7 +1,7 @@
 "use client";
 
 import { Card, CardContent } from "@/components/ui/card";
-import { BookOpen, Layers, FileText } from "lucide-react";
+import { BookOpen, Layers, FileText, Quote } from "lucide-react";
 import { OutlineMetrics } from "../hooks/use-outline-metrics";
 
 interface OutlineMetricsStripProps {
@@ -9,15 +9,15 @@ interface OutlineMetricsStripProps {
 }
 
 /**
- * Renders the three top-level metric cards (root chapters, sub-sections,
- * linked sources) for the outline editor.
+ * Renders the four top-level metric cards (root chapters, sub-sections,
+ * linked sources, pinned citation cards) for the outline editor.
  *
  * @param root0 - Component props.
  * @param root0.metrics - The derived outline metrics to display.
  */
 export function OutlineMetricsStrip({ metrics }: OutlineMetricsStripProps) {
   return (
-    <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
       {/* Metric 1: Root Chapters */}
       <Card className="border border-border bg-card transition-colors hover:border-border/80">
         <CardContent className="flex items-center justify-between p-4">
@@ -63,17 +63,37 @@ export function OutlineMetricsStrip({ metrics }: OutlineMetricsStripProps) {
         <CardContent className="flex items-center justify-between p-4">
           <div className="space-y-1 min-w-0 flex-1">
             <span className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">
-              Eşleşen Literatür
+              Bağlı Literatür
             </span>
             <p className="font-serif text-lg font-bold tracking-tight text-foreground">
               {metrics.totalSources} Kaynak
             </p>
             <p className="font-sans text-xs text-muted-foreground">
-              Bölümlere bağlı okuma havuzu
+              Bölümlere doğrudan bağlı eserler
             </p>
           </div>
           <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md border border-amber-500/20 bg-amber-500/10 text-amber-400">
             <FileText className="h-4.5 w-4.5" />
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Metric 4: Pinned Citation Cards */}
+      <Card className="border border-border bg-card transition-colors hover:border-border/80">
+        <CardContent className="flex items-center justify-between p-4">
+          <div className="space-y-1 min-w-0 flex-1">
+            <span className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">
+              İliştirilmiş Fişler
+            </span>
+            <p className="font-serif text-lg font-bold tracking-tight text-foreground">
+              {metrics.totalCards} Fiş
+            </p>
+            <p className="font-sans text-xs text-muted-foreground">
+              Bölümlere bağlı alıntı kartları
+            </p>
+          </div>
+          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md border border-emerald-500/20 bg-emerald-500/10 text-emerald-400">
+            <Quote className="h-4.5 w-4.5" />
           </div>
         </CardContent>
       </Card>

@@ -10,7 +10,7 @@ import {
   annotations,
   sources,
   outlineAnnotations,
-  outlineBoxes,
+  outlineSources,
 } from "@/db/schema";
 import { eq, inArray } from "drizzle-orm";
 import { OutlineEditorView } from "../_components/outline-editor";
@@ -111,18 +111,18 @@ export default async function ThesisOutlinePage() {
     pinnedMap[rec.outlineId].push(rec.annotationId);
   }
 
-  // Fetch outlineBoxes junction records
-  const linkedBoxRecords =
+  // Fetch outlineSources junction records
+  const linkedSourceRecords =
     outlineIds.length > 0
-      ? await db.query.outlineBoxes.findMany({
-          where: inArray(outlineBoxes.outlineId, outlineIds),
+      ? await db.query.outlineSources.findMany({
+          where: inArray(outlineSources.outlineId, outlineIds),
         })
       : [];
 
-  const linkedBoxMap: Record<number, number[]> = {};
-  for (const rec of linkedBoxRecords) {
-    if (!linkedBoxMap[rec.outlineId]) linkedBoxMap[rec.outlineId] = [];
-    linkedBoxMap[rec.outlineId].push(rec.boxId);
+  const linkedSourcesMap: Record<number, number[]> = {};
+  for (const rec of linkedSourceRecords) {
+    if (!linkedSourcesMap[rec.outlineId]) linkedSourcesMap[rec.outlineId] = [];
+    linkedSourcesMap[rec.outlineId].push(rec.sourceId);
   }
 
   return (
@@ -147,7 +147,7 @@ export default async function ThesisOutlinePage() {
         sourcesList={Array.from(sourceMap.values())}
         annotationsList={annotationsWithSources}
         pinnedMap={pinnedMap}
-        linkedBoxMap={linkedBoxMap}
+        linkedSourcesMap={linkedSourcesMap}
       />
     </div>
   );

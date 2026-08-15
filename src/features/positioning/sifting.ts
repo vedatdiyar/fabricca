@@ -63,14 +63,25 @@ function formatThesisToYaml(thesis: TezaraThesisDetails): string {
   return [`Title: ${thesis.title}`, `Abstract: ${thesis.abstract}`].join("\n");
 }
 
+import { generatePositioningQuery } from "./query-generator";
+
 /**
- * Formats the positioning matrix input into a YAML query for reranking.
+ * Formats the positioning query and matrix into a rich YAML query for Cohere cross-encoder reranking.
  *
+ * @param query - The generated positioning query containing primary query and substantive keywords.
  * @param input - The validated positioning matrix input.
  * @returns The formatted YAML query string.
  */
-function formatMatrixToYamlQuery(input: PositioningMatrixInput): string {
-  return `SubjectProblem: ${input.subjectProblem}`;
+function formatMatrixToYamlQuery(
+  query: { primaryQuery: string; substantiveKeywords: string[] },
+  input: PositioningMatrixInput,
+): string {
+  const lines = [
+    `ResearchFocus: ${query.primaryQuery}`,
+    `SubstantiveKeywords: ${query.substantiveKeywords.join(", ")}`,
+    `SubjectProblem: ${input.subjectProblem}`,
+  ];
+  return lines.join("\n");
 }
 
 /** Difference threshold under which two relevance scores are treated as a tie. */
@@ -78,9 +89,8 @@ const SCORE_EPSILON = 1e-4;
 
 /**
  * Ultra-fast direct semantic thesis sifting engine:
- * Directly vectorizes the thesis research problem, fetches top candidates from Qdrant Cloud
- * in a single high-speed vector query, filters abstracts, and uses Cohere Rerank v4.0 Pro
- * (cross-encoder) to select and rank the most relevant top-N theses.
+ * Extracts a high-density semantic focus query via FLASH_LITE_31, fetches candidate theses from Qdrant Cloud,
+ * filters valid abstracts and languages, and applies Cohere Rerank v4.0 Pro to sort the top-N candidates.
  *
  * @param matrixInput - The validated positioning matrix input.
  * @param logger - Optional structured logger for pipeline events.
@@ -92,10 +102,26 @@ export async function searchAndSiftTheses(
   logger?: Logger,
   options?: { topN?: number; candidateLimit?: number },
 ): Promise<SiftedThesis[]> {
-  const topN = options?.topN ?? 45;
+  const topN = options?.topN ?? 35;
   const candidateLimit = options?.candidateLimit ?? 150;
 
-  const searchQuery = sanitizeSearchQuery(matrixInput.subjectProblem);
+  const queryGenStart = performance.now();
+  logger?.info("sifting_query_generation_start", {
+    service: "gemini",
+    filePath: "src/features/positioning/sifting.ts",
+  });
+
+  const distilledQuery = await generatePositioningQuery(matrixInput, logger);
+  const searchQuery = sanitizeSearchQuery(
+    distilledQuery.primaryQuery || matrixInput.subjectProblem,
+  );
+
+  logger?.info("sifting_query_generation_success", {
+    service: "gemini",
+    filePath: "src/features/positioning/sifting.ts",
+    durationMs: performance.now() - queryGenStart,
+    data: { searchQuery, keywords: distilledQuery.substantiveKeywords },
+  });
 
   const searchStart = performance.now();
 
@@ -139,7 +165,7 @@ export async function searchAndSiftTheses(
   });
 
   // 3. Cohere Rerank v4.0 Pro
-  const targetYamlQuery = formatMatrixToYamlQuery(matrixInput);
+  const targetYamlQuery = formatMatrixToYamlQuery(distilledQuery, matrixInput);
   const candidateYamlDocs = filteredCandidates.map(formatThesisToYaml);
 
   const rerankStart = performance.now();

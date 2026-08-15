@@ -1,6 +1,6 @@
 import React from "react";
 import { Compass, ScanEye, Sparkles } from "lucide-react";
-import { Card } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import type { GapAnalysisStructured } from "@/features/positioning/validation";
 
 interface PositioningMarkdownRendererProps {
@@ -180,46 +180,70 @@ export function PositioningMarkdownRenderer({
 
   return (
     <div className={`space-y-4 ${className}`}>
-      <Card className="p-6 space-y-3 hover:border-border/40 transition-colors">
-        <div className="flex items-center gap-2 pb-2 border-b border-border">
-          <Compass className="h-4 w-4 text-info shrink-0" />
-          <h3 className="font-serif text-base font-bold text-foreground">
-            Mevcut Literatürün Haritalandırılması
-          </h3>
-        </div>
-        <div className="text-sm leading-relaxed text-foreground space-y-2 pt-1">
+      {/* 1. Mevcut Literatürün Haritalandırılması */}
+      <Card className="rounded-md border border-border bg-card hover:border-border/60 transition-colors">
+        <CardHeader className="p-4 sm:p-6 pb-3 sm:pb-3 flex flex-row items-center justify-between gap-3 border-b border-border/40 space-y-0">
+          <div className="flex items-center gap-3">
+            <div className="p-2 rounded-md bg-info/10 text-info border border-info/20 shrink-0">
+              <Compass className="h-4 w-4" />
+            </div>
+            <CardTitle className="font-serif text-lg font-semibold tracking-tight text-foreground">
+              Mevcut Literatürün Haritalandırılması
+            </CardTitle>
+          </div>
+          <span className="text-xs font-medium uppercase tracking-wider text-muted-foreground shrink-0 hidden sm:inline-block">
+            Literatür Analizi
+          </span>
+        </CardHeader>
+        <CardContent className="p-4 sm:p-6 pt-4 text-sm leading-relaxed text-foreground space-y-3 font-sans">
           {data.literatureMapping.split("\n\n").map((para) => (
             <p key={paragraphKey(para)}>{parseInlineMarkdown(para)}</p>
           ))}
-        </div>
+        </CardContent>
       </Card>
 
-      <Card className="p-6 space-y-3 hover:border-border/40 transition-colors">
-        <div className="flex items-center gap-2 pb-2 border-b border-border">
-          <ScanEye className="h-4 w-4 text-warning shrink-0" />
-          <h3 className="font-serif text-base font-bold text-foreground">
-            Literatürdeki Boşluk
-          </h3>
-        </div>
-        <div className="text-sm leading-relaxed text-foreground space-y-2 pt-1">
+      {/* 2. Literatürdeki Boşluk */}
+      <Card className="rounded-md border border-border bg-card hover:border-border/60 transition-colors">
+        <CardHeader className="p-4 sm:p-6 pb-3 sm:pb-3 flex flex-row items-center justify-between gap-3 border-b border-border/40 space-y-0">
+          <div className="flex items-center gap-3">
+            <div className="p-2 rounded-md bg-warning/10 text-warning border border-warning/20 shrink-0">
+              <ScanEye className="h-4 w-4" />
+            </div>
+            <CardTitle className="font-serif text-lg font-semibold tracking-tight text-foreground">
+              Literatürdeki Boşluk
+            </CardTitle>
+          </div>
+          <span className="text-xs font-medium uppercase tracking-wider text-muted-foreground shrink-0 hidden sm:inline-block">
+            Akademik Boşluk
+          </span>
+        </CardHeader>
+        <CardContent className="p-4 sm:p-6 pt-4 text-sm leading-relaxed text-foreground space-y-3 font-sans">
           {data.academicGap.split("\n\n").map((para) => (
             <p key={paragraphKey(para)}>{parseInlineMarkdown(para)}</p>
           ))}
-        </div>
+        </CardContent>
       </Card>
 
-      <Card className="p-6 space-y-3 hover:border-border/40 transition-colors">
-        <div className="flex items-center gap-2 pb-2 border-b border-border">
-          <Sparkles className="h-4 w-4 text-success shrink-0" />
-          <h3 className="font-serif text-base font-bold text-foreground">
-            Çalışmanın Özgün Katkısı
-          </h3>
-        </div>
-        <div className="text-sm leading-relaxed text-foreground space-y-2 pt-1">
+      {/* 3. Çalışmanın Özgün Katkısı */}
+      <Card className="rounded-md border border-border bg-card hover:border-border/60 transition-colors">
+        <CardHeader className="p-4 sm:p-6 pb-3 sm:pb-3 flex flex-row items-center justify-between gap-3 border-b border-border/40 space-y-0">
+          <div className="flex items-center gap-3">
+            <div className="p-2 rounded-md bg-success/10 text-success border border-success/20 shrink-0">
+              <Sparkles className="h-4 w-4" />
+            </div>
+            <CardTitle className="font-serif text-lg font-semibold tracking-tight text-foreground">
+              Çalışmanın Özgün Katkısı
+            </CardTitle>
+          </div>
+          <span className="text-xs font-medium uppercase tracking-wider text-muted-foreground shrink-0 hidden sm:inline-block">
+            Özgün Değer
+          </span>
+        </CardHeader>
+        <CardContent className="p-4 sm:p-6 pt-4 text-sm leading-relaxed text-foreground space-y-3 font-sans">
           {data.originalContribution.split("\n\n").map((para) => (
             <p key={paragraphKey(para)}>{parseInlineMarkdown(para)}</p>
           ))}
-        </div>
+        </CardContent>
       </Card>
     </div>
   );

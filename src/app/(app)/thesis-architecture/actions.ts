@@ -6,7 +6,7 @@ import {
   boxes,
   outlines,
   outlineAnnotations,
-  outlineBoxes,
+  outlineSources,
 } from "@/db/schema";
 import { getSession } from "@/lib/session";
 import { eq, and } from "drizzle-orm";
@@ -319,9 +319,9 @@ export async function deleteOutlineSectionAction(
 }
 
 /**
- * Pins a Citation Card (annotation) to an Outline section.
+ * Links a Citation Card (annotation) to an Outline section.
  */
-export async function pinAnnotationAction(
+export async function linkAnnotationToOutlineAction(
   outlineId: number,
   annotationId: number,
 ): Promise<{ success: boolean; error?: string }> {
@@ -347,18 +347,18 @@ export async function pinAnnotationAction(
     revalidatePath("/citation-cards");
     return { success: true };
   } catch (err) {
-    console.error("pinAnnotationAction error:", err);
+    console.error("linkAnnotationToOutlineAction error:", err);
     return {
       success: false,
-      error: "Alıntı fişi bölüme iğnelenirken bir hata oluştu.",
+      error: "Alıntı fişi bölüme bağlanırken bir hata oluştu.",
     };
   }
 }
 
 /**
- * Unpins a Citation Card (annotation) from an Outline section.
+ * Unlinks a Citation Card (annotation) from an Outline section.
  */
-export async function unpinAnnotationAction(
+export async function unlinkAnnotationFromOutlineAction(
   outlineId: number,
   annotationId: number,
 ): Promise<{ success: boolean; error?: string }> {
@@ -379,74 +379,76 @@ export async function unpinAnnotationAction(
     revalidatePath("/citation-cards");
     return { success: true };
   } catch (err) {
-    console.error("unpinAnnotationAction error:", err);
-    return { success: false, error: "İğne kaldırılırken bir hata oluştu." };
+    console.error("unlinkAnnotationFromOutlineAction error:", err);
+    return { success: false, error: "Fiş bağı kaldırılırken bir hata oluştu." };
   }
 }
 
 /**
- * Links a Topic Box to an Outline section.
+ * Links an academic Source to an Outline section.
  */
-export async function linkBoxToOutlineAction(
+export async function linkSourceToOutlineAction(
   outlineId: number,
-  boxId: number,
+  sourceId: number,
 ): Promise<{ success: boolean; error?: string }> {
   try {
     const session = await getSession();
     if (!session) return { success: false, error: "Oturum bulunamadı." };
 
-    const existing = await db.query.outlineBoxes.findFirst({
+    const existing = await db.query.outlineSources.findFirst({
       where: and(
-        eq(outlineBoxes.outlineId, outlineId),
-        eq(outlineBoxes.boxId, boxId),
+        eq(outlineSources.outlineId, outlineId),
+        eq(outlineSources.sourceId, sourceId),
       ),
     });
 
     if (existing) return { success: true };
 
-    await db.insert(outlineBoxes).values({
+    await db.insert(outlineSources).values({
       outlineId,
-      boxId,
+      sourceId,
     });
 
     revalidatePath("/thesis-architecture");
+    revalidatePath("/library");
     return { success: true };
   } catch (err) {
-    console.error("linkBoxToOutlineAction error:", err);
+    console.error("linkSourceToOutlineAction error:", err);
     return {
       success: false,
-      error: "Kutu bölüme bağlanırken bir hata oluştu.",
+      error: "Kaynak bölüme bağlanırken bir hata oluştu.",
     };
   }
 }
 
 /**
- * Unlinks a Topic Box from an Outline section.
+ * Unlinks an academic Source from an Outline section.
  */
-export async function unlinkBoxFromOutlineAction(
+export async function unlinkSourceFromOutlineAction(
   outlineId: number,
-  boxId: number,
+  sourceId: number,
 ): Promise<{ success: boolean; error?: string }> {
   try {
     const session = await getSession();
     if (!session) return { success: false, error: "Oturum bulunamadı." };
 
     await db
-      .delete(outlineBoxes)
+      .delete(outlineSources)
       .where(
         and(
-          eq(outlineBoxes.outlineId, outlineId),
-          eq(outlineBoxes.boxId, boxId),
+          eq(outlineSources.outlineId, outlineId),
+          eq(outlineSources.sourceId, sourceId),
         ),
       );
 
     revalidatePath("/thesis-architecture");
+    revalidatePath("/library");
     return { success: true };
   } catch (err) {
-    console.error("unlinkBoxFromOutlineAction error:", err);
+    console.error("unlinkSourceFromOutlineAction error:", err);
     return {
       success: false,
-      error: "Kutu bağı kaldırılırken bir hata oluştu.",
+      error: "Kaynak bağı kaldırılırken bir hata oluştu.",
     };
   }
 }

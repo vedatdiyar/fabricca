@@ -1,15 +1,15 @@
 "use client";
 
-import { Outline, Source } from "@/db/schema";
-import { countLinkedSources } from "../../utils/outline-helpers";
+import { Outline } from "@/db/schema";
+import { Quote } from "lucide-react";
 
 interface OutlineSubItemProps {
   outline: Outline;
   rootIndex: number;
   subIndex: number;
   isSelected: boolean;
-  linkedBoxIds: number[];
-  sourcesList: Source[];
+  sourcesCount: number;
+  cardsCount: number;
   onSelect: () => void;
 }
 
@@ -21,8 +21,8 @@ interface OutlineSubItemProps {
  * @param root0.rootIndex - Zero-based root position for hierarchical numbering.
  * @param root0.subIndex - Zero-based sub-section position for hierarchical numbering.
  * @param root0.isSelected - Whether this section is currently selected.
- * @param root0.linkedBoxIds - Box ids linked to this section.
- * @param root0.sourcesList - All library sources of the thesis.
+ * @param root0.sourcesCount - Distinct linked source count of this section.
+ * @param root0.cardsCount - Pinned citation card count of this section.
  * @param root0.onSelect - Selection handler.
  */
 export function OutlineSubItem({
@@ -30,12 +30,10 @@ export function OutlineSubItem({
   rootIndex,
   subIndex,
   isSelected,
-  linkedBoxIds,
-  sourcesList,
+  sourcesCount,
+  cardsCount,
   onSelect,
 }: OutlineSubItemProps) {
-  const sourcesCount = countLinkedSources(sourcesList, linkedBoxIds);
-
   return (
     <div
       onClick={onSelect}
@@ -54,11 +52,19 @@ export function OutlineSubItem({
         </span>
       </div>
 
-      {sourcesCount > 0 && (
+      {(sourcesCount > 0 || cardsCount > 0) && (
         <div className="flex items-center gap-1.5 shrink-0 pt-0.5">
-          <span className="font-mono text-[10px] text-amber-500">
-            {sourcesCount}k
-          </span>
+          {sourcesCount > 0 && (
+            <span className="font-mono text-[10px] text-amber-500">
+              {sourcesCount}k
+            </span>
+          )}
+          {cardsCount > 0 && (
+            <span className="flex items-center gap-0.5 font-mono text-[10px] text-emerald-500">
+              <Quote className="h-2.5 w-2.5" />
+              {cardsCount}
+            </span>
+          )}
         </div>
       )}
     </div>

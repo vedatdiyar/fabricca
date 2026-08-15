@@ -1,41 +1,40 @@
 "use client";
 
-import { Outline, Box } from "@/db/schema";
+import { Outline } from "@/db/schema";
 import { Card, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { FolderKanban, Plus, Pencil, Trash2 } from "lucide-react";
-import { getBoxTypeBadgeConfig, ThesisBoxType } from "@/lib/box-constants";
+import { Plus, Pencil, Trash2, Quote, FileText } from "lucide-react";
 import { isIntroOrConclusion } from "../../utils/outline-helpers";
 
 interface SectionDetailCardProps {
   outline: Outline;
-  sectionBoxes: Box[];
+  cardsCount: number;
+  sourcesCount: number;
   onAddSub: () => void;
   onEdit: () => void;
   onDelete: () => void;
-  onManageBoxLinks: () => void;
 }
 
 /**
- * Header card of the selected section: badges, title, action toolbar, scope
- * description and the linked topic boxes bar.
+ * Header card of the selected section: badges, title, action toolbar and the
+ * linked citation-card/source summary bar.
  *
  * @param root0 - Component props.
  * @param root0.outline - The selected outline section.
- * @param root0.sectionBoxes - Topic boxes linked to this section.
+ * @param root0.cardsCount - Pinned citation card count of this section.
+ * @param root0.sourcesCount - Distinct linked source count of this section.
  * @param root0.onAddSub - Sub-section creation handler.
  * @param root0.onEdit - Section edit handler.
  * @param root0.onDelete - Section delete handler.
- * @param root0.onManageBoxLinks - Box link management handler.
  */
 export function SectionDetailCard({
   outline,
-  sectionBoxes,
+  cardsCount,
+  sourcesCount,
   onAddSub,
   onEdit,
   onDelete,
-  onManageBoxLinks,
 }: SectionDetailCardProps) {
   return (
     <Card className="border-border bg-card">
@@ -109,44 +108,16 @@ export function SectionDetailCard({
           )}
         </div>
 
-        {/* Linked Topic Boxes Bar */}
-        <div className="pt-2 border-t border-border/40 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-          <div className="flex items-center gap-2 flex-wrap min-w-0 flex-1">
-            <span className="font-sans text-xs font-medium text-muted-foreground flex items-center gap-1.5">
-              <FolderKanban className="h-3.5 w-3.5 text-primary" />
-              <span>Bağlı Araştırma Eksenleri:</span>
-            </span>
-            {sectionBoxes.length > 0 ? (
-              sectionBoxes.map((b) => {
-                const badgeCfg = getBoxTypeBadgeConfig(
-                  b.boxType as ThesisBoxType,
-                );
-                return (
-                  <Badge
-                    key={b.id}
-                    variant="outline"
-                    className={`text-[10px] font-sans font-medium px-2 py-0.5 border ${badgeCfg.className}`}
-                  >
-                    {b.title}
-                  </Badge>
-                );
-              })
-            ) : (
-              <span className="text-xs text-muted-foreground italic">
-                Henüz konu kutusu bağlanmadı.
-              </span>
-            )}
-          </div>
-
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={onManageBoxLinks}
-            className="h-7 text-xs gap-1.5 shrink-0"
-          >
-            <FolderKanban className="h-3 w-3" />
-            <span>Kutuları Yönet</span>
-          </Button>
+        {/* Linked Citation Cards & Sources Summary Bar */}
+        <div className="pt-2 border-t border-border/40 flex items-center gap-x-4 gap-y-2 flex-wrap">
+          <span className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
+            <Quote className="h-3.5 w-3.5 text-emerald-500" />
+            <span>{cardsCount} Alıntı Kartı</span>
+          </span>
+          <span className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
+            <FileText className="h-3.5 w-3.5 text-amber-500" />
+            <span>{sourcesCount} Kaynak</span>
+          </span>
         </div>
       </CardHeader>
     </Card>

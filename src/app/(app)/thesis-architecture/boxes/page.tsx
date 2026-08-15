@@ -3,8 +3,8 @@ export const instant = false;
 import { redirect } from "next/navigation";
 import { getSession } from "@/lib/session";
 import { db } from "@/db";
-import { matrices, boxes, outlineBoxes } from "@/db/schema";
-import { eq, inArray } from "drizzle-orm";
+import { matrices, boxes } from "@/db/schema";
+import { eq } from "drizzle-orm";
 import { BoxManagerView } from "../_components/box-manager";
 import { Card } from "@/components/ui/card";
 
@@ -57,21 +57,6 @@ export default async function ThesisBoxesPage() {
     },
   });
 
-  // Calculate outline box connections
-  const boxIds = userBoxes.map((b) => b.id);
-  const outlineBoxLinks =
-    boxIds.length > 0
-      ? await db
-          .select({ boxId: outlineBoxes.boxId })
-          .from(outlineBoxes)
-          .where(inArray(outlineBoxes.boxId, boxIds))
-      : [];
-
-  const outlineCounts: Record<number, number> = {};
-  for (const link of outlineBoxLinks) {
-    outlineCounts[link.boxId] = (outlineCounts[link.boxId] ?? 0) + 1;
-  }
-
   return (
     <div className="w-full space-y-6">
       {/* Page Header */}
@@ -88,7 +73,7 @@ export default async function ThesisBoxesPage() {
       </div>
 
       {/* Main Box Manager View */}
-      <BoxManagerView boxesList={userBoxes} outlineCounts={outlineCounts} />
+      <BoxManagerView boxesList={userBoxes} />
     </div>
   );
 }

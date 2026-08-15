@@ -26,6 +26,21 @@ export const positioningMatrixSchema = z.object({
 /** Input payload type inferred from the positioning matrix Zod schema. */
 export type PositioningMatrixInput = z.infer<typeof positioningMatrixSchema>;
 
+export type StrategicRole =
+  | "BROAD_CONTEXT"
+  | "SPECIFIC_FOCUS"
+  | "FOUNDATIONAL_WORK"
+  | "METHODOLOGICAL_BENCHMARK"
+  | "ALTERNATIVE_PERSPECTIVE";
+
+export const strategicRoleEnum = z.enum([
+  "BROAD_CONTEXT",
+  "SPECIFIC_FOCUS",
+  "FOUNDATIONAL_WORK",
+  "METHODOLOGICAL_BENCHMARK",
+  "ALTERNATIVE_PERSPECTIVE",
+]);
+
 /** Enum type representing the global positioning / literature gap status. */
 export type PositioningGlobalStatus =
   "DIRECT_OVERLAP" | "NOVEL_GAP_IDENTIFIED" | "NO_RELATED_LITERATURE";
@@ -38,6 +53,8 @@ export interface RecommendedThesisItem {
   author: string;
   year: number;
   university: string;
+  strategicRole?: StrategicRole;
+  literaturePosition?: string;
   contributionArea: string;
   relevanceReason: string;
   doi?: string;

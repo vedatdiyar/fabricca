@@ -1,5 +1,5 @@
 import { db } from "@/db";
-import { matrices, outlines, outlineAnnotations } from "@/db/schema";
+import { matrices, outlines, outlineAnnotations, outlineSources } from "@/db/schema";
 import { eq, and } from "drizzle-orm";
 import type { MutationToolHandler, MutationToolResult } from "./mutation-types";
 
@@ -125,6 +125,97 @@ async function executePinAnnotationToOutline(
   };
 }
 
+/**
+ * Removes a citation annotation from an outline section.
+ *
+ * @param args - The proposed mutation arguments.
+ * @returns The unpin result.
+ */
+async function executeUnpinAnnotationFromOutline(
+  args: Record<string, unknown>,
+): Promise<MutationToolResult> {
+  const outlineId = args.outlineId as number;
+  const annotationId = args.annotationId as number;
+
+  await db
+    .delete(outlineAnnotations)
+    .where(
+      and(
+        eq(outlineAnnotations.outlineId, outlineId),
+        eq(outlineAnnotations.annotationId, annotationId),
+      ),
+    );
+
+  return {
+    success: true,
+    message: "Alıntı fişi bölümden çıkarıldı.",
+  };
+}
+
+/**
+ * Links an academic source to an outline section.
+ *
+ * @param args - The proposed mutation arguments.
+ * @returns The link result.
+ */
+async function executeLinkSourceToOutline(
+  args: Record<string, unknown>,
+): Promise<MutationToolResult> {
+  const outlineId = args.outlineId as number;
+  const sourceId = args.sourceId as number;
+
+  const existing = await db.query.outlineSources.findFirst({
+    where: and(
+      eq(outlineSources.outlineId, outlineId),
+      eq(outlineSources.sourceId, sourceId),
+    ),
+  });
+
+  if (existing) {
+    return {
+      success: true,
+      message: "Kaynak zaten bu bölüme bağlı.",
+    };
+  }
+
+  await db.insert(outlineSources).values({
+    outlineId,
+    sourceId,
+  });
+
+  return {
+    success: true,
+    message: "Kaynak bölüme bağlandı.",
+  };
+}
+
+/**
+ * Removes an academic source link from an outline section.
+ *
+ * @param args - The proposed mutation arguments.
+ * @returns The unlink result.
+ */
+async function executeUnlinkSourceFromOutline(
+  args: Record<string, unknown>,
+): Promise<MutationToolResult> {
+  const outlineId = args.outlineId as number;
+  const sourceId = args.sourceId as number;
+
+  await db
+    .delete(outlineSources)
+    .where(
+      and(
+        eq(outlineSources.outlineId, outlineId),
+        eq(outlineSources.sourceId, sourceId),
+      ),
+    );
+
+  return {
+    success: true,
+    message: "Kaynak bağı bölümden kaldırıldı.",
+  };
+}
+
 /** Mutation handlers for the outline tools. */
 export const outlineMutations: Record<string, MutationToolHandler> = {
   createOutlineSection: {
@@ -137,6 +228,18 @@ export const outlineMutations: Record<string, MutationToolHandler> = {
   },
   pinAnnotationToOutline: {
     execute: executePinAnnotationToOutline,
+    getPreviousState: async () => undefined,
+  },
+  unpinAnnotationFromOutline: {
+    execute: executeUnpinAnnotationFromOutline,
+    getPreviousState: async () => undefined,
+  },
+  linkSourceToOutline: {
+    execute: executeLinkSourceToOutline,
+    getPreviousState: async () => undefined,
+  },
+  unlinkSourceFromOutline: {
+    execute: executeUnlinkSourceFromOutline,
     getPreviousState: async () => undefined,
   },
 };

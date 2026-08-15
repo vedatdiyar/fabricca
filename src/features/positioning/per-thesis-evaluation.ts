@@ -11,34 +11,46 @@ import {
   buildPerThesisEvaluationPromptPayload,
   buildBatchPerThesisEvaluationPromptPayload,
 } from "./prompts/per-thesis-evaluation.prompt";
-import type { PositioningMatrixInput } from "./validation";
+import {
+  strategicRoleEnum,
+  type PositioningMatrixInput,
+} from "./validation";
 import type { SiftedThesis } from "./sifting";
 
-/** Zod schema for the single-thesis relevance/originality/contribution evaluation output. */
+/** Zod schema for the single-thesis strategic relevance/originality/role evaluation output. */
 export const perThesisEvaluationSchema = z.object({
   externalThesisId: z
     .union([z.string(), z.number()])
     .transform((val) => String(val))
     .describe("Değerlendirilen tezin ID'si"),
-  isRelevant: z.boolean().describe("Kullanıcının teziyle alakalı mı?"),
+  isRelevant: z
+    .boolean()
+    .describe(
+      "Kullanıcının araştırma nesnesi/olgusal sahasıyla doğrudan alakalı mı?",
+    ),
   isDirectOverlap: z
     .boolean()
     .describe(
       "Kullanıcının tezi ile birebir örtüşme var mı (kullanıcı tezi özgün değil mi)?",
     ),
+  strategicRole: strategicRoleEnum
+    .optional()
+    .describe(
+      "Tezin kullanıcının tezindeki stratejik rolü: UMBRELLA_MACRO | PARALLEL_LINE | SEQUENTIAL_PERIOD | DIRECT_CHALLENGE",
+    ),
   contributionAreas: z
     .array(z.string())
     .describe(
-      "Tezin kullanıcının tezine katkı sağladığı/benzediği spesifik alanlar",
-    ),
-  relevanceReason: z
-    .string()
-    .describe(
-      "Tezin kullanıcının tezinde nasıl kullanılacağına dair rehber not",
+      "Tezin kullanıcının tezine katkı sağladığı/benzediği spesifik odak alanları (1-3 adet)",
     ),
   literaturePosition: z
     .string()
-    .describe("Tezin literatürdeki konumu ve temel sorunsalı (derdi)"),
+    .describe("Tezin literatürdeki konumu ve ne yaptığı (1 net cümle)"),
+  strategicUtility: z
+    .string()
+    .describe(
+      "Tezin kullanıcının tezinde nasıl kullanılacağına ve hangi boşluğu dolduracağına dair stratejik rehber not (1-2 cümle)",
+    ),
 });
 
 /** Inferred type for a single-thesis evaluation result. */
@@ -64,28 +76,41 @@ export const perThesisEvaluationJsonSchema: JsonSchema = {
     },
     isRelevant: {
       type: "boolean",
-      description: "Kullanıcının teziyle alakalı mı? İlgisiz tezlerde false.",
+      description:
+        "Kullanıcının araştırma nesnesi/olgusal sahasıyla doğrudan alakalı mı? İlgisiz tezlerde false.",
     },
     isDirectOverlap: {
       type: "boolean",
       description:
         "Kullanıcının tezi ile birebir örtüşme var mı (kullanıcı tezi özgün değil mi)?",
     },
+    strategicRole: {
+      type: "string",
+      enum: [
+        "BROAD_CONTEXT",
+        "SPECIFIC_FOCUS",
+        "FOUNDATIONAL_WORK",
+        "METHODOLOGICAL_BENCHMARK",
+        "ALTERNATIVE_PERSPECTIVE",
+      ],
+      description:
+        "Tezin stratejik rolü: BROAD_CONTEXT (Geniş Çerçeve), SPECIFIC_FOCUS (Kısmi Odak), FOUNDATIONAL_WORK (Öncül Çalışma), METHODOLOGICAL_BENCHMARK (Yöntem Rehberi), ALTERNATIVE_PERSPECTIVE (Karşıt Yaklaşım).",
+    },
     contributionAreas: {
       type: "array",
       items: { type: "string" },
       description:
-        "Tezin kullanıcının tezine katkı sağladığı/benzediği spesifik alanlar (ilgisiz veya birebir örtüşen tezlerde boş)",
-    },
-    relevanceReason: {
-      type: "string",
-      description:
-        "Tezin kullanıcının tezinde nasıl kullanılacağına dair rehber not (ilgisiz veya birebir örtüşen tezlerde boş)",
+        "Tezin kullanıcının tezine katkı sağladığı spesifik odak alanları (1-3 adet); ilgisiz tezlerde boş",
     },
     literaturePosition: {
       type: "string",
       description:
-        "Tezin literatürdeki konumu ve temel sorunsalı (derdi); ilgisiz tezlerde boş",
+        "Tezin literatürdeki konumu ve ne yaptığı (1 net cümle); ilgisiz tezlerde boş",
+    },
+    strategicUtility: {
+      type: "string",
+      description:
+        "Tezin kullanıcının tezinde nasıl kullanılacağına ve hangi boşluğu dolduracağına dair stratejik rehber not (1-2 cümle); ilgisiz tezlerde boş",
     },
   },
   required: [
@@ -93,8 +118,8 @@ export const perThesisEvaluationJsonSchema: JsonSchema = {
     "isRelevant",
     "isDirectOverlap",
     "contributionAreas",
-    "relevanceReason",
     "literaturePosition",
+    "strategicUtility",
   ],
   additionalProperties: false,
 };
@@ -196,11 +221,9 @@ export interface EvaluatedThesis {
   evaluation: PerThesisEvaluation;
 }
 
-/** The chunk size used when distributing theses across the grouped Gemini API key pool. */
-export const PER_THESIS_CHUNK_SIZE = 10;
-
 /**
- * Runs the per-thesis evaluations for all candidates in parallel batches of 10, distributing across the API key pool.
+ * Evaluates all candidate theses independently and concurrently in pure 1-by-1 parallel calls
+ * distributed across the Gemini API key pool to prevent relative evaluation bias.
  *
  * @param input - The validated positioning matrix input.
  * @param theses - The full list of candidate theses to evaluate.
@@ -224,98 +247,47 @@ export async function evaluateThesesInParallel(
     data: {
       total: theses.length,
       keyCount: apiKeys.length,
-      chunkSize: PER_THESIS_CHUNK_SIZE,
+      mode: "pure_1_by_1_parallel",
     },
   });
 
-  const chunks: SiftedThesis[][] = [];
-  for (let i = 0; i < theses.length; i += PER_THESIS_CHUNK_SIZE) {
-    chunks.push(theses.slice(i, i + PER_THESIS_CHUNK_SIZE));
-  }
-
   const settled = await Promise.allSettled(
-    chunks.map((chunk, chunkIdx) =>
-      evaluateBatchTheses(
+    theses.map((thesis, idx) =>
+      evaluateSingleThesis(
         input,
-        chunk,
-        apiKeys[chunkIdx % apiKeys.length],
+        thesis,
+        apiKeys[idx % apiKeys.length],
         logger,
       ),
     ),
   );
 
-  const evaluationMap = new Map<string, PerThesisEvaluation>();
+  const allEvaluated: EvaluatedThesis[] = [];
 
   for (let idx = 0; idx < settled.length; idx++) {
     const res = settled[idx];
-    const chunk = chunks[idx];
+    const thesis = theses[idx];
     if (res.status === "fulfilled") {
-      for (const ev of res.value) {
-        if (ev && ev.externalThesisId) {
-          evaluationMap.set(String(ev.externalThesisId), ev);
-        }
-      }
+      allEvaluated.push({ thesis, evaluation: res.value });
     } else {
-      logger?.error("positioning_per_thesis_evaluation_failed", {
+      logger?.error("positioning_per_thesis_single_evaluation_failed", {
         service: "positioning",
         filePath: "src/features/positioning/per-thesis-evaluation.ts",
-        data: { chunkIndex: idx, chunkSize: chunk.length },
+        data: { thesisId: thesis.id, title: thesis.title },
         error: res.reason,
       });
     }
   }
 
-  const allEvaluated: EvaluatedThesis[] = [];
-  const missingTheses: SiftedThesis[] = [];
-
-  for (const thesis of theses) {
-    const ev = evaluationMap.get(String(thesis.id));
-    if (ev) {
-      allEvaluated.push({ thesis, evaluation: ev });
-    } else {
-      missingTheses.push(thesis);
-    }
-  }
-
-  if (missingTheses.length > 0) {
-    logger?.info("positioning_per_thesis_evaluation_fallback_missing", {
-      service: "positioning",
-      filePath: "src/features/positioning/per-thesis-evaluation.ts",
-      data: { missingCount: missingTheses.length },
-    });
-
-    const fallbackResults = await Promise.allSettled(
-      missingTheses.map((thesis, idx) =>
-        evaluateSingleThesis(
-          input,
-          thesis,
-          apiKeys[idx % apiKeys.length],
-          logger,
-        ),
-      ),
-    );
-
-    for (let i = 0; i < fallbackResults.length; i++) {
-      const res = fallbackResults[i];
-      const thesis = missingTheses[i];
-      if (res.status === "fulfilled") {
-        allEvaluated.push({ thesis, evaluation: res.value });
-      }
-    }
-  }
-
-  const thesisOrderMap = new Map(theses.map((t, idx) => [String(t.id), idx]));
-  allEvaluated.sort(
-    (a, b) =>
-      (thesisOrderMap.get(String(a.thesis.id)) ?? 0) -
-      (thesisOrderMap.get(String(b.thesis.id)) ?? 0),
-  );
-
   logger?.info("positioning_per_thesis_evaluation_success", {
     service: "positioning",
     filePath: "src/features/positioning/per-thesis-evaluation.ts",
     durationMs: Math.round(performance.now() - startTime),
-    data: { evaluatedCount: allEvaluated.length },
+    data: {
+      total: theses.length,
+      evaluatedCount: allEvaluated.length,
+      relevantCount: allEvaluated.filter((e) => e.evaluation.isRelevant).length,
+    },
   });
 
   return allEvaluated;

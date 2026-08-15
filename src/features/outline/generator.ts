@@ -2,7 +2,7 @@
 
 import { eq } from "drizzle-orm";
 import { db } from "@/db";
-import { matrices, outlines, boxes, outlineBoxes } from "@/db/schema";
+import { matrices, outlines } from "@/db/schema";
 import { getSession, SESSION_ERROR_MSG } from "@/lib/session";
 import { invalidateOnboardingStepCache } from "@/lib/cache-tags";
 import { generateGeminiStructuredContent } from "@/services/ai";
@@ -141,13 +141,7 @@ async function persistOutlines(
   const log = new Logger(flowId);
 
   await db.transaction(async (tx) => {
-    // 1. Fetch user's existing topic boxes for this matrix
-    const userBoxes = await tx
-      .select()
-      .from(boxes)
-      .where(eq(boxes.matrixId, matrixId));
-
-    // Delete existing outlines for this matrix (cascade deletes outline_boxes)
+    // Delete existing outlines for this matrix (cascade deletes outline_annotations / outline_sources)
     await tx.delete(outlines).where(eq(outlines.matrixId, matrixId));
 
     const parentValues: (typeof outlines.$inferInsert)[] = [];
@@ -178,7 +172,6 @@ async function persistOutlines(
     }
 
     // Prepare child subsections
-    const childIndexMap: { parentIdx: number; subIdx: number }[] = [];
     const childValues: (typeof outlines.$inferInsert)[] = [];
     for (let i = 0; i < outline.sections.length; i++) {
       const section = outline.sections[i];
@@ -197,65 +190,11 @@ async function persistOutlines(
           sortOrder: sub.sortOrder,
           academicField: null,
         });
-        childIndexMap.push({ parentIdx: i, subIdx: j });
       }
     }
 
-    let insertedChildren: { id: number }[] = [];
     if (childValues.length > 0) {
-      insertedChildren = await tx
-        .insert(outlines)
-        .values(childValues)
-        .returning({ id: outlines.id });
-    }
-
-    // 2. Auto-link boxes to outline sections (outline_boxes)
-    if (userBoxes.length > 0) {
-      const outlineBoxLinks: { outlineId: number; boxId: number }[] = [];
-      const addedSet = new Set<string>();
-
-      const addLink = (outlineId: number, boxId: number) => {
-        const key = `${outlineId}-${boxId}`;
-        if (!addedSet.has(key)) {
-          addedSet.add(key);
-          outlineBoxLinks.push({ outlineId, boxId });
-        }
-      };
-
-      // Auto-link parent sections
-      for (let i = 0; i < outline.sections.length; i++) {
-        const section = outline.sections[i];
-        const outlineId = dbParentIdMap.get(i);
-        if (!outlineId) continue;
-
-        const recTypes = section.recommendedBoxTypes || [];
-        for (const box of userBoxes) {
-          if (box.boxType && recTypes.includes(box.boxType)) {
-            addLink(outlineId, box.id);
-          }
-        }
-      }
-
-      // Auto-link child subsections
-      for (let k = 0; k < childIndexMap.length; k++) {
-        const { parentIdx, subIdx } = childIndexMap[k];
-        const childOutlineId = insertedChildren[k]?.id;
-        if (!childOutlineId) continue;
-
-        const sub = outline.sections[parentIdx]?.subSections?.[subIdx];
-        if (!sub) continue;
-
-        const recTypes = sub.recommendedBoxTypes || [];
-        for (const box of userBoxes) {
-          if (box.boxType && recTypes.includes(box.boxType)) {
-            addLink(childOutlineId, box.id);
-          }
-        }
-      }
-
-      if (outlineBoxLinks.length > 0) {
-        await tx.insert(outlineBoxes).values(outlineBoxLinks);
-      }
+      await tx.insert(outlines).values(childValues);
     }
   });
 

@@ -6,8 +6,10 @@ import {
   createOutlineSectionAction,
   updateOutlineSectionAction,
   deleteOutlineSectionAction,
-  linkBoxToOutlineAction,
-  unlinkBoxFromOutlineAction,
+  linkAnnotationToOutlineAction,
+  unlinkAnnotationFromOutlineAction,
+  linkSourceToOutlineAction,
+  unlinkSourceFromOutlineAction,
 } from "../../../actions";
 import { toast } from "sonner";
 
@@ -17,8 +19,10 @@ interface UseOutlineCrudOptions {
   selectedOutline: Outline | null;
   selectedOutlineId: number | null;
   setSelectedOutlineId: (id: number | null) => void;
-  localLinkedBoxMap: Record<number, number[]>;
-  applyBoxLinkOverride: (outlineId: number, linkedBoxIds: number[]) => void;
+  localPinnedAnnotationsMap: Record<number, number[]>;
+  applyAnnotationLinkOverride: (outlineId: number, annotationIds: number[]) => void;
+  localLinkedSourcesMap: Record<number, number[]>;
+  applySourceLinkOverride: (outlineId: number, sourceIds: number[]) => void;
 }
 
 export interface CreateSectionInput {
@@ -51,15 +55,20 @@ interface UseOutlineCrudResult {
   promptDelete: (outline: Outline) => void;
   closeDeleteModal: () => void;
   confirmDelete: () => Promise<void>;
-  isBoxLinkModalOpen: boolean;
-  openBoxLinkModal: () => void;
-  closeBoxLinkModal: () => void;
-  toggleBoxLink: (boxId: number) => Promise<void>;
+  isAnnotationLinkModalOpen: boolean;
+  openAnnotationLinkModal: () => void;
+  closeAnnotationLinkModal: () => void;
+  toggleAnnotationLink: (annotationId: number) => Promise<void>;
+  isSourceLinkModalOpen: boolean;
+  openSourceLinkModal: () => void;
+  closeSourceLinkModal: () => void;
+  toggleSourceLink: (sourceId: number) => Promise<void>;
 }
 
 /**
- * Wires the outline section CRUD server actions (add/edit/delete and box
- * linking) with their modal visibility states, toasts and optimistic updates.
+ * Wires the outline section CRUD server actions (add/edit/delete and
+ * annotation/source linking) with their modal visibility states, toasts and
+ * optimistic updates.
  *
  * @param root0 - Hook options.
  * @param root0.outlinesList - All outline sections of the thesis.
@@ -67,8 +76,10 @@ interface UseOutlineCrudResult {
  * @param root0.selectedOutline - The currently selected outline section or null.
  * @param root0.selectedOutlineId - The currently selected outline id.
  * @param root0.setSelectedOutlineId - Selection mutator used to move off a deleted section.
- * @param root0.localLinkedBoxMap - Effective box to outline link map (with optimistic overrides).
- * @param root0.applyBoxLinkOverride - Applies/rolls back an optimistic box-link change.
+ * @param root0.localPinnedAnnotationsMap - Effective annotation to outline link map (with optimistic overrides).
+ * @param root0.applyAnnotationLinkOverride - Applies/rolls back an optimistic annotation-link change.
+ * @param root0.localLinkedSourcesMap - Effective source to outline link map (with optimistic overrides).
+ * @param root0.applySourceLinkOverride - Applies/rolls back an optimistic source-link change.
  * @returns Modal states, open/close handlers and server action triggers.
  */
 export function useOutlineCrud({
@@ -77,8 +88,10 @@ export function useOutlineCrud({
   selectedOutline,
   selectedOutlineId,
   setSelectedOutlineId,
-  localLinkedBoxMap,
-  applyBoxLinkOverride,
+  localPinnedAnnotationsMap,
+  applyAnnotationLinkOverride,
+  localLinkedSourcesMap,
+  applySourceLinkOverride,
 }: UseOutlineCrudOptions): UseOutlineCrudResult {
   // Add new section modal state
   const [isAddOpen, setIsAddOpen] = useState(false);
@@ -95,8 +108,12 @@ export function useOutlineCrud({
   const [outlineToDelete, setOutlineToDelete] = useState<Outline | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
 
-  // Box linkage modal state
-  const [isBoxLinkModalOpen, setIsBoxLinkModalOpen] = useState(false);
+  // Annotation (citation card) linkage modal state
+  const [isAnnotationLinkModalOpen, setIsAnnotationLinkModalOpen] =
+    useState(false);
+
+  // Source linkage modal state
+  const [isSourceLinkModalOpen, setIsSourceLinkModalOpen] = useState(false);
 
   const openAddModal = (parentId: number | null = null) => {
     setAddParentId(parentId);
@@ -198,36 +215,69 @@ export function useOutlineCrud({
     }
   };
 
-  const openBoxLinkModal = () => setIsBoxLinkModalOpen(true);
+  const openAnnotationLinkModal = () => setIsAnnotationLinkModalOpen(true);
 
-  const closeBoxLinkModal = () => setIsBoxLinkModalOpen(false);
+  const closeAnnotationLinkModal = () => setIsAnnotationLinkModalOpen(false);
 
-  const toggleBoxLink = async (boxId: number) => {
+  const toggleAnnotationLink = async (annotationId: number) => {
     if (!selectedOutline) return;
-    const currentBoxIds = localLinkedBoxMap[selectedOutline.id] ?? [];
-    const isLinked = currentBoxIds.includes(boxId);
+    const currentIds = localPinnedAnnotationsMap[selectedOutline.id] ?? [];
+    const isLinked = currentIds.includes(annotationId);
 
     // Optimistic update
     const updated = isLinked
-      ? currentBoxIds.filter((id) => id !== boxId)
-      : [...currentBoxIds, boxId];
+      ? currentIds.filter((id) => id !== annotationId)
+      : [...currentIds, annotationId];
 
-    applyBoxLinkOverride(selectedOutline.id, updated);
+    applyAnnotationLinkOverride(selectedOutline.id, updated);
 
     const res = isLinked
-      ? await unlinkBoxFromOutlineAction(selectedOutline.id, boxId)
-      : await linkBoxToOutlineAction(selectedOutline.id, boxId);
+      ? await unlinkAnnotationFromOutlineAction(selectedOutline.id, annotationId)
+      : await linkAnnotationToOutlineAction(selectedOutline.id, annotationId);
 
     if (res.success) {
       toast.success(
         isLinked
-          ? "Konu kutusunun bölüm bağı kaldırıldı."
-          : "Konu kutusu bölüme başarıyla bağlandı.",
+          ? "Alıntı kartının bölüm bağı kaldırıldı."
+          : "Alıntı kartı bölüme başarıyla bağlandı.",
       );
     } else {
       toast.error(res.error ?? "İşlem gerçekleştirilemedi.");
       // Rollback
-      applyBoxLinkOverride(selectedOutline.id, currentBoxIds);
+      applyAnnotationLinkOverride(selectedOutline.id, currentIds);
+    }
+  };
+
+  const openSourceLinkModal = () => setIsSourceLinkModalOpen(true);
+
+  const closeSourceLinkModal = () => setIsSourceLinkModalOpen(false);
+
+  const toggleSourceLink = async (sourceId: number) => {
+    if (!selectedOutline) return;
+    const currentIds = localLinkedSourcesMap[selectedOutline.id] ?? [];
+    const isLinked = currentIds.includes(sourceId);
+
+    // Optimistic update
+    const updated = isLinked
+      ? currentIds.filter((id) => id !== sourceId)
+      : [...currentIds, sourceId];
+
+    applySourceLinkOverride(selectedOutline.id, updated);
+
+    const res = isLinked
+      ? await unlinkSourceFromOutlineAction(selectedOutline.id, sourceId)
+      : await linkSourceToOutlineAction(selectedOutline.id, sourceId);
+
+    if (res.success) {
+      toast.success(
+        isLinked
+          ? "Kaynağın bölüm bağı kaldırıldı."
+          : "Kaynak bölüme başarıyla bağlandı.",
+      );
+    } else {
+      toast.error(res.error ?? "İşlem gerçekleştirilemedi.");
+      // Rollback
+      applySourceLinkOverride(selectedOutline.id, currentIds);
     }
   };
 
@@ -250,9 +300,13 @@ export function useOutlineCrud({
     promptDelete,
     closeDeleteModal,
     confirmDelete,
-    isBoxLinkModalOpen,
-    openBoxLinkModal,
-    closeBoxLinkModal,
-    toggleBoxLink,
+    isAnnotationLinkModalOpen,
+    openAnnotationLinkModal,
+    closeAnnotationLinkModal,
+    toggleAnnotationLink,
+    isSourceLinkModalOpen,
+    openSourceLinkModal,
+    closeSourceLinkModal,
+    toggleSourceLink,
   };
 }

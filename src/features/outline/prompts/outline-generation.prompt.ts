@@ -45,32 +45,25 @@ export function buildOutlineGenerationPromptPayload(
 ## 4. Başlık ve İfade Standartları
 - **Sadelik ve Hiyerarşik Netlik:** Başlıklar makale özeti veya uzun cümleler yerine kısa, analitik ve akademik kavramlara odaklı olmalıdır.
 - **Dil:** Tüm başlıklar ve açıklamalar akıcı ve yüksek düzey akademik Türkçe ile yazılmalıdır.
-- **Açıklamalar (description):** Her ana ve alt bölüm için 1-2 cümlelik öz, net akademik açıklamalar yazılmalıdır.
-
-## 5. Konu Kutusu Eşleştirmesi (recommendedBoxTypes)
-- Her bölümün matristeki hangi temel bileşenlerle beslendiğini belirleyin.
-- Geçerli değerler: "SUBJECT_PROBLEM", "THEORETICAL_FRAMEWORK", "PRIMARY_MATERIAL", "METHODOLOGY".`,
+- **Açıklamalar (description):** Her ana ve alt bölüm için 1-2 cümlelik öz, net akademik açıklamalar yazılmalıdır.`,
 
     workflowSteps: `1. Araştırma problemi ve kuramsal çerçeveden hareketle tezin bilim dalını (academicField) belirleyin.
 2. Türkiye lisansüstü tez geleneğine uygun olarak: Giriş (yöntem/materyal alt başlıkları dahil) + 3 Ana Gövde Bölümü + Sonuç ve Değerlendirme mimarisini kurun.
 3. Giriş bölümü altına Araştırmanın Problemi/Amacı, Kuramsal Yaklaşım/Hipotez, Yöntem/Birincil Kaynaklar ve Tezin Kurgusu alt başlıklarını ekleyin.
 4. 3 Gövde bölümünü (Kuram → Ampirik Süreç → Karşılaştırmalı Sentez) 2-3'er odaklı alt başlıkla yapılandırın.
-5. Başlıkları analitik ve sade bir dille formüle edin.
-6. İlgili recommendedBoxTypes eşleştirmelerini tanımlayarak JSON çıktısını üretin.`,
+5. Başlıkları analitik ve sade bir dille formüle edin.`,
 
     outputFormat: `- Yanıt yalnızca sağlanan JSON şemasına eksiksiz uyan JSON nesnesi olmalıdır.
 - Tüm başlıklar ve açıklamalar akademik Türkçe olmalıdır.`,
 
-    examples: `## Örnek 1: Siyaset Bilimi ve Kamu Yönetimi Tez Planı
-
-### Girdi
-- **Araştırma Problemi:** 1990'lar Türkiye'sinde Neoliberal Dönüşüm ve Yerel Yönetimlerin Özerkliği
-- **Teorik Çerçeve:** David Harvey'nin Neoliberalizm Kuramı ve Kentsel Mekânın Yeniden Üretimi
-- **Birincil Materyal:** Belediye Meclis Kararları, Resmî Gazete Tebliğleri ve İmar Raporları
-- **Metodoloji:** Nitel Söylem ve Politika Analizi
-
-### Çıktı
-\`\`\`json
+    examples: `<example>
+<input>
+- Araştırma Problemi: 1990'lar Türkiye'sinde Neoliberal Dönüşüm ve Yerel Yönetimlerin Özerkliği
+- Teorik Çerçeve: David Harvey'nin Neoliberalizm Kuramı ve Kentsel Mekânın Yeniden Üretimi
+- Birincil Materyal: Belediye Meclis Kararları, Resmî Gazete Tebliğleri ve İmar Raporları
+- Metodoloji: Nitel Söylem ve Politika Analizi
+</input>
+<output>
 {
   "academicField": "Siyaset Bilimi ve Kamu Yönetimi",
   "sections": [
@@ -78,25 +71,21 @@ export function buildOutlineGenerationPromptPayload(
       "title": "Giriş",
       "description": "Araştırmanın konusu, problemi, kuramsal-yöntemsel yaklaşımı ve tezin kurgusal yapısı.",
       "sortOrder": 1,
-      "recommendedBoxTypes": ["SUBJECT_PROBLEM", "METHODOLOGY"],
       "subSections": [
         {
           "title": "Araştırmanın Konusu, Problemi ve Amacı",
           "description": "1990'larda yerel yönetimlerin dönüşüm problemi ve araştırmanın temel soruları.",
-          "sortOrder": 1,
-          "recommendedBoxTypes": ["SUBJECT_PROBLEM"]
+          "sortOrder": 1
         },
         {
           "title": "Kuramsal Çerçeve ve Temel Hipotezler",
           "description": "David Harvey'nin mekân teorisi ekseninde kurulan hipotezlerin sunumu.",
-          "sortOrder": 2,
-          "recommendedBoxTypes": ["THEORETICAL_FRAMEWORK"]
+          "sortOrder": 2
         },
         {
           "title": "Yöntem, Birincil Kaynaklar ve Sınırlılıklar",
           "description": "Nitel söylem analizi yöntemi, belediye meclis kararları ve arşiv materyallerinin kapsamı.",
-          "sortOrder": 3,
-          "recommendedBoxTypes": ["METHODOLOGY", "PRIMARY_MATERIAL"]
+          "sortOrder": 3
         }
       ]
     },
@@ -104,19 +93,16 @@ export function buildOutlineGenerationPromptPayload(
       "title": "Kuramsal Çerçeve: Neoliberalizm, Devlet ve Kentsel Mekân",
       "description": "Neoliberal yeniden yapılanma, yerel yönetimler ve kentsel rant dinamiklerinin teorik analizi.",
       "sortOrder": 2,
-      "recommendedBoxTypes": ["THEORETICAL_FRAMEWORK"],
       "subSections": [
         {
           "title": "Neoliberal Devlet Aklı ve Kentsel Mekânın Metalaşması",
           "description": "Harvey'nin sermaye birikim modelleri ışığında kentsel politikalar.",
-          "sortOrder": 1,
-          "recommendedBoxTypes": ["THEORETICAL_FRAMEWORK"]
+          "sortOrder": 1
         },
         {
           "title": "Yerel Özerklik ve Merkez-Yerel İlişkileri",
           "description": "Merkezi idare ile yerel otoriteler arasındaki yetki aktarımlarının kuramsal boyutları.",
-          "sortOrder": 2,
-          "recommendedBoxTypes": ["THEORETICAL_FRAMEWORK", "SUBJECT_PROBLEM"]
+          "sortOrder": 2
         }
       ]
     },
@@ -124,19 +110,16 @@ export function buildOutlineGenerationPromptPayload(
       "title": "1990'lar Türkiye'sinde Yerel Yönetimlerin Kurumsal ve Hukuki Dönüşümü",
       "description": "Dönemin yasal mevzuatı, belediye kararları ve yerel hizmetlerin piyasalaşma pratikleri.",
       "sortOrder": 3,
-      "recommendedBoxTypes": ["PRIMARY_MATERIAL", "SUBJECT_PROBLEM"],
       "subSections": [
         {
           "title": "Mevzuat Değişiklikleri ve Özelleştirme Uygulamaları",
           "description": "Belediye hizmetlerinin piyasaya açılmasına dair yasal çerçevenin analizi.",
-          "sortOrder": 1,
-          "recommendedBoxTypes": ["PRIMARY_MATERIAL"]
+          "sortOrder": 1
         },
         {
           "title": "Belediye Meclislerinde Kentsel Rant ve İmar Kararları",
           "description": "Birincil arşiv belgeleri üzerinden meclis kararlarının ampirik dökümü.",
-          "sortOrder": 2,
-          "recommendedBoxTypes": ["PRIMARY_MATERIAL"]
+          "sortOrder": 2
         }
       ]
     },
@@ -144,19 +127,16 @@ export function buildOutlineGenerationPromptPayload(
       "title": "Kentsel Politikaların Söylemsel Analizi ve Özerklik Çıkmazı",
       "description": "Siyasal aktörlerin söylemleri ile uygulama arasındaki gerilimlerin karşılaştırmalı analizi.",
       "sortOrder": 4,
-      "recommendedBoxTypes": ["METHODOLOGY", "SUBJECT_PROBLEM"],
       "subSections": [
         {
           "title": "Yerel Siyasette 'Hizmet' ve 'Piyasa' Söyleminin İnşası",
           "description": "Nitel söylem analizi bulgularının kuramsal kavramlarla karşılaştırılması.",
-          "sortOrder": 1,
-          "recommendedBoxTypes": ["METHODOLOGY", "PRIMARY_MATERIAL"]
+          "sortOrder": 1
         },
         {
           "title": "Merkezi Denetim Karşısında Yerel Özerklik Kapasitesi",
           "description": "Yerel aktörlerin özerklik talepleri ile merkezi vesayet arasındaki güç ilişkileri.",
-          "sortOrder": 2,
-          "recommendedBoxTypes": ["SUBJECT_PROBLEM", "THEORETICAL_FRAMEWORK"]
+          "sortOrder": 2
         }
       ]
     },
@@ -164,29 +144,26 @@ export function buildOutlineGenerationPromptPayload(
       "title": "Sonuç ve Değerlendirme",
       "description": "Araştırma bulgularının sentezi, hipotezlerin doğrulanması ve literatüre katkı.",
       "sortOrder": 5,
-      "recommendedBoxTypes": ["SUBJECT_PROBLEM", "THEORETICAL_FRAMEWORK"],
       "subSections": []
     }
   ]
 }
-\`\`\``,
+</output>
+</example>`,
 
-    inputContext: `## Tez Matrisi Verileri
-
-### Araştırma Problemi
+    inputContext: `### Araştırma Problemi:
 ${matrix.subjectProblem}
 
-### Teorik Çerçeve
+### Teorik Çerçeve:
 ${matrix.theoreticalFramework}
 
-### Birincil Materyal
+### Birincil Materyal:
 ${matrix.primaryMaterial || "Belirtilmemiş"}
 
-### Metodoloji
-${matrix.methodology}
+### Metodoloji:
+${matrix.methodology}`,
 
----
-
-Yukarıdaki tez matrisi verilerini analiz ederek Türkiye lisansüstü tez standartlarına tam uyumlu, sade ve akıcı bir taslak tez planı oluşturun.`,
+    taskTrigger:
+      "Yukarıdaki <context> içeriğindeki tez matrisi verilerini analiz ederek Türkiye lisansüstü tez standartlarına tam uyumlu, sade ve akıcı bir taslak tez planını <instructions> kurallarına göre JSON formatında üret.",
   });
 }

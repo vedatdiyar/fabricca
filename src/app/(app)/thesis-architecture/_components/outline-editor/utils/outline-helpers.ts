@@ -64,19 +64,3 @@ export function filterRootOutlinesByQuery(
     return rootMatch || subMatch;
   });
 }
-
-/**
- * Counts the sources that belong to the given set of linked box ids.
- *
- * @param sourcesList - The full source list to count from.
- * @param linkedBoxIds - The box ids linked to a section.
- * @returns The number of distinct linked sources.
- */
-export function countLinkedSources(
-  sourcesList: Source[],
-  linkedBoxIds: number[],
-): number {
-  return sourcesList.filter((s) =>
-    s.boxId ? linkedBoxIds.includes(s.boxId) : false,
-  ).length;
-}

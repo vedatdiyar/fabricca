@@ -366,4 +366,61 @@ export const ADVISOR_TOOL_DECLARATIONS: FunctionDeclaration[] = [
       required: ["outlineId", "annotationId"],
     },
   },
+  {
+    name: "unpinAnnotationFromOutline",
+    description:
+      "Removes a pinned citation card (annotation ID) from a thesis outline section.",
+    parametersJsonSchema: {
+      type: "object",
+      properties: {
+        outlineId: {
+          type: "integer",
+          description: "The ID of the outline section.",
+        },
+        annotationId: {
+          type: "integer",
+          description: "The ID of the citation card (annotation) to unpin.",
+        },
+      },
+      required: ["outlineId", "annotationId"],
+    },
+  },
+  {
+    name: "linkSourceToOutline",
+    description:
+      "Links a specific academic library source to a thesis outline section as the source material used when writing it.",
+    parametersJsonSchema: {
+      type: "object",
+      properties: {
+        outlineId: {
+          type: "integer",
+          description: "The ID of the outline section.",
+        },
+        sourceId: {
+          type: "integer",
+          description: "The ID of the library source to link.",
+        },
+      },
+      required: ["outlineId", "sourceId"],
+    },
+  },
+  {
+    name: "unlinkSourceFromOutline",
+    description:
+      "Removes a linked academic library source from a thesis outline section.",
+    parametersJsonSchema: {
+      type: "object",
+      properties: {
+        outlineId: {
+          type: "integer",
+          description: "The ID of the outline section.",
+        },
+        sourceId: {
+          type: "integer",
+          description: "The ID of the library source to unlink.",
+        },
+      },
+      required: ["outlineId", "sourceId"],
+    },
+  },
 ];

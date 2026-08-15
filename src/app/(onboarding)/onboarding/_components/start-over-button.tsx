@@ -43,7 +43,7 @@ export function StartOverButton({ className, ...props }: ButtonProps) {
           queryClient.invalidateQueries();
           toast.success("Onboarding süreci başarıyla sıfırlandı.");
           setIsOpen(false);
-          router.push("/onboarding/matrix");
+          router.push("/onboarding");
         }
       } catch {
         toast.error(

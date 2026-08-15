@@ -18,7 +18,6 @@ import { SubBoxList } from "./sub-box-list";
 interface QuadrantPillarCardProps {
   rootBox: BoxWithRelations;
   subBoxes: BoxWithRelations[];
-  outlineCounts: Record<number, number>;
   expandedSemanticMap: Record<number, boolean>;
   onToggleSemantic: (boxId: number) => void;
   onCopySubBox: (box: BoxWithRelations) => void;
@@ -32,7 +31,6 @@ interface QuadrantPillarCardProps {
 export function QuadrantPillarCard({
   rootBox,
   subBoxes,
-  outlineCounts,
   expandedSemanticMap,
   onToggleSemantic,
   onCopySubBox,
@@ -115,7 +113,6 @@ export function QuadrantPillarCard({
 
         <SubBoxList
           subBoxes={subBoxes}
-          outlineCounts={outlineCounts}
           expandedSemanticMap={expandedSemanticMap}
           onToggleSemantic={onToggleSemantic}
           onCopy={onCopySubBox}

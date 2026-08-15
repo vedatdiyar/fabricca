@@ -6,7 +6,6 @@ import type { BoxWithRelations } from "../../constants/quadrant-config";
 
 interface SubBoxListProps {
   subBoxes: BoxWithRelations[];
-  outlineCounts: Record<number, number>;
   expandedSemanticMap: Record<number, boolean>;
   onToggleSemantic: (boxId: number) => void;
   onCopy: (box: BoxWithRelations) => void;
@@ -18,7 +17,6 @@ interface SubBoxListProps {
 /** Sub-topic list of a quadrant pillar, or the clickable empty state placeholder. */
 export function SubBoxList({
   subBoxes,
-  outlineCounts,
   expandedSemanticMap,
   onToggleSemantic,
   onCopy,
@@ -52,7 +50,6 @@ export function SubBoxList({
           key={subBox.id}
           subBox={subBox}
           isSemanticOpen={expandedSemanticMap[subBox.id] ?? false}
-          outlineCount={outlineCounts[subBox.id] ?? 0}
           onToggleSemantic={() => onToggleSemantic(subBox.id)}
           onCopy={() => onCopy(subBox)}
           onEdit={() => onEdit(subBox)}

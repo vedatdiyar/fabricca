@@ -126,10 +126,18 @@ export async function runPositioningJuryAction(
     const thesisTypeById = new Map<string, string>(
       relevantTheses.map((ev) => [String(ev.thesis.id), ev.thesis.thesisType]),
     );
-    juryResult.recommendedTheses = juryResult.recommendedTheses.map((rec) => ({
-      ...rec,
-      thesisType: thesisTypeById.get(String(rec.externalThesisId)) || undefined,
-    }));
+    const evalByThesisId = new Map(
+      relevantTheses.map((ev) => [String(ev.thesis.id), ev.evaluation]),
+    );
+    juryResult.recommendedTheses = juryResult.recommendedTheses.map((rec) => {
+      const ev = evalByThesisId.get(String(rec.externalThesisId));
+      return {
+        ...rec,
+        strategicRole: rec.strategicRole || ev?.strategicRole || "BROAD_CONTEXT",
+        literaturePosition: rec.literaturePosition || ev?.literaturePosition,
+        thesisType: thesisTypeById.get(String(rec.externalThesisId)) || undefined,
+      };
+    });
 
     return { success: true, juryResult };
   } catch (error) {
@@ -171,7 +179,6 @@ export async function persistPositioningReportAction(
     if (!parsed.success) {
       return { error: "Form doğrulaması başarısız." };
     }
-    const validated = parsed.data;
 
     if (juryResult.recommendedTheses.length > 0) {
       const itemsToSanitize = juryResult.recommendedTheses.map((t) => ({

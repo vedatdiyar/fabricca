@@ -11,7 +11,6 @@ import {
   boolean,
   index,
   foreignKey,
-  uuid,
   vector,
   customType,
 } from "drizzle-orm/pg-core";
@@ -22,7 +21,6 @@ import {
   type InferInsertModel,
 } from "drizzle-orm";
 import type {
-  PositioningMatrixInput,
   RecommendedThesisItem,
   GapAnalysisStructured,
 } from "@/features/positioning/validation";
@@ -306,27 +304,27 @@ export const outlineAnnotations = pgTable(
 export type OutlineAnnotation = InferSelectModel<typeof outlineAnnotations>;
 export type NewOutlineAnnotation = InferInsertModel<typeof outlineAnnotations>;
 
-/** Outline Boxes Junction — Links Topic Boxes to specific Thesis Outline sections. */
-export const outlineBoxes = pgTable(
-  "outline_boxes",
+/** Outline Sources Junction — Links academic Library Sources directly to specific Thesis Outline sections as writing material. */
+export const outlineSources = pgTable(
+  "outline_sources",
   {
     id: serial().primaryKey(),
     outlineId: integer("outline_id")
       .notNull()
       .references(() => outlines.id, { onDelete: "cascade" }),
-    boxId: integer("box_id")
+    sourceId: integer("source_id")
       .notNull()
-      .references(() => boxes.id, { onDelete: "cascade" }),
+      .references(() => sources.id, { onDelete: "cascade" }),
     createdAt: timestamp("created_at").defaultNow().notNull(),
   },
   (table) => [
-    index("idx_outline_boxes_outline_id").on(table.outlineId),
-    index("idx_outline_boxes_box_id").on(table.boxId),
+    index("idx_outline_sources_outline_id").on(table.outlineId),
+    index("idx_outline_sources_source_id").on(table.sourceId),
   ],
 );
 
-export type OutlineBox = InferSelectModel<typeof outlineBoxes>;
-export type NewOutlineBox = InferInsertModel<typeof outlineBoxes>;
+export type OutlineSource = InferSelectModel<typeof outlineSources>;
+export type NewOutlineSource = InferInsertModel<typeof outlineSources>;
 
 /** Critiques table — 1:1 article analysis (research question, theoretical framework, methodology, main argument, literature gap) per library source. */
 export const critiques = pgTable(
@@ -496,9 +494,47 @@ export const outlinesRelations = relations(outlines, ({ one, many }) => ({
   children: many(outlines, {
     relationName: "outlineHierarchy",
   }),
+  outlineAnnotations: many(outlineAnnotations),
+  outlineSources: many(outlineSources),
 }));
 
-export const sourcesRelations = relations(sources, ({ one }) => ({
+export const annotationsRelations = relations(annotations, ({ one, many }) => ({
+  source: one(sources, {
+    fields: [annotations.sourceId],
+    references: [sources.id],
+  }),
+  outlineAnnotations: many(outlineAnnotations),
+}));
+
+export const outlineAnnotationsRelations = relations(
+  outlineAnnotations,
+  ({ one }) => ({
+    outline: one(outlines, {
+      fields: [outlineAnnotations.outlineId],
+      references: [outlines.id],
+    }),
+    annotation: one(annotations, {
+      fields: [outlineAnnotations.annotationId],
+      references: [annotations.id],
+    }),
+  }),
+);
+
+export const outlineSourcesRelations = relations(
+  outlineSources,
+  ({ one }) => ({
+    outline: one(outlines, {
+      fields: [outlineSources.outlineId],
+      references: [outlines.id],
+    }),
+    source: one(sources, {
+      fields: [outlineSources.sourceId],
+      references: [sources.id],
+    }),
+  }),
+);
+
+export const sourcesRelations = relations(sources, ({ one, many }) => ({
   box: one(boxes, {
     fields: [sources.boxId],
     references: [boxes.id],
@@ -507,6 +543,7 @@ export const sourcesRelations = relations(sources, ({ one }) => ({
     fields: [sources.id],
     references: [critiques.sourceId],
   }),
+  outlineSources: many(outlineSources),
 }));
 
 export const critiquesRelations = relations(critiques, ({ one }) => ({

@@ -8,12 +8,10 @@ const outlineSectionSchema: z.ZodType<{
   title: string;
   description: string;
   sortOrder: number;
-  recommendedBoxTypes?: string[];
   subSections: Array<{
     title: string;
     description: string;
     sortOrder: number;
-    recommendedBoxTypes?: string[];
   }>;
 }> = z.lazy(() =>
   z.object({
@@ -29,12 +27,6 @@ const outlineSectionSchema: z.ZodType<{
       .number()
       .int()
       .describe("Bölümün gösterim sırası (1'den başlar)."),
-    recommendedBoxTypes: z
-      .array(z.string())
-      .optional()
-      .describe(
-        "Bu bölümün besleneceği ilgili Konu Kutusu türleri (ör. ['THEORETICAL_FRAMEWORK', 'SUBJECT_PROBLEM']).",
-      ),
     subSections: z
       .array(
         z.object({
@@ -43,12 +35,6 @@ const outlineSectionSchema: z.ZodType<{
             .describe("Alt bölüm başlığı. Akademik Türkçe olmalıdır."),
           description: z.string().describe("Alt bölüm açıklaması."),
           sortOrder: z.number().int().describe("Alt bölümün gösterim sırası."),
-          recommendedBoxTypes: z
-            .array(z.string())
-            .optional()
-            .describe(
-              "Bu alt bölümün besleneceği ilgili Konu Kutusu türleri (ör. ['METHODOLOGY']).",
-            ),
         }),
       )
       .describe(
@@ -96,12 +82,6 @@ function buildSectionJsonSchemaProperty(): JsonSchemaProperty {
         type: "number",
         description: "Bölümün gösterim sırası (1'den başlar)",
       },
-      recommendedBoxTypes: {
-        type: "array",
-        items: { type: "string" },
-        description:
-          "İlgili konu kutusu türleri: 'SUBJECT_PROBLEM', 'THEORETICAL_FRAMEWORK', 'PRIMARY_MATERIAL', 'METHODOLOGY'",
-      },
       subSections: {
         type: "array",
         items: {
@@ -118,11 +98,6 @@ function buildSectionJsonSchemaProperty(): JsonSchemaProperty {
             sortOrder: {
               type: "number",
               description: "Alt bölümün gösterim sırası",
-            },
-            recommendedBoxTypes: {
-              type: "array",
-              items: { type: "string" },
-              description: "İlgili alt konu kutusu türleri",
             },
           },
           required: ["title", "description", "sortOrder"],

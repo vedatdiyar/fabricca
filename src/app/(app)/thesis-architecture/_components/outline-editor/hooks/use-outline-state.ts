@@ -2,39 +2,44 @@
 
 import { useMemo, useState } from "react";
 import { Outline } from "@/db/schema";
-import { toast } from "sonner";
 
 interface UseOutlineStateOptions {
   outlinesList: Outline[];
-  initialLinkedBoxMap: Record<number, number[]>;
+  initialPinnedAnnotationsMap: Record<number, number[]>;
+  initialLinkedSourcesMap: Record<number, number[]>;
 }
 
 interface UseOutlineStateResult {
   selectedOutlineId: number | null;
   setSelectedOutlineId: (id: number | null) => void;
   selectedOutline: Outline | null;
-  localLinkedBoxMap: Record<number, number[]>;
-  applyBoxLinkOverride: (outlineId: number, linkedBoxIds: number[]) => void;
+  localPinnedAnnotationsMap: Record<number, number[]>;
+  applyAnnotationLinkOverride: (
+    outlineId: number,
+    annotationIds: number[],
+  ) => void;
+  localLinkedSourcesMap: Record<number, number[]>;
+  applySourceLinkOverride: (outlineId: number, sourceIds: number[]) => void;
   treeSearchQuery: string;
   setTreeSearchQuery: (query: string) => void;
   sourceSearchQuery: string;
   setSourceSearchQuery: (query: string) => void;
-  activeFocusedSourceIds: number[];
-  toggleSourceFocus: (outlineId: number, sourceId: number) => void;
 }
 
 /**
- * Owns the outline editor selection, optimistic box-link overrides, tree/source
- * search filters and the per-section focused (starred) source map.
+ * Owns the outline editor selection, optimistic annotation/source link
+ * overrides and the tree/source search filters.
  *
  * @param root0 - Hook options.
  * @param root0.outlinesList - All outline sections of the thesis.
- * @param root0.initialLinkedBoxMap - Server-side box to outline link map.
- * @returns Selection, search, focus state and their mutators.
+ * @param root0.initialPinnedAnnotationsMap - Server-side annotation to outline link map.
+ * @param root0.initialLinkedSourcesMap - Server-side source to outline link map.
+ * @returns Selection, search state and their mutators.
  */
 export function useOutlineState({
   outlinesList,
-  initialLinkedBoxMap,
+  initialPinnedAnnotationsMap,
+  initialLinkedSourcesMap,
 }: UseOutlineStateOptions): UseOutlineStateResult {
   // Selected outline state (derived with user override)
   const [userSelectedOutlineId, setUserSelectedOutlineId] = useState<
@@ -60,20 +65,40 @@ export function useOutlineState({
     [outlinesList, selectedOutlineId],
   );
 
-  // Local optimistic overrides
-  const [linkedBoxOverrides, setLinkedBoxOverrides] = useState<
+  // Local optimistic overrides for annotation (citation card) links
+  const [annotationLinkOverrides, setAnnotationLinkOverrides] = useState<
     Record<number, number[]>
   >({});
 
-  const localLinkedBoxMap = useMemo(
-    () => ({ ...initialLinkedBoxMap, ...linkedBoxOverrides }),
-    [initialLinkedBoxMap, linkedBoxOverrides],
+  const localPinnedAnnotationsMap = useMemo(
+    () => ({ ...initialPinnedAnnotationsMap, ...annotationLinkOverrides }),
+    [initialPinnedAnnotationsMap, annotationLinkOverrides],
   );
 
-  const applyBoxLinkOverride = (outlineId: number, linkedBoxIds: number[]) => {
-    setLinkedBoxOverrides((prev) => ({
+  const applyAnnotationLinkOverride = (
+    outlineId: number,
+    annotationIds: number[],
+  ) => {
+    setAnnotationLinkOverrides((prev) => ({
       ...prev,
-      [outlineId]: linkedBoxIds,
+      [outlineId]: annotationIds,
+    }));
+  };
+
+  // Local optimistic overrides for source links
+  const [sourceLinkOverrides, setSourceLinkOverrides] = useState<
+    Record<number, number[]>
+  >({});
+
+  const localLinkedSourcesMap = useMemo(
+    () => ({ ...initialLinkedSourcesMap, ...sourceLinkOverrides }),
+    [initialLinkedSourcesMap, sourceLinkOverrides],
+  );
+
+  const applySourceLinkOverride = (outlineId: number, sourceIds: number[]) => {
+    setSourceLinkOverrides((prev) => ({
+      ...prev,
+      [outlineId]: sourceIds,
     }));
   };
 
@@ -81,47 +106,17 @@ export function useOutlineState({
   const [treeSearchQuery, setTreeSearchQuery] = useState("");
   const [sourceSearchQuery, setSourceSearchQuery] = useState("");
 
-  // Section focused / starred sources (outlineId -> sourceIds)
-  const [focusedSourceMap, setFocusedSourceMap] = useState<
-    Record<number, number[]>
-  >({});
-
-  const activeFocusedSourceIds = useMemo(
-    () => (selectedOutline ? (focusedSourceMap[selectedOutline.id] ?? []) : []),
-    [selectedOutline, focusedSourceMap],
-  );
-
-  const toggleSourceFocus = (outlineId: number, sourceId: number) => {
-    setFocusedSourceMap((prev) => {
-      const current = prev[outlineId] ?? [];
-      const updated = current.includes(sourceId)
-        ? current.filter((id) => id !== sourceId)
-        : [...current, sourceId];
-
-      if (!current.includes(sourceId)) {
-        toast.success("Kaynak bu bölüm için ana kaynak olarak öne çıkarıldı.");
-      } else {
-        toast.info("Ana kaynak işareti kaldırıldı.");
-      }
-
-      return {
-        ...prev,
-        [outlineId]: updated,
-      };
-    });
-  };
-
   return {
     selectedOutlineId,
     setSelectedOutlineId,
     selectedOutline,
-    localLinkedBoxMap,
-    applyBoxLinkOverride,
+    localPinnedAnnotationsMap,
+    applyAnnotationLinkOverride,
+    localLinkedSourcesMap,
+    applySourceLinkOverride,
     treeSearchQuery,
     setTreeSearchQuery,
     sourceSearchQuery,
     setSourceSearchQuery,
-    activeFocusedSourceIds,
-    toggleSourceFocus,
   };
 }

@@ -17,6 +17,7 @@ import {
   generateCerebrasStructuredContent,
   type JsonSchema,
 } from "@/services/ai";
+import { buildPromptPayload } from "@/lib/ai/prompt-builder";
 import type { CandidateSource } from "./types";
 
 /** A suspicious candidate that needs LLM verification. */
@@ -86,58 +87,85 @@ const SELECTION_JSON_SCHEMA: JsonSchema = {
   additionalProperties: false,
 };
 
-/** System instruction for the structured dedup + selection call. */
-const SELECTION_SYSTEM_INSTRUCTION =
-  "You are an academic librarian assistant curating a literature list for a thesis. Output strict JSON only — no markdown, no explanation.";
-
-function buildPrompt(payload: CerebrasSelectionPayload): string {
+function buildSelectionPromptPayload(payload: CerebrasSelectionPayload) {
   const suspiciousSection =
     payload.suspiciousCandidates.length > 0
-      ? `## Suspicious Duplicates (Verify)
-The fuzzy matcher flagged these candidates as potentially matching an existing source.
-Decide for each: is it a TRUE duplicate (same work, different edition/language/punctuation)?
-Or is it a DIFFERENT work that merely sounds similar?
-
+      ? `### Şüpheli Çift Kayıtlar (Suspicious Duplicates - Doğrulama Gerektirenler):
 ${payload.suspiciousCandidates
   .map(
     (s, i) =>
       `[SUSPICIOUS_${i}]
-  Candidate: "${s.candidateTitle}" — ${s.candidateAuthors?.[0] ?? "Unknown"}
-  Matches existing: "${s.matchedExistingTitle}"
-  Similarity scores: title=${s.titleScore.toFixed(2)}, author=${s.authorScore.toFixed(2)}`,
+  Aday Başlık: "${s.candidateTitle}" — ${s.candidateAuthors?.[0] ?? "Bilinmiyor"}
+  Eşleşen Mevcut Başlık: "${s.matchedExistingTitle}"
+  Benzerlik Skorları: başlık=${s.titleScore.toFixed(2)}, yazar=${s.authorScore.toFixed(2)}`,
   )
   .join("\n\n")}`
-      : "## Suspicious Duplicates\nNone.";
+      : "### Şüpheli Çift Kayıtlar:\nYok.";
 
-  return `You are an academic librarian assistant helping curate a literature list for a thesis.
+  return buildPromptPayload({
+    roleAndExpertise:
+      "You are an expert academic librarian and bibliographic deduplication assistant curating high-relevance literature for a thesis.",
 
-## Thesis Context
+    primaryTask:
+      "Verify suspicious duplicate candidates against existing library sources and select the top N unique academic sources that best fit the thesis context.",
+
+    rulesAndConstraints: `1. **Duplicate Detection:**
+   - Examine each candidate in 'Suspicious Duplicates'.
+   - If a candidate represents the SAME intellectual work as an existing source (despite minor edition/language/punctuation variations), classify its title in 'suspiciousDuplicates'.
+   - If a candidate is a genuinely DIFFERENT work that merely shares similar wording or author, classify its title in 'suspiciousClear'.
+
+2. **Ranked Candidate Selection:**
+   - From the confirmed candidates list (and any approved 'suspiciousClear' entries), select exactly the target count (${payload.targetCount}) of most relevant sources.
+   - If fewer candidates exist than the target count, select all confirmed candidates.`,
+
+    outputFormat:
+      "Output strict JSON adhering to the schema without markdown formatting or conversational filler.",
+
+    examples: `<example>
+<input>
+### Tez Bağlamı:
+Kürt siyasal hareketinin 1990'lar meclis ve yasal parti söylemleri.
+
+### Mevcut Kütüphane Kaynakları (1 Adet):
+- "The Kurdish Nationalist Movement: Opportunity, Mobilization and Identity" [David Romano]
+
+### Doğrulanmış Aday Kaynaklar:
+[0] "The Kurdish National Movement in Turkey: From Protest to Resistance" — Cengiz Gunes (cited by 4 seed papers)
+[1] "Kurdish Political Mobilization in Turkey" — Nicole Watts (cited by 3 seed papers)
+
+### Şüpheli Çift Kayıtlar:
+[SUSPICIOUS_0]
+  Aday Başlık: "The Kurdish Nationalist Movement (2006 Edition)" — David Romano
+  Eşleşen Mevcut Başlık: "The Kurdish Nationalist Movement: Opportunity, Mobilization and Identity"
+</input>
+<output>
+{
+  "selectedIndices": [0, 1],
+  "suspiciousDuplicates": ["The Kurdish Nationalist Movement (2006 Edition)"],
+  "suspiciousClear": []
+}
+</output>
+</example>`,
+
+    inputContext: `### Tez Bağlamı (Thesis Context):
 ${payload.thesisContext}
 
-## Existing Library Sources (${payload.existingSources.length} total)
+### Mevcut Kütüphane Kaynakları (${payload.existingSources.length} Adet):
 ${payload.existingSources.map((s) => `- "${s.title}" [${s.authors?.[0] ?? "?"}]`).join("\n")}
 
-## Confirmed Unique Candidates (priority-ordered, select from these)
+### Doğrulanmış Aday Kaynaklar:
 ${payload.confirmedCandidates
   .map(
     (c) =>
-      `[${c.index}] "${c.title}" — ${c.authors?.[0] ?? "Unknown"} (cited by ${c.coAuthorCount} seed papers)`,
+      `[${c.index}] "${c.title}" — ${c.authors?.[0] ?? "Bilinmiyor"} (cited by ${c.coAuthorCount} seed papers)`,
   )
   .join("\n")}
 
-${suspiciousSection}
+${suspiciousSection}`,
 
-## Task
-1. For each SUSPICIOUS entry: output its candidate title in either "suspiciousDuplicates" (if it IS the same work as the matched existing source) or "suspiciousClear" (if it is a DIFFERENT work).
-2. From the confirmed candidates (plus any suspiciousClear), select exactly ${payload.targetCount} that best serve the thesis context. If fewer than ${payload.targetCount} unique candidates exist, select all of them.
-3. Output ONLY valid JSON — no markdown, no explanation.
-
-## Output Format
-{
-  "selectedIndices": [list of integer indices from the confirmed candidates list],
-  "suspiciousDuplicates": [list of candidate title strings that ARE duplicates],
-  "suspiciousClear": [list of candidate title strings that are NOT duplicates]
-}`;
+    taskTrigger:
+      `Analyze the candidates in <context> against existing library sources and select exactly ${payload.targetCount} top relevant sources into structured JSON output according to <instructions>.`,
+  });
 }
 
 /**
@@ -145,6 +173,7 @@ ${suspiciousSection}
  * select the final N sources from the backward expansion candidate pool.
  *
  * @param payload - Structured input: context, candidates, suspicious list, target count.
+ * @param allCandidates - Full list of candidate sources.
  * @returns Selected CandidateSource items (length ≤ targetCount).
  */
 export async function selectWithCerebras(
@@ -153,7 +182,7 @@ export async function selectWithCerebras(
 ): Promise<CandidateSource[]> {
   const fallback = () => allCandidates.slice(0, payload.targetCount);
 
-  const prompt = buildPrompt(payload);
+  const promptPayload = buildSelectionPromptPayload(payload);
 
   // Route through the central Cerebras provider (CEREBRAS_MODEL, retries,
   // structured output + zod validation). Any failure degrades to top-N order.
@@ -161,8 +190,8 @@ export async function selectWithCerebras(
   try {
     parsed = await generateCerebrasStructuredContent<CerebrasSelectionResponse>(
       CEREBRAS_MODEL,
-      SELECTION_SYSTEM_INSTRUCTION,
-      prompt,
+      promptPayload.systemInstruction,
+      promptPayload.userPrompt,
       SELECTION_JSON_SCHEMA,
       undefined,
       {

@@ -73,18 +73,63 @@ export function buildJuryPromptPayload(
 - relevanceScore: 0-100 arası tam sayı
 - reasoning: Türkçe 1 cümlelik gerekçe`,
 
-    inputContext: `Tez Konusu (Subject Problem): ${thesisSubject}
-
+    examples: `<example>
+<input>
+Tez Konusu: 1991-1999 döneminde Kürt siyasal hareketinin taleplerindeki niteliksel dönüşümü
 Kutu Bağlamı:
+- Kutu ID: [Box 1]
+- Kutu Türü: SUBJECT_PROBLEM
+- Kutu Başlığı: "Yasal Kürt Partileri ve Meclis Siyaseti"
+- Kutu Açıklaması: "1990'larda HEP, DEP ve HADEP çizgisinin meclis içi ve dışı siyasal söylemleri."
+
+Makaleler:
+Makale 1: "The Kurdish Political Movement in Turkey (1990-2000): From HEP to DEHAP"
+Authors: Cengiz Gunes
+Abstract: Examines the mobilization and discourse of pro-Kurdish political parties in 1990s Turkey.
+
+Makale 2: "Agricultural Policies and Cotton Production in South America"
+Authors: John Doe
+Abstract: Analyzes soybean and cotton export economics in Brazil during the 1990s.
+</input>
+<output>
+{
+  "evaluations": [
+    {
+      "thesisBoxId": 1,
+      "subBoxTitle": "Yasal Kürt Partileri ve Meclis Siyaseti",
+      "articleTitle": "The Kurdish Political Movement in Turkey (1990-2000): From HEP to DEHAP",
+      "openAlexId": null,
+      "isRelevant": true,
+      "relevanceScore": 92,
+      "reasoning": "Tezin ve alt kutunun odaklandığı 1990'lar yasal Kürt partileri ve meclis siyaseti konusunu doğrudan ve kapsamlı bir biçimde incelemektedir."
+    },
+    {
+      "thesisBoxId": 1,
+      "subBoxTitle": "Yasal Kürt Partileri ve Meclis Siyaseti",
+      "articleTitle": "Agricultural Policies and Cotton Production in South America",
+      "openAlexId": null,
+      "isRelevant": false,
+      "relevanceScore": 0,
+      "reasoning": "Makalenin konusu ve araştırma alanı tez ve alt kutu bağlamıyla tamamen ilgisizdir."
+    }
+  ]
+}
+</output>
+</example>`,
+
+    inputContext: `### Tez Konusu (Subject Problem):
+${thesisSubject}
+
+### Kutu Bağlamı:
 - Kutu ID: [Box ${thesisBoxId}]
 - Kutu Türü: ${boxType}
 - Kutu Başlığı: "${subBoxTitle}"
 - Kutu Açıklaması: ${description}
 
-Makaleler:
-${articlesText}
+### Değerlendirilecek Makaleler (${articleCount} Adet):
+${articlesText}`,
 
-# İşlem
-Yukarıdaki ${articleCount} makaleyi değerlendir ve her biri için thesisBoxId (${thesisBoxId}), subBoxTitle ("${subBoxTitle}"), articleTitle, isRelevant, relevanceScore (0-100), reasoning (Türkçe) alanlarını içeren JSON dizisi döndür.`,
+    taskTrigger:
+      `Yukarıdaki <context> içinde listelenen ${articleCount} makaleyi <instructions> kurallarına göre değerlendirerek her biri için thesisBoxId (${thesisBoxId}), subBoxTitle ("${subBoxTitle}"), articleTitle, isRelevant, relevanceScore (0-100), reasoning (Türkçe) alanlarını içeren JSON çıktısını üret.`,
   });
 }

@@ -1,19 +1,16 @@
 "use client";
 
-import { Outline, Source } from "@/db/schema";
+import { Outline } from "@/db/schema";
 import { Button } from "@/components/ui/button";
-import { Plus, ChevronRight, FileText } from "lucide-react";
-import {
-  countLinkedSources,
-  isIntroOrConclusion,
-} from "../../utils/outline-helpers";
+import { Plus, ChevronRight, FileText, Quote } from "lucide-react";
+import { isIntroOrConclusion } from "../../utils/outline-helpers";
 
 interface OutlineTreeItemProps {
   outline: Outline;
   index: number;
   isSelected: boolean;
-  linkedBoxIds: number[];
-  sourcesList: Source[];
+  sourcesCount: number;
+  cardsCount: number;
   onSelect: () => void;
   onAddSub: () => void;
 }
@@ -25,8 +22,8 @@ interface OutlineTreeItemProps {
  * @param root0.outline - The root section to render.
  * @param root0.index - Zero-based position within the root list.
  * @param root0.isSelected - Whether this section is currently selected.
- * @param root0.linkedBoxIds - Box ids linked to this section.
- * @param root0.sourcesList - All library sources of the thesis.
+ * @param root0.sourcesCount - Distinct linked source count of this section.
+ * @param root0.cardsCount - Pinned citation card count of this section.
  * @param root0.onSelect - Selection handler.
  * @param root0.onAddSub - Sub-section creation handler.
  */
@@ -34,13 +31,11 @@ export function OutlineTreeItem({
   outline,
   index,
   isSelected,
-  linkedBoxIds,
-  sourcesList,
+  sourcesCount,
+  cardsCount,
   onSelect,
   onAddSub,
 }: OutlineTreeItemProps) {
-  const sourcesCount = countLinkedSources(sourcesList, linkedBoxIds);
-
   return (
     <div
       onClick={onSelect}
@@ -60,12 +55,20 @@ export function OutlineTreeItem({
           </span>
 
           {/* Badges metadata row */}
-          {sourcesCount > 0 && (
+          {(sourcesCount > 0 || cardsCount > 0) && (
             <div className="flex items-center gap-2 flex-wrap pt-0.5">
-              <span className="flex items-center gap-1 font-mono text-[10px] text-muted-foreground">
-                <FileText className="h-3 w-3 shrink-0 text-amber-500" />
-                {sourcesCount} kaynak
-              </span>
+              {sourcesCount > 0 && (
+                <span className="flex items-center gap-1 font-mono text-[10px] text-muted-foreground">
+                  <FileText className="h-3 w-3 shrink-0 text-amber-500" />
+                  {sourcesCount} kaynak
+                </span>
+              )}
+              {cardsCount > 0 && (
+                <span className="flex items-center gap-1 font-mono text-[10px] text-muted-foreground">
+                  <Quote className="h-3 w-3 shrink-0 text-emerald-500" />
+                  {cardsCount} fiş
+                </span>
+              )}
             </div>
           )}
         </div>

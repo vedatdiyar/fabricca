@@ -44,6 +44,9 @@ export function buildAdvisorTurnPromptPayload(
 - **2. Sokratik Soru:** Teorik ve metodolojik varsayımları sorgulatan 2. soru.`,
 
       inputContext: userPrompt,
+
+      taskTrigger:
+        "Yukarıdaki <context> içindeki kütüphane bağlamını ve kullanıcı girdisini <instructions> kurallarına göre analiz ederek 3 bölümlü Sokratik danışman yanıtını üret.",
     });
   }
 
@@ -64,5 +67,8 @@ export function buildAdvisorTurnPromptPayload(
       'Yanıtını Markdown alt başlıkları (### 1., ### 2.) ve "- **Kavram:** Açıklama" formatındaki maddelerle yapılandır.',
 
     inputContext: userPrompt,
+
+    taskTrigger:
+      "Yukarıdaki <context> içindeki kütüphane bağlamını ve kullanıcı sorusunu <instructions> kurallarına göre analiz ederek akademik asistan yanıtını üret.",
   });
 }

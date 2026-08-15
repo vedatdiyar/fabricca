@@ -27,11 +27,10 @@ let aiInstance: GoogleGenAI | null = null;
 const aiInstancesByKey = new Map<string, GoogleGenAI>();
 
 /**
- * Caps concurrent in-flight Gemini requests so parallel pipeline stages
- * (phase-2 jury, per-thesis evaluation, PDF metadata extraction) cannot
- * exceed the API quota ceiling and trigger 429 responses.
+ * Caps concurrent in-flight Gemini requests across pipeline stages to prevent socket exhaustion
+ * while enabling high-throughput parallel execution (up to 30 concurrent in-flight calls).
  */
-const geminiRequestQueue = createConcurrencyLimiter(5);
+const geminiRequestQueue = createConcurrencyLimiter(30);
 
 /**
  * Returns a lazily-initialized GoogleGenAI client, defaulting to the GEMINI_API_KEY_1

@@ -28,7 +28,7 @@ export function buildSemanticQueryPromptPayload(
   input: SemanticQueryInput,
 ): PromptPayload {
   const matrixContext = input.matrix
-    ? `# Girdinin Genel Tez Matrisi Bağlamı:
+    ? `### Genel Tez Matrisi Bağlamı:
 - Araştırma Problemi: ${input.matrix.subjectProblem || "Belirtilmemiş"}
 - Teorik Çerçeve: ${input.matrix.theoreticalFramework || "Belirtilmemiş"}
 - Yöntem: ${input.matrix.methodology || "Belirtilmemiş"}`
@@ -71,50 +71,55 @@ Anahtar Kavramlar (Concepts): [${conceptsText}]`;
     outputFormat:
       "Her alt kutu için `subBoxTitle` ve `semanticQuery` alanlarını içeren JSON nesneleri dizisi döndürün.",
 
-    examples: `## Örnek 1: Nitel Söylem Analizi ve Kodlama Şeması (METHODOLOGY)
-### Girdi
-- Box Türü: METHODOLOGY
-- Sub-Box Başlığı: "Tarihsel ve Söylemsel Kodlama"
-- Açıklama: "Birincil siyasal kaynakların talep tipolojisi ve kodlama şeması ile nitel söylem analizi."
-- Anahtar Kavramlar: [Söylem Analizi, Talep Tipolojisi, Kodlama Şeması, Tarihsel İnşa]
-### Çıktı
+    examples: `<example>
+<input>
+Box Türü: METHODOLOGY
+Sub-Box Başlığı: "Tarihsel ve Söylemsel Kodlama"
+Açıklama: "Birincil siyasal kaynakların talep tipolojisi ve kodlama şeması ile nitel söylem analizi."
+Anahtar Kavramlar: [Söylem Analizi, Talep Tipolojisi, Kodlama Şeması, Tarihsel İnşa]
+</input>
+<output>
 {
   "subBoxTitle": "Tarihsel ve Söylemsel Kodlama",
   "semanticQuery": "Qualitative discourse-historical approach and qualitative content analysis of political texts using systematic coding frames, category systems, and demand typologies."
 }
+</output>
+</example>
 
-## Örnek 2: Kuramsal Çerçeve (THEORETICAL_FRAMEWORK)
-### Girdi
-- Box Türü: THEORETICAL_FRAMEWORK
-- Sub-Box Başlığı: "Gramsciyen Hegemonya ve Mevzi Savaşı"
-- Açıklama: "Antonio Gramsci'nin hegemonya, karşı-hegemonya ve mevzi savaşı kuramı."
-- Anahtar Kavramlar: [Hegemonya, Mevzi Savaşı, Karşı-Hegemonya]
-### Çıktı
+<example>
+<input>
+Box Türü: THEORETICAL_FRAMEWORK
+Sub-Box Başlığı: "Gramsciyen Hegemonya ve Mevzi Savaşı"
+Açıklama: "Antonio Gramsci'nin hegemonya, karşı-hegemonya ve mevzi savaşı kuramı."
+Anahtar Kavramlar: [Hegemonya, Mevzi Savaşı, Karşı-Hegemonya]
+</input>
+<output>
 {
   "subBoxTitle": "Gramsciyen Hegemonya ve Mevzi Savaşı",
   "semanticQuery": "Antonio Gramsci hegemony counter-hegemony war of position and passive revolution in political theory and state power."
 }
+</output>
+</example>
 
-## Örnek 3: Ampirik Vaka (SUBJECT_PROBLEM)
-### Girdi
-- Box Türü: SUBJECT_PROBLEM
-- Sub-Box Başlığı: "Yasal Kürt Siyaseti ve HEP-HADEP Çizgisi"
-- Açıklama: "1990'lı yıllarda yasal Kürt partilerinin siyasal söylemleri ve talepleri."
-- Anahtar Kavramlar: [HEP, HADEP, Kürt Hareketi]
-### Çıktı
+<example>
+<input>
+Box Türü: SUBJECT_PROBLEM
+Sub-Box Başlığı: "Yasal Kürt Siyaseti ve HEP-HADEP Çizgisi"
+Açıklama: "1990'lı yıllarda yasal Kürt partilerinin siyasal söylemleri ve talepleri."
+Anahtar Kavramlar: [HEP, HADEP, Kürt Hareketi]
+</input>
+<output>
 {
   "subBoxTitle": "Yasal Kürt Siyaseti ve HEP-HADEP Çizgisi",
   "semanticQuery": "Kurdish political movement in Turkey HEP DEP HADEP parliamentary politics discourse and legal party mobilization during the 1990s."
-}`,
+}
+</output>
+</example>`,
 
-    inputContext: `${matrixContext}
+    inputContext: `${matrixContext ? `${matrixContext}\n\n` : ""}### İşlenecek Alt Kutular:
+${parts.join("\n\n")}`,
 
-# İşlenecek Alt Kutular:
-Aşağıda tez alt kutuları listelenmiştir. Her bir alt kutu için box türüne uygun izolasyon, paradigma disiplini ve kanonik dönüştürme kurallarına göre bir OpenAlex \`search.semantic\` sorgusu üretin.
-
-${parts.join("\n\n")}
-
-# Birincil Görev
-Her alt kutu için \`subBoxTitle\` ve \`semanticQuery\` alanlarını içeren JSON nesneleri dizisi döndürün.`,
+    taskTrigger:
+      "Yukarıdaki <context> içindeki her alt kutuyu inceleyerek <instructions> kurallarına göre `subBoxTitle` ve `semanticQuery` alanlarını içeren JSON çıktısını üret.",
   });
 }

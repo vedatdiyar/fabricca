@@ -15,7 +15,7 @@ interface ThesisArchitectureContentProps {
   sourcesList?: Source[];
   annotationsList: (Annotation & { source?: Source })[];
   pinnedMap: Record<number, number[]>;
-  linkedBoxMap: Record<number, number[]>;
+  linkedSourcesMap: Record<number, number[]>;
 }
 
 export function ThesisArchitectureContent({
@@ -25,7 +25,7 @@ export function ThesisArchitectureContent({
   sourcesList = [],
   annotationsList,
   pinnedMap,
-  linkedBoxMap,
+  linkedSourcesMap,
 }: ThesisArchitectureContentProps) {
   const [activeTab, setActiveTab] = useState("matrix");
 
@@ -69,7 +69,7 @@ export function ThesisArchitectureContent({
             sourcesList={sourcesList}
             annotationsList={annotationsList}
             pinnedMap={pinnedMap}
-            linkedBoxMap={linkedBoxMap}
+            linkedSourcesMap={linkedSourcesMap}
           />
         </TabsContent>
       </Tabs>

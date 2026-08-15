@@ -1,6 +1,6 @@
 "use client";
 
-import { Outline, Source } from "@/db/schema";
+import { Outline } from "@/db/schema";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -15,8 +15,8 @@ interface OutlineTreeExplorerProps {
   getSubOutlines: (parentId: number) => Outline[];
   selectedOutlineId: number | null;
   treeSearchQuery: string;
-  localLinkedBoxMap: Record<number, number[]>;
-  sourcesList: Source[];
+  sourceCountMap: Record<number, number>;
+  cardCountMap: Record<number, number>;
   height?: number;
   onTreeSearchChange: (query: string) => void;
   onSelect: (outlineId: number) => void;
@@ -34,8 +34,8 @@ interface OutlineTreeExplorerProps {
  * @param root0.getSubOutlines - Resolves sub-sections for a given root.
  * @param root0.selectedOutlineId - The currently selected section id.
  * @param root0.treeSearchQuery - The current tree search query.
- * @param root0.localLinkedBoxMap - Effective box to outline link map.
- * @param root0.sourcesList - All library sources of the thesis.
+ * @param root0.sourceCountMap - Distinct linked source counts per section.
+ * @param root0.cardCountMap - Pinned citation card counts per section.
  * @param root0.height - Optional explicit height synced from the right panel.
  * @param root0.onTreeSearchChange - Search query mutator.
  * @param root0.onSelect - Section selection handler.
@@ -48,8 +48,8 @@ export function OutlineTreeExplorer({
   getSubOutlines,
   selectedOutlineId,
   treeSearchQuery,
-  localLinkedBoxMap,
-  sourcesList,
+  sourceCountMap,
+  cardCountMap,
   height,
   onTreeSearchChange,
   onSelect,
@@ -122,8 +122,8 @@ export function OutlineTreeExplorer({
                     outline={root}
                     index={idx}
                     isSelected={selectedOutlineId === root.id}
-                    linkedBoxIds={localLinkedBoxMap[root.id] ?? []}
-                    sourcesList={sourcesList}
+                    sourcesCount={sourceCountMap[root.id] ?? 0}
+                    cardsCount={cardCountMap[root.id] ?? 0}
                     onSelect={() => onSelect(root.id)}
                     onAddSub={() => onAddSub(root.id)}
                   />
@@ -138,8 +138,8 @@ export function OutlineTreeExplorer({
                           rootIndex={idx}
                           subIndex={subIdx}
                           isSelected={selectedOutlineId === sub.id}
-                          linkedBoxIds={localLinkedBoxMap[sub.id] ?? []}
-                          sourcesList={sourcesList}
+                          sourcesCount={sourceCountMap[sub.id] ?? 0}
+                          cardsCount={cardCountMap[sub.id] ?? 0}
                           onSelect={() => onSelect(sub.id)}
                         />
                       ))}

@@ -1,72 +1,123 @@
 /**
  * Standardized Prompt Builder for Fabricca LLM System.
- * Strictly adheres to docs/LLM_INTEGRATION.md Section 3 & 4.
+ * Strictly adheres to docs/LLM_INTEGRATION.md Sections 3 & 4 (Hybrid XML + Markdown Encapsulation).
  */
 
 export interface PromptPayload {
   /**
-   * Static system instructions, roles, rules, workflow steps, and output format.
+   * Static system instructions, role, rules, workflow steps, output format, and few-shot examples.
    * Placed first in LLM calls to optimize Implicit Caching.
    */
   systemInstruction: string;
 
   /**
-   * Dynamic user input context, parameters, and dynamic runtime payload.
+   * Dynamic user input context and trigger task.
    */
   userPrompt: string;
 }
 
 export interface PromptBuilderInput {
-  /** # Rol ve Uzmanlık: The persona, identity, and academic expertise of the model. */
+  /** The persona, identity, and academic expertise of the model (<role> block). */
   roleAndExpertise: string;
 
-  /** # Birincil Görev: Clear, direct task description. */
+  /** Clear, direct task description (# Birincil Görev within <instructions>). */
   primaryTask: string;
 
-  /** # Kurallar ve Sınırlamalar: Format, logic, structural constraints. */
+  /** Format, logic, and structural constraints (# Kurallar ve Sınırlamalar within <instructions>). */
   rulesAndConstraints: string;
 
-  /** # Çıktı Biçimi: JSON schema constraints, language rules, output shape. */
+  /** JSON schema constraints, language rules, output shape (# Çıktı Biçimi within <instructions>). */
   outputFormat: string;
 
-  /** # Girdi Bağlamı ve Veri: The dynamic runtime payload and user input data. */
+  /** The dynamic runtime payload and user input data (<context> block). */
   inputContext: string;
 
-  /** # İşlem Adımları: Optional step-by-step decision workflow. */
+  /** Optional step-by-step decision workflow (# İşlem Adımları within <instructions>). */
   workflowSteps?: string;
 
-  /** # Örnekler: Optional intra-disciplinary few-shot examples. */
+  /** Optional intra-disciplinary few-shot examples (<examples> block with <example><input>...</input><output>...</output></example>). */
   examples?: string;
+
+  /** Optional customized task trigger (<task> block). Defaults to standard trigger. */
+  taskTrigger?: string;
 }
 
 /**
- * Builds a standardized, type-safe PromptPayload following the Markdown section enclosure rules
- * defined in docs/LLM_INTEGRATION.md Section 4.
+ * Builds a standardized, type-safe PromptPayload following the Hybrid XML and Markdown
+ * encapsulation rules defined in docs/LLM_INTEGRATION.md Section 4:
+ *
+ * <role>
+ * [Role and Persona]
+ * </role>
+ *
+ * <instructions>
+ * # Birincil Görev
+ * ...
+ * # Kurallar ve Sınırlamalar
+ * ...
+ * # İşlem Adımları (opsiyonel)
+ * ...
+ * # Çıktı Biçimi
+ * ...
+ * </instructions>
+ *
+ * <examples> (opsiyonel)
+ * <example>
+ * <input>...</input>
+ * <output>...</output>
+ * </example>
+ * </examples>
+ *
+ * userPrompt:
+ * <context>
+ * [Dynamic Input Payload]
+ * </context>
+ *
+ * <task>
+ * [Trigger Task Instruction]
+ * </task>
  *
  * @param input - Structural inputs for the prompt payload.
  * @returns Standardized PromptPayload containing systemInstruction and userPrompt.
  */
 export function buildPromptPayload(input: PromptBuilderInput): PromptPayload {
-  const systemInstructionParts: string[] = [
-    `# Rol ve Uzmanlık\n\n${input.roleAndExpertise.trim()}`,
-    `# Birincil Görev\n\n${input.primaryTask.trim()}`,
-    `# Kurallar ve Sınırlamalar\n\n${input.rulesAndConstraints.trim()}`,
+  const instructionSections: string[] = [
+    `# Birincil Görev\n${input.primaryTask.trim()}`,
+    `# Kurallar ve Sınırlamalar\n${input.rulesAndConstraints.trim()}`,
   ];
 
   if (input.workflowSteps?.trim()) {
-    systemInstructionParts.push(
-      `# İşlem Adımları\n\n${input.workflowSteps.trim()}`,
+    instructionSections.push(
+      `# İşlem Adımları\n${input.workflowSteps.trim()}`,
     );
   }
 
-  systemInstructionParts.push(`# Çıktı Biçimi\n\n${input.outputFormat.trim()}`);
+  instructionSections.push(`# Çıktı Biçimi\n${input.outputFormat.trim()}`);
+
+  const systemInstructionParts: string[] = [
+    `<role>\n${input.roleAndExpertise.trim()}\n</role>`,
+    `<instructions>\n${instructionSections.join("\n\n")}\n</instructions>`,
+  ];
 
   if (input.examples?.trim()) {
-    systemInstructionParts.push(`# Örnekler\n\n${input.examples.trim()}`);
+    const trimmedExamples = input.examples.trim();
+    if (
+      trimmedExamples.startsWith("<examples>") &&
+      trimmedExamples.endsWith("</examples>")
+    ) {
+      systemInstructionParts.push(trimmedExamples);
+    } else {
+      systemInstructionParts.push(`<examples>\n${trimmedExamples}\n</examples>`);
+    }
   }
 
   const systemInstruction = systemInstructionParts.join("\n\n");
-  const userPrompt = `# Girdi Bağlamı ve Veri\n\n${input.inputContext.trim()}`;
+
+  const defaultTask =
+    "Yukarıdaki <context> içeriğini <instructions> kurallarına göre analiz et ve çıktıyı üret.";
+  const taskContent = input.taskTrigger?.trim() || defaultTask;
+
+  const userPrompt = `<context>\n${input.inputContext.trim()}\n</context>\n\n<task>\n${taskContent}\n</task>`;
 
   return {
     systemInstruction,

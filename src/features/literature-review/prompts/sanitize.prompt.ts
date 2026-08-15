@@ -35,40 +35,40 @@ export function buildSanitizePromptPayload(
     outputFormat:
       "Girdideki nesnelerin sırasını bozmadan standardize edilmiş `title` ve `author` alanlarını içeren JSON nesnesi döndürün.",
 
-    examples: `## Örnek 1: Sosyal Bilimler / Uluslararası İlişkiler
-### Girdi
-\`\`\`json
+    examples: `<example>
+<input>
 [{"title": "the role of nato in post-cold war era (vol i)", "author": "prof. dr. ahmet yilmaz"}]
-\`\`\`
-### Çıktı
-\`\`\`json
+</input>
+<output>
 [{"title": "The Role of NATO in Post-Cold War Era (Vol I)", "author": "Prof. Dr. Ahmet Yılmaz"}]
-\`\`\`
+</output>
+</example>
 
-## Örnek 2: Sosyoloji / Kamu Yönetimi
-### Girdi
-\`\`\`json
+<example>
+<input>
 [{"title": "turkiye de kamu yonetiminde dijital donusum ve e-devlet uygulamalarinin kamu hizmeti kalitesine etkisi", "author": "doç. dr. mehmet demir"}]
-\`\`\`
-### Çıktı
-\`\`\`json
+</input>
+<output>
 [{"title": "Türkiye'de Kamu Yönetiminde Dijital Dönüşüm ve E-Devlet Uygulamalarının Kamu Hizmeti Kalitesine Etkisi", "author": "Doç. Dr. Mehmet Demir"}]
-\`\`\`
+</output>
+</example>
 
-## Örnek 3: Kitap Bölümü / Yöntem Literatürü
-### Girdi
-\`\`\`json
+<example>
+<input>
 [{"title": "14. textual analysis and discourse studies", "author": "sandra halperin, oliver heath"}]
-\`\`\`
-### Çıktı
-\`\`\`json
+</input>
+<output>
 [{"title": "Textual Analysis and Discourse Studies", "author": "Sandra Halperin, Oliver Heath"}]
-\`\`\``,
+</output>
+</example>`,
 
     inputContext: `Aşağıdaki dizide yer alan nesnelerin title ve author alanlarını kurallara uygun biçimde düzenleyin:\n\n${JSON.stringify(
       items,
       null,
       2,
     )}`,
+
+    taskTrigger:
+      "Yukarıdaki <context> içinde verilen akademik yayınların başlık ve yazar bilgilerini <instructions> kurallarına göre standardize ederek aynı sırada JSON dizisi olarak üret.",
   });
 }

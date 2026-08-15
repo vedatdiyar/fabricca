@@ -11,7 +11,6 @@ import {
   Hash,
   Library,
   ListTodo,
-  Layers,
 } from "lucide-react";
 import { SemanticQueryPreview } from "./semantic-query-preview";
 import type { BoxWithRelations } from "../../constants/quadrant-config";
@@ -19,7 +18,6 @@ import type { BoxWithRelations } from "../../constants/quadrant-config";
 interface SubBoxItemProps {
   subBox: BoxWithRelations;
   isSemanticOpen: boolean;
-  outlineCount: number;
   onToggleSemantic: () => void;
   onCopy: () => void;
   onEdit: () => void;
@@ -30,7 +28,6 @@ interface SubBoxItemProps {
 export function SubBoxItem({
   subBox,
   isSemanticOpen,
-  outlineCount,
   onToggleSemantic,
   onCopy,
   onEdit,
@@ -134,17 +131,6 @@ export function SubBoxItem({
           <ListTodo className="h-3 w-3 text-amber-400/70" />
           <span>{taskCount} Görev</span>
         </Link>
-
-        {outlineCount > 0 && (
-          <Link
-            href="/thesis-architecture/outline"
-            className="flex items-center gap-1 text-muted-foreground hover:text-foreground transition-colors"
-            title="Tez bölüm planındaki bağlantıları görüntüle"
-          >
-            <Layers className="h-3 w-3 text-purple-400/70" />
-            <span>{outlineCount} Bölüm Bağı</span>
-          </Link>
-        )}
       </div>
     </div>
   );

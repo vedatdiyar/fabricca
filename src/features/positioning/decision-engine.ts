@@ -3,7 +3,6 @@ import { db } from "@/db";
 import { positioning } from "@/db/schema";
 import { invalidateOnboardingStepCache } from "@/lib/cache-tags";
 import type {
-  PositioningMatrixInput,
   RecommendedThesisItem,
 } from "./validation";
 import type { JuryAnalysisResult } from "./analysis";
@@ -29,6 +28,8 @@ export async function savePositioningReportTransaction(
       author: t.author,
       year: t.year,
       university: t.university,
+      strategicRole: t.strategicRole,
+      literaturePosition: t.literaturePosition,
       contributionArea: t.contributionArea,
       relevanceReason: t.relevanceReason,
       doi: t.doi,
@@ -60,7 +61,11 @@ export async function savePositioningReportTransaction(
     return row;
   });
 
-  invalidateOnboardingStepCache("positioning");
+  try {
+    invalidateOnboardingStepCache("positioning");
+  } catch {
+    // Gracefully ignore cache tag error when called outside Next.js request context (e.g. CLI/scripts)
+  }
 
   return savedRecord;
 }

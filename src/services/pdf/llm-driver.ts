@@ -2,7 +2,10 @@ import { ThinkingLevel } from "@google/genai";
 import type { Logger } from "@/lib/logger";
 import { generateGeminiStructuredContent } from "@/services/ai";
 import { GEMINI_SEED, FLASH_LITE_35 } from "@/lib/constants";
-import { buildPdfParserPromptPayload } from "./prompts/pdf-parser.prompt";
+import {
+  buildPdfParserPromptPayload,
+  buildPdfReferencesPromptPayload,
+} from "./prompts/pdf-parser.prompt";
 import {
   DocumentAnalysisSchema,
   DocumentMetadataZodSchema,
@@ -51,8 +54,7 @@ export async function extractDocumentMetadata(
   firstPagesText: string,
   logger?: Logger,
 ): Promise<DocumentAnalysisResult["metadata"]> {
-  const userPrompt = `Analyze the provided first pages of the document below. Extract document metadata: title, authors (with name and role), publicationYear, publisher, and DOI if explicitly present. Standardize the document title into standard Academic Title Case (even if printed in ALL CAPS) and author names into Proper Case, preserving acronyms (NATO, YÖK, PKK, DOI, IMF, etc.) in uppercase.\n\n${firstPagesText}`;
-  const payload = buildPdfParserPromptPayload(userPrompt);
+  const payload = buildPdfParserPromptPayload(firstPagesText);
 
   try {
     const res = await generateGeminiStructuredContent<{
@@ -97,18 +99,23 @@ export async function extractDocumentReferences(
   bibliographyText: string,
   logger?: Logger,
 ): Promise<DocumentAnalysisResult["references"]> {
-  const prompt = `Extract all formal bibliography/references entries from these final pages. Return each entry formatted cleanly in the references array.\n\n${bibliographyText}`;
-  const systemInstruction =
-    "You are an expert academic bibliography parser. Extract formal references strictly adhering to the schema. Ensure all Turkish characters (ç, ğ, ı, ö, ş, ü, İ) are normalized, combined, and perfectly formatted without spaces or lost diacritics.";
+  const payload = buildPdfReferencesPromptPayload(bibliographyText);
 
   try {
     const res = await generateGeminiStructuredContent<{
       references?: DocumentAnalysisResult["references"];
-    }>(FLASH_LITE_35, systemInstruction, prompt, ReferencesOnlySchema, logger, {
-      thinkingConfig: { thinkingLevel: ThinkingLevel.LOW },
-      seed: GEMINI_SEED,
-      payloadStage: "pdf_parser_references",
-    });
+    }>(
+      FLASH_LITE_35,
+      payload.systemInstruction,
+      payload.userPrompt,
+      ReferencesOnlySchema,
+      logger,
+      {
+        thinkingConfig: { thinkingLevel: ThinkingLevel.LOW },
+        seed: GEMINI_SEED,
+        payloadStage: "pdf_parser_references",
+      },
+    );
 
     if (res.references) {
       const validated = DocumentReferencesZodSchema.safeParse(res);

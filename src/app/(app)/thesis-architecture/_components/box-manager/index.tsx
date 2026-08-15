@@ -15,7 +15,6 @@ import { DeleteSubBoxModal } from "./components/modals/delete-sub-box-modal";
 
 export interface BoxManagerViewProps {
   boxesList: BoxWithRelations[] | Box[];
-  outlineCounts?: Record<number, number>;
 }
 
 /**
@@ -24,7 +23,6 @@ export interface BoxManagerViewProps {
  */
 export function BoxManagerView({
   boxesList,
-  outlineCounts = {},
 }: BoxManagerViewProps) {
   const { rootBoxes, subBoxesByParent, pillarMetricsById } =
     useBoxData(boxesList);
@@ -80,7 +78,6 @@ export function BoxManagerView({
             key={rootBox.id}
             rootBox={rootBox}
             subBoxes={subBoxesByParent[rootBox.id] ?? []}
-            outlineCounts={outlineCounts}
             expandedSemanticMap={expandedSemanticMap}
             onToggleSemantic={toggleSemantic}
             onCopySubBox={copySubBox}

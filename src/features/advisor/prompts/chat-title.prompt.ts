@@ -21,11 +21,31 @@ export function buildChatTitlePromptPayload(userQuery: string): PromptPayload {
 
     outputFormat: "Çıktı, 'title' alanını içeren saf JSON nesnesidir.",
 
-    examples: `## Örnekler
-- David Romano Etnisite Yaklaşımı
-- Primordiyalist Kuram Analizi
-- Söylem Analizi Metodolojisi`,
+    examples: `<example>
+<input>
+David Romano'nun etnisite ve fırsat yapıları yaklaşımını tezimin 2. bölümünde nasıl konumlandırabilirim?
+</input>
+<output>
+{
+  "title": "David Romano Etnisite Yaklaşımı"
+}
+</output>
+</example>
+
+<example>
+<input>
+Söylem-tarihsel analizde kodlama şeması oluştururken kategori sistemini nasıl kurmalıyım?
+</input>
+<output>
+{
+  "title": "Söylem Analizi Kodlama Metodolojisi"
+}
+</output>
+</example>`,
 
     inputContext: `Kullanıcı Sorusu: ${userQuery}`,
+
+    taskTrigger:
+      "Yukarıdaki <context> içindeki kullanıcı sorusunu analiz ederek <instructions> kurallarına göre 3-5 kelimelik Türkçe konu başlığını JSON formatında üret.",
   });
 }
