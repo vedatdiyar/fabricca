@@ -19197,6 +19197,23 @@ export function getGeminiKeyPool(): GeminiKeyPool {
   return keyPool;
 }
 
+let nextKeyIndex = 0;
+
+/**
+ * Returns the next Gemini key in round-robin order across the enabled keys.
+ *
+ * Distributes request traffic evenly across all enabled keys so that the
+ * combined per-minute budget of every key is used (e.g. 3 keys × 15 RPM).
+ *
+ * @returns The next API key string in rotation order.
+ */
+export function getNextGeminiKey(): string {
+  const pool = getGeminiKeyPool();
+  const key = pool.keys[nextKeyIndex % pool.keys.length];
+  nextKeyIndex++;
+  return key;
+}
+
 /**
  * Resolves the 0-based project/key index for a given API key string.
  *
@@ -37419,7 +37436,11 @@ export async function getProfile() {
 <file path="src/services/ai/providers/gemini-provider.ts">
 import { GoogleGenAI, HarmCategory, HarmBlockThreshold } from "@google/genai";
 import { Logger, createFlowId } from "@/lib/logger";
-import { getGeminiKeyPool, getProjectIndex } from "../gemini-key-pool";
+import {
+  getGeminiKeyPool,
+  getNextGeminiKey,
+  getProjectIndex,
+} from "../gemini-key-pool";
 import { GEMINI_SEED } from "@/lib/constants";
 import {
   SchemaValidationError,
@@ -37577,8 +37598,7 @@ export async function generateStructuredContent<T>(
   const thinkingLevel = options?.thinkingConfig?.thinkingLevel;
   const callLabel = options?.payloadStage ?? "gemini";
 
-  const keyPool = getGeminiKeyPool();
-  const assignedKey = options?.apiKey ?? keyPool.keys[0];
+  const assignedKey = options?.apiKey ?? getNextGeminiKey();
   const projectIndex = getProjectIndex(assignedKey);
 
   if (options?.quiet !== true) {
@@ -37714,7 +37734,7 @@ export async function generateStructuredContent<T>(
               attempt,
               maxRetries,
               projectIndex: projectIndex + 1,
-              crossProjectRotation: false,
+              crossProjectRotation: true,
               delayMs: Math.round(delay),
               retryAfterMs: retryAfterMs ?? undefined,
               httpStatus,
@@ -37789,7 +37809,7 @@ export async function generateStructuredContent<T>(
         data: {
           model: modelName,
           projectIndex: projectIndex + 1,
-          crossProjectRotation: false,
+          crossProjectRotation: true,
           attempt: attempts,
           thinkingLevel: thinkingLevel ?? undefined,
         },
@@ -37811,7 +37831,7 @@ export async function generateStructuredContent<T>(
       data: {
         model: modelName,
         projectIndex: projectIndex + 1,
-        crossProjectRotation: false,
+        crossProjectRotation: true,
         attempts,
         thinkingLevel: thinkingLevel ?? undefined,
         scenario,
@@ -40864,6 +40884,507 @@ export async function evaluateThesesInParallel(
 }
 </file>
 
+<file path="src/lib/box-constants.ts">
+/**
+ * Single source of truth for thesis box type ordering and display labels
+ * across the entire application (onboarding, library, dashboard, literature
+ * review, prompts).
+ *
+ * ANALYSIS_ACTORS has been removed — actors are now an integral part
+ * of the SUBJECT_PROBLEM quadrant.
+ */
+
+/** The four thesis box types. */
+export type ThesisBoxType =
+  | "SUBJECT_PROBLEM"
+  | "THEORETICAL_FRAMEWORK"
+  | "METHODOLOGY"
+  | "PRIMARY_MATERIAL"
+  | "RELATED_THESES";
+
+/** Canonical display ordering: SUBJECT_PROBLEM → THEORETICAL_FRAMEWORK → METHODOLOGY → PRIMARY_MATERIAL. */
+export const BOX_ORDER_WEIGHT: Record<ThesisBoxType, number> = {
+  SUBJECT_PROBLEM: 1,
+  THEORETICAL_FRAMEWORK: 2,
+  METHODOLOGY: 3,
+  RELATED_THESES: 4,
+  PRIMARY_MATERIAL: 5,
+};
+
+/** Canonical full (long) Turkish labels. */
+export const BOX_TYPE_LABELS: Record<ThesisBoxType, string> = {
+  SUBJECT_PROBLEM: "Araştırma Problemi",
+  THEORETICAL_FRAMEWORK: "Teorik Çerçeve",
+  PRIMARY_MATERIAL: "Birincil Kaynak",
+  METHODOLOGY: "Yöntem",
+  RELATED_THESES: "İlgili Tezler",
+};
+
+/** Canonical short Turkish labels (tabs, compact badges). */
+export const BOX_TYPE_SHORT_LABELS: Record<ThesisBoxType, string> = {
+  SUBJECT_PROBLEM: "Problem",
+  THEORETICAL_FRAMEWORK: "Teori",
+  PRIMARY_MATERIAL: "Birincil",
+  METHODOLOGY: "Yöntem",
+  RELATED_THESES: "Tezler",
+};
+
+/** Canonical default descriptions for thesis box types. */
+export const BOX_TYPE_DESCRIPTIONS: Record<ThesisBoxType, string> = {
+  SUBJECT_PROBLEM:
+    "Araştırmanızın ana konusunu, kapsamını ve yanıt aradığı temel problemi inceleyen kaynaklar.",
+  THEORETICAL_FRAMEWORK:
+    "Çalışmanızın dayandığı teorik modelleri, kavramsal yaklaşımları ve literatür zeminini oluşturan eserler.",
+  METHODOLOGY:
+    "Araştırma yöntemlerini, veri toplama ve analiz tekniklerini ele alan metodolojik kaynaklar.",
+  PRIMARY_MATERIAL:
+    "Doğrudan analiz edilen birincil belgeler, arşiv derlemleri ve ampirik veri materyalleri.",
+  RELATED_THESES:
+    "Tez konunuz ve konumlandırmanız ile doğrudan ilişkili, incelenmesi önerilen YÖK ve akademik tez çalışmaları.",
+};
+
+/** Default parent box definitions (canonical order) for users without completed onboarding. */
+export const DEFAULT_PARENT_BOXES: {
+  boxType: ThesisBoxType;
+  title: string;
+}[] = [
+  { boxType: "SUBJECT_PROBLEM", title: BOX_TYPE_LABELS.SUBJECT_PROBLEM },
+  {
+    boxType: "THEORETICAL_FRAMEWORK",
+    title: BOX_TYPE_LABELS.THEORETICAL_FRAMEWORK,
+  },
+  { boxType: "METHODOLOGY", title: BOX_TYPE_LABELS.METHODOLOGY },
+  { boxType: "RELATED_THESES", title: BOX_TYPE_LABELS.RELATED_THESES },
+  { boxType: "PRIMARY_MATERIAL", title: BOX_TYPE_LABELS.PRIMARY_MATERIAL },
+];
+
+/**
+ * Resolves the canonical display label for a given box type.
+ *
+ * @param boxType - The thesis box type value
+ * @param short - When true, returns the short label; otherwise the full label
+ * @returns The canonical Turkish label, or the raw value when unknown
+ */
+export function getBoxTypeLabel(
+  boxType: ThesisBoxType | string | null | undefined,
+  short = false,
+): string {
+  if (!boxType) return "Genel";
+  const key = boxType as ThesisBoxType;
+  const label = short ? BOX_TYPE_SHORT_LABELS[key] : BOX_TYPE_LABELS[key];
+  return label ?? boxType;
+}
+
+/**
+ * Comparator for sorting boxes into the canonical display order with unknown box types sorted last.
+ *
+ * @param boxTypeA - First box type
+ * @param boxTypeB - Second box type
+ * @returns Negative/zero/positive for canonical ordering
+ */
+export function compareBoxTypes(
+  boxTypeA: ThesisBoxType | string | null | undefined,
+  boxTypeB: ThesisBoxType | string | null | undefined,
+): number {
+  const weightA = BOX_ORDER_WEIGHT[boxTypeA as ThesisBoxType] ?? 99;
+  const weightB = BOX_ORDER_WEIGHT[boxTypeB as ThesisBoxType] ?? 99;
+  return weightA - weightB;
+}
+
+/**
+ * UI badge configuration (Tailwind classes + label) for a thesis box type, shared by
+ * the library sidebar and resource detail badge renders.
+ *
+ * @param boxType - The thesis box type value
+ * @returns Badge display config with label and styling class names
+ */
+export function getBoxTypeBadgeConfig(boxType: ThesisBoxType) {
+  const base = {
+    label: getBoxTypeLabel(boxType),
+  };
+  switch (boxType) {
+    case "THEORETICAL_FRAMEWORK":
+      return {
+        ...base,
+        className:
+          "bg-purple-500/10 text-purple-600 dark:text-purple-400 border-purple-500/20",
+        dotClassName: "bg-purple-500",
+        textClassName: "text-purple-600 dark:text-purple-400",
+      };
+    case "METHODOLOGY":
+      return {
+        ...base,
+        className:
+          "bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20",
+        dotClassName: "bg-blue-500",
+        textClassName: "text-blue-600 dark:text-blue-400",
+      };
+    case "SUBJECT_PROBLEM":
+      return {
+        ...base,
+        className:
+          "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20",
+        dotClassName: "bg-amber-500",
+        textClassName: "text-amber-600 dark:text-amber-400",
+      };
+    case "PRIMARY_MATERIAL":
+      return {
+        ...base,
+        className:
+          "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20",
+        dotClassName: "bg-emerald-500",
+        textClassName: "text-emerald-600 dark:text-emerald-400",
+      };
+    case "RELATED_THESES":
+      return {
+        ...base,
+        className:
+          "bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/20",
+        dotClassName: "bg-rose-500",
+        textClassName: "text-rose-600 dark:text-rose-400",
+      };
+    default:
+      return {
+        label: "Genel",
+        className: "bg-muted text-muted-foreground border-border",
+        dotClassName: "bg-muted-foreground",
+        textClassName: "text-muted-foreground",
+      };
+  }
+}
+</file>
+
+<file path="README.md">
+# Fabricca — Dijital Tez Asistanı
+
+**Fabricca**, yüksek lisans ve doktora öğrencilerinin akademik araştırma, tez
+yazım ve literatür tarama süreçlerini yapay zeka desteğiyle uçtan uca
+yönetmelerini sağlayan gelişmiş bir **Dijital Tez Asistanı ve Akademik Çalışma
+Platformudur**.
+
+> Platform, dışarıdan serbest kayda tamamen kapalıdır. Yalnızca veri tabanında
+> seed edilmiş izinli kullanıcılar tarafından kullanılabilir.
+
+---
+
+## Onboarding (Kayıt) Süreci
+
+Yeni kullanıcı ilk girişinde sırasıyla **4 adımlı** onboarding sürecini
+tamamlar:
+
+```
+1. Çalışma Matrisi (Matrix)
+        ↓
+2. Akademik Konumlandırma (Positioning)
+   └─ TEZARA (YÖK Meili) + Cohere Rerank + Gemini jüri analizi
+        ↓
+3. Konu Kutuları (Boxes)
+   └─ Gemini ile otomatik kutu üretimi + kullanıcı onayı
+        ↓
+4. Literatür Taraması (Literature Review)
+   └─ OpenAlex araması + jüri/eleme aşamaları
+        ↓
+   Dashboard (onboarding tamamlandı)
+```
+
+Sistem, her adımda kullanıcının kaldığı yerden devam edebilmesini sağlar.
+
+---
+
+## Özellikler
+
+### 1. Çalışma Matrisi (Thesis Matrix)
+
+Çalışmanın temel yapı taşlarını tanımlayan ilk adım. **4 alan** içerir:
+
+- `subjectProblem` — Araştırma problemi, aktörler ve odak
+- `theoreticalFramework` — Teorik ve kavramsal çerçeve
+- `primaryMaterial` — Veri kaynağı / birincil malzeme
+- `methodology` — Metodoloji
+
+### 2. Akademik Konumlandırma & Özgünlük Analizi (Positioning)
+
+Turso LibSQL Vektör Veritabanı (366.000+ tez, multilingual-e5-base 768d) üzerinden çalışan,
+kaynaklarının özgünlük boşluğunu analiz eden hat:
+
+- **Sorgu üretimi:** Gemini ile ilgili tezlere yönelik 8 semantik arama sorgusu.
+- **Tez araması ve eleme:** Turso Vektör İndeksi (`vector_top_k` cosine similarity) ile aday tezler çekilir.
+- **Semantik sıralama:** Cohere Rerank v4.0 Pro ile benzerlik sıralaması.
+- **Rapor:** Gemini jürisi üç durumdan birini üretir:
+  - `DIRECT_OVERLAP` — Doğrudan örtüşme
+  - `NOVEL_GAP_IDENTIFIED` — Özgün boşluk tespit edildi
+  - `NO_RELATED_LITERATURE` — İlgili literatür yok
+- Raporda literatür haritası, akademik boşluk ve özgün katkı; ayrıca incelenmesi
+  önerilen ilgili tez listesi yer alır.
+
+### 3. Konu Kutuları (Thesis Boxes)
+
+Google Gemini (`FLASH_LITE_31`) tarafından matris analiz edilerek otomatik
+oluşturulan kavramsal kutulardır. **Beş tür kutu** mevcuttur:
+
+- `SUBJECT_PROBLEM` — Araştırma Problemi
+- `THEORETICAL_FRAMEWORK` — Teorik Çerçeve
+- `METHODOLOGY` — Yöntem
+- `PRIMARY_MATERIAL` — Birincil Kaynak
+- `RELATED_THESES` — İlgili Tezler
+
+Kutular iç içe alt kutular (sub-box) barındırabilir; her kutuya temel
+(foundational) sorgular bağlanabilir.
+
+### 4. Literatür Taraması
+
+Her bir konu kutusu için **OpenAlex API** üzerinden kaynak taraması yapar;
+
+- **Faz 1 — Arama:** Konu kutusu sorgularıyla OpenAlex'te aday makaleler.
+- **Faz 2 — Jüri:** Gemini ile alaka/`relevanceScore` ve Türkçe gerekçe kararı.
+- **Faz 3 — Seçim:** Jüri değerlendirmesi sonrası final kaynak havuzunun
+  belirlenmesi.
+
+### 5. Danışman Odası (RAG Chat)
+
+Makale PDF'lerinden üretilen vektör embedding'leri üzerinden **hybrid RAG**
+tabanlı yapay zeka sohbeti:
+
+- **Yoğun dallar:** pgvector HNSW (cosine) üzerinden dense retrieval.
+- **Leksel dallar:** PostgreSQL `tsvector` (Türkçe + İngilizce) FTS.
+- **Füzyon:** Reciprocal Rank Fusion (RRF) + Cohere Rerank v4.0 Pro.
+- **HyDE:** Cerebras (`gemma-4-31b`) ile çapraz-dil sorgu genişletme.
+- **Tool calling:** Gemini ile oturumlu arama, alıntı fişleme, okuma durumu
+  güncelleme ve undo desteği.
+
+### 6. Alıntı Fişleri (Citation Cards)
+
+Geleneksel akademik kartoteksin dijital versiyonu. Makalelerden not çıkarma,
+alıntı fişleme ve fişleri konu kutularına yerleştirme. Not türleri:
+`DIRECT_QUOTE`, `PARAPHRASE`, `PERSONAL_NOTE`.
+
+### 7. Kütüphane
+
+Sistemdeki tüm akademik kaynakların görüntülenmesi, yönetimi ve PDF
+işlemleri:
+
+- PDF yükleme → R2 depolama, Gemini ile sayfa analizi & kaynakça ayıklama.
+- Chunk'lama → embedding üretimi → pgvector/tsvector indexleme.
+- Kaynak bazlı notlar ve bağlı konu kutusu filtresi.
+
+### 8. Dashboard (Genel Özet)
+
+Konu kutuları, kaynaklar ve kanban görevlerinin tek bir panelde toplandığı
+merkezi yönetim ekranı.
+
+---
+
+## Kullanılan Teknolojiler
+
+| Kategori               | Teknoloji                                                                    |
+| ---------------------- | ---------------------------------------------------------------------------- |
+| **Frontend & Backend** | Next.js 16 (App Router, Server Actions, Cache Components, Turbopack)         |
+| **UI Bileşenleri**     | Tailwind CSS v4, Shadcn UI, Lucide React, next-themes, Sonner                |
+| **Veri Tabanı**        | Neon Serverless PostgreSQL                                                   |
+| **ORM**                | Drizzle ORM (snake_case)                                                     |
+| **Vektör DB (RAG)**    | pgvector (HNSW) + tsvector (FTS), COSINE                                     |
+| **Birincil LLM**       | Google Gemini Flash ailesi (`FLASH_LITE_31`, `FLASH_LITE_35`, `FLASH_36`)    |
+| **İkincil LLM**        | Cerebras (`gemma-4-31b`) — metadata sanitize, HyDE, başlık üretimi           |
+| **Embedding**          | Cloudflare Workers AI (`@cf/baai/bge-m3`, **1024 dim**) — tek ve sabit motor |
+| **Rerank**             | Cohere Rerank v4.0 Pro (`rerank-v4.0-pro`)                                   |
+| **Tez Veri Kaynağı**   | Turso LibSQL Vektör Veritabanı (366k+ Tez, E5-Base 768d)                     |
+| **Akademik Veri**      | OpenAlex API                                                                 |
+| **Object Storage**     | Cloudflare R2 (AWS S3 SDK)                                                   |
+| **PDF İşleme**         | `@firecrawl/pdf-inspector`, pdf-lib, Gemini                                  |
+| **State Yönetimi**     | TanStack Query                                                               |
+| **Auth**               | bcrypt-ts + Cookie tabanlı hafif session                                     |
+| **Lint / Format**      | ESLint, Prettier, JSDoc                                                      |
+
+---
+
+## Proje Yapısı
+
+Proje, Next.js App Router'ın rota gruplama (route groups) özelliğini kullanarak
+özellik/sayfa tabanlı (feature-driven) olarak organize edilmiştir.
+
+```
+src/
+├── app/
+│   ├── globals.css                  # Global stiller (Tailwind v4)
+│   ├── layout.tsx                   # Root layout (font, QueryProvider, Toaster)
+│   ├── page.tsx                   # / → /login yönlendirmesi
+│   ├── (auth)/                      # Kimlik doğrulama grubu
+│   │   ├── layout.tsx                # Oturum kontrolü + yönlendirme
+│   │   └── login/                    # /login — Giriş sayfası
+│   ├── (onboarding)/                # Onboarding koruma grubu
+│   │   └── layout.tsx                # Oturum kontrolü
+│   └── (onboarding)/onboarding/      # 4 adımlı onboarding süreci
+│       ├── layout.tsx                # Adım navigasyonu (stepper)
+│       ├── actions.ts                # Ortak onboarding server action'ları
+│       ├── _components/              # Ortak onboarding bileşenleri
+│       ├── _hooks/                  # use-onboarding-navigation
+│       ├── _lib/                     # box-mapper, loading-steps
+│       ├── _services/fetch-actions.ts
+│       ├── matrix/                   # Adım 1: Çalışma Matrisi
+│       ├── positioning/              # Adım 2: Akademik Konumlandırma
+│       │   ├── _services/            # analysis, decision-engine, queries, sifting
+│       │   ├── _lib/validation.ts    # Zod şemaları
+│       │   └── _components/          # Rapor görünümü
+│       ├── boxes/                    # Adım 3: Konu Kutuları
+│       │   ├── _services/            # Gemini kutu üretimi
+│       │   └── _components/
+│       └── literature-review/        # Adım 4: Literatür Tarama
+│           ├── _services/            # orchestrator (phase1-3), openalex, clustering
+│           └── _hooks/
+│   └── (app)/                         # Giriş sonrası ana uygulama
+│       ├── layout.tsx                # Header + oturum/yönlendirme kontrolü
+│       ├── actions.ts                # Ortak uygulama server action'ları
+│       ├── _services/box-service.ts
+│       ├── dashboard/                # /dashboard — Genel Özet + Kanban
+│       ├── library/                  # /library — Kütüphane + PDF/RAG
+│       ├── advisor/                  # /advisor — Danışman Odası (RAG Chat)
+│       ├── citation-cards/           # /citation-cards — Alıntı Fişleri
+│   └── api/advisor/route.ts          # Danışman Odası streaming endpoint
+├── components/
+│   ├── header.tsx                    # Üst/büyük navigasyon
+│   ├── ai-banner.tsx                 # Yapay zeka banner
+│   ├── error-display.tsx             # Hata görüntüleme
+│   ├── loading-spinner.tsx           # Yükleme göstergesi
+│   └── ui/                           # Shadcn UI bileşenleri
+├── providers/
+│   └── query-provider.tsx             # TanStack Query Provider
+├── db/
+│   ├── index.ts                       # Neon DB bağlantısı (WebSocket singleton)
+│   ├── schema.ts                      # 10 tablo şeması (Drizzle ORM)
+│   ├── seed.ts                        # Seed verisi (2 kullanıcı)
+│   └── reset.ts                       # DB sıfırlama
+├── lib/
+│   ├── session.ts                    # Cookie tabanlı session yönetimi
+│   ├── constants.ts                  # Model sabitleri (FLASH_*, CEREBRAS, seed 42)
+│   ├── box-constants.ts             # Kutu türü sıra/etiket (single source of truth)
+│   ├── types.ts                      # Paylaşılan tipler + Zod şemaları
+│   ├── api-utils.ts                 # Polite pool e-posta, User-Agent, retry
+│   ├── cache-tags.ts                # Next.js cache tag sabitleri
+│   ├── error-utils.ts               # Hata sınıflandırma
+│   ├── logger.ts                    # Yapılandırılmış loglama sistemi
+│   ├── rate-limiter.ts              # Concurrency / rate limit yönetimi
+│   ├── academic/                    # DOI, OpenAlex ID, author formatlama
+│   ├── tezara/                      # TEZARA Meilisearch istemcisi
+│   ├── services/                    # gemini, cerebras, cohere, cloudflare-ai,
+│   │                                # r2, pdf-parser, rag, advisor-tools, sanitizer
+│   └── prompts/                     # Prompt şablonları (6 kullanım)
+└── ...
+```
+
+---
+
+## Veri Tabanı Şeması
+
+Neon PostgreSQL üzerinde **10 tablo** (Drizzle ORM, snake_case):
+
+| Tablo           | Açıklama                        | Önemli Alanlar                                                                                   |
+| --------------- | ------------------------------- | ------------------------------------------------------------------------------------------------ |
+| `users`         | Kullanıcı hesapları             | email (unique), password (bcrypt), name, onboardingCompleted                                     |
+| `matrices`      | Çalışma matrisi                 | userId (unique), subjectProblem, theoreticalFramework, primaryMaterial, methodology              |
+| `positioning`   | Konumlandırma raporu            | userId (unique), matrixInput (jsonb), globalStatus (enum), gapAnalysisSummary, recommendedTheses |
+| `boxes`         | Konu kutuları                   | matrixId, parentId, boxType (enum), title, concepts, foundationalQueries (jsonb)                 |
+| `sources`       | Akademik kaynaklar              | boxId, title, authors, doi, openalexId, isRead, pdf* alanları                                    |
+| `notes`         | Kaynak notları (alıntı fişleri) | sourceId, pageNumber, noteType (enum), content, sentToCitationCards                              |
+| `chunks`        | PDF metin parçaları (RAG)       | sourceId, chunkIndex, embedding (vector/1024), searchVector (tsvector)                           |
+| `tasks`         | Kanban görevleri                | userId, boxId (delete → set null), status/priority (enum)                                        |
+| `chat_sessions` | Danışman sohbet oturumları      | userId, title                                                                                    |
+| `chat_messages` | Danışman mesajları              | sessionId, role, content, sources (jsonb), toolCalls (jsonb)                                     |
+
+Kutu (`boxes`) ilişkilerinde `onDelete: "cascade"`; görevlerin `boxId` alanında
+`onDelete: "set null"` uygulanır.
+
+---
+
+## Çevresel Değişkenler
+
+Gerekli tüm API anahtarları `.env.local` dosyasında tanımlanır:
+
+| Değişken                 | Hizmet                                      |
+| ------------------------ | ------------------------------------------- |
+| `DATABASE_URL`           | Neon PostgreSQL bağlantı dizesi             |
+| `GEMINI_API_KEY_1..3`    | Google Gemini API (en az 1 anahtar gerekli) |
+| `CEREBRAS_API_KEY`       | Cerebras API (gemma-4-31b)                  |
+| `CLOUDFLARE_ACCOUNT_ID`  | Cloudflare Workers AI hesap ID              |
+| `CLOUDFLARE_API_TOKEN`   | Cloudflare Workers AI API token             |
+| `COHERE_API_KEY`         | Cohere Rerank API                           |
+| `OPENALEX_API_KEY`       | OpenAlex API (isteğe bağlı)                 |
+| `CROSSREF_CONTACT_EMAIL` | Polite pool e-posta (User-Agent)            |
+| `TURSO_DATABASE_URL`     | Turso LibSQL veritabanı URL'si              |
+| `TURSO_AUTH_TOKEN`       | Turso LibSQL auth token                     |
+| `HUGGINGFACE_API_KEY`    | Hugging Face Serverless Inference API key   |
+| `R2_ACCOUNT_ID`          | Cloudflare R2 hesabı                        |
+| `R2_ACCESS_KEY_ID`       | R2 S3 access key                            |
+| `R2_SECRET_ACCESS_KEY`   | R2 S3 secret key                            |
+| `R2_BUCKET_NAME`         | R2 bucket adı (varsayılan `fabricca`)       |
+| `R2_PUBLIC_DOMAIN`       | R2 public domain (zorunlu, varsayılan yok)  |
+| `SEED_USER1_PASSWORD`    | Seed kullanıcı 1 şifre                      |
+| `SEED_USER2_PASSWORD`    | Seed kullanıcı 2 şifre                      |
+
+---
+
+## Geliştirme
+
+```bash
+# Bağımlılıkları yükle
+npm install
+
+# Geliştirme sunucusunu başlat (Turbopack)
+npm run dev
+
+# Veri tabanı şemasını Neon'a push et
+npm run db:push
+
+# Yerel DB'yi sıfırla
+npm run db:reset
+
+# Seed verisini yükle (2 kullanıcı)
+npm run db:seed
+
+# Production build
+npm run build
+
+# Production sunucusunu başlat
+npm run start
+
+# Kalite kontrol (lint + typecheck + prettier)
+npm run check:full
+
+# Yalnızca tip denetimi
+npm run typecheck
+
+# Yalnızca lint
+npm run lint
+```
+
+---
+
+## Mimari Kararlar ve Geliştirme Prensipleri
+
+- **Feature-driven klasör yapısı:** Sayfalar özellik bazında gruplanmıştır;
+  her modül kendi bileşenlerini, servislerini ve hook'larını barındırır.
+- **Single Responsibility:** Her dosya, her bileşen ve her fonksiyon yalnızca
+  tek bir işten sorumludur.
+- **600 satır sınırı:** Dosyalar ideal olarak 600 satırı aşmaz.
+- **Golden Boundary Rule:**
+  - Backend/mantık katmanı: %100 İngilizce (camelCase/snake_case)
+  - UI/çıktı katmanı: %100 Türkçe (akademik Türkçe)
+- **Progressive Save:** Onboarding adımları veri tabanına aşamalı kaydedilir.
+- **Deterministic AI Çıktısı:** Sabit seed değeri (42) ile tutarlı model çıktıları.
+- **Kapalı sistem:** Dışarıdan kayıt yoktur; yalnızca seed edilmiş kullanıcılar.
+- **Sıkı tip güvenliği:** `any` kullanımı yasak; tüm tipler Drizzle şemalarından
+  türetilir veya açık arayüzlerle tanımlanır.
+- **Singleton DB Pool:** Neon WebSocket pool, HMR/Fast Refresh'te yeni bağlantı
+  oluşmasını engellemek için global singleton.
+- **JSDoc zorunluluğu:** Tüm fonksiyonlar, server action'lar ve custom hook'lar
+  JSDoc ile dokümante edilir.
+
+---
+
+## Lisans
+
+Özel (Private) — Tüm hakları saklıdır.
+</file>
+
 <file path="src/app/(app)/library/resource-actions.ts">
 "use server";
 
@@ -42277,507 +42798,6 @@ export async function searchTezara(
     throw err;
   }
 }
-</file>
-
-<file path="src/lib/box-constants.ts">
-/**
- * Single source of truth for thesis box type ordering and display labels
- * across the entire application (onboarding, library, dashboard, literature
- * review, prompts).
- *
- * ANALYSIS_ACTORS has been removed — actors are now an integral part
- * of the SUBJECT_PROBLEM quadrant.
- */
-
-/** The four thesis box types. */
-export type ThesisBoxType =
-  | "SUBJECT_PROBLEM"
-  | "THEORETICAL_FRAMEWORK"
-  | "METHODOLOGY"
-  | "PRIMARY_MATERIAL"
-  | "RELATED_THESES";
-
-/** Canonical display ordering: SUBJECT_PROBLEM → THEORETICAL_FRAMEWORK → METHODOLOGY → PRIMARY_MATERIAL. */
-export const BOX_ORDER_WEIGHT: Record<ThesisBoxType, number> = {
-  SUBJECT_PROBLEM: 1,
-  THEORETICAL_FRAMEWORK: 2,
-  METHODOLOGY: 3,
-  RELATED_THESES: 4,
-  PRIMARY_MATERIAL: 5,
-};
-
-/** Canonical full (long) Turkish labels. */
-export const BOX_TYPE_LABELS: Record<ThesisBoxType, string> = {
-  SUBJECT_PROBLEM: "Araştırma Problemi",
-  THEORETICAL_FRAMEWORK: "Teorik Çerçeve",
-  PRIMARY_MATERIAL: "Birincil Kaynak",
-  METHODOLOGY: "Yöntem",
-  RELATED_THESES: "İlgili Tezler",
-};
-
-/** Canonical short Turkish labels (tabs, compact badges). */
-export const BOX_TYPE_SHORT_LABELS: Record<ThesisBoxType, string> = {
-  SUBJECT_PROBLEM: "Problem",
-  THEORETICAL_FRAMEWORK: "Teori",
-  PRIMARY_MATERIAL: "Birincil",
-  METHODOLOGY: "Yöntem",
-  RELATED_THESES: "Tezler",
-};
-
-/** Canonical default descriptions for thesis box types. */
-export const BOX_TYPE_DESCRIPTIONS: Record<ThesisBoxType, string> = {
-  SUBJECT_PROBLEM:
-    "Araştırmanızın ana konusunu, kapsamını ve yanıt aradığı temel problemi inceleyen kaynaklar.",
-  THEORETICAL_FRAMEWORK:
-    "Çalışmanızın dayandığı teorik modelleri, kavramsal yaklaşımları ve literatür zeminini oluşturan eserler.",
-  METHODOLOGY:
-    "Araştırma yöntemlerini, veri toplama ve analiz tekniklerini ele alan metodolojik kaynaklar.",
-  PRIMARY_MATERIAL:
-    "Doğrudan analiz edilen birincil belgeler, arşiv derlemleri ve ampirik veri materyalleri.",
-  RELATED_THESES:
-    "Tez konunuz ve konumlandırmanız ile doğrudan ilişkili, incelenmesi önerilen YÖK ve akademik tez çalışmaları.",
-};
-
-/** Default parent box definitions (canonical order) for users without completed onboarding. */
-export const DEFAULT_PARENT_BOXES: {
-  boxType: ThesisBoxType;
-  title: string;
-}[] = [
-  { boxType: "SUBJECT_PROBLEM", title: BOX_TYPE_LABELS.SUBJECT_PROBLEM },
-  {
-    boxType: "THEORETICAL_FRAMEWORK",
-    title: BOX_TYPE_LABELS.THEORETICAL_FRAMEWORK,
-  },
-  { boxType: "METHODOLOGY", title: BOX_TYPE_LABELS.METHODOLOGY },
-  { boxType: "RELATED_THESES", title: BOX_TYPE_LABELS.RELATED_THESES },
-  { boxType: "PRIMARY_MATERIAL", title: BOX_TYPE_LABELS.PRIMARY_MATERIAL },
-];
-
-/**
- * Resolves the canonical display label for a given box type.
- *
- * @param boxType - The thesis box type value
- * @param short - When true, returns the short label; otherwise the full label
- * @returns The canonical Turkish label, or the raw value when unknown
- */
-export function getBoxTypeLabel(
-  boxType: ThesisBoxType | string | null | undefined,
-  short = false,
-): string {
-  if (!boxType) return "Genel";
-  const key = boxType as ThesisBoxType;
-  const label = short ? BOX_TYPE_SHORT_LABELS[key] : BOX_TYPE_LABELS[key];
-  return label ?? boxType;
-}
-
-/**
- * Comparator for sorting boxes into the canonical display order with unknown box types sorted last.
- *
- * @param boxTypeA - First box type
- * @param boxTypeB - Second box type
- * @returns Negative/zero/positive for canonical ordering
- */
-export function compareBoxTypes(
-  boxTypeA: ThesisBoxType | string | null | undefined,
-  boxTypeB: ThesisBoxType | string | null | undefined,
-): number {
-  const weightA = BOX_ORDER_WEIGHT[boxTypeA as ThesisBoxType] ?? 99;
-  const weightB = BOX_ORDER_WEIGHT[boxTypeB as ThesisBoxType] ?? 99;
-  return weightA - weightB;
-}
-
-/**
- * UI badge configuration (Tailwind classes + label) for a thesis box type, shared by
- * the library sidebar and resource detail badge renders.
- *
- * @param boxType - The thesis box type value
- * @returns Badge display config with label and styling class names
- */
-export function getBoxTypeBadgeConfig(boxType: ThesisBoxType) {
-  const base = {
-    label: getBoxTypeLabel(boxType),
-  };
-  switch (boxType) {
-    case "THEORETICAL_FRAMEWORK":
-      return {
-        ...base,
-        className:
-          "bg-purple-500/10 text-purple-600 dark:text-purple-400 border-purple-500/20",
-        dotClassName: "bg-purple-500",
-        textClassName: "text-purple-600 dark:text-purple-400",
-      };
-    case "METHODOLOGY":
-      return {
-        ...base,
-        className:
-          "bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20",
-        dotClassName: "bg-blue-500",
-        textClassName: "text-blue-600 dark:text-blue-400",
-      };
-    case "SUBJECT_PROBLEM":
-      return {
-        ...base,
-        className:
-          "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20",
-        dotClassName: "bg-amber-500",
-        textClassName: "text-amber-600 dark:text-amber-400",
-      };
-    case "PRIMARY_MATERIAL":
-      return {
-        ...base,
-        className:
-          "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20",
-        dotClassName: "bg-emerald-500",
-        textClassName: "text-emerald-600 dark:text-emerald-400",
-      };
-    case "RELATED_THESES":
-      return {
-        ...base,
-        className:
-          "bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/20",
-        dotClassName: "bg-rose-500",
-        textClassName: "text-rose-600 dark:text-rose-400",
-      };
-    default:
-      return {
-        label: "Genel",
-        className: "bg-muted text-muted-foreground border-border",
-        dotClassName: "bg-muted-foreground",
-        textClassName: "text-muted-foreground",
-      };
-  }
-}
-</file>
-
-<file path="README.md">
-# Fabricca — Dijital Tez Asistanı
-
-**Fabricca**, yüksek lisans ve doktora öğrencilerinin akademik araştırma, tez
-yazım ve literatür tarama süreçlerini yapay zeka desteğiyle uçtan uca
-yönetmelerini sağlayan gelişmiş bir **Dijital Tez Asistanı ve Akademik Çalışma
-Platformudur**.
-
-> Platform, dışarıdan serbest kayda tamamen kapalıdır. Yalnızca veri tabanında
-> seed edilmiş izinli kullanıcılar tarafından kullanılabilir.
-
----
-
-## Onboarding (Kayıt) Süreci
-
-Yeni kullanıcı ilk girişinde sırasıyla **4 adımlı** onboarding sürecini
-tamamlar:
-
-```
-1. Çalışma Matrisi (Matrix)
-        ↓
-2. Akademik Konumlandırma (Positioning)
-   └─ TEZARA (YÖK Meili) + Cohere Rerank + Gemini jüri analizi
-        ↓
-3. Konu Kutuları (Boxes)
-   └─ Gemini ile otomatik kutu üretimi + kullanıcı onayı
-        ↓
-4. Literatür Taraması (Literature Review)
-   └─ OpenAlex araması + jüri/eleme aşamaları
-        ↓
-   Dashboard (onboarding tamamlandı)
-```
-
-Sistem, her adımda kullanıcının kaldığı yerden devam edebilmesini sağlar.
-
----
-
-## Özellikler
-
-### 1. Çalışma Matrisi (Thesis Matrix)
-
-Çalışmanın temel yapı taşlarını tanımlayan ilk adım. **4 alan** içerir:
-
-- `subjectProblem` — Araştırma problemi, aktörler ve odak
-- `theoreticalFramework` — Teorik ve kavramsal çerçeve
-- `primaryMaterial` — Veri kaynağı / birincil malzeme
-- `methodology` — Metodoloji
-
-### 2. Akademik Konumlandırma & Özgünlük Analizi (Positioning)
-
-Turso LibSQL Vektör Veritabanı (366.000+ tez, multilingual-e5-base 768d) üzerinden çalışan,
-kaynaklarının özgünlük boşluğunu analiz eden hat:
-
-- **Sorgu üretimi:** Gemini ile ilgili tezlere yönelik 8 semantik arama sorgusu.
-- **Tez araması ve eleme:** Turso Vektör İndeksi (`vector_top_k` cosine similarity) ile aday tezler çekilir.
-- **Semantik sıralama:** Cohere Rerank v4.0 Pro ile benzerlik sıralaması.
-- **Rapor:** Gemini jürisi üç durumdan birini üretir:
-  - `DIRECT_OVERLAP` — Doğrudan örtüşme
-  - `NOVEL_GAP_IDENTIFIED` — Özgün boşluk tespit edildi
-  - `NO_RELATED_LITERATURE` — İlgili literatür yok
-- Raporda literatür haritası, akademik boşluk ve özgün katkı; ayrıca incelenmesi
-  önerilen ilgili tez listesi yer alır.
-
-### 3. Konu Kutuları (Thesis Boxes)
-
-Google Gemini (`FLASH_LITE_31`) tarafından matris analiz edilerek otomatik
-oluşturulan kavramsal kutulardır. **Beş tür kutu** mevcuttur:
-
-- `SUBJECT_PROBLEM` — Araştırma Problemi
-- `THEORETICAL_FRAMEWORK` — Teorik Çerçeve
-- `METHODOLOGY` — Yöntem
-- `PRIMARY_MATERIAL` — Birincil Kaynak
-- `RELATED_THESES` — İlgili Tezler
-
-Kutular iç içe alt kutular (sub-box) barındırabilir; her kutuya temel
-(foundational) sorgular bağlanabilir.
-
-### 4. Literatür Taraması
-
-Her bir konu kutusu için **OpenAlex API** üzerinden kaynak taraması yapar;
-
-- **Faz 1 — Arama:** Konu kutusu sorgularıyla OpenAlex'te aday makaleler.
-- **Faz 2 — Jüri:** Gemini ile alaka/`relevanceScore` ve Türkçe gerekçe kararı.
-- **Faz 3 — Seçim:** Jüri değerlendirmesi sonrası final kaynak havuzunun
-  belirlenmesi.
-
-### 5. Danışman Odası (RAG Chat)
-
-Makale PDF'lerinden üretilen vektör embedding'leri üzerinden **hybrid RAG**
-tabanlı yapay zeka sohbeti:
-
-- **Yoğun dallar:** pgvector HNSW (cosine) üzerinden dense retrieval.
-- **Leksel dallar:** PostgreSQL `tsvector` (Türkçe + İngilizce) FTS.
-- **Füzyon:** Reciprocal Rank Fusion (RRF) + Cohere Rerank v4.0 Pro.
-- **HyDE:** Cerebras (`gemma-4-31b`) ile çapraz-dil sorgu genişletme.
-- **Tool calling:** Gemini ile oturumlu arama, alıntı fişleme, okuma durumu
-  güncelleme ve undo desteği.
-
-### 6. Alıntı Fişleri (Citation Cards)
-
-Geleneksel akademik kartoteksin dijital versiyonu. Makalelerden not çıkarma,
-alıntı fişleme ve fişleri konu kutularına yerleştirme. Not türleri:
-`DIRECT_QUOTE`, `PARAPHRASE`, `PERSONAL_NOTE`.
-
-### 7. Kütüphane
-
-Sistemdeki tüm akademik kaynakların görüntülenmesi, yönetimi ve PDF
-işlemleri:
-
-- PDF yükleme → R2 depolama, Gemini ile sayfa analizi & kaynakça ayıklama.
-- Chunk'lama → embedding üretimi → pgvector/tsvector indexleme.
-- Kaynak bazlı notlar ve bağlı konu kutusu filtresi.
-
-### 8. Dashboard (Genel Özet)
-
-Konu kutuları, kaynaklar ve kanban görevlerinin tek bir panelde toplandığı
-merkezi yönetim ekranı.
-
----
-
-## Kullanılan Teknolojiler
-
-| Kategori               | Teknoloji                                                                    |
-| ---------------------- | ---------------------------------------------------------------------------- |
-| **Frontend & Backend** | Next.js 16 (App Router, Server Actions, Cache Components, Turbopack)         |
-| **UI Bileşenleri**     | Tailwind CSS v4, Shadcn UI, Lucide React, next-themes, Sonner                |
-| **Veri Tabanı**        | Neon Serverless PostgreSQL                                                   |
-| **ORM**                | Drizzle ORM (snake_case)                                                     |
-| **Vektör DB (RAG)**    | pgvector (HNSW) + tsvector (FTS), COSINE                                     |
-| **Birincil LLM**       | Google Gemini Flash ailesi (`FLASH_LITE_31`, `FLASH_LITE_35`, `FLASH_36`)    |
-| **İkincil LLM**        | Cerebras (`gemma-4-31b`) — metadata sanitize, HyDE, başlık üretimi           |
-| **Embedding**          | Cloudflare Workers AI (`@cf/baai/bge-m3`, **1024 dim**) — tek ve sabit motor |
-| **Rerank**             | Cohere Rerank v4.0 Pro (`rerank-v4.0-pro`)                                   |
-| **Tez Veri Kaynağı**   | Turso LibSQL Vektör Veritabanı (366k+ Tez, E5-Base 768d)                     |
-| **Akademik Veri**      | OpenAlex API                                                                 |
-| **Object Storage**     | Cloudflare R2 (AWS S3 SDK)                                                   |
-| **PDF İşleme**         | `@firecrawl/pdf-inspector`, pdf-lib, Gemini                                  |
-| **State Yönetimi**     | TanStack Query                                                               |
-| **Auth**               | bcrypt-ts + Cookie tabanlı hafif session                                     |
-| **Lint / Format**      | ESLint, Prettier, JSDoc                                                      |
-
----
-
-## Proje Yapısı
-
-Proje, Next.js App Router'ın rota gruplama (route groups) özelliğini kullanarak
-özellik/sayfa tabanlı (feature-driven) olarak organize edilmiştir.
-
-```
-src/
-├── app/
-│   ├── globals.css                  # Global stiller (Tailwind v4)
-│   ├── layout.tsx                   # Root layout (font, QueryProvider, Toaster)
-│   ├── page.tsx                   # / → /login yönlendirmesi
-│   ├── (auth)/                      # Kimlik doğrulama grubu
-│   │   ├── layout.tsx                # Oturum kontrolü + yönlendirme
-│   │   └── login/                    # /login — Giriş sayfası
-│   ├── (onboarding)/                # Onboarding koruma grubu
-│   │   └── layout.tsx                # Oturum kontrolü
-│   └── (onboarding)/onboarding/      # 4 adımlı onboarding süreci
-│       ├── layout.tsx                # Adım navigasyonu (stepper)
-│       ├── actions.ts                # Ortak onboarding server action'ları
-│       ├── _components/              # Ortak onboarding bileşenleri
-│       ├── _hooks/                  # use-onboarding-navigation
-│       ├── _lib/                     # box-mapper, loading-steps
-│       ├── _services/fetch-actions.ts
-│       ├── matrix/                   # Adım 1: Çalışma Matrisi
-│       ├── positioning/              # Adım 2: Akademik Konumlandırma
-│       │   ├── _services/            # analysis, decision-engine, queries, sifting
-│       │   ├── _lib/validation.ts    # Zod şemaları
-│       │   └── _components/          # Rapor görünümü
-│       ├── boxes/                    # Adım 3: Konu Kutuları
-│       │   ├── _services/            # Gemini kutu üretimi
-│       │   └── _components/
-│       └── literature-review/        # Adım 4: Literatür Tarama
-│           ├── _services/            # orchestrator (phase1-3), openalex, clustering
-│           └── _hooks/
-│   └── (app)/                         # Giriş sonrası ana uygulama
-│       ├── layout.tsx                # Header + oturum/yönlendirme kontrolü
-│       ├── actions.ts                # Ortak uygulama server action'ları
-│       ├── _services/box-service.ts
-│       ├── dashboard/                # /dashboard — Genel Özet + Kanban
-│       ├── library/                  # /library — Kütüphane + PDF/RAG
-│       ├── advisor/                  # /advisor — Danışman Odası (RAG Chat)
-│       ├── citation-cards/           # /citation-cards — Alıntı Fişleri
-│   └── api/advisor/route.ts          # Danışman Odası streaming endpoint
-├── components/
-│   ├── header.tsx                    # Üst/büyük navigasyon
-│   ├── ai-banner.tsx                 # Yapay zeka banner
-│   ├── error-display.tsx             # Hata görüntüleme
-│   ├── loading-spinner.tsx           # Yükleme göstergesi
-│   └── ui/                           # Shadcn UI bileşenleri
-├── providers/
-│   └── query-provider.tsx             # TanStack Query Provider
-├── db/
-│   ├── index.ts                       # Neon DB bağlantısı (WebSocket singleton)
-│   ├── schema.ts                      # 10 tablo şeması (Drizzle ORM)
-│   ├── seed.ts                        # Seed verisi (2 kullanıcı)
-│   └── reset.ts                       # DB sıfırlama
-├── lib/
-│   ├── session.ts                    # Cookie tabanlı session yönetimi
-│   ├── constants.ts                  # Model sabitleri (FLASH_*, CEREBRAS, seed 42)
-│   ├── box-constants.ts             # Kutu türü sıra/etiket (single source of truth)
-│   ├── types.ts                      # Paylaşılan tipler + Zod şemaları
-│   ├── api-utils.ts                 # Polite pool e-posta, User-Agent, retry
-│   ├── cache-tags.ts                # Next.js cache tag sabitleri
-│   ├── error-utils.ts               # Hata sınıflandırma
-│   ├── logger.ts                    # Yapılandırılmış loglama sistemi
-│   ├── rate-limiter.ts              # Concurrency / rate limit yönetimi
-│   ├── academic/                    # DOI, OpenAlex ID, author formatlama
-│   ├── tezara/                      # TEZARA Meilisearch istemcisi
-│   ├── services/                    # gemini, cerebras, cohere, cloudflare-ai,
-│   │                                # r2, pdf-parser, rag, advisor-tools, sanitizer
-│   └── prompts/                     # Prompt şablonları (6 kullanım)
-└── ...
-```
-
----
-
-## Veri Tabanı Şeması
-
-Neon PostgreSQL üzerinde **10 tablo** (Drizzle ORM, snake_case):
-
-| Tablo           | Açıklama                        | Önemli Alanlar                                                                                   |
-| --------------- | ------------------------------- | ------------------------------------------------------------------------------------------------ |
-| `users`         | Kullanıcı hesapları             | email (unique), password (bcrypt), name, onboardingCompleted                                     |
-| `matrices`      | Çalışma matrisi                 | userId (unique), subjectProblem, theoreticalFramework, primaryMaterial, methodology              |
-| `positioning`   | Konumlandırma raporu            | userId (unique), matrixInput (jsonb), globalStatus (enum), gapAnalysisSummary, recommendedTheses |
-| `boxes`         | Konu kutuları                   | matrixId, parentId, boxType (enum), title, concepts, foundationalQueries (jsonb)                 |
-| `sources`       | Akademik kaynaklar              | boxId, title, authors, doi, openalexId, isRead, pdf* alanları                                    |
-| `notes`         | Kaynak notları (alıntı fişleri) | sourceId, pageNumber, noteType (enum), content, sentToCitationCards                              |
-| `chunks`        | PDF metin parçaları (RAG)       | sourceId, chunkIndex, embedding (vector/1024), searchVector (tsvector)                           |
-| `tasks`         | Kanban görevleri                | userId, boxId (delete → set null), status/priority (enum)                                        |
-| `chat_sessions` | Danışman sohbet oturumları      | userId, title                                                                                    |
-| `chat_messages` | Danışman mesajları              | sessionId, role, content, sources (jsonb), toolCalls (jsonb)                                     |
-
-Kutu (`boxes`) ilişkilerinde `onDelete: "cascade"`; görevlerin `boxId` alanında
-`onDelete: "set null"` uygulanır.
-
----
-
-## Çevresel Değişkenler
-
-Gerekli tüm API anahtarları `.env.local` dosyasında tanımlanır:
-
-| Değişken                 | Hizmet                                      |
-| ------------------------ | ------------------------------------------- |
-| `DATABASE_URL`           | Neon PostgreSQL bağlantı dizesi             |
-| `GEMINI_API_KEY_1..3`    | Google Gemini API (en az 1 anahtar gerekli) |
-| `CEREBRAS_API_KEY`       | Cerebras API (gemma-4-31b)                  |
-| `CLOUDFLARE_ACCOUNT_ID`  | Cloudflare Workers AI hesap ID              |
-| `CLOUDFLARE_API_TOKEN`   | Cloudflare Workers AI API token             |
-| `COHERE_API_KEY`         | Cohere Rerank API                           |
-| `OPENALEX_API_KEY`       | OpenAlex API (isteğe bağlı)                 |
-| `CROSSREF_CONTACT_EMAIL` | Polite pool e-posta (User-Agent)            |
-| `TURSO_DATABASE_URL`     | Turso LibSQL veritabanı URL'si              |
-| `TURSO_AUTH_TOKEN`       | Turso LibSQL auth token                     |
-| `HUGGINGFACE_API_KEY`    | Hugging Face Serverless Inference API key   |
-| `R2_ACCOUNT_ID`          | Cloudflare R2 hesabı                        |
-| `R2_ACCESS_KEY_ID`       | R2 S3 access key                            |
-| `R2_SECRET_ACCESS_KEY`   | R2 S3 secret key                            |
-| `R2_BUCKET_NAME`         | R2 bucket adı (varsayılan `fabricca`)       |
-| `R2_PUBLIC_DOMAIN`       | R2 public domain (zorunlu, varsayılan yok)  |
-| `SEED_USER1_PASSWORD`    | Seed kullanıcı 1 şifre                      |
-| `SEED_USER2_PASSWORD`    | Seed kullanıcı 2 şifre                      |
-
----
-
-## Geliştirme
-
-```bash
-# Bağımlılıkları yükle
-npm install
-
-# Geliştirme sunucusunu başlat (Turbopack)
-npm run dev
-
-# Veri tabanı şemasını Neon'a push et
-npm run db:push
-
-# Yerel DB'yi sıfırla
-npm run db:reset
-
-# Seed verisini yükle (2 kullanıcı)
-npm run db:seed
-
-# Production build
-npm run build
-
-# Production sunucusunu başlat
-npm run start
-
-# Kalite kontrol (lint + typecheck + prettier)
-npm run check:full
-
-# Yalnızca tip denetimi
-npm run typecheck
-
-# Yalnızca lint
-npm run lint
-```
-
----
-
-## Mimari Kararlar ve Geliştirme Prensipleri
-
-- **Feature-driven klasör yapısı:** Sayfalar özellik bazında gruplanmıştır;
-  her modül kendi bileşenlerini, servislerini ve hook'larını barındırır.
-- **Single Responsibility:** Her dosya, her bileşen ve her fonksiyon yalnızca
-  tek bir işten sorumludur.
-- **600 satır sınırı:** Dosyalar ideal olarak 600 satırı aşmaz.
-- **Golden Boundary Rule:**
-  - Backend/mantık katmanı: %100 İngilizce (camelCase/snake_case)
-  - UI/çıktı katmanı: %100 Türkçe (akademik Türkçe)
-- **Progressive Save:** Onboarding adımları veri tabanına aşamalı kaydedilir.
-- **Deterministic AI Çıktısı:** Sabit seed değeri (42) ile tutarlı model çıktıları.
-- **Kapalı sistem:** Dışarıdan kayıt yoktur; yalnızca seed edilmiş kullanıcılar.
-- **Sıkı tip güvenliği:** `any` kullanımı yasak; tüm tipler Drizzle şemalarından
-  türetilir veya açık arayüzlerle tanımlanır.
-- **Singleton DB Pool:** Neon WebSocket pool, HMR/Fast Refresh'te yeni bağlantı
-  oluşmasını engellemek için global singleton.
-- **JSDoc zorunluluğu:** Tüm fonksiyonlar, server action'lar ve custom hook'lar
-  JSDoc ile dokümante edilir.
-
----
-
-## Lisans
-
-Özel (Private) — Tüm hakları saklıdır.
 </file>
 
 <file path="src/app/(app)/citation-cards/_components/citation-card-dialog.tsx">
@@ -45821,6 +45841,149 @@ export function EditResourceModal({
 }
 </file>
 
+<file path="src/app/(app)/library/page.tsx">
+"use client";
+
+import React, { useState, Suspense } from "react";
+import { useSearchParams } from "next/navigation";
+import { BookMarked } from "lucide-react";
+import { Card } from "@/components/ui/card";
+import { SidebarWorkList } from "./_components/sidebar-work-list";
+import { ResourceDetail } from "./_components/resource-detail";
+import { AddResourceModal } from "./_components/add-resource-modal";
+import { LibrarySkeleton } from "./_components/library-skeleton";
+import { useLibraryResources } from "./_hooks/use-library-resources";
+import { usePdfUpload } from "./_hooks/use-pdf-upload";
+import { useResourceNotes } from "./_hooks/use-resource-notes";
+import { useResourceCritique } from "./_hooks/use-resource-critique";
+
+/**
+ * Library page with a sidebar work list and a resource detail panel.
+ *
+ * @returns The library page markup.
+ */
+export default function LibraryPage() {
+  return (
+    <Suspense fallback={<LibrarySkeleton />}>
+      <LibraryPageContent />
+    </Suspense>
+  );
+}
+
+/**
+ * Library page content composing resource, PDF, and note hooks.
+ *
+ * @returns The library page content markup.
+ */
+function LibraryPageContent() {
+  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+
+  const searchParams = useSearchParams();
+  const urlResourceId = searchParams.get("id");
+  const initialSelectedId = urlResourceId ? parseInt(urlResourceId, 10) : null;
+
+  const {
+    resources,
+    setResources,
+    isLoading,
+    selectedResourceId,
+    activeTab,
+    setActiveTab,
+    searchQuery,
+    setSearchQuery,
+    sortedResources,
+    handleSelectResource,
+    handleDeleteResource,
+    handleToggleReadStatus,
+    handleUpdateResource,
+  } = useLibraryResources(initialSelectedId);
+
+  const { notes, setNotes, handleAddNote, handleDeleteNote } = useResourceNotes(
+    { selectedResourceId },
+  );
+
+  const { getCritiqueFor, handleSaveCritique } = useResourceCritique({
+    selectedResourceId,
+  });
+
+  const { handleCreateResourceFromPdf, handleUploadPdf, handleDeletePdf } =
+    usePdfUpload({
+      selectedResourceId,
+      setResources,
+      setNotes,
+      handleSelectResource,
+    });
+
+  const selectedResource = resources.find(
+    (item) => item.id === selectedResourceId,
+  );
+
+  const selectedResourceNotes = notes.filter(
+    (note) => note.resourceId === selectedResourceId,
+  );
+
+  const selectedCritique = getCritiqueFor(selectedResourceId);
+
+  if (isLoading) {
+    return <LibrarySkeleton />;
+  }
+
+  return (
+    <div className="w-full space-y-6">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 w-full items-start">
+        <div className="lg:col-span-4 lg:sticky lg:top-[calc(7rem+1px)] lg:h-[calc(100vh-8.5rem-1px)] flex flex-col min-h-0">
+          <SidebarWorkList
+            resources={sortedResources}
+            selectedResourceId={selectedResourceId}
+            onSelectResource={(id) => handleSelectResource(id)}
+            activeTab={activeTab}
+            onTabChange={(tab) => setActiveTab(tab)}
+            searchQuery={searchQuery}
+            onSearchChange={(q) => setSearchQuery(q)}
+            onOpenAddModal={() => setIsAddModalOpen(true)}
+            onDeleteResource={handleDeleteResource}
+          />
+        </div>
+
+        <div className="lg:col-span-8 h-full min-h-0">
+          {selectedResource ? (
+            <ResourceDetail
+              resource={selectedResource}
+              notes={selectedResourceNotes}
+              critique={selectedCritique}
+              onAddNote={handleAddNote}
+              onSaveCritique={handleSaveCritique}
+              onDeleteNote={handleDeleteNote}
+              onToggleReadStatus={handleToggleReadStatus}
+              onUpdateResource={handleUpdateResource}
+              onUploadPdf={handleUploadPdf}
+              onDeletePdf={handleDeletePdf}
+            />
+          ) : (
+            <Card className="flex flex-col items-center justify-center h-full rounded-md border border-border p-8 text-center text-muted-foreground">
+              <BookMarked className="h-10 w-10 opacity-30 mb-3" />
+              <h3 className="font-serif text-lg font-medium text-foreground">
+                Eser Seçilmedi
+              </h3>
+              <p className="text-sm text-muted-foreground mt-1">
+                Detayları ve akademik notları görüntülemek için sol menüden bir
+                eser seçiniz.
+              </p>
+            </Card>
+          )}
+        </div>
+      </div>
+
+      <AddResourceModal
+        isOpen={isAddModalOpen}
+        onClose={() => setIsAddModalOpen(false)}
+        onSubmitPdf={handleCreateResourceFromPdf}
+      />
+    </div>
+  );
+}
+</file>
+
 <file path="src/app/(onboarding)/onboarding/literature-review/actions.ts">
 "use server";
 
@@ -46708,149 +46871,6 @@ export {
 export { saveResourceCritiqueAction } from "./critique-actions";
 </file>
 
-<file path="src/app/(app)/library/page.tsx">
-"use client";
-
-import React, { useState, Suspense } from "react";
-import { useSearchParams } from "next/navigation";
-import { BookMarked } from "lucide-react";
-import { Card } from "@/components/ui/card";
-import { SidebarWorkList } from "./_components/sidebar-work-list";
-import { ResourceDetail } from "./_components/resource-detail";
-import { AddResourceModal } from "./_components/add-resource-modal";
-import { LibrarySkeleton } from "./_components/library-skeleton";
-import { useLibraryResources } from "./_hooks/use-library-resources";
-import { usePdfUpload } from "./_hooks/use-pdf-upload";
-import { useResourceNotes } from "./_hooks/use-resource-notes";
-import { useResourceCritique } from "./_hooks/use-resource-critique";
-
-/**
- * Library page with a sidebar work list and a resource detail panel.
- *
- * @returns The library page markup.
- */
-export default function LibraryPage() {
-  return (
-    <Suspense fallback={<LibrarySkeleton />}>
-      <LibraryPageContent />
-    </Suspense>
-  );
-}
-
-/**
- * Library page content composing resource, PDF, and note hooks.
- *
- * @returns The library page content markup.
- */
-function LibraryPageContent() {
-  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
-
-  const searchParams = useSearchParams();
-  const urlResourceId = searchParams.get("id");
-  const initialSelectedId = urlResourceId ? parseInt(urlResourceId, 10) : null;
-
-  const {
-    resources,
-    setResources,
-    isLoading,
-    selectedResourceId,
-    activeTab,
-    setActiveTab,
-    searchQuery,
-    setSearchQuery,
-    sortedResources,
-    handleSelectResource,
-    handleDeleteResource,
-    handleToggleReadStatus,
-    handleUpdateResource,
-  } = useLibraryResources(initialSelectedId);
-
-  const { notes, setNotes, handleAddNote, handleDeleteNote } = useResourceNotes(
-    { selectedResourceId },
-  );
-
-  const { getCritiqueFor, handleSaveCritique } = useResourceCritique({
-    selectedResourceId,
-  });
-
-  const { handleCreateResourceFromPdf, handleUploadPdf, handleDeletePdf } =
-    usePdfUpload({
-      selectedResourceId,
-      setResources,
-      setNotes,
-      handleSelectResource,
-    });
-
-  const selectedResource = resources.find(
-    (item) => item.id === selectedResourceId,
-  );
-
-  const selectedResourceNotes = notes.filter(
-    (note) => note.resourceId === selectedResourceId,
-  );
-
-  const selectedCritique = getCritiqueFor(selectedResourceId);
-
-  if (isLoading) {
-    return <LibrarySkeleton />;
-  }
-
-  return (
-    <div className="w-full space-y-6">
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 w-full items-start">
-        <div className="lg:col-span-4 lg:sticky lg:top-[calc(7rem+1px)] lg:h-[calc(100vh-8.5rem-1px)] flex flex-col min-h-0">
-          <SidebarWorkList
-            resources={sortedResources}
-            selectedResourceId={selectedResourceId}
-            onSelectResource={(id) => handleSelectResource(id)}
-            activeTab={activeTab}
-            onTabChange={(tab) => setActiveTab(tab)}
-            searchQuery={searchQuery}
-            onSearchChange={(q) => setSearchQuery(q)}
-            onOpenAddModal={() => setIsAddModalOpen(true)}
-            onDeleteResource={handleDeleteResource}
-          />
-        </div>
-
-        <div className="lg:col-span-8 h-full min-h-0">
-          {selectedResource ? (
-            <ResourceDetail
-              resource={selectedResource}
-              notes={selectedResourceNotes}
-              critique={selectedCritique}
-              onAddNote={handleAddNote}
-              onSaveCritique={handleSaveCritique}
-              onDeleteNote={handleDeleteNote}
-              onToggleReadStatus={handleToggleReadStatus}
-              onUpdateResource={handleUpdateResource}
-              onUploadPdf={handleUploadPdf}
-              onDeletePdf={handleDeletePdf}
-            />
-          ) : (
-            <Card className="flex flex-col items-center justify-center h-full rounded-md border border-border p-8 text-center text-muted-foreground">
-              <BookMarked className="h-10 w-10 opacity-30 mb-3" />
-              <h3 className="font-serif text-lg font-medium text-foreground">
-                Eser Seçilmedi
-              </h3>
-              <p className="text-sm text-muted-foreground mt-1">
-                Detayları ve akademik notları görüntülemek için sol menüden bir
-                eser seçiniz.
-              </p>
-            </Card>
-          )}
-        </div>
-      </div>
-
-      <AddResourceModal
-        isOpen={isAddModalOpen}
-        onClose={() => setIsAddModalOpen(false)}
-        onSubmitPdf={handleCreateResourceFromPdf}
-      />
-    </div>
-  );
-}
-</file>
-
 <file path="src/app/(onboarding)/onboarding/boxes/_components/boxes-container.tsx">
 "use client";
 
@@ -47314,562 +47334,6 @@ export function useLiteratureReview(): UseLiteratureReviewResult {
 }
 </file>
 
-<file path="src/app/(onboarding)/onboarding/positioning/_components/positioning-report-view.tsx">
-"use client";
-
-import { useState } from "react";
-import {
-  CheckCircle2,
-  AlertTriangle,
-  HelpCircle,
-  Lightbulb,
-  ArrowRight,
-  ExternalLink,
-  Target,
-  Loader2,
-  Calendar,
-  User,
-  GraduationCap,
-  Layers,
-  GitFork,
-  History,
-  BookOpen,
-  Compass,
-} from "lucide-react";
-import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { cn } from "@/lib/utils";
-import type { JuryAnalysisResult } from "@/features/positioning/analysis";
-import { PositioningMarkdownRenderer } from "./positioning-markdown-renderer";
-
-interface PositioningReportViewProps {
-  reportData: JuryAnalysisResult;
-  onConfirm: () => void;
-}
-
-/**
- * Renders the full positioning gap analysis report including global status badge,
- * structured jury synthesis sections, and recommended thesis cards.
- *
- * @param root0 - The component props.
- * @param root0.reportData - The jury analysis result to display.
- * @param root0.onConfirm - Callback invoked when the user confirms the positioning.
- * @returns The rendered positioning report view.
- */
-export function PositioningReportView({
-  reportData,
-  onConfirm,
-}: PositioningReportViewProps) {
-  const [confirming, setConfirming] = useState(false);
-  const isNovelGap = reportData.globalStatus === "NOVEL_GAP_IDENTIFIED";
-  const isDirectOverlap = reportData.globalStatus === "DIRECT_OVERLAP";
-
-  const handleConfirm = async () => {
-    if (confirming) return;
-    setConfirming(true);
-    try {
-      await onConfirm();
-    } finally {
-      setConfirming(false);
-    }
-  };
-
-  return (
-    <div className="w-full space-y-8">
-      {/* 1. Global Jury Evaluation Status Banner */}
-      <Card
-        className={cn(
-          "rounded-md border transition-all",
-          isNovelGap
-            ? "bg-success/10 border-success/20"
-            : isDirectOverlap
-              ? "bg-destructive/10 border-destructive/20"
-              : "bg-warning/10 border-warning/20",
-        )}
-      >
-        <CardContent className="p-4 sm:p-6 flex items-start gap-4">
-          <div
-            className={cn(
-              "p-2.5 rounded-md shrink-0 border",
-              isNovelGap
-                ? "bg-background/80 text-success border-success/20"
-                : isDirectOverlap
-                  ? "bg-background/80 text-destructive border-destructive/20"
-                  : "bg-background/80 text-warning border-warning/20",
-            )}
-          >
-            {isNovelGap && <CheckCircle2 className="h-5 w-5" />}
-            {isDirectOverlap && <AlertTriangle className="h-5 w-5" />}
-            {!isNovelGap && !isDirectOverlap && (
-              <HelpCircle className="h-5 w-5" />
-            )}
-          </div>
-
-          <div className="space-y-1.5 flex-1 min-w-0">
-            <div className="flex items-center justify-between gap-2 flex-wrap mb-1">
-              <span className="font-sans text-xs font-medium uppercase tracking-wider text-muted-foreground">
-                Jüri Değerlendirme Sonucu
-              </span>
-              {isNovelGap && (
-                <Badge className="bg-success/10 text-success border-success/20 px-2.5 py-0.5 text-xs font-semibold">
-                  Özgün Katkı Bulundu
-                </Badge>
-              )}
-              {isDirectOverlap && (
-                <Badge
-                  variant="destructive"
-                  className="bg-destructive/10 text-destructive border-destructive/20 px-2.5 py-0.5 text-xs font-semibold"
-                >
-                  Doğrudan Çakışma Riski
-                </Badge>
-              )}
-              {!isNovelGap && !isDirectOverlap && (
-                <Badge className="bg-warning/10 text-warning border-warning/20 px-2.5 py-0.5 text-xs font-semibold">
-                  Sınırlı Literatür
-                </Badge>
-              )}
-            </div>
-
-            <p className="text-sm leading-relaxed text-foreground">
-              {isNovelGap &&
-                "Çalışmanızın odağı, yöntemi ve kapsamı literatürdeki mevcut tezlerden belirgin biçimde ayrışmakta ve özgün bir akademik boşluk doldurmaktadır."}
-              {isDirectOverlap &&
-                "Çalışmanızın odağı literatürdeki mevcut tezlerle yüksek oranda çakışmaktadır. Jüri önerileri doğrultusunda teorik çerçeve veya yönteminizi güncellemeniz tavsiye edilir."}
-              {!isNovelGap &&
-                !isDirectOverlap &&
-                "Doğrudan eşleşen tez sayısı sınırlıdır. Kavramsal çerçevenizi veya arama sınırlarınızı genişleterek tekrar değerlendirebilirsiniz."}
-            </p>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* 2. Structured Academic Jury Synthesis */}
-      <div className="space-y-4">
-        <div className="flex items-center gap-3">
-          <div className="h-px flex-1 bg-border/40" />
-          <h4 className="font-sans text-xs font-medium uppercase tracking-wider text-muted-foreground">
-            Akademik Jüri Sentezi
-          </h4>
-          <div className="h-px flex-1 bg-border/40" />
-        </div>
-
-        <PositioningMarkdownRenderer content={reportData.gapAnalysisSummary} />
-      </div>
-
-      {/* 3. Strategic Guide Thesis Cards */}
-      {reportData.recommendedTheses &&
-        reportData.recommendedTheses.length > 0 && (
-          <div className="space-y-4">
-            <div className="flex items-center gap-3">
-              <div className="h-px flex-1 bg-border/40" />
-              <h4 className="font-sans text-xs font-medium uppercase tracking-wider text-muted-foreground">
-                Stratejik Rehber Tez Kartları (
-                {reportData.recommendedTheses.length})
-              </h4>
-              <div className="h-px flex-1 bg-border/40" />
-            </div>
-
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 items-stretch">
-              {reportData.recommendedTheses.map((thesis, idx) => (
-                <RecommendedThesisCard
-                  key={thesis.externalThesisId || `thesis-${idx}`}
-                  thesis={thesis}
-                  index={idx}
-                />
-              ))}
-            </div>
-          </div>
-        )}
-
-      {/* 4. Action Confirmation Button */}
-      <div className="flex justify-end mt-8 pb-8">
-        <Button
-          type="button"
-          size="lg"
-          onClick={handleConfirm}
-          disabled={confirming}
-          className="w-full sm:w-auto font-semibold"
-        >
-          {confirming ? (
-            <span className="flex items-center gap-2">
-              <Loader2 className="w-4 h-4 animate-spin" />
-              Kaydediliyor...
-            </span>
-          ) : (
-            <span className="flex items-center gap-2">
-              Onayla ve Konu Kutuları Adımına Geç
-              <ArrowRight className="w-4 h-4" />
-            </span>
-          )}
-        </Button>
-      </div>
-    </div>
-  );
-}
-
-interface RecommendedThesisCardProps {
-  thesis: NonNullable<JuryAnalysisResult["recommendedTheses"]>[number];
-  index: number;
-}
-
-const STRATEGIC_ROLE_CONFIG = {
-  BROAD_CONTEXT: {
-    label: "Geniş Çerçeve (Makro Zemin)",
-    className: "bg-primary/10 text-primary border-primary/20",
-    icon: Layers,
-  },
-  SPECIFIC_FOCUS: {
-    label: "Kısmi Odak (Çapraz Doğrulama)",
-    className: "bg-info/10 text-info border-info/20",
-    icon: GitFork,
-  },
-  FOUNDATIONAL_WORK: {
-    label: "Öncül Çalışma (Tarihsel Kökler)",
-    className: "bg-accent text-accent-foreground border-accent-foreground/20",
-    icon: History,
-  },
-  METHODOLOGICAL_BENCHMARK: {
-    label: "Yöntem Rehberi (Model Kıyası)",
-    className: "bg-warning/10 text-warning border-warning/20",
-    icon: BookOpen,
-  },
-  ALTERNATIVE_PERSPECTIVE: {
-    label: "Karşıt Yaklaşım (Eleştirel Tartışma)",
-    className: "bg-destructive/10 text-destructive border-destructive/20",
-    icon: Lightbulb,
-  },
-} as const;
-
-/**
- * Renders a rich academic guide thesis card with clean visual hierarchy,
- * metadata badges, strategic role highlights, and literature positioning notes.
- *
- * @param root0 - The component props.
- * @param root0.thesis - The recommended thesis data object.
- * @param root0.index - The 0-based index of the thesis in the list.
- * @returns The rendered thesis card.
- */
-function RecommendedThesisCard({ thesis, index }: RecommendedThesisCardProps) {
-  const separatorIndex = thesis.title.indexOf(" / ");
-  const titleMain =
-    separatorIndex === -1
-      ? thesis.title
-      : thesis.title.slice(0, separatorIndex).trim();
-  const titleTranslation =
-    separatorIndex === -1
-      ? null
-      : thesis.title.slice(separatorIndex + 3).trim();
-
-  const roleConfig =
-    thesis.strategicRole && STRATEGIC_ROLE_CONFIG[thesis.strategicRole]
-      ? STRATEGIC_ROLE_CONFIG[thesis.strategicRole]
-      : STRATEGIC_ROLE_CONFIG.BROAD_CONTEXT;
-  const RoleIcon = roleConfig.icon;
-
-  return (
-    <Card className="rounded-md border border-border bg-card hover:border-primary/40 transition-all flex flex-col justify-between h-full group overflow-hidden">
-      {/* Header & Meta Information */}
-      <CardHeader className="p-4 pb-3 space-y-2.5 border-b border-border/40 shrink-0">
-        {/* Top Badges Row */}
-        <div className="flex items-center justify-between gap-2 flex-wrap">
-          <div className="flex items-center gap-1.5 flex-wrap">
-            <span
-              className={cn(
-                "inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-[10px] font-semibold border",
-                roleConfig.className,
-              )}
-            >
-              <RoleIcon className="h-3 w-3 shrink-0" />
-              {roleConfig.label}
-            </span>
-          </div>
-
-          {/* Right Meta Group: Degree + Year + DOI */}
-          <div className="flex items-center gap-1.5 flex-wrap">
-            {thesis.thesisType && (
-              <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-semibold uppercase tracking-wider bg-secondary text-secondary-foreground border border-border">
-                {thesis.thesisType}
-              </span>
-            )}
-            {thesis.year && (
-              <span className="inline-flex items-center gap-1 text-[10px] font-medium text-muted-foreground bg-muted px-2 py-0.5 rounded-md border border-border/40">
-                <Calendar className="h-3 w-3" />
-                {thesis.year}
-              </span>
-            )}
-            {thesis.doi && (
-              <a
-                href={
-                  thesis.doi.startsWith("http")
-                    ? thesis.doi
-                    : `https://doi.org/${thesis.doi}`
-                }
-                target="_blank"
-                rel="noreferrer"
-                className="inline-flex items-center gap-1 text-[10px] font-medium text-primary hover:underline"
-              >
-                DOI <ExternalLink className="h-3 w-3" />
-              </a>
-            )}
-          </div>
-        </div>
-
-        {/* Academic Title */}
-        <div className="space-y-1">
-          <CardTitle className="font-serif text-base font-semibold text-foreground leading-snug group-hover:text-primary transition-colors">
-            {titleMain}
-          </CardTitle>
-          {titleTranslation && (
-            <p className="text-xs italic text-muted-foreground leading-relaxed">
-              {titleTranslation}
-            </p>
-          )}
-        </div>
-
-        {/* Author and Institution Info */}
-        <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 text-xs text-muted-foreground pt-1">
-          {thesis.author && (
-            <span className="inline-flex items-center gap-1.5 font-medium text-foreground">
-              <User className="h-3.5 w-3.5 text-primary shrink-0" />
-              {thesis.author}
-            </span>
-          )}
-          {thesis.university && (
-            <span
-              className="inline-flex items-center gap-1.5 text-muted-foreground leading-snug"
-              title={thesis.university}
-            >
-              <GraduationCap className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-              <span>{thesis.university}</span>
-            </span>
-          )}
-        </div>
-      </CardHeader>
-
-      {/* 3 Structured Sub-Cards with Uniform Stability */}
-      <CardContent className="p-4 space-y-2.5 flex-1 flex flex-col justify-start">
-        {/* 1. Literatür Konumu */}
-        {thesis.literaturePosition && (
-          <div className="rounded-md bg-background/50 border border-border/50 p-3 space-y-1.5">
-            <div className="flex items-center gap-2">
-              <BookOpen className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-              <span className="font-sans text-xs font-semibold text-foreground">
-                Literatür Konumu
-              </span>
-            </div>
-            <p className="text-xs text-muted-foreground leading-relaxed font-sans">
-              {thesis.literaturePosition}
-            </p>
-          </div>
-        )}
-
-        {/* 2. Tezinizdeki Stratejik Rolü & Katkı */}
-        {thesis.relevanceReason && (
-          <div className="rounded-md bg-background/50 border border-primary/20 p-3 space-y-1.5">
-            <div className="flex items-center gap-2">
-              <Target className="h-3.5 w-3.5 text-primary shrink-0" />
-              <span className="font-sans text-xs font-semibold text-foreground">
-                Tezinizdeki Stratejik Rolü & Katkı
-              </span>
-            </div>
-            <p className="text-xs text-muted-foreground leading-relaxed font-sans">
-              {thesis.relevanceReason}
-            </p>
-          </div>
-        )}
-
-        {/* 3. Odak Alanı */}
-        {thesis.contributionArea && (
-          <div className="rounded-md bg-background/50 border border-border/50 p-3 space-y-1.5">
-            <div className="flex items-center gap-2">
-              <Compass className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-              <span className="font-sans text-xs font-semibold text-foreground">
-                Odak Alanı
-              </span>
-            </div>
-            <p className="text-xs text-muted-foreground leading-relaxed font-sans">
-              {thesis.contributionArea}
-            </p>
-          </div>
-        )}
-      </CardContent>
-
-      {/* Footer: Guide Index */}
-      <CardFooter className="px-4 py-2 bg-background/30 border-t border-border/40 flex items-center justify-between gap-2 text-xs shrink-0">
-        <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">
-          Rehber Kaynak #{index + 1}
-        </span>
-      </CardFooter>
-    </Card>
-  );
-}
-</file>
-
-<file path="src/app/(onboarding)/onboarding/actions.ts">
-"use server";
-
-import { revalidatePath } from "next/cache";
-import { eq, inArray } from "drizzle-orm";
-import { db } from "@/db";
-import { matrices, positioning, boxes, sources, outlines } from "@/db/schema";
-import {
-  getSession,
-  writeSessionCookie,
-  SESSION_ERROR_MSG,
-} from "@/lib/session";
-import { createFlowId, Logger } from "@/lib/logger";
-import { resetUserOnboardingData } from "@/features/onboarding/services/reset-onboarding";
-import {
-  revalidateOnboardingPaths,
-  invalidateOnboardingCache,
-  invalidateOnboardingStepCache,
-} from "@/lib/cache-tags";
-
-/**
- * Deletes all onboarding and user data and sets onboardingCompleted to false.
- *
- * @returns A success flag or an error message.
- */
-export async function resetOnboardingAction(): Promise<
-  { success: boolean } | { error: string }
-> {
-  const flowId = createFlowId();
-  const log = new Logger(flowId);
-
-  log.info("reset_onboarding_start");
-
-  try {
-    const session = await getSession();
-    if (!session) return { error: SESSION_ERROR_MSG };
-
-    await resetUserOnboardingData(session.userId, log);
-
-    await writeSessionCookie(session, false);
-
-    revalidateOnboardingPaths();
-    revalidatePath("/onboarding/matrix");
-    invalidateOnboardingCache();
-
-    log.info("reset_onboarding_success");
-    return { success: true };
-  } catch (error) {
-    log.error("reset_onboarding_failed", {
-      error,
-    });
-    return { error: "Sıfırlama işlemi gerçekleştirilirken bir hata oluştu." };
-  }
-}
-
-/**
- * Clears all downstream step data from the given step onward.
- *
- * @param fromStep - The step from which downstream data is cleared.
- * @returns A success flag or an error message.
- */
-export async function clearDownstreamDbAction(
-  fromStep: "matrix" | "positioning" | "boxes" | "outline",
-): Promise<{ success: boolean } | { error: string }> {
-  const session = await getSession();
-  if (!session) return { error: SESSION_ERROR_MSG };
-
-  const userId = session.userId;
-
-  try {
-    await db.transaction(async (tx) => {
-      if (fromStep === "matrix") {
-        await tx.delete(positioning).where(eq(positioning.userId, userId));
-
-        const matrixResult = await tx
-          .select({ id: matrices.id })
-          .from(matrices)
-          .where(eq(matrices.userId, userId));
-
-        const matrix = matrixResult[0];
-        if (matrix) {
-          await tx.delete(outlines).where(eq(outlines.matrixId, matrix.id));
-          await tx.delete(boxes).where(eq(boxes.matrixId, matrix.id));
-        }
-      } else if (fromStep === "positioning") {
-        const matrixResult = await tx
-          .select({ id: matrices.id })
-          .from(matrices)
-          .where(eq(matrices.userId, userId));
-
-        const matrix = matrixResult[0];
-        if (matrix) {
-          await tx
-            .delete(sources)
-            .where(
-              inArray(
-                sources.boxId,
-                tx
-                  .select({ id: boxes.id })
-                  .from(boxes)
-                  .where(eq(boxes.matrixId, matrix.id)),
-              ),
-            );
-          await tx.delete(outlines).where(eq(outlines.matrixId, matrix.id));
-          await tx.delete(boxes).where(eq(boxes.matrixId, matrix.id));
-        }
-      } else if (fromStep === "boxes") {
-        const [matrix] = await tx
-          .select({ id: matrices.id })
-          .from(matrices)
-          .where(eq(matrices.userId, userId));
-
-        if (matrix) {
-          await tx.delete(outlines).where(eq(outlines.matrixId, matrix.id));
-          await tx
-            .delete(sources)
-            .where(
-              inArray(
-                sources.boxId,
-                tx
-                  .select({ id: boxes.id })
-                  .from(boxes)
-                  .where(eq(boxes.matrixId, matrix.id)),
-              ),
-            );
-        }
-      } else if (fromStep === "outline") {
-        const [matrix] = await tx
-          .select({ id: matrices.id })
-          .from(matrices)
-          .where(eq(matrices.userId, userId));
-
-        if (matrix) {
-          await tx
-            .delete(sources)
-            .where(
-              inArray(
-                sources.boxId,
-                tx
-                  .select({ id: boxes.id })
-                  .from(boxes)
-                  .where(eq(boxes.matrixId, matrix.id)),
-              ),
-            );
-        }
-      }
-    });
-
-    invalidateOnboardingStepCache(fromStep);
-    return { success: true };
-  } catch {
-    return {
-      error: "Sıfırlama işlemi gerçekleştirilirken bir hata oluştu.",
-    };
-  }
-}
-</file>
-
 <file path="AGENTS.md">
 # AGENTS.md
 
@@ -47920,442 +47384,6 @@ Before executing domain-specific tasks, consult the corresponding domain specifi
 - **User Overrides:** User prompt instructions strictly override any rules in this repository for the current task.
 - **No Temporary Edits:** Do NOT modify `AGENTS.md` for one-off task overrides.
 - **Minimalist Specification:** Keep `AGENTS.md` minimal (~120–150 lines). Update it ONLY when making permanent repository-wide architectural policy changes.
-</file>
-
-<file path="src/app/(app)/advisor/_components/use-advisor-chat.ts">
-"use client";
-
-import { useState, useRef, useCallback } from "react";
-import { toast } from "sonner";
-import { saveChatMessage, generateChatTitleAction } from "../actions";
-import { useAdvisorSessions } from "../_hooks/use-advisor-sessions";
-import { useAdvisorToolHandler } from "../_hooks/use-advisor-tool-handler";
-import { useAdvisorStream } from "../_hooks/use-advisor-stream";
-import type { AdvisorPersona } from "@/features/advisor/classifier";
-import type { PendingToolCall } from "./tool-confirmation-card";
-import type { RagSearchResultItem } from "@/services/search/rag-search";
-import type { PipelineResult } from "@/features/advisor/pipeline/types";
-import type { PipelineResultData } from "@/db/schema";
-import type { Message } from "../_lib/types";
-
-/**
- * Formats the current time as the compact TR-TR timestamp used by chat messages.
- *
- * @returns The formatted timestamp string.
- */
-function formatMessageTimestamp(): string {
-  return new Date().toLocaleTimeString("tr-TR", {
-    hour: "2-digit",
-    minute: "2-digit",
-  });
-}
-
-/**
- * Builds a new user chat message with a fresh client id and timestamp.
- *
- * @param query - The trimmed user query text.
- * @returns The constructed user message.
- */
-function buildUserMessage(query: string): Message {
-  return {
-    id: `user-${crypto.randomUUID()}`,
-    role: "user",
-    content: query,
-    timestamp: formatMessageTimestamp(),
-  };
-}
-
-/**
- * Builds a new model chat message with a fresh client id and timestamp.
- *
- * @param params - The model message fields.
- * @returns The constructed model message.
- */
-function buildModelMessage(params: {
-  persona?: AdvisorPersona;
-  content: string;
-  sources?: RagSearchResultItem[];
-  toolCalls?: PendingToolCall[];
-  pipeline?: PipelineResult;
-}): Message {
-  return {
-    id: `model-${crypto.randomUUID()}`,
-    role: "model",
-    persona: params.persona,
-    content: params.content,
-    sources: params.sources,
-    toolCalls: params.toolCalls,
-    pipeline: params.pipeline,
-    timestamp: formatMessageTimestamp(),
-  };
-}
-
-/**
- * Persists a finished model message to the active chat session, returning the
- * created database message id when the save succeeds.
- *
- * @param params - The model message data to persist.
- * @returns The persisted message id, or undefined on failure.
- */
-async function persistModelMessage(params: {
-  sessionId: number;
-  content: string;
-  sources?: RagSearchResultItem[];
-  toolCalls?: PendingToolCall[];
-  persona?: AdvisorPersona;
-  pipeline?: PipelineResult | null;
-}): Promise<number | undefined> {
-  const pipelineData: PipelineResultData | null = params.pipeline
-    ? { ...params.pipeline, cycle: 1 }
-    : null;
-  const saveRes = await saveChatMessage(
-    params.sessionId,
-    "model",
-    params.content,
-    params.sources,
-    params.toolCalls,
-    params.persona,
-    pipelineData,
-  );
-  return saveRes.success ? saveRes.messageId : undefined;
-}
-
-/**
- * Custom React hook orchestrating Advisor Chat session state, DB tool confirmations,
- * UI citations and streaming SSE API interactions.
- *
- * @param initialSessionId - Optional session id to load on mount.
- * @returns State values and event handlers for the advisor chat component.
- */
-export function useAdvisorChat(initialSessionId?: number) {
-  const [ui, setUi] = useState<{
-    activeCitation: {
-      messageId: string;
-      sourceIndex: number;
-    } | null;
-    copiedMessageId: string | null;
-  }>({ activeCitation: null, copiedMessageId: null });
-  const { activeCitation, copiedMessageId } = ui;
-
-  const [streaming, setStreaming] = useState<{
-    text: string;
-    sources: RagSearchResultItem[] | undefined;
-    toolCalls: PendingToolCall[] | undefined;
-    persona: AdvisorPersona | undefined;
-    pipeline: PipelineResult | undefined;
-  }>({
-    text: "",
-    sources: undefined,
-    toolCalls: undefined,
-    persona: undefined,
-    pipeline: undefined,
-  });
-
-  const [isLoading, setIsLoading] = useState(false);
-  const [isLocked, setIsLocked] = useState(false);
-
-  const isSendingRef = useRef(false);
-
-  const setActiveCitation = useCallback(
-    (
-      updater:
-        | { messageId: string; sourceIndex: number }
-        | null
-        | ((
-            prev: { messageId: string; sourceIndex: number } | null,
-          ) => { messageId: string; sourceIndex: number } | null),
-    ) => {
-      setUi((prev) => ({
-        ...prev,
-        activeCitation:
-          typeof updater === "function"
-            ? updater(prev.activeCitation)
-            : updater,
-      }));
-    },
-    [],
-  );
-
-  const setCopiedMessageId = useCallback((value: string | null) => {
-    setUi((prev) => ({ ...prev, copiedMessageId: value }));
-  }, []);
-
-  const {
-    messages,
-    setMessages,
-    sessions,
-    activeSessionId,
-    loadSessions,
-    handleSelectSession: selectSessionRaw,
-    handleCreateSession,
-    handleDeleteSession,
-    createChatSessionAndActivate,
-  } = useAdvisorSessions({
-    initialSessionId,
-    isSendingRef,
-    setActiveCitation,
-  });
-
-  const handleSelectSession = useCallback(
-    async (sessionId: number) => {
-      setIsLocked(false);
-      await selectSessionRaw(sessionId);
-    },
-    [selectSessionRaw],
-  );
-
-  const { handleApproveToolCall, handleUndoToolCall, handleRejectToolCall } =
-    useAdvisorToolHandler({ setMessages });
-
-  const { readStream } = useAdvisorStream();
-
-  const handleSend = async (overrideQuery?: string) => {
-    if (isSendingRef.current) return;
-    const queryToSend = (overrideQuery ?? "").trim();
-    if (!queryToSend || isLoading) return;
-
-    isSendingRef.current = true;
-    let sessionId = activeSessionId;
-    setIsLocked(false);
-
-    if (!sessionId) {
-      const title =
-        queryToSend.length > 60
-          ? queryToSend.slice(0, 60) + "..."
-          : queryToSend;
-      sessionId = await createChatSessionAndActivate(title);
-      if (!sessionId) {
-        isSendingRef.current = false;
-        return;
-      }
-
-      void generateChatTitleAction(sessionId, queryToSend).then((titleRes) => {
-        if (titleRes.success) {
-          void loadSessions();
-        }
-      });
-    }
-
-    const userMsg = buildUserMessage(queryToSend);
-
-    setMessages((prev) => [...prev, userMsg]);
-    setIsLoading(true);
-    setStreaming({
-      text: "",
-      sources: undefined,
-      toolCalls: undefined,
-      persona: undefined,
-      pipeline: undefined,
-    });
-
-    await saveChatMessage(sessionId, "user", queryToSend);
-
-    try {
-      const historyPayload = messages.map((m) => ({
-        role: m.role,
-        content: m.content,
-      }));
-
-      const response = await fetch("/api/advisor", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          query: queryToSend,
-          history: historyPayload,
-        }),
-      });
-
-      if (!response.ok) {
-        throw new Error("Yanıt alınamadı.");
-      }
-
-      let accumulatedToolCalls: PendingToolCall[] = [];
-      let assignedPersona: AdvisorPersona | undefined = undefined;
-
-      await readStream(response, async (event) => {
-        switch (event.type) {
-          case "persona_assigned": {
-            assignedPersona = event.persona as AdvisorPersona;
-            setStreaming((prev) => ({ ...prev, persona: assignedPersona }));
-            break;
-          }
-          case "stage_start": {
-            setStreaming((prev) => ({
-              ...prev,
-              pipeline: { stage: "audit" },
-            }));
-            break;
-          }
-          case "stage_done": {
-            const payload = event.payload as PipelineResult["audit"];
-            setStreaming((prev) => ({
-              ...prev,
-              pipeline: { stage: "audit", audit: payload },
-            }));
-            if (
-              event.stage === "audit" &&
-              payload?.hasCriticalIssues === true
-            ) {
-              setIsLocked(true);
-            }
-            break;
-          }
-          case "delta": {
-            setStreaming((prev) => ({
-              ...prev,
-              text: prev.text + (event.text as string),
-            }));
-            break;
-          }
-          case "tool_call_request": {
-            const newToolCall: PendingToolCall = {
-              toolCallId: event.toolCallId as string,
-              name: event.name as string,
-              args: event.args as Record<string, unknown>,
-              explanation: event.explanation as string,
-              status: "pending",
-              previousState: event.previousState as
-                Record<string, unknown> | undefined,
-            };
-            accumulatedToolCalls = [...accumulatedToolCalls, newToolCall];
-            setStreaming((prev) => ({
-              ...prev,
-              toolCalls: [...accumulatedToolCalls],
-            }));
-            break;
-          }
-          case "done": {
-            const eventSources = event.sources as
-              RagSearchResultItem[] | undefined;
-            setStreaming((prev) => ({ ...prev, sources: eventSources }));
-            const finalPersona =
-              (event.persona as AdvisorPersona | undefined) || assignedPersona;
-            const pipelineResult = event.pipeline as PipelineResult | undefined;
-
-            if (pipelineResult) {
-              setStreaming((prev) => ({
-                ...prev,
-                pipeline: pipelineResult,
-              }));
-              if (pipelineResult.audit?.hasCriticalIssues) {
-                setIsLocked(true);
-              }
-            }
-
-            const finalContent =
-              ((event.text as string) || "").trim() ||
-              (accumulatedToolCalls.length > 0
-                ? "Aşağıdaki veritabanı işlemini gerçekleştirmek için onayınız isteniyor:"
-                : "");
-
-            const modelMsg = buildModelMessage({
-              persona: finalPersona,
-              content: finalContent,
-              sources: eventSources,
-              toolCalls:
-                accumulatedToolCalls.length > 0
-                  ? accumulatedToolCalls
-                  : undefined,
-              pipeline: pipelineResult,
-            });
-
-            if (sessionId) {
-              const messageId = await persistModelMessage({
-                sessionId,
-                content: finalContent,
-                sources: eventSources,
-                toolCalls:
-                  accumulatedToolCalls.length > 0
-                    ? accumulatedToolCalls
-                    : undefined,
-                persona: finalPersona,
-                pipeline: pipelineResult,
-              });
-              if (messageId !== undefined) {
-                modelMsg.dbId = messageId;
-              }
-              await loadSessions();
-            }
-
-            setMessages((prev) => [...prev, modelMsg]);
-            break;
-          }
-          case "error": {
-            toast.error(
-              (event.error as string) || "Yanıt üretilirken hata oluştu.",
-            );
-            break;
-          }
-        }
-      });
-    } catch {
-      toast.error(
-        "Yanıt üretilirken beklenmeyen bir hata oluştu. Lütfen tekrar deneyin.",
-      );
-    } finally {
-      setIsLoading(false);
-      setStreaming({
-        text: "",
-        sources: undefined,
-        toolCalls: undefined,
-        persona: undefined,
-        pipeline: undefined,
-      });
-      isSendingRef.current = false;
-    }
-  };
-
-  const handleCitationPosition = useCallback(
-    (messageId: string, sourceIndex: number) => {
-      setActiveCitation((prev) => {
-        if (prev?.messageId === messageId && prev.sourceIndex === sourceIndex) {
-          return null;
-        }
-        return { messageId, sourceIndex };
-      });
-    },
-    [setActiveCitation],
-  );
-
-  const activeSource =
-    activeCitation &&
-    (() => {
-      const msg = messages.find((m) => m.id === activeCitation.messageId);
-      return msg?.sources?.[activeCitation.sourceIndex] ?? null;
-    })();
-
-  const handleApprovePipeline = useCallback(() => {
-    setIsLocked(false);
-  }, []);
-
-  return {
-    messages,
-    setMessages,
-    isLoading,
-    isLocked,
-    activeCitation,
-    setActiveCitation,
-    sessions,
-    activeSessionId,
-    streamingText: streaming.text,
-    streamingSources: streaming.sources,
-    streamingToolCalls: streaming.toolCalls,
-    streamingPersona: streaming.persona,
-    streamingPipeline: streaming.pipeline,
-    copiedMessageId,
-    setCopiedMessageId,
-    activeSource,
-    handleSelectSession,
-    handleCreateSession,
-    handleDeleteSession,
-    handleApproveToolCall,
-    handleUndoToolCall,
-    handleRejectToolCall,
-    handleApprovePipeline,
-    handleSend,
-    handleCitationPosition,
-  };
-}
 </file>
 
 <file path="src/app/(app)/citation-cards/page.tsx">
@@ -48946,6 +47974,1298 @@ export function SidebarWorkList({
 }
 </file>
 
+<file path="src/app/(onboarding)/onboarding/positioning/_components/positioning-report-view.tsx">
+"use client";
+
+import { useState } from "react";
+import {
+  CheckCircle2,
+  AlertTriangle,
+  HelpCircle,
+  Lightbulb,
+  ArrowRight,
+  ExternalLink,
+  Target,
+  Loader2,
+  Calendar,
+  User,
+  GraduationCap,
+  Layers,
+  GitFork,
+  History,
+  BookOpen,
+  Compass,
+} from "lucide-react";
+import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { cn } from "@/lib/utils";
+import type { JuryAnalysisResult } from "@/features/positioning/analysis";
+import { PositioningMarkdownRenderer } from "./positioning-markdown-renderer";
+
+interface PositioningReportViewProps {
+  reportData: JuryAnalysisResult;
+  onConfirm: () => void;
+}
+
+/**
+ * Renders the full positioning gap analysis report including global status badge,
+ * structured jury synthesis sections, and recommended thesis cards.
+ *
+ * @param root0 - The component props.
+ * @param root0.reportData - The jury analysis result to display.
+ * @param root0.onConfirm - Callback invoked when the user confirms the positioning.
+ * @returns The rendered positioning report view.
+ */
+export function PositioningReportView({
+  reportData,
+  onConfirm,
+}: PositioningReportViewProps) {
+  const [confirming, setConfirming] = useState(false);
+  const isNovelGap = reportData.globalStatus === "NOVEL_GAP_IDENTIFIED";
+  const isDirectOverlap = reportData.globalStatus === "DIRECT_OVERLAP";
+
+  const handleConfirm = async () => {
+    if (confirming) return;
+    setConfirming(true);
+    try {
+      await onConfirm();
+    } finally {
+      setConfirming(false);
+    }
+  };
+
+  return (
+    <div className="w-full space-y-8">
+      {/* 1. Global Jury Evaluation Status Banner */}
+      <Card
+        className={cn(
+          "rounded-md border transition-all",
+          isNovelGap
+            ? "bg-success/10 border-success/20"
+            : isDirectOverlap
+              ? "bg-destructive/10 border-destructive/20"
+              : "bg-warning/10 border-warning/20",
+        )}
+      >
+        <CardContent className="p-4 sm:p-6 flex items-start gap-4">
+          <div
+            className={cn(
+              "p-2.5 rounded-md shrink-0 border",
+              isNovelGap
+                ? "bg-background/80 text-success border-success/20"
+                : isDirectOverlap
+                  ? "bg-background/80 text-destructive border-destructive/20"
+                  : "bg-background/80 text-warning border-warning/20",
+            )}
+          >
+            {isNovelGap && <CheckCircle2 className="h-5 w-5" />}
+            {isDirectOverlap && <AlertTriangle className="h-5 w-5" />}
+            {!isNovelGap && !isDirectOverlap && (
+              <HelpCircle className="h-5 w-5" />
+            )}
+          </div>
+
+          <div className="space-y-1.5 flex-1 min-w-0">
+            <div className="flex items-center justify-between gap-2 flex-wrap mb-1">
+              <span className="font-sans text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                Jüri Değerlendirme Sonucu
+              </span>
+              {isNovelGap && (
+                <Badge className="bg-success/10 text-success border-success/20 px-2.5 py-0.5 text-xs font-semibold">
+                  Özgün Katkı Bulundu
+                </Badge>
+              )}
+              {isDirectOverlap && (
+                <Badge
+                  variant="destructive"
+                  className="bg-destructive/10 text-destructive border-destructive/20 px-2.5 py-0.5 text-xs font-semibold"
+                >
+                  Doğrudan Çakışma Riski
+                </Badge>
+              )}
+              {!isNovelGap && !isDirectOverlap && (
+                <Badge className="bg-warning/10 text-warning border-warning/20 px-2.5 py-0.5 text-xs font-semibold">
+                  Sınırlı Literatür
+                </Badge>
+              )}
+            </div>
+
+            <p className="text-sm leading-relaxed text-foreground">
+              {isNovelGap &&
+                "Çalışmanızın odağı, yöntemi ve kapsamı literatürdeki mevcut tezlerden belirgin biçimde ayrışmakta ve özgün bir akademik boşluk doldurmaktadır."}
+              {isDirectOverlap &&
+                "Çalışmanızın odağı literatürdeki mevcut tezlerle yüksek oranda çakışmaktadır. Jüri önerileri doğrultusunda teorik çerçeve veya yönteminizi güncellemeniz tavsiye edilir."}
+              {!isNovelGap &&
+                !isDirectOverlap &&
+                "Doğrudan eşleşen tez sayısı sınırlıdır. Kavramsal çerçevenizi veya arama sınırlarınızı genişleterek tekrar değerlendirebilirsiniz."}
+            </p>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* 2. Structured Academic Jury Synthesis */}
+      <div className="space-y-4">
+        <div className="flex items-center gap-3">
+          <div className="h-px flex-1 bg-border/40" />
+          <h4 className="font-sans text-xs font-medium uppercase tracking-wider text-muted-foreground">
+            Akademik Jüri Sentezi
+          </h4>
+          <div className="h-px flex-1 bg-border/40" />
+        </div>
+
+        <PositioningMarkdownRenderer content={reportData.gapAnalysisSummary} />
+      </div>
+
+      {/* 3. Strategic Guide Thesis Cards */}
+      {reportData.recommendedTheses &&
+        reportData.recommendedTheses.length > 0 && (
+          <div className="space-y-4">
+            <div className="flex items-center gap-3">
+              <div className="h-px flex-1 bg-border/40" />
+              <h4 className="font-sans text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                Stratejik Rehber Tez Kartları (
+                {reportData.recommendedTheses.length})
+              </h4>
+              <div className="h-px flex-1 bg-border/40" />
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 items-stretch">
+              {reportData.recommendedTheses.map((thesis, idx) => (
+                <RecommendedThesisCard
+                  key={thesis.externalThesisId || `thesis-${idx}`}
+                  thesis={thesis}
+                  index={idx}
+                />
+              ))}
+            </div>
+          </div>
+        )}
+
+      {/* 4. Action Confirmation Button */}
+      <div className="flex justify-end mt-8 pb-8">
+        <Button
+          type="button"
+          size="lg"
+          onClick={handleConfirm}
+          disabled={confirming}
+          className="w-full sm:w-auto font-semibold"
+        >
+          {confirming ? (
+            <span className="flex items-center gap-2">
+              <Loader2 className="w-4 h-4 animate-spin" />
+              Kaydediliyor...
+            </span>
+          ) : (
+            <span className="flex items-center gap-2">
+              Onayla ve Konu Kutuları Adımına Geç
+              <ArrowRight className="w-4 h-4" />
+            </span>
+          )}
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+interface RecommendedThesisCardProps {
+  thesis: NonNullable<JuryAnalysisResult["recommendedTheses"]>[number];
+  index: number;
+}
+
+const STRATEGIC_ROLE_CONFIG = {
+  BROAD_CONTEXT: {
+    label: "Geniş Çerçeve (Makro Zemin)",
+    className: "bg-primary/10 text-primary border-primary/20",
+    icon: Layers,
+  },
+  SPECIFIC_FOCUS: {
+    label: "Kısmi Odak (Çapraz Doğrulama)",
+    className: "bg-info/10 text-info border-info/20",
+    icon: GitFork,
+  },
+  FOUNDATIONAL_WORK: {
+    label: "Öncül Çalışma (Tarihsel Kökler)",
+    className: "bg-accent text-accent-foreground border-accent-foreground/20",
+    icon: History,
+  },
+  METHODOLOGICAL_BENCHMARK: {
+    label: "Yöntem Rehberi (Model Kıyası)",
+    className: "bg-warning/10 text-warning border-warning/20",
+    icon: BookOpen,
+  },
+  ALTERNATIVE_PERSPECTIVE: {
+    label: "Karşıt Yaklaşım (Eleştirel Tartışma)",
+    className: "bg-destructive/10 text-destructive border-destructive/20",
+    icon: Lightbulb,
+  },
+} as const;
+
+/**
+ * Renders a rich academic guide thesis card with clean visual hierarchy,
+ * metadata badges, strategic role highlights, and literature positioning notes.
+ *
+ * @param root0 - The component props.
+ * @param root0.thesis - The recommended thesis data object.
+ * @param root0.index - The 0-based index of the thesis in the list.
+ * @returns The rendered thesis card.
+ */
+function RecommendedThesisCard({ thesis, index }: RecommendedThesisCardProps) {
+  const separatorIndex = thesis.title.indexOf(" / ");
+  const titleMain =
+    separatorIndex === -1
+      ? thesis.title
+      : thesis.title.slice(0, separatorIndex).trim();
+  const titleTranslation =
+    separatorIndex === -1
+      ? null
+      : thesis.title.slice(separatorIndex + 3).trim();
+
+  const roleConfig =
+    thesis.strategicRole && STRATEGIC_ROLE_CONFIG[thesis.strategicRole]
+      ? STRATEGIC_ROLE_CONFIG[thesis.strategicRole]
+      : STRATEGIC_ROLE_CONFIG.BROAD_CONTEXT;
+  const RoleIcon = roleConfig.icon;
+
+  return (
+    <Card className="rounded-md border border-border bg-card hover:border-primary/40 transition-all flex flex-col justify-between h-full group overflow-hidden">
+      {/* Header & Meta Information */}
+      <CardHeader className="p-4 pb-3 space-y-2.5 border-b border-border/40 shrink-0">
+        {/* Top Badges Row */}
+        <div className="flex items-center justify-between gap-2 flex-wrap">
+          <div className="flex items-center gap-1.5 flex-wrap">
+            <span
+              className={cn(
+                "inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-[10px] font-semibold border",
+                roleConfig.className,
+              )}
+            >
+              <RoleIcon className="h-3 w-3 shrink-0" />
+              {roleConfig.label}
+            </span>
+          </div>
+
+          {/* Right Meta Group: Degree + Year + DOI */}
+          <div className="flex items-center gap-1.5 flex-wrap">
+            {thesis.thesisType && (
+              <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-semibold uppercase tracking-wider bg-secondary text-secondary-foreground border border-border">
+                {thesis.thesisType}
+              </span>
+            )}
+            {thesis.year && (
+              <span className="inline-flex items-center gap-1 text-[10px] font-medium text-muted-foreground bg-muted px-2 py-0.5 rounded-md border border-border/40">
+                <Calendar className="h-3 w-3" />
+                {thesis.year}
+              </span>
+            )}
+            {thesis.doi && (
+              <a
+                href={
+                  thesis.doi.startsWith("http")
+                    ? thesis.doi
+                    : `https://doi.org/${thesis.doi}`
+                }
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex items-center gap-1 text-[10px] font-medium text-primary hover:underline"
+              >
+                DOI <ExternalLink className="h-3 w-3" />
+              </a>
+            )}
+          </div>
+        </div>
+
+        {/* Academic Title */}
+        <div className="space-y-1">
+          <CardTitle className="font-serif text-base font-semibold text-foreground leading-snug group-hover:text-primary transition-colors">
+            {titleMain}
+          </CardTitle>
+          {titleTranslation && (
+            <p className="text-xs italic text-muted-foreground leading-relaxed">
+              {titleTranslation}
+            </p>
+          )}
+        </div>
+
+        {/* Author and Institution Info */}
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 text-xs text-muted-foreground pt-1">
+          {thesis.author && (
+            <span className="inline-flex items-center gap-1.5 font-medium text-foreground">
+              <User className="h-3.5 w-3.5 text-primary shrink-0" />
+              {thesis.author}
+            </span>
+          )}
+          {thesis.university && (
+            <span
+              className="inline-flex items-center gap-1.5 text-muted-foreground leading-snug"
+              title={thesis.university}
+            >
+              <GraduationCap className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+              <span>{thesis.university}</span>
+            </span>
+          )}
+        </div>
+      </CardHeader>
+
+      {/* 3 Structured Sub-Cards with Uniform Stability */}
+      <CardContent className="p-4 space-y-2.5 flex-1 flex flex-col justify-start">
+        {/* 1. Literatür Konumu */}
+        {thesis.literaturePosition && (
+          <div className="rounded-md bg-background/50 border border-border/50 p-3 space-y-1.5">
+            <div className="flex items-center gap-2">
+              <BookOpen className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+              <span className="font-sans text-xs font-semibold text-foreground">
+                Literatür Konumu
+              </span>
+            </div>
+            <p className="text-xs text-muted-foreground leading-relaxed font-sans">
+              {thesis.literaturePosition}
+            </p>
+          </div>
+        )}
+
+        {/* 2. Tezinizdeki Stratejik Rolü & Katkı */}
+        {thesis.relevanceReason && (
+          <div className="rounded-md bg-background/50 border border-primary/20 p-3 space-y-1.5">
+            <div className="flex items-center gap-2">
+              <Target className="h-3.5 w-3.5 text-primary shrink-0" />
+              <span className="font-sans text-xs font-semibold text-foreground">
+                Tezinizdeki Stratejik Rolü & Katkı
+              </span>
+            </div>
+            <p className="text-xs text-muted-foreground leading-relaxed font-sans">
+              {thesis.relevanceReason}
+            </p>
+          </div>
+        )}
+
+        {/* 3. Odak Alanı */}
+        {thesis.contributionArea && (
+          <div className="rounded-md bg-background/50 border border-border/50 p-3 space-y-1.5">
+            <div className="flex items-center gap-2">
+              <Compass className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+              <span className="font-sans text-xs font-semibold text-foreground">
+                Odak Alanı
+              </span>
+            </div>
+            <p className="text-xs text-muted-foreground leading-relaxed font-sans">
+              {thesis.contributionArea}
+            </p>
+          </div>
+        )}
+      </CardContent>
+
+      {/* Footer: Guide Index */}
+      <CardFooter className="px-4 py-2 bg-background/30 border-t border-border/40 flex items-center justify-between gap-2 text-xs shrink-0">
+        <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">
+          Rehber Kaynak #{index + 1}
+        </span>
+      </CardFooter>
+    </Card>
+  );
+}
+</file>
+
+<file path="src/app/(onboarding)/onboarding/actions.ts">
+"use server";
+
+import { revalidatePath } from "next/cache";
+import { eq, inArray } from "drizzle-orm";
+import { db } from "@/db";
+import { matrices, positioning, boxes, sources, outlines } from "@/db/schema";
+import {
+  getSession,
+  writeSessionCookie,
+  SESSION_ERROR_MSG,
+} from "@/lib/session";
+import { createFlowId, Logger } from "@/lib/logger";
+import { resetUserOnboardingData } from "@/features/onboarding/services/reset-onboarding";
+import {
+  revalidateOnboardingPaths,
+  invalidateOnboardingCache,
+  invalidateOnboardingStepCache,
+} from "@/lib/cache-tags";
+
+/**
+ * Deletes all onboarding and user data and sets onboardingCompleted to false.
+ *
+ * @returns A success flag or an error message.
+ */
+export async function resetOnboardingAction(): Promise<
+  { success: boolean } | { error: string }
+> {
+  const flowId = createFlowId();
+  const log = new Logger(flowId);
+
+  log.info("reset_onboarding_start");
+
+  try {
+    const session = await getSession();
+    if (!session) return { error: SESSION_ERROR_MSG };
+
+    await resetUserOnboardingData(session.userId, log);
+
+    await writeSessionCookie(session, false);
+
+    revalidateOnboardingPaths();
+    revalidatePath("/onboarding/matrix");
+    invalidateOnboardingCache();
+
+    log.info("reset_onboarding_success");
+    return { success: true };
+  } catch (error) {
+    log.error("reset_onboarding_failed", {
+      error,
+    });
+    return { error: "Sıfırlama işlemi gerçekleştirilirken bir hata oluştu." };
+  }
+}
+
+/**
+ * Clears all downstream step data from the given step onward.
+ *
+ * @param fromStep - The step from which downstream data is cleared.
+ * @returns A success flag or an error message.
+ */
+export async function clearDownstreamDbAction(
+  fromStep: "matrix" | "positioning" | "boxes" | "outline",
+): Promise<{ success: boolean } | { error: string }> {
+  const session = await getSession();
+  if (!session) return { error: SESSION_ERROR_MSG };
+
+  const userId = session.userId;
+
+  try {
+    await db.transaction(async (tx) => {
+      if (fromStep === "matrix") {
+        await tx.delete(positioning).where(eq(positioning.userId, userId));
+
+        const matrixResult = await tx
+          .select({ id: matrices.id })
+          .from(matrices)
+          .where(eq(matrices.userId, userId));
+
+        const matrix = matrixResult[0];
+        if (matrix) {
+          await tx.delete(outlines).where(eq(outlines.matrixId, matrix.id));
+          await tx.delete(boxes).where(eq(boxes.matrixId, matrix.id));
+        }
+      } else if (fromStep === "positioning") {
+        const matrixResult = await tx
+          .select({ id: matrices.id })
+          .from(matrices)
+          .where(eq(matrices.userId, userId));
+
+        const matrix = matrixResult[0];
+        if (matrix) {
+          await tx
+            .delete(sources)
+            .where(
+              inArray(
+                sources.boxId,
+                tx
+                  .select({ id: boxes.id })
+                  .from(boxes)
+                  .where(eq(boxes.matrixId, matrix.id)),
+              ),
+            );
+          await tx.delete(outlines).where(eq(outlines.matrixId, matrix.id));
+          await tx.delete(boxes).where(eq(boxes.matrixId, matrix.id));
+        }
+      } else if (fromStep === "boxes") {
+        const [matrix] = await tx
+          .select({ id: matrices.id })
+          .from(matrices)
+          .where(eq(matrices.userId, userId));
+
+        if (matrix) {
+          await tx.delete(outlines).where(eq(outlines.matrixId, matrix.id));
+          await tx
+            .delete(sources)
+            .where(
+              inArray(
+                sources.boxId,
+                tx
+                  .select({ id: boxes.id })
+                  .from(boxes)
+                  .where(eq(boxes.matrixId, matrix.id)),
+              ),
+            );
+        }
+      } else if (fromStep === "outline") {
+        const [matrix] = await tx
+          .select({ id: matrices.id })
+          .from(matrices)
+          .where(eq(matrices.userId, userId));
+
+        if (matrix) {
+          await tx
+            .delete(sources)
+            .where(
+              inArray(
+                sources.boxId,
+                tx
+                  .select({ id: boxes.id })
+                  .from(boxes)
+                  .where(eq(boxes.matrixId, matrix.id)),
+              ),
+            );
+        }
+      }
+    });
+
+    invalidateOnboardingStepCache(fromStep);
+    return { success: true };
+  } catch {
+    return {
+      error: "Sıfırlama işlemi gerçekleştirilirken bir hata oluştu.",
+    };
+  }
+}
+</file>
+
+<file path="src/app/(app)/advisor/_components/use-advisor-chat.ts">
+"use client";
+
+import { useState, useRef, useCallback } from "react";
+import { toast } from "sonner";
+import { saveChatMessage, generateChatTitleAction } from "../actions";
+import { useAdvisorSessions } from "../_hooks/use-advisor-sessions";
+import { useAdvisorToolHandler } from "../_hooks/use-advisor-tool-handler";
+import { useAdvisorStream } from "../_hooks/use-advisor-stream";
+import type { AdvisorPersona } from "@/features/advisor/classifier";
+import type { PendingToolCall } from "./tool-confirmation-card";
+import type { RagSearchResultItem } from "@/services/search/rag-search";
+import type { PipelineResult } from "@/features/advisor/pipeline/types";
+import type { PipelineResultData } from "@/db/schema";
+import type { Message } from "../_lib/types";
+
+/**
+ * Formats the current time as the compact TR-TR timestamp used by chat messages.
+ *
+ * @returns The formatted timestamp string.
+ */
+function formatMessageTimestamp(): string {
+  return new Date().toLocaleTimeString("tr-TR", {
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
+/**
+ * Builds a new user chat message with a fresh client id and timestamp.
+ *
+ * @param query - The trimmed user query text.
+ * @returns The constructed user message.
+ */
+function buildUserMessage(query: string): Message {
+  return {
+    id: `user-${crypto.randomUUID()}`,
+    role: "user",
+    content: query,
+    timestamp: formatMessageTimestamp(),
+  };
+}
+
+/**
+ * Builds a new model chat message with a fresh client id and timestamp.
+ *
+ * @param params - The model message fields.
+ * @returns The constructed model message.
+ */
+function buildModelMessage(params: {
+  persona?: AdvisorPersona;
+  content: string;
+  sources?: RagSearchResultItem[];
+  toolCalls?: PendingToolCall[];
+  pipeline?: PipelineResult;
+}): Message {
+  return {
+    id: `model-${crypto.randomUUID()}`,
+    role: "model",
+    persona: params.persona,
+    content: params.content,
+    sources: params.sources,
+    toolCalls: params.toolCalls,
+    pipeline: params.pipeline,
+    timestamp: formatMessageTimestamp(),
+  };
+}
+
+/**
+ * Persists a finished model message to the active chat session, returning the
+ * created database message id when the save succeeds.
+ *
+ * @param params - The model message data to persist.
+ * @returns The persisted message id, or undefined on failure.
+ */
+async function persistModelMessage(params: {
+  sessionId: number;
+  content: string;
+  sources?: RagSearchResultItem[];
+  toolCalls?: PendingToolCall[];
+  persona?: AdvisorPersona;
+  pipeline?: PipelineResult | null;
+}): Promise<number | undefined> {
+  const pipelineData: PipelineResultData | null = params.pipeline
+    ? { ...params.pipeline, cycle: 1 }
+    : null;
+  const saveRes = await saveChatMessage(
+    params.sessionId,
+    "model",
+    params.content,
+    params.sources,
+    params.toolCalls,
+    params.persona,
+    pipelineData,
+  );
+  return saveRes.success ? saveRes.messageId : undefined;
+}
+
+/**
+ * Custom React hook orchestrating Advisor Chat session state, DB tool confirmations,
+ * UI citations and streaming SSE API interactions.
+ *
+ * @param initialSessionId - Optional session id to load on mount.
+ * @returns State values and event handlers for the advisor chat component.
+ */
+export function useAdvisorChat(initialSessionId?: number) {
+  const [ui, setUi] = useState<{
+    activeCitation: {
+      messageId: string;
+      sourceIndex: number;
+    } | null;
+    copiedMessageId: string | null;
+  }>({ activeCitation: null, copiedMessageId: null });
+  const { activeCitation, copiedMessageId } = ui;
+
+  const [streaming, setStreaming] = useState<{
+    text: string;
+    sources: RagSearchResultItem[] | undefined;
+    toolCalls: PendingToolCall[] | undefined;
+    persona: AdvisorPersona | undefined;
+    pipeline: PipelineResult | undefined;
+  }>({
+    text: "",
+    sources: undefined,
+    toolCalls: undefined,
+    persona: undefined,
+    pipeline: undefined,
+  });
+
+  const [isLoading, setIsLoading] = useState(false);
+  const [isLocked, setIsLocked] = useState(false);
+
+  const isSendingRef = useRef(false);
+
+  const setActiveCitation = useCallback(
+    (
+      updater:
+        | { messageId: string; sourceIndex: number }
+        | null
+        | ((
+            prev: { messageId: string; sourceIndex: number } | null,
+          ) => { messageId: string; sourceIndex: number } | null),
+    ) => {
+      setUi((prev) => ({
+        ...prev,
+        activeCitation:
+          typeof updater === "function"
+            ? updater(prev.activeCitation)
+            : updater,
+      }));
+    },
+    [],
+  );
+
+  const setCopiedMessageId = useCallback((value: string | null) => {
+    setUi((prev) => ({ ...prev, copiedMessageId: value }));
+  }, []);
+
+  const {
+    messages,
+    setMessages,
+    sessions,
+    activeSessionId,
+    loadSessions,
+    handleSelectSession: selectSessionRaw,
+    handleCreateSession,
+    handleDeleteSession,
+    createChatSessionAndActivate,
+  } = useAdvisorSessions({
+    initialSessionId,
+    isSendingRef,
+    setActiveCitation,
+  });
+
+  const handleSelectSession = useCallback(
+    async (sessionId: number) => {
+      setIsLocked(false);
+      await selectSessionRaw(sessionId);
+    },
+    [selectSessionRaw],
+  );
+
+  const { handleApproveToolCall, handleUndoToolCall, handleRejectToolCall } =
+    useAdvisorToolHandler({ setMessages });
+
+  const { readStream } = useAdvisorStream();
+
+  const handleSend = async (overrideQuery?: string) => {
+    if (isSendingRef.current) return;
+    const queryToSend = (overrideQuery ?? "").trim();
+    if (!queryToSend || isLoading) return;
+
+    isSendingRef.current = true;
+    let sessionId = activeSessionId;
+    setIsLocked(false);
+
+    if (!sessionId) {
+      const title =
+        queryToSend.length > 60
+          ? queryToSend.slice(0, 60) + "..."
+          : queryToSend;
+      sessionId = await createChatSessionAndActivate(title);
+      if (!sessionId) {
+        isSendingRef.current = false;
+        return;
+      }
+
+      void generateChatTitleAction(sessionId, queryToSend).then((titleRes) => {
+        if (titleRes.success) {
+          void loadSessions();
+        }
+      });
+    }
+
+    const userMsg = buildUserMessage(queryToSend);
+
+    setMessages((prev) => [...prev, userMsg]);
+    setIsLoading(true);
+    setStreaming({
+      text: "",
+      sources: undefined,
+      toolCalls: undefined,
+      persona: undefined,
+      pipeline: undefined,
+    });
+
+    await saveChatMessage(sessionId, "user", queryToSend);
+
+    try {
+      const historyPayload = messages.map((m) => ({
+        role: m.role,
+        content: m.content,
+      }));
+
+      const response = await fetch("/api/advisor", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          query: queryToSend,
+          history: historyPayload,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error("Yanıt alınamadı.");
+      }
+
+      let accumulatedToolCalls: PendingToolCall[] = [];
+      let assignedPersona: AdvisorPersona | undefined = undefined;
+
+      await readStream(response, async (event) => {
+        switch (event.type) {
+          case "persona_assigned": {
+            assignedPersona = event.persona as AdvisorPersona;
+            setStreaming((prev) => ({ ...prev, persona: assignedPersona }));
+            break;
+          }
+          case "stage_start": {
+            setStreaming((prev) => ({
+              ...prev,
+              pipeline: { stage: "audit" },
+            }));
+            break;
+          }
+          case "stage_done": {
+            const payload = event.payload as PipelineResult["audit"];
+            setStreaming((prev) => ({
+              ...prev,
+              pipeline: { stage: "audit", audit: payload },
+            }));
+            if (
+              event.stage === "audit" &&
+              payload?.hasCriticalIssues === true
+            ) {
+              setIsLocked(true);
+            }
+            break;
+          }
+          case "delta": {
+            setStreaming((prev) => ({
+              ...prev,
+              text: prev.text + (event.text as string),
+            }));
+            break;
+          }
+          case "tool_call_request": {
+            const newToolCall: PendingToolCall = {
+              toolCallId: event.toolCallId as string,
+              name: event.name as string,
+              args: event.args as Record<string, unknown>,
+              explanation: event.explanation as string,
+              status: "pending",
+              previousState: event.previousState as
+                Record<string, unknown> | undefined,
+            };
+            accumulatedToolCalls = [...accumulatedToolCalls, newToolCall];
+            setStreaming((prev) => ({
+              ...prev,
+              toolCalls: [...accumulatedToolCalls],
+            }));
+            break;
+          }
+          case "done": {
+            const eventSources = event.sources as
+              RagSearchResultItem[] | undefined;
+            setStreaming((prev) => ({ ...prev, sources: eventSources }));
+            const finalPersona =
+              (event.persona as AdvisorPersona | undefined) || assignedPersona;
+            const pipelineResult = event.pipeline as PipelineResult | undefined;
+
+            if (pipelineResult) {
+              setStreaming((prev) => ({
+                ...prev,
+                pipeline: pipelineResult,
+              }));
+              if (pipelineResult.audit?.hasCriticalIssues) {
+                setIsLocked(true);
+              }
+            }
+
+            const finalContent =
+              ((event.text as string) || "").trim() ||
+              (accumulatedToolCalls.length > 0
+                ? "Aşağıdaki veritabanı işlemini gerçekleştirmek için onayınız isteniyor:"
+                : "");
+
+            const modelMsg = buildModelMessage({
+              persona: finalPersona,
+              content: finalContent,
+              sources: eventSources,
+              toolCalls:
+                accumulatedToolCalls.length > 0
+                  ? accumulatedToolCalls
+                  : undefined,
+              pipeline: pipelineResult,
+            });
+
+            if (sessionId) {
+              const messageId = await persistModelMessage({
+                sessionId,
+                content: finalContent,
+                sources: eventSources,
+                toolCalls:
+                  accumulatedToolCalls.length > 0
+                    ? accumulatedToolCalls
+                    : undefined,
+                persona: finalPersona,
+                pipeline: pipelineResult,
+              });
+              if (messageId !== undefined) {
+                modelMsg.dbId = messageId;
+              }
+              await loadSessions();
+            }
+
+            setMessages((prev) => [...prev, modelMsg]);
+            break;
+          }
+          case "error": {
+            toast.error(
+              (event.error as string) || "Yanıt üretilirken hata oluştu.",
+            );
+            break;
+          }
+        }
+      });
+    } catch {
+      toast.error(
+        "Yanıt üretilirken beklenmeyen bir hata oluştu. Lütfen tekrar deneyin.",
+      );
+    } finally {
+      setIsLoading(false);
+      setStreaming({
+        text: "",
+        sources: undefined,
+        toolCalls: undefined,
+        persona: undefined,
+        pipeline: undefined,
+      });
+      isSendingRef.current = false;
+    }
+  };
+
+  const handleCitationPosition = useCallback(
+    (messageId: string, sourceIndex: number) => {
+      setActiveCitation((prev) => {
+        if (prev?.messageId === messageId && prev.sourceIndex === sourceIndex) {
+          return null;
+        }
+        return { messageId, sourceIndex };
+      });
+    },
+    [setActiveCitation],
+  );
+
+  const activeSource =
+    activeCitation &&
+    (() => {
+      const msg = messages.find((m) => m.id === activeCitation.messageId);
+      return msg?.sources?.[activeCitation.sourceIndex] ?? null;
+    })();
+
+  const handleApprovePipeline = useCallback(() => {
+    setIsLocked(false);
+  }, []);
+
+  return {
+    messages,
+    setMessages,
+    isLoading,
+    isLocked,
+    activeCitation,
+    setActiveCitation,
+    sessions,
+    activeSessionId,
+    streamingText: streaming.text,
+    streamingSources: streaming.sources,
+    streamingToolCalls: streaming.toolCalls,
+    streamingPersona: streaming.persona,
+    streamingPipeline: streaming.pipeline,
+    copiedMessageId,
+    setCopiedMessageId,
+    activeSource,
+    handleSelectSession,
+    handleCreateSession,
+    handleDeleteSession,
+    handleApproveToolCall,
+    handleUndoToolCall,
+    handleRejectToolCall,
+    handleApprovePipeline,
+    handleSend,
+    handleCitationPosition,
+  };
+}
+</file>
+
+<file path="src/app/(app)/library/_components/resource-detail.tsx">
+"use client";
+
+import React, { useState } from "react";
+import { BookMarked, Sparkles } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Card } from "@/components/ui/card";
+import { PdfUploadDropzone } from "./pdf-upload-dropzone";
+import { EditResourceModal } from "./edit-resource-modal";
+import { ResourceHeader } from "./resource-detail/resource-header";
+import { CritiqueSection } from "./resource-detail/critique-section";
+import { NoteForm } from "./resource-detail/note-form";
+import { NoteItem, getNoteTypeBadgeConfig } from "./resource-detail/note-item";
+import { DeleteConfirmDialog } from "./resource-detail/delete-confirm-dialog";
+import type {
+  LibraryResourceItem,
+  LibraryResourceNote,
+  LibraryResourceCritique,
+} from "../_lib/types";
+import type { CritiqueFormInput } from "../_hooks/use-resource-critique";
+
+export { getNoteTypeBadgeConfig };
+
+export interface ResourceDetailProps {
+  resource: LibraryResourceItem;
+  notes: LibraryResourceNote[];
+  critique?: LibraryResourceCritique;
+  onAddNote: (
+    note: Omit<LibraryResourceNote, "id" | "createdAt" | "sentToCitationCards">,
+  ) => void;
+  onSaveCritique: (input: CritiqueFormInput) => void | Promise<void>;
+  onDeleteNote: (noteId: number) => void;
+  onToggleReadStatus: (resourceId: number) => void;
+  onUpdateResource?: (updatedResource: LibraryResourceItem) => void;
+  onUploadPdf?: (file: File) => Promise<boolean>;
+  onDeletePdf?: (resourceId: number) => Promise<void>;
+}
+
+/**
+ * Detailed view for a selected library resource with note taking and automatic citation card integration.
+ *
+ * @param root0 - Component props.
+ * @param root0.resource - Selected library resource.
+ * @param root0.notes - Notes associated with the resource.
+ * @param root0.onAddNote - Callback to add a new note to the resource.
+ * @param root0.onDeleteNote - Callback to delete a note by id.
+ * @param root0.onToggleReadStatus - Callback to toggle the read status of a resource.
+ * @param root0.onUpdateResource - Optional callback invoked after the resource metadata is updated.
+ * @param root0.onUploadPdf - Optional callback that uploads a PDF for the resource.
+ * @param root0.onDeletePdf - Optional callback that deletes the resource PDF.
+ * @returns The resource detail markup.
+ */
+export function ResourceDetail({
+  resource,
+  notes,
+  critique,
+  onAddNote,
+  onSaveCritique,
+  onDeleteNote,
+  onToggleReadStatus,
+  onUpdateResource,
+  onUploadPdf,
+  onDeletePdf,
+}: ResourceDetailProps) {
+  const [noteToDeleteId, setNoteToDeleteId] = useState<number | null>(null);
+  const [pdfToDeleteId, setPdfToDeleteId] = useState<number | null>(null);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+
+  const handleConfirmDeleteNote = () => {
+    if (noteToDeleteId !== null) {
+      onDeleteNote(noteToDeleteId);
+      setNoteToDeleteId(null);
+    }
+  };
+
+  const handleConfirmDeletePdf = async () => {
+    if (pdfToDeleteId && onDeletePdf) {
+      try {
+        await onDeletePdf(pdfToDeleteId);
+      } catch {}
+    }
+    setPdfToDeleteId(null);
+  };
+
+  return (
+    <Card className="flex h-full w-full flex-col space-y-6 rounded-md p-6">
+      <ResourceHeader
+        resource={resource}
+        onOpenEditModal={() => setIsEditModalOpen(true)}
+        onToggleReadStatus={onToggleReadStatus}
+        onDeletePdfClick={
+          onDeletePdf ? () => setPdfToDeleteId(resource.id) : undefined
+        }
+      />
+
+      {resource.pdfStatus !== "READY" && onUploadPdf && (
+        <PdfUploadDropzone
+          resourceTitle={resource.title}
+          pdfStatus={resource.pdfStatus}
+          onUploadPdf={onUploadPdf}
+        />
+      )}
+
+      {resource.pdfStatus === "READY" && (
+        <>
+          <CritiqueSection
+            critique={critique}
+            onSaveCritique={onSaveCritique}
+          />
+
+          <NoteForm resourceId={resource.id} onAddNote={onAddNote} />
+
+          <div className="space-y-4 pt-2">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <BookMarked className="h-5 w-5 text-primary" />
+                <h3 className="font-serif text-lg font-medium tracking-tight text-foreground">
+                  Akademik Notlarım ve Alıntılarım
+                </h3>
+              </div>
+              <Badge
+                variant="outline"
+                className="text-xs font-medium border-border"
+              >
+                {notes.length} Alıntı Fişi
+              </Badge>
+            </div>
+
+            {notes.length === 0 ? (
+              <div className="flex flex-col items-center justify-center h-36 rounded-md border border-dashed border-border p-6 text-center text-muted-foreground">
+                <Sparkles className="h-6 w-6 opacity-40 mb-2" />
+                <p className="text-sm font-medium">
+                  Henüz bu eser için not veya alıntı girilmemiş.
+                </p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Yukarıdaki formu kullanarak ilk sayfa numaralı alıntınızı
+                  ekleyebilirsiniz.
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {notes.map((note) => (
+                  <NoteItem
+                    key={note.id}
+                    note={note}
+                    onDeleteNoteClick={(id) => setNoteToDeleteId(id)}
+                  />
+                ))}
+              </div>
+            )}
+          </div>
+        </>
+      )}
+
+      <DeleteConfirmDialog
+        noteToDeleteId={noteToDeleteId}
+        onCloseNoteDeleteDialog={() => setNoteToDeleteId(null)}
+        onConfirmDeleteNote={handleConfirmDeleteNote}
+        pdfToDeleteId={pdfToDeleteId}
+        onClosePdfDeleteDialog={() => setPdfToDeleteId(null)}
+        onConfirmDeletePdf={handleConfirmDeletePdf}
+      />
+
+      <EditResourceModal
+        isOpen={isEditModalOpen}
+        onClose={() => setIsEditModalOpen(false)}
+        resource={resource}
+        onUpdateSuccess={(updatedResource) => {
+          onUpdateResource?.(updatedResource);
+        }}
+      />
+    </Card>
+  );
+}
+</file>
+
+<file path="src/app/(onboarding)/onboarding/boxes/actions.ts">
+"use server";
+
+import { createFlowId, Logger } from "@/lib/logger";
+import { type GeminiThesisBox } from "@/lib/types";
+import { mapToProductionShape } from "@/features/boxes/box-mapper";
+import { runBoxStructureAction as runBoxStructureActionImpl } from "@/features/boxes/structure-generation";
+import {
+  generateSemanticQueriesAction as generateSemanticQueriesActionImpl,
+  structureToQuadrants,
+} from "@/features/boxes/semantic-queries";
+import {
+  persistBoxesAction as persistBoxesActionImpl,
+  confirmBoxesAction as confirmBoxesActionImpl,
+} from "@/features/boxes/persist-boxes";
+
+/**
+ * Re-exported service actions preserved for backward compatibility.
+ */
+export async function runBoxStructureAction() {
+  return runBoxStructureActionImpl();
+}
+
+export async function generateSemanticQueriesAction(
+  structure: Parameters<typeof generateSemanticQueriesActionImpl>[0],
+) {
+  return generateSemanticQueriesActionImpl(structure);
+}
+
+export async function persistBoxesAction(boxes: GeminiThesisBox[]) {
+  return persistBoxesActionImpl(boxes);
+}
+
+export async function confirmBoxesAction(boxes: GeminiThesisBox[]) {
+  return confirmBoxesActionImpl(boxes);
+}
+
+/**
+ * Runs Phase 1 + Phase 2 and maps the result to production-shaped boxes.
+ *
+ * @returns The production-shaped boxes or an error message.
+ */
+export async function generateAndMapBoxesAction(): Promise<
+  { success: true; boxes: GeminiThesisBox[] } | { error: string }
+> {
+  const structRes = await runBoxStructureAction();
+  if ("error" in structRes) return structRes;
+
+  const queryRes = await generateSemanticQueriesAction(structRes.structure);
+  if ("error" in queryRes) return queryRes;
+
+  const quadrants = structureToQuadrants(structRes.structure);
+  const boxes = mapToProductionShape(quadrants);
+
+  for (const box of boxes) {
+    if (box.parentId !== null && queryRes.queries.has(box.title)) {
+      box.semanticQuery = queryRes.queries.get(box.title) ?? "";
+    }
+  }
+
+  return { success: true, boxes };
+}
+
+/**
+ * Emits the final pipeline total-duration SUCCESS log line.
+ *
+ * @param durationMs - Total pipeline duration in milliseconds.
+ */
+export async function logBoxesPipelineSuccessAction(
+  durationMs: number,
+): Promise<void> {
+  const log = new Logger(createFlowId());
+  log.info("boxes_full_pipeline_success", {
+    service: "boxes",
+    data: { durationMs: Math.round(durationMs) },
+  });
+}
+
+/**
+ * Runs the full legacy pipeline: generation (Phase 1 + 2) and persistence.
+ *
+ * @returns The generated boxes or an error message.
+ */
+export async function runBoxesPipelineAction(): Promise<
+  { success: true; boxes: GeminiThesisBox[] } | { error: string }
+> {
+  const flowId = createFlowId();
+  const log = new Logger(flowId);
+  const pipelineStart = performance.now();
+
+  try {
+    const genRes = await generateAndMapBoxesAction();
+    if ("error" in genRes) return genRes;
+
+    const persistRes = await persistBoxesAction(genRes.boxes);
+    if ("error" in persistRes && persistRes.error) {
+      return { error: persistRes.error };
+    }
+
+    log.info("boxes_full_pipeline_success", {
+      service: "boxes",
+      durationMs: Math.round(performance.now() - pipelineStart),
+    });
+
+    return { success: true, boxes: genRes.boxes };
+  } catch (err) {
+    log.error("boxes_full_pipeline_failed", {
+      service: "boxes",
+      error: err instanceof Error ? err : new Error(String(err)),
+    });
+    return {
+      error: "Konu kutuları oluşturulurken beklenmeyen bir hata oluştu.",
+    };
+  }
+}
+
+/**
+ * Legacy alias for runBoxesPipelineAction.
+ */
+export async function generateBoxesStructureAction() {
+  return runBoxesPipelineAction();
+}
+</file>
+
 <file path="src/features/positioning/sifting.ts">
 import { searchTezara } from "@/features/tezara";
 import type { TezaraThesisDetails } from "@/lib/types";
@@ -49476,306 +49796,6 @@ export async function generateChatTitleAction(
   } catch (error) {
     return handleActionError(error);
   }
-}
-</file>
-
-<file path="src/app/(app)/library/_components/resource-detail.tsx">
-"use client";
-
-import React, { useState } from "react";
-import { BookMarked, Sparkles } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
-import { Card } from "@/components/ui/card";
-import { PdfUploadDropzone } from "./pdf-upload-dropzone";
-import { EditResourceModal } from "./edit-resource-modal";
-import { ResourceHeader } from "./resource-detail/resource-header";
-import { CritiqueSection } from "./resource-detail/critique-section";
-import { NoteForm } from "./resource-detail/note-form";
-import { NoteItem, getNoteTypeBadgeConfig } from "./resource-detail/note-item";
-import { DeleteConfirmDialog } from "./resource-detail/delete-confirm-dialog";
-import type {
-  LibraryResourceItem,
-  LibraryResourceNote,
-  LibraryResourceCritique,
-} from "../_lib/types";
-import type { CritiqueFormInput } from "../_hooks/use-resource-critique";
-
-export { getNoteTypeBadgeConfig };
-
-export interface ResourceDetailProps {
-  resource: LibraryResourceItem;
-  notes: LibraryResourceNote[];
-  critique?: LibraryResourceCritique;
-  onAddNote: (
-    note: Omit<LibraryResourceNote, "id" | "createdAt" | "sentToCitationCards">,
-  ) => void;
-  onSaveCritique: (input: CritiqueFormInput) => void | Promise<void>;
-  onDeleteNote: (noteId: number) => void;
-  onToggleReadStatus: (resourceId: number) => void;
-  onUpdateResource?: (updatedResource: LibraryResourceItem) => void;
-  onUploadPdf?: (file: File) => Promise<boolean>;
-  onDeletePdf?: (resourceId: number) => Promise<void>;
-}
-
-/**
- * Detailed view for a selected library resource with note taking and automatic citation card integration.
- *
- * @param root0 - Component props.
- * @param root0.resource - Selected library resource.
- * @param root0.notes - Notes associated with the resource.
- * @param root0.onAddNote - Callback to add a new note to the resource.
- * @param root0.onDeleteNote - Callback to delete a note by id.
- * @param root0.onToggleReadStatus - Callback to toggle the read status of a resource.
- * @param root0.onUpdateResource - Optional callback invoked after the resource metadata is updated.
- * @param root0.onUploadPdf - Optional callback that uploads a PDF for the resource.
- * @param root0.onDeletePdf - Optional callback that deletes the resource PDF.
- * @returns The resource detail markup.
- */
-export function ResourceDetail({
-  resource,
-  notes,
-  critique,
-  onAddNote,
-  onSaveCritique,
-  onDeleteNote,
-  onToggleReadStatus,
-  onUpdateResource,
-  onUploadPdf,
-  onDeletePdf,
-}: ResourceDetailProps) {
-  const [noteToDeleteId, setNoteToDeleteId] = useState<number | null>(null);
-  const [pdfToDeleteId, setPdfToDeleteId] = useState<number | null>(null);
-  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
-
-  const handleConfirmDeleteNote = () => {
-    if (noteToDeleteId !== null) {
-      onDeleteNote(noteToDeleteId);
-      setNoteToDeleteId(null);
-    }
-  };
-
-  const handleConfirmDeletePdf = async () => {
-    if (pdfToDeleteId && onDeletePdf) {
-      try {
-        await onDeletePdf(pdfToDeleteId);
-      } catch {}
-    }
-    setPdfToDeleteId(null);
-  };
-
-  return (
-    <Card className="flex h-full w-full flex-col space-y-6 rounded-md p-6">
-      <ResourceHeader
-        resource={resource}
-        onOpenEditModal={() => setIsEditModalOpen(true)}
-        onToggleReadStatus={onToggleReadStatus}
-        onDeletePdfClick={
-          onDeletePdf ? () => setPdfToDeleteId(resource.id) : undefined
-        }
-      />
-
-      {resource.pdfStatus !== "READY" && onUploadPdf && (
-        <PdfUploadDropzone
-          resourceTitle={resource.title}
-          pdfStatus={resource.pdfStatus}
-          onUploadPdf={onUploadPdf}
-        />
-      )}
-
-      {resource.pdfStatus === "READY" && (
-        <>
-          <CritiqueSection
-            critique={critique}
-            onSaveCritique={onSaveCritique}
-          />
-
-          <NoteForm resourceId={resource.id} onAddNote={onAddNote} />
-
-          <div className="space-y-4 pt-2">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <BookMarked className="h-5 w-5 text-primary" />
-                <h3 className="font-serif text-lg font-medium tracking-tight text-foreground">
-                  Akademik Notlarım ve Alıntılarım
-                </h3>
-              </div>
-              <Badge
-                variant="outline"
-                className="text-xs font-medium border-border"
-              >
-                {notes.length} Alıntı Fişi
-              </Badge>
-            </div>
-
-            {notes.length === 0 ? (
-              <div className="flex flex-col items-center justify-center h-36 rounded-md border border-dashed border-border p-6 text-center text-muted-foreground">
-                <Sparkles className="h-6 w-6 opacity-40 mb-2" />
-                <p className="text-sm font-medium">
-                  Henüz bu eser için not veya alıntı girilmemiş.
-                </p>
-                <p className="text-xs text-muted-foreground mt-1">
-                  Yukarıdaki formu kullanarak ilk sayfa numaralı alıntınızı
-                  ekleyebilirsiniz.
-                </p>
-              </div>
-            ) : (
-              <div className="space-y-3">
-                {notes.map((note) => (
-                  <NoteItem
-                    key={note.id}
-                    note={note}
-                    onDeleteNoteClick={(id) => setNoteToDeleteId(id)}
-                  />
-                ))}
-              </div>
-            )}
-          </div>
-        </>
-      )}
-
-      <DeleteConfirmDialog
-        noteToDeleteId={noteToDeleteId}
-        onCloseNoteDeleteDialog={() => setNoteToDeleteId(null)}
-        onConfirmDeleteNote={handleConfirmDeleteNote}
-        pdfToDeleteId={pdfToDeleteId}
-        onClosePdfDeleteDialog={() => setPdfToDeleteId(null)}
-        onConfirmDeletePdf={handleConfirmDeletePdf}
-      />
-
-      <EditResourceModal
-        isOpen={isEditModalOpen}
-        onClose={() => setIsEditModalOpen(false)}
-        resource={resource}
-        onUpdateSuccess={(updatedResource) => {
-          onUpdateResource?.(updatedResource);
-        }}
-      />
-    </Card>
-  );
-}
-</file>
-
-<file path="src/app/(onboarding)/onboarding/boxes/actions.ts">
-"use server";
-
-import { createFlowId, Logger } from "@/lib/logger";
-import { type GeminiThesisBox } from "@/lib/types";
-import { mapToProductionShape } from "@/features/boxes/box-mapper";
-import { runBoxStructureAction as runBoxStructureActionImpl } from "@/features/boxes/structure-generation";
-import {
-  generateSemanticQueriesAction as generateSemanticQueriesActionImpl,
-  structureToQuadrants,
-} from "@/features/boxes/semantic-queries";
-import {
-  persistBoxesAction as persistBoxesActionImpl,
-  confirmBoxesAction as confirmBoxesActionImpl,
-} from "@/features/boxes/persist-boxes";
-
-/**
- * Re-exported service actions preserved for backward compatibility.
- */
-export async function runBoxStructureAction() {
-  return runBoxStructureActionImpl();
-}
-
-export async function generateSemanticQueriesAction(
-  structure: Parameters<typeof generateSemanticQueriesActionImpl>[0],
-) {
-  return generateSemanticQueriesActionImpl(structure);
-}
-
-export async function persistBoxesAction(boxes: GeminiThesisBox[]) {
-  return persistBoxesActionImpl(boxes);
-}
-
-export async function confirmBoxesAction(boxes: GeminiThesisBox[]) {
-  return confirmBoxesActionImpl(boxes);
-}
-
-/**
- * Runs Phase 1 + Phase 2 and maps the result to production-shaped boxes.
- *
- * @returns The production-shaped boxes or an error message.
- */
-export async function generateAndMapBoxesAction(): Promise<
-  { success: true; boxes: GeminiThesisBox[] } | { error: string }
-> {
-  const structRes = await runBoxStructureAction();
-  if ("error" in structRes) return structRes;
-
-  const queryRes = await generateSemanticQueriesAction(structRes.structure);
-  if ("error" in queryRes) return queryRes;
-
-  const quadrants = structureToQuadrants(structRes.structure);
-  const boxes = mapToProductionShape(quadrants);
-
-  for (const box of boxes) {
-    if (box.parentId !== null && queryRes.queries.has(box.title)) {
-      box.semanticQuery = queryRes.queries.get(box.title) ?? "";
-    }
-  }
-
-  return { success: true, boxes };
-}
-
-/**
- * Emits the final pipeline total-duration SUCCESS log line.
- *
- * @param durationMs - Total pipeline duration in milliseconds.
- */
-export async function logBoxesPipelineSuccessAction(
-  durationMs: number,
-): Promise<void> {
-  const log = new Logger(createFlowId());
-  log.info("boxes_full_pipeline_success", {
-    service: "boxes",
-    data: { durationMs: Math.round(durationMs) },
-  });
-}
-
-/**
- * Runs the full legacy pipeline: generation (Phase 1 + 2) and persistence.
- *
- * @returns The generated boxes or an error message.
- */
-export async function runBoxesPipelineAction(): Promise<
-  { success: true; boxes: GeminiThesisBox[] } | { error: string }
-> {
-  const flowId = createFlowId();
-  const log = new Logger(flowId);
-  const pipelineStart = performance.now();
-
-  try {
-    const genRes = await generateAndMapBoxesAction();
-    if ("error" in genRes) return genRes;
-
-    const persistRes = await persistBoxesAction(genRes.boxes);
-    if ("error" in persistRes && persistRes.error) {
-      return { error: persistRes.error };
-    }
-
-    log.info("boxes_full_pipeline_success", {
-      service: "boxes",
-      durationMs: Math.round(performance.now() - pipelineStart),
-    });
-
-    return { success: true, boxes: genRes.boxes };
-  } catch (err) {
-    log.error("boxes_full_pipeline_failed", {
-      service: "boxes",
-      error: err instanceof Error ? err : new Error(String(err)),
-    });
-    return {
-      error: "Konu kutuları oluşturulurken beklenmeyen bir hata oluştu.",
-    };
-  }
-}
-
-/**
- * Legacy alias for runBoxesPipelineAction.
- */
-export async function generateBoxesStructureAction() {
-  return runBoxesPipelineAction();
 }
 </file>
 

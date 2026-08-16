@@ -49,6 +49,23 @@ export function getGeminiKeyPool(): GeminiKeyPool {
   return keyPool;
 }
 
+let nextKeyIndex = 0;
+
+/**
+ * Returns the next Gemini key in round-robin order across the enabled keys.
+ *
+ * Distributes request traffic evenly across all enabled keys so that the
+ * combined per-minute budget of every key is used (e.g. 3 keys × 15 RPM).
+ *
+ * @returns The next API key string in rotation order.
+ */
+export function getNextGeminiKey(): string {
+  const pool = getGeminiKeyPool();
+  const key = pool.keys[nextKeyIndex % pool.keys.length];
+  nextKeyIndex++;
+  return key;
+}
+
 /**
  * Resolves the 0-based project/key index for a given API key string.
  *

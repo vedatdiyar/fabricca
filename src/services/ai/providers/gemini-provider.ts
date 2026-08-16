@@ -1,6 +1,10 @@
 import { GoogleGenAI, HarmCategory, HarmBlockThreshold } from "@google/genai";
 import { Logger, createFlowId } from "@/lib/logger";
-import { getGeminiKeyPool, getProjectIndex } from "../gemini-key-pool";
+import {
+  getGeminiKeyPool,
+  getNextGeminiKey,
+  getProjectIndex,
+} from "../gemini-key-pool";
 import { GEMINI_SEED } from "@/lib/constants";
 import {
   SchemaValidationError,
@@ -158,8 +162,7 @@ export async function generateStructuredContent<T>(
   const thinkingLevel = options?.thinkingConfig?.thinkingLevel;
   const callLabel = options?.payloadStage ?? "gemini";
 
-  const keyPool = getGeminiKeyPool();
-  const assignedKey = options?.apiKey ?? keyPool.keys[0];
+  const assignedKey = options?.apiKey ?? getNextGeminiKey();
   const projectIndex = getProjectIndex(assignedKey);
 
   if (options?.quiet !== true) {
@@ -295,7 +298,7 @@ export async function generateStructuredContent<T>(
               attempt,
               maxRetries,
               projectIndex: projectIndex + 1,
-              crossProjectRotation: false,
+              crossProjectRotation: true,
               delayMs: Math.round(delay),
               retryAfterMs: retryAfterMs ?? undefined,
               httpStatus,
@@ -370,7 +373,7 @@ export async function generateStructuredContent<T>(
         data: {
           model: modelName,
           projectIndex: projectIndex + 1,
-          crossProjectRotation: false,
+          crossProjectRotation: true,
           attempt: attempts,
           thinkingLevel: thinkingLevel ?? undefined,
         },
@@ -392,7 +395,7 @@ export async function generateStructuredContent<T>(
       data: {
         model: modelName,
         projectIndex: projectIndex + 1,
-        crossProjectRotation: false,
+        crossProjectRotation: true,
         attempts,
         thinkingLevel: thinkingLevel ?? undefined,
         scenario,
