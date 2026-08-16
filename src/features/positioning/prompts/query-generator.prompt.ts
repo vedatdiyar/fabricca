@@ -2,36 +2,40 @@ import {
   buildPromptPayload,
   type PromptPayload,
 } from "@/lib/ai/prompt-builder";
-import type { PositioningMatrixInput } from "../validation";
 
 /**
- * Builds the standardized PromptPayload for extracting a dense, noise-free semantic search query
- * from the user's 3-component thesis matrix.
+ * Builds the standardized PromptPayload for extracting dense, noise-free multi-aspect semantic search queries
+ * purely from the user's substantive research problem (subjectProblem).
  * Strictly adheres to docs/LLM_INTEGRATION.md (Hybrid XML + Markdown Encapsulation).
  *
- * @param matrix - The 3-component positioning matrix.
+ * @param subjectProblem - The substantive empirical research problem text.
  * @returns Standardized PromptPayload containing systemInstruction and userPrompt.
  */
 export function buildQueryGenerationPromptPayload(
-  matrix: PositioningMatrixInput,
+  subjectProblem: string,
 ): PromptPayload {
   return buildPromptPayload({
     roleAndExpertise:
-      "Akademik Tez Arama ve Literatür Keşfi Uzmanısınız. Göreviniz girift tez matrislerinden arama motorlarının tam isabetle literatür yakalamasını sağlayan yüksek yoğunluklu semantik sorgular damıtmaktır.",
+      "Akademik Literatür Keşfi ve Semantik Arama Uzmanısınız. Göreviniz araştırma probleminden arama motorlarının tam isabetle literatür yakalamasını sağlayan yüksek yoğunluklu semantik sorgular ve olgusal anahtar kavramlar damıtmaktır.",
 
     primaryTask:
-      "Kullanıcının araştırma problemi, teorik çerçevesi ve metodolojisinden oluşan 3 bileşenli tez matrisini analiz ederek; tezin üzerinde çalıştığı somut tarihsel/olgusal sahayı, aktörleri ve araştırma nesnesini en yüksek hassasiyetle yakalayan yoğun bir semantik arama sorgusu ve anahtar kavramlar üretmektir.",
+      "Kullanıcının araştırma problemi metnini (subjectProblem) analiz ederek; araştırmanın üzerinde çalıştığı somut ampirik sahayı, aktörleri, kurumları, birincil veri tabanını ve tarihsel/coğrafi dönemi en yüksek hassasiyetle yakalayan 3 tamamlayıcı semantik arama sorgusu ve anahtar kavramlar üretmektir.",
 
-    rulesAndConstraints: `1. **Olgusal Saha Odaklılık (MUTLAK KURAL):**
-   - Arama sorgusu ve anahtar kavramlar doğrudan araştırmanın incelediği somut olguya, siyasal/toplumsal harekete, kurumlara ve tarihsel döneme odaklanmalıdır.
-   - Soyut metodolojik kelimeler (örn. "nitel analiz", "kodlama şeması") veya genel şemsiye terimler (örn. "söylem", "temsil") yerine; spesifik aktör, hareket ve dönem adlarını (örn. "Kürt siyasal hareketi 1991-1999 HEP DEP HADEP PKK talep dönüşümü") öne çıkarın.
+    rulesAndConstraints: `1. **Mutlak Olgusal Saha ve Ampirik Odak (MUTLAK KURAL):**
+   - Arama sorguları ve anahtar kavramlar doğrudan araştırmanın incelediği somut olguya, aktörlere, kurumlara, birincil veri kaynaklarına ve tarihsel döneme odaklanmalıdır.
+   - Soyut metodolojik kelimeler (örn. "nitel analiz", "içerik analizi", "kodlama şeması") veya genel kuramsal şemsiye terimler (örn. "kuramsal çerçeve", "yapı-özne diyalektiği") KESİNLİKLE arama sorgularına konulmamalıdır.
 
-2. **Gürültüsüz ve Yoğun İfade:**
-   - \`primaryQuery\` en fazla 25-30 kelimelik, doğrudan YÖK Tez / Qdrant vektör aramasında en ilgili tezleri getirecek netlikte olmalıdır.
-   - \`substantiveKeywords\` en az 3, en fazla 6 adet spesifik olgusal/tarihsel kavramdan oluşmalıdır.`,
+2. **3 Tamamlayıcı Semantik Arama Açısı:**
+   - \`primaryEmpiricalQuery\`: Araştırmanın temel ampirik sorunsalını, dönüşümünü veya olgusunu hedefleyen 20-25 kelimelik yoğun semantik sorgu.
+   - \`actorsAndSourcesQuery\`: Araştırmanın incelediği somut aktörleri, kurumları, partileri, örgütleri veya birincil yayın/veri kaynaklarını hedefleyen semantik sorgu.
+   - \`periodAndContextQuery\`: Araştırmanın odaklandığı tarihsel dönemi, dönemsel kırılmaları veya somut coğrafi/mekânsal bağlamı hedefleyen semantik sorgu.
+   - \`substantiveKeywords\`: Literatür eşleştirmesinde kullanılacak 4-6 adet somut olgusal/aktör/dönem kavramı.
 
-    workflowSteps: `1. Kullanıcının araştırma problemini, dönemini ve odaklandığı somut aktörleri belirle.
-2. YÖK Tez veritabanındaki benzer tezlerin başlık ve özetlerinde geçecek en kritik olgusal anahtar kelimeleri damıt.
+3. **Gürültüsüz ve Yoğun İfade:**
+   - Tüm sorgular doğrudan YÖK Tez / Qdrant vektör aramasında en ilgili tezleri getirecek netlikte, doğal akademik dille ve gereksiz bağlaçlardan arındırılmış olmalıdır.`,
+
+    workflowSteps: `1. Kullanıcının araştırma problemindeki ampirik olguyu, aktörleri, kurumları, birincil kaynakları ve dönemi belirle.
+2. Bu unsurları 3 tamamlayıcı semantik arama açısına ve somut anahtar kavramlara dönüştür.
 3. Çıktıyı JSON şemasına uygun olarak üret.`,
 
     outputFormat:
@@ -39,28 +43,23 @@ export function buildQueryGenerationPromptPayload(
 
     examples: `<example>
 <input>
-Araştırma Problemi: 1991-1999 döneminde Kürt siyasal hareketinin taleplerindeki niteliksel dönüşümü manevra savaşından mevzi savaşına geçiş bağlamında PKK ve legal partiler (HEP-DEP-HADEP) üzerinden inceler.
-Teorik Çerçeve: Antonio Gramsci'nin hegemonya ve mevzi savaşı kuramı.
-Metodoloji: Söylem-tarihsel yaklaşım (DHA) ve nitel içerik analizi.
+1991-1999 döneminde Kürt siyasal hareketinin taleplerindeki niteliksel dönüşümü manevra ve mevzi savaşı ekseninde PKK ve legal partiler (HEP, DEP, HADEP) üzerinden inceler. Birincil kaynak olarak Serxwebûn dergisi ve TBMM tutanakları kullanılır.
 </input>
 <output>
 {
-  "primaryQuery": "Kürt siyasal hareketi 1991-1999 HEP DEP HADEP PKK söylemsel dönüşüm talep tipolojisi mevzi savaşı",
-  "substantiveKeywords": ["Kürt siyasal hareketi", "HEP-DEP-HADEP", "PKK söylemsel dönüşüm", "1991-1999 dönemi", "talep tipolojisi"]
+  "primaryEmpiricalQuery": "Kürt siyasal hareketi taleplerindeki niteliksel dönüşüm yasal partiler ve silahlı kanat söylem değişimi 1990lar",
+  "actorsAndSourcesQuery": "HEP DEP HADEP PKK Serxwebûn meclis tutanakları parti programları bildirgeler",
+  "periodAndContextQuery": "1991-1999 dönemi Kürt hareketi kuluçka evresi 1999 kırılması yerel seçimler",
+  "substantiveKeywords": ["Kürt siyasal hareketi", "HEP-DEP-HADEP", "PKK", "Serxwebûn", "1991-1999 dönemi", "Talep dönüşümü"]
 }
 </output>
 </example>`,
 
-    inputContext: `### 1. Araştırma Problemi ve Odağı:
-${matrix.subjectProblem}
-
-### 2. Teorik ve Kavramsal Çerçeve:
-${matrix.theoreticalFramework}
-
-### 3. Metodoloji ve Yöntem:
-${matrix.methodology}`,
+    inputContext: `### Araştırma Problemi ve Olgusal Odak (subjectProblem):
+${subjectProblem}`,
 
     taskTrigger:
-      "Yukarıdaki <context> içeriğindeki 3 bileşenli tez matrisini analiz ederek <instructions> kurallarına göre `primaryQuery` ve `substantiveKeywords` alanlarını içeren JSON formatında semantik arama sorgusu çıktısını üret.",
+      "Yukarıdaki <context> içeriğindeki araştırma problemini analiz ederek <instructions> kurallarına göre `primaryEmpiricalQuery`, `actorsAndSourcesQuery`, `periodAndContextQuery` ve `substantiveKeywords` alanlarını içeren JSON formatında semantik arama sorgusu çıktısını üret.",
   });
 }
+

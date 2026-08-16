@@ -28,6 +28,12 @@ export const perThesisEvaluationSchema = z.object({
     .describe(
       "Kullanıcının araştırma nesnesi/olgusal sahasıyla doğrudan alakalı mı?",
     ),
+  relevanceReasoning: z
+    .string()
+    .optional()
+    .describe(
+      "Tezin ampirik olarak neden ilgili veya ilgisiz olduğuna dair somut gerekçe (1-2 cümle)",
+    ),
   isDirectOverlap: z
     .boolean()
     .describe(
@@ -36,7 +42,7 @@ export const perThesisEvaluationSchema = z.object({
   strategicRole: strategicRoleEnum
     .optional()
     .describe(
-      "Tezin kullanıcının tezindeki stratejik rolü: UMBRELLA_MACRO | PARALLEL_LINE | SEQUENTIAL_PERIOD | DIRECT_CHALLENGE",
+      "Tezin kullanıcının tezindeki stratejik rolü: BROAD_CONTEXT | SPECIFIC_FOCUS | FOUNDATIONAL_WORK | METHODOLOGICAL_BENCHMARK | ALTERNATIVE_PERSPECTIVE",
     ),
   contributionAreas: z
     .array(z.string())
@@ -79,6 +85,11 @@ export const perThesisEvaluationJsonSchema: JsonSchema = {
       description:
         "Kullanıcının araştırma nesnesi/olgusal sahasıyla doğrudan alakalı mı? İlgisiz tezlerde false.",
     },
+    relevanceReasoning: {
+      type: "string",
+      description:
+        "Tezin ampirik olarak neden ilgili veya ilgisiz olduğuna dair somut gerekçe (1-2 cümle)",
+    },
     isDirectOverlap: {
       type: "boolean",
       description:
@@ -100,17 +111,17 @@ export const perThesisEvaluationJsonSchema: JsonSchema = {
       type: "array",
       items: { type: "string" },
       description:
-        "Tezin kullanıcının tezine katkı sağladığı spesifik odak alanları (1-3 adet); ilgisiz tezlerde boş",
+        "Tezin kullanıcının tezine katkı sağladığı spesifik odak alanları (1-3 adet). İlgisiz tezlerde boş dizi [].",
     },
     literaturePosition: {
       type: "string",
       description:
-        "Tezin literatürdeki konumu ve ne yaptığı (1 net cümle); ilgisiz tezlerde boş",
+        "Tezin literatürdeki konumu ve ne yaptığı (1 net cümle). İlgisiz tezlerde boş string.",
     },
     strategicUtility: {
       type: "string",
       description:
-        "Tezin kullanıcının tezinde nasıl kullanılacağına ve hangi boşluğu dolduracağına dair stratejik rehber not (1-2 cümle); ilgisiz tezlerde boş",
+        "Tezin kullanıcının tezinde nasıl kullanılacağına ve hangi boşluğu dolduracağına dair stratejik rehber not (1-2 cümle). İlgisiz tezlerde boş string.",
     },
   },
   required: [

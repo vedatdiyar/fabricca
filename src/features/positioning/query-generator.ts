@@ -9,17 +9,28 @@ import { buildQueryGenerationPromptPayload } from "./prompts/query-generator.pro
 import type { Logger } from "@/lib/logger";
 import type { PositioningMatrixInput } from "./validation";
 
-/** Zod schema for generated dense semantic search queries. */
+
+/** Zod schema for generated dense multi-aspect empirical semantic search queries. */
 export const positioningQuerySchema = z.object({
-  primaryQuery: z
+  primaryEmpiricalQuery: z
     .string()
     .describe(
-      "Vektör arama motoru için en fazla 20-30 kelimelik, araştırmanın temel olgusal nesnesini, aktörlerini, dönemini ve sorunsalını içeren yüksek yoğunluklu semantik arama sorgusu.",
+      "Vektör arama motoru için araştırmanın temel ampirik sorunsalını ve olgusunu hedefleyen 20-25 kelimelik yoğun semantik sorgu.",
+    ),
+  actorsAndSourcesQuery: z
+    .string()
+    .describe(
+      "Araştırmanın incelediği somut aktörleri, kurumları, partileri veya birincil yayın/veri kaynaklarını hedefleyen semantik sorgu.",
+    ),
+  periodAndContextQuery: z
+    .string()
+    .describe(
+      "Araştırmanın odaklandığı tarihsel dönemi, dönemsel kırılmaları veya somut coğrafi/mekânsal bağlamı hedefleyen semantik sorgu.",
     ),
   substantiveKeywords: z
     .array(z.string())
     .describe(
-      "Literatür eşleştirmesinde ve yeniden sıralamada kullanılacak 3-6 adet spesifik akademik olgu ve aktör kavramı.",
+      "Literatür eşleştirmesinde ve yeniden sıralamada kullanılacak 4-6 adet spesifik akademik olgu, aktör ve dönem kavramı.",
     ),
 });
 
@@ -29,34 +40,50 @@ export type PositioningQuery = z.infer<typeof positioningQuerySchema>;
 export const positioningQueryJsonSchema: JsonSchema = {
   type: "object",
   properties: {
-    primaryQuery: {
+    primaryEmpiricalQuery: {
       type: "string",
       description:
-        "Vektör arama motoru için en fazla 20-30 kelimelik, araştırmanın temel olgusal nesnesini, aktörlerini, dönemini ve sorunsalını içeren yüksek yoğunluklu semantik arama sorgusu.",
+        "Vektör arama motoru için araştırmanın temel ampirik sorunsalını ve olgusunu hedefleyen 20-25 kelimelik yoğun semantik sorgu.",
+    },
+    actorsAndSourcesQuery: {
+      type: "string",
+      description:
+        "Araştırmanın incelediği somut aktörleri, kurumları, partileri veya birincil yayın/veri kaynaklarını hedefleyen semantik sorgu.",
+    },
+    periodAndContextQuery: {
+      type: "string",
+      description:
+        "Araştırmanın odaklandığı tarihsel dönemi, dönemsel kırılmaları veya somut coğrafi/mekânsal bağlamı hedefleyen semantik sorgu.",
     },
     substantiveKeywords: {
       type: "array",
       items: { type: "string" },
       description:
-        "Literatür eşleştirmesinde ve yeniden sıralamada kullanılacak 3-6 adet spesifik akademik olgu ve aktör kavramı.",
+        "Literatür eşleştirmesinde ve yeniden sıralamada kullanılacak 4-6 adet spesifik akademik olgu, aktör ve dönem kavramı.",
     },
   },
-  required: ["primaryQuery", "substantiveKeywords"],
+  required: [
+    "primaryEmpiricalQuery",
+    "actorsAndSourcesQuery",
+    "periodAndContextQuery",
+    "substantiveKeywords",
+  ],
   additionalProperties: false,
 };
 
 /**
- * Generates a dense, distilled semantic query from the thesis matrix using FLASH_LITE_31 and HIGH thinking.
+ * Generates dense, multi-aspect empirical semantic search queries purely from the subjectProblem
+ * using FLASH_LITE_31 and HIGH thinking.
  *
- * @param matrix - The 3-component positioning matrix.
+ * @param matrix - The positioning matrix containing subjectProblem.
  * @param logger - Optional logger for observability.
- * @returns The structured positioning query output.
+ * @returns The structured multi-aspect positioning query output.
  */
 export async function generatePositioningQuery(
-  matrix: PositioningMatrixInput,
+  matrix: PositioningMatrixInput | { subjectProblem: string },
   logger?: Logger,
 ): Promise<PositioningQuery> {
-  const payload = buildQueryGenerationPromptPayload(matrix);
+  const payload = buildQueryGenerationPromptPayload(matrix.subjectProblem);
 
   try {
     const result = await generateGeminiStructuredContent<PositioningQuery>(
@@ -79,9 +106,13 @@ export async function generatePositioningQuery(
   } catch (error) {
     logger?.warn("positioning_query_generation_fallback", { error });
     // Safe fallback if LLM query generation fails
+    const fallbackSlice = matrix.subjectProblem.slice(0, 250);
     return {
-      primaryQuery: matrix.subjectProblem.slice(0, 300),
+      primaryEmpiricalQuery: fallbackSlice,
+      actorsAndSourcesQuery: fallbackSlice,
+      periodAndContextQuery: fallbackSlice,
       substantiveKeywords: [],
     };
   }
 }
+

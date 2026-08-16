@@ -63,34 +63,65 @@ function formatThesisToYaml(thesis: TezaraThesisDetails): string {
   return [`Title: ${thesis.title}`, `Abstract: ${thesis.abstract}`].join("\n");
 }
 
-import { generatePositioningQuery } from "./query-generator";
+import { generatePositioningQuery, type PositioningQuery } from "./query-generator";
 
 /**
- * Formats the positioning query and matrix into a rich YAML query for Cohere cross-encoder reranking.
+ * Formats the multi-aspect positioning query and matrix into a rich YAML query for Cohere cross-encoder reranking.
  *
- * @param query - The generated positioning query containing primary query and substantive keywords.
+ * @param query - The generated positioning query containing empirical sub-queries and substantive keywords.
  * @param input - The validated positioning matrix input.
  * @returns The formatted YAML query string.
  */
 function formatMatrixToYamlQuery(
-  query: { primaryQuery: string; substantiveKeywords: string[] },
+  query: PositioningQuery,
   input: PositioningMatrixInput,
 ): string {
   const lines = [
-    `ResearchFocus: ${query.primaryQuery}`,
+    `ResearchFocus: ${query.primaryEmpiricalQuery} ${query.actorsAndSourcesQuery}`,
     `SubstantiveKeywords: ${query.substantiveKeywords.join(", ")}`,
     `SubjectProblem: ${input.subjectProblem}`,
   ];
   return lines.join("\n");
 }
 
+/**
+ * Merges multiple ranked candidate lists using Reciprocal Rank Fusion (RRF) to eliminate single-query blind spots.
+ *
+ * @param rankedLists - Array of thesis candidate lists.
+ * @param k - Smoothing constant (default: 60).
+ * @returns Deduplicated and fused list of theses.
+ */
+function reciprocalRankFusion(
+  rankedLists: Array<TezaraThesisDetails[]>,
+  k = 60,
+): TezaraThesisDetails[] {
+  const scoreMap = new Map<
+    number,
+    { thesis: TezaraThesisDetails; rrfScore: number }
+  >();
+
+  for (const list of rankedLists) {
+    list.forEach((thesis, rank) => {
+      const id = thesis.id;
+      const current = scoreMap.get(id) || { thesis, rrfScore: 0 };
+      current.rrfScore += 1 / (k + rank + 1);
+      scoreMap.set(id, current);
+    });
+  }
+
+  return Array.from(scoreMap.values())
+    .sort((a, b) => b.rrfScore - a.rrfScore)
+    .map((item) => item.thesis);
+}
+
 /** Difference threshold under which two relevance scores are treated as a tie. */
 const SCORE_EPSILON = 1e-4;
 
 /**
- * Ultra-fast direct semantic thesis sifting engine:
- * Extracts a high-density semantic focus query via FLASH_LITE_31, fetches candidate theses from Qdrant Cloud,
- * filters valid abstracts and languages, and applies Cohere Rerank v4.0 Pro to sort the top-N candidates.
+ * Ultra-fast multi-aspect direct semantic thesis sifting engine:
+ * Extracts 3 complementary empirical focus queries via FLASH_LITE_31 purely from subjectProblem,
+ * fetches candidate theses from Qdrant Cloud in parallel, fuses them via RRF, filters valid abstracts
+ * and languages, and applies Cohere Rerank v4.0 Pro to sort the top-N candidates.
  *
  * @param matrixInput - The validated positioning matrix input.
  * @param logger - Optional structured logger for pipeline events.
@@ -103,7 +134,7 @@ export async function searchAndSiftTheses(
   options?: { topN?: number; candidateLimit?: number },
 ): Promise<SiftedThesis[]> {
   const topN = options?.topN ?? 35;
-  const candidateLimit = options?.candidateLimit ?? 150;
+  const singleQueryLimit = options?.candidateLimit ?? 100;
 
   const queryGenStart = performance.now();
   logger?.info("sifting_query_generation_start", {
@@ -112,34 +143,51 @@ export async function searchAndSiftTheses(
   });
 
   const distilledQuery = await generatePositioningQuery(matrixInput, logger);
-  const searchQuery = sanitizeSearchQuery(
-    distilledQuery.primaryQuery || matrixInput.subjectProblem,
+
+  const query1 = sanitizeSearchQuery(
+    distilledQuery.primaryEmpiricalQuery || matrixInput.subjectProblem,
+  );
+  const query2 = sanitizeSearchQuery(
+    distilledQuery.actorsAndSourcesQuery || matrixInput.subjectProblem,
+  );
+  const query3 = sanitizeSearchQuery(
+    distilledQuery.periodAndContextQuery || matrixInput.subjectProblem,
   );
 
   logger?.info("sifting_query_generation_success", {
     service: "gemini",
     filePath: "src/features/positioning/sifting.ts",
     durationMs: performance.now() - queryGenStart,
-    data: { searchQuery, keywords: distilledQuery.substantiveKeywords },
+    data: {
+      query1,
+      query2,
+      query3,
+      keywords: distilledQuery.substantiveKeywords,
+    },
   });
 
   const searchStart = performance.now();
 
-  logger?.info("sifting_direct_search_start", {
+  logger?.info("sifting_multi_search_start", {
     service: "tezara",
     filePath: "src/features/positioning/sifting.ts",
-    data: { query: searchQuery, candidateLimit },
+    data: { queries: [query1, query2, query3], singleQueryLimit },
   });
 
-  // 1. Single Ultra-Fast Qdrant Query with candidateLimit (default 150)
-  const rawTheses = await searchTezara(searchQuery, logger, {
-    limit: candidateLimit,
-  });
+  // 1. Multi-Aspect Parallel Qdrant Searches
+  const [res1, res2, res3] = await Promise.all([
+    searchTezara(query1, logger, { limit: singleQueryLimit }),
+    searchTezara(query2, logger, { limit: singleQueryLimit }),
+    searchTezara(query3, logger, { limit: singleQueryLimit }),
+  ]);
 
-  // 2. Filter valid candidates
-  const filteredCandidates = rawTheses.filter((thesis) => {
+  // 2. Fuse candidate pools via Reciprocal Rank Fusion (RRF)
+  const fusedTheses = reciprocalRankFusion([res1, res2, res3]);
+
+  // 3. Filter valid candidates
+  const filteredCandidates = fusedTheses.filter((thesis) => {
     const hasSufficientAbstract =
-      thesis.abstract && thesis.abstract.trim().length >= 100;
+      thesis.abstract && thesis.abstract.trim().length >= 80;
     if (!hasSufficientAbstract) return false;
 
     const isValidLang = isAllowedLanguage(thesis.language);
@@ -152,7 +200,7 @@ export async function searchAndSiftTheses(
     logger?.info("sifting_no_candidates_remaining", {
       service: "tezara",
       filePath: "src/features/positioning/sifting.ts",
-      data: { query: searchQuery },
+      data: { query: query1 },
     });
     return [];
   }
@@ -164,7 +212,7 @@ export async function searchAndSiftTheses(
     data: { candidateCount: filteredCandidates.length },
   });
 
-  // 3. Cohere Rerank v4.0 Pro
+  // 4. Cohere Rerank v4.0 Pro
   const targetYamlQuery = formatMatrixToYamlQuery(distilledQuery, matrixInput);
   const candidateYamlDocs = filteredCandidates.map(formatThesisToYaml);
 
@@ -210,3 +258,4 @@ export async function searchAndSiftTheses(
 
   return selected;
 }
+

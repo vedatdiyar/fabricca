@@ -28,7 +28,7 @@ export const juryRecommendedThesisSchema = z.object({
   strategicRole: strategicRoleEnum
     .optional()
     .describe(
-      "Tezin stratejik rolü: UMBRELLA_MACRO | PARALLEL_LINE | SEQUENTIAL_PERIOD | DIRECT_CHALLENGE",
+      "Tezin stratejik rolü: BROAD_CONTEXT | SPECIFIC_FOCUS | FOUNDATIONAL_WORK | METHODOLOGICAL_BENCHMARK | ALTERNATIVE_PERSPECTIVE",
     ),
   literaturePosition: z
     .string()

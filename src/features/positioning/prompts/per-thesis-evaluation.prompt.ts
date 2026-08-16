@@ -7,82 +7,68 @@ import type { SiftedThesis } from "@/features/positioning/sifting";
 
 /**
  * Builds the standardized PromptPayload for single-thesis strategic evaluation.
- * Focuses strictly on the substantive research problem and empirical phenomenon (subjectProblem)
- * to avoid attention leakage from abstract theoretical or methodological labels.
+ * Strictly adheres to docs/LLM_INTEGRATION.md (Hybrid XML + Markdown Encapsulation).
  *
- * @param input - The validated positioning matrix input.
+ * @param input - The validated positioning matrix input containing subjectProblem.
  * @param thesis - The candidate thesis to evaluate.
  * @returns Standardized PromptPayload containing systemInstruction and userPrompt.
  */
 export function buildPerThesisEvaluationPromptPayload(
-  input: PositioningMatrixInput,
+  input: PositioningMatrixInput | { subjectProblem: string },
   thesis: SiftedThesis,
 ): PromptPayload {
   return buildPromptPayload({
     roleAndExpertise:
-      "Akademik Tez Değerlendirme Kurulu Kıdemli Raportörüsünüz. Göreviniz aday tezin olgusal ve ampirik araştırma nesnesini, kullanıcının araştırma problemiyle tarafsız, titiz ve tavizsiz bir biçimde karşılaştırarak stratejik ön eleme yapmaktır.",
+      "Akademik Tez Değerlendirme Kurulu Kıdemli Raportörüsünüz. Göreviniz aday tezin ampirik araştırma nesnesini, kullanıcının araştırma problemiyle tarafsız, titiz ve ilkeli bir biçimde karşılaştırarak stratejik ön eleme yapmaktır.",
 
     primaryTask:
-      "Sana sunulan kullanıcının Araştırma Problemi ve Olgusal Odağı ile adaya ait TEK BİR tezi karşılaştırarak; tezin olgusal uygunluğunu (isRelevant), birebir çakışma durumunu (isDirectOverlap) ve eğer uygunsa tezin kullanıcının literatür taramasındaki stratejik rolünü (strategicRole, literaturePosition, strategicUtility) belirlemektir.",
+      "Sana sunulan kullanıcının Araştırma Problemi (subjectProblem) ile adaya ait TEK BİR tezi karşılaştırarak; tezin ampirik uygunluğunu (isRelevant), gerekçesini (relevanceReasoning), birebir çakışma durumunu (isDirectOverlap) ve eğer uygunsa tezin literatürdeki stratejik rolünü (strategicRole, literaturePosition, strategicUtility) belirlemektir.",
 
-    rulesAndConstraints: `1. **Mutlak Olgusal Saha ve Ampirik Odak Kuralı (MUTLAK KURAL):**
-   - \`isRelevant: true\` YALNIZCA VE SADECE aday tezin ampirik araştırma nesnesi kullanıcının çalıştığı somut konu, aktörler, kurumlar veya süreçle DOĞRUDAN kesişiyorsa verilir.
+    rulesAndConstraints: `1. **Parçalı Stratejik Rol İlkesi (MUTLAK KURAL):**
+   - Literatürdeki yardımcı tezlerin kullanıcının tüm araştırma boyutlarını tek başına kapsamasını beklemek metodolojik bir hatadır (zaten tüm boyutları birebir kapsarsa özgünlük riski / çakışma oluşur).
+   - Aday tez; kullanıcının araştırma probleminin, sahasının veya odaklandığı nesnenin **EN AZ BİR SOMUT BOYUTUNU** (belirli bir aktör grubunu, birincil veri kaynağını, kurumsal yapısını veya tarihsel dönemini) ampirik olarak inceliyorsa \`isRelevant: true\` verilir:
+     * Konuyu daha geniş bir tarihsel/makro çerçevede ele alan çalışmalar -> \`BROAD_CONTEXT\`
+     * Araştırmanın tek bir boyutuna, aktörüne veya birincil kaynağına odaklanan çalışmalar -> \`SPECIFIC_FOCUS\`
+     * Konunun önceki evrelerini, tarihsel köklerini veya zeminini inceleyen çalışmalar -> \`FOUNDATIONAL_WORK\`
+     * Benzer bir ampirik veri toplama veya analiz modeli uygulayan çalışmalar -> \`METHODOLOGICAL_BENCHMARK\`
+     * Karşıt veya farklı bir açıklama modeli sunan çalışmalar -> \`ALTERNATIVE_PERSPECTIVE\`
 
-2. **Kuramsal Benzerlik Tuzağı ve Genel Derleme Yasağı (KESİN ELEME SEBEBİ):**
-   - Aday tez; somut aktörlerin birincil metinlerini, söylemlerini veya olgusal verilerini ampirik olarak incelemek yerine, yalnızca genel/ikincil kaynaklar üzerinden soyut kavramları tartışan genel bir literatür derlemesiyse KESİNLİKLE ELE (\`isRelevant: false\`).
-   - Yöntem veya kuram ne kadar benzer olursa olsun, tezin ampirik ve olgusal odağı kullanıcının araştırma nesnesiyle doğrudan kesişmiyorsa KESİNLİKLE ELE (\`isRelevant: false\`).
+2. **Kesin Eleme Sebepleri (\`isRelevant: false\`):**
+   - Araştırılan hareketin/konunun iç dinamikleri yerine; tamamen dışsal bağlamları (üçüncü ülkelerin dış politikasını, doğrudan bağı olmayan dış yapıları veya sadece medyanın dışsal temsillerini) inceleyen tezler.
+   - Somut birincil/ampirik veriye dayanmayan, yalnızca genel/ikincil kaynaklar üzerinden soyut kavramları tartışan genel literatür derlemeleri.
+   - Kullanıcının araştırma problemiyle hiçbir ampirik, kurumsal veya olgusal kesişimi bulunmayan farklı konular.
 
-3. **Medya ve Alakasız Dış Aktör Yasağı:**
-   - Araştırılan hareketin/konunun kendi iç dinamikleri yerine; ana akım medyanın temsillerini, üçüncü ülkelerin dış politikasını veya konuyla doğrudan bağı olmayan dış yapıları inceleyen tezleri KESİNLİKLE ELE (\`isRelevant: false\`).
-
-4. **Evrensel 5'li Stratejik Rol Tipolojisi (Yalnızca Olgusal Olarak Geçerli Tezler İçin):**
-   - \`BROAD_CONTEXT\` (Geniş Çerçeve): Konuyu daha geniş bir zaman diliminde veya makro bağlamda ele alan çalışmalar; kullanıcının tezi bu çalışmanın genel geçtiği spesifik dönemi/boyutu derinleştirir.
-   - \`SPECIFIC_FOCUS\` (Kısmi Odak): Araştırmanın tek bir parçasına, tek bir aktörüne, kurumuna veya birincil kaynağına odaklanan çalışmalar; kullanıcının tezi çok boyutlu/bütüncül sentez yapar.
-   - \`FOUNDATIONAL_WORK\` (Öncül Çalışma): Konunun önceki evrelerini, tarihsel köklerini veya zeminini inceleyen çalışmalar; kullanıcının tezi nedensellik köprüsü kurar.
-   - \`METHODOLOGICAL_BENCHMARK\` (Yöntem Rehberi): Benzer bir veri toplama, sınıflandırma, tipoloji veya analiz modeli uygulayan çalışmalar; kullanıcı yöntemini kıyaslamak ve güçlendirmek için kullanır.
-   - \`ALTERNATIVE_PERSPECTIVE\` (Karşıt Yaklaşım): Farklı bir kuramsal gözlükle veya zıt bir açıklama modeliyle yaklaşan çalışmalar; kullanıcı eleştirel tartışma açmak için kullanır.
-
-5. **Eylem Odaklı Rehberlik Dili:**
-   - \`literaturePosition\`: Tezin başlık ve özetine dayanarak neyi, hangi birincil veriyle incelediğini 1 net cümlede özetleyin.
+3. **Gerekçelendirme ve Eylem Odaklı Rehberlik Dili:**
+   - \`relevanceReasoning\`: Tezin neden ilgili veya ilgisiz olduğuna dair somut ampirik kanıt ve mantıksal gerekçe (1-2 net cümle).
+   - \`literaturePosition\`: Tezin başlık ve özetine dayanarak neyi, hangi veriyle incelediğini özetleyin (1 cümle).
    - \`strategicUtility\`: Araştırmacıya doğrudan tez yazımında yol gösteren eylem dili kullanın: "Bu tezi Giriş / Literatür bölümünde [X] için referans verebilir; tezinizin farkını ise [Y] noktasında vurgulayabilirsiniz."`,
 
-    workflowSteps: `## Aşama 1 — Olgusal Saha ve Ampirik Derinlik Kontrolü (isRelevant)
-- Aday tezin araştırma nesnesi kullanıcının araştırma problemindeki somut aktörler/konuyla doğrudan kesişiyor mu?
-- Tez genel soyut bir kuramsal derleme mi yoksa somut birincil/ampirik bir analiz mi?
-- Uygun olmayan veya genel kalan tezlerde \`isRelevant: false\` ver ve bitir.
-
-## Aşama 2 — Birebir Çakışma Kontrolü (isDirectOverlap)
-- Konu + Dönem + Aktörler + Yöntemsel Problem BİREBİR AYNI mı? Varsa \`isDirectOverlap: true\`.
-
-## Aşama 3 — Stratejik Rol ve Konumlandırma (Yalnızca isRelevant: true ve isDirectOverlap: false için)
-- \`strategicRole\`: BROAD_CONTEXT | SPECIFIC_FOCUS | FOUNDATIONAL_WORK | METHODOLOGICAL_BENCHMARK | ALTERNATIVE_PERSPECTIVE
-- \`literaturePosition\`: Tezin literatürdeki yerini özetleyen 1 cümle.
-- \`strategicUtility\`: Araştırmacıya tez yazımında yol gösteren 1-2 cümlelik rehber not.
-- \`contributionAreas\`: 1-3 kısa odak etiketi.`,
+    workflowSteps: `1. Aday tezin somut ampirik araştırma nesnesini kullanıcının araştırma problemiyle karşılaştır.
+2. Tez kullanıcının araştırma sahasının en az bir boyutuna doğrudan ampirik katkı sunuyor mu?
+3. Uygunsa \`isRelevant: true\` ver ve 5 stratejik rolden birini ata. Tamamen dışsal veya alakasız ise \`isRelevant: false\` ver.`,
 
     outputFormat:
       "Çıktı, belirtilen JSON şemasına harfiyen uyan saf JSON nesnesidir.",
 
     examples: `<example>
 <input>
-=== KULLANICININ ARAŞTIRMA PROBLEMİ VE OLGUSAL ODAĞI ===
-1991-1999 döneminde Kürt Özgürlük Hareketi'nin söylemsel dönüşümünü manevra ve mevzi savaşı bağlamında PKK ve HEP-DEP-HADEP üzerinden inceler.
+=== KULLANICININ ARAŞTIRMA PROBLEMİ (subjectProblem) ===
+1991-1999 döneminde Kürt Özgürlük Hareketi'nin söylemsel dönüşümünü manevra ve mevzi savaşı bağlamında PKK ve HEP-DEP-HADEP partiler hattı üzerinden inceler.
 
 === DEĞERLENDİRİLECEK TEZ ===
 Tez ID: 363401
 Başlık: 1990-2014 Dönemi Kürt Siyasal Hareketinin Söyleminin Dönüşümü
-Yazar: Ali Yılmaz (2015)
-Üniversite/Bölüm: Ankara Üniversitesi - Siyaset Bilimi
-Tür: Doktora | Dil: Türkçe
+Yazar: Kadriye Okudan Dernek (2014)
 Özet: 1990-2014 döneminde yasal Kürt partilerinin (HEP, DEP, HADEP, DEHAP, DTP, BDP, HDP) program ve söylemlerindeki evrimi inceler.
 </input>
 <output>
 {
   "externalThesisId": "363401",
   "isRelevant": true,
+  "relevanceReasoning": "Aday tez, kullanıcının araştırma sahasının yasal partiler hattını (1990-2014) geniş bir perspektifle inceleyerek araştırmanın kurumsal siyaset ayağına doğrudan ampirik zemin sunmaktadır.",
   "isDirectOverlap": false,
   "strategicRole": "BROAD_CONTEXT",
-  "contributionAreas": ["Yasal parti söylemi", "1990'lar dönemselleştirmesi", "Söylemsel dönüşüm"],
+  "contributionAreas": ["Yasal parti söylemi", "1990'lar dönemselleştirmesi"],
   "literaturePosition": "1990-2014 dönemindeki yasal Kürt parti geleneğini geniş bir dönemsel perspektifle incelemiştir.",
   "strategicUtility": "Bu tezi Giriş ve Literatür Taraması bölümlerinde yasal partilerin tarihsel seyrini temellendirmek için kullanabilir; tezinizin farkını ise bu çalışmanın yüzeysel geçtiği 1991-1999 kuluçka evresini silahlı kanatla karşılaştırmalı olarak derinleştirme noktasında vurgulayabilirsiniz."
 }
@@ -91,21 +77,20 @@ Tür: Doktora | Dil: Türkçe
 
 <example>
 <input>
-=== KULLANICININ ARAŞTIRMA PROBLEMİ VE OLGUSAL ODAĞI ===
+=== KULLANICININ ARAŞTIRMA PROBLEMİ (subjectProblem) ===
 1991-1999 döneminde Kürt Özgürlük Hareketi'nin söylemsel dönüşümünü inceler.
 
 === DEĞERLENDİRİLECEK TEZ ===
-Tez ID: 601435
-Başlık: Türkiye'de Toplumsal Hareketlerin Evrimi: Etnik Mobilizasyon Örneği
-Yazar: Mehmet Demir (2018)
-Üniversite/Bölüm: İstanbul Üniversitesi - Sosyoloji
-Tür: Yüksek Lisans | Dil: Türkçe
-Özet: Toplumsal hareket kuramları ışığında etnik mobilizasyon olgusunu genel ikincil literatür üzerinden teorik olarak tartışır.
+Tez ID: 447567
+Başlık: Kürt Siyasal Hareketinde İslami Bir Aktör: Irak Kürdistan İslami Birlik Partisi
+Yazar: Lokman Karadağ (2016)
+Özet: Irak Kürdistan bölgesindeki İslami Birlik Partisi'nin siyasal katılımını inceler.
 </input>
 <output>
 {
-  "externalThesisId": "601435",
+  "externalThesisId": "447567",
   "isRelevant": false,
+  "relevanceReasoning": "Aday tez Türkiye'deki Kürt siyasal hareketini değil, Irak'taki bölgesel partileri incelemektedir; ampirik kesişimi bulunmamaktadır.",
   "isDirectOverlap": false,
   "contributionAreas": [],
   "literaturePosition": "",
@@ -114,7 +99,7 @@ Tür: Yüksek Lisans | Dil: Türkçe
 </output>
 </example>`,
 
-    inputContext: `### KULLANICININ ARAŞTIRMA PROBLEMİ VE OLGUSAL ODAĞI:
+    inputContext: `### KULLANICININ ARAŞTIRMA PROBLEMİ (subjectProblem):
 ${input.subjectProblem}
 
 ### DEĞERLENDİRİLECEK TEZ:
@@ -134,12 +119,12 @@ Tür: ${thesis.thesisType || "N/A"} | Dil: ${thesis.language || "N/A"}
  * Builds the standardized PromptPayload for multi-thesis batch strategic evaluation.
  * Strictly adheres to docs/LLM_INTEGRATION.md (Hybrid XML + Markdown Encapsulation).
  *
- * @param input - The validated positioning matrix input.
+ * @param input - The validated positioning matrix input containing subjectProblem.
  * @param theses - Candidate theses in the batch.
  * @returns Standardized PromptPayload containing systemInstruction and userPrompt.
  */
 export function buildBatchPerThesisEvaluationPromptPayload(
-  input: PositioningMatrixInput,
+  input: PositioningMatrixInput | { subjectProblem: string },
   theses: SiftedThesis[],
 ): PromptPayload {
   const formattedTheses = theses
@@ -155,43 +140,36 @@ Tür: ${t.thesisType || "N/A"} | Dil: ${t.language || "N/A"}
 
   return buildPromptPayload({
     roleAndExpertise:
-      "Akademik Tez Değerlendirme Kurulu Kıdemli Raportörüsünüz. Göreviniz listedeki aday tezleri kullanıcının araştırma problemiyle olgusal ve ampirik açıdan karşılaştırarak tarafsız ve tavizsiz bir stratejik ön eleme yapmaktır.",
+      "Akademik Tez Değerlendirme Kurulu Kıdemli Raportörüsünüz. Göreviniz listedeki aday tezleri kullanıcının araştırma problemiyle olgusal ve ampirik açıdan karşılaştırarak tarafsız ve ilkeli bir stratejik ön eleme yapmaktır.",
 
     primaryTask:
-      "Sana sunulan kullanıcının Araştırma Problemi ve Olgusal Odağı ile listedeki HER BİR TEZİ TEK TEK karşılaştırarak; tezin olgusal uygunluğunu (isRelevant), birebir çakışma durumunu (isDirectOverlap) ve eğer uygunsa tezin kullanıcının literatür taramasındaki stratejik rolünü (strategicRole, literaturePosition, strategicUtility) belirleyip `evaluations` dizisi olarak döndürmektir.",
+      "Sana sunulan kullanıcının Araştırma Problemi (subjectProblem) ile listedeki HER BİR TEZİ TEK TEK karşılaştırarak; tezin olgusal uygunluğunu (isRelevant), gerekçesini (relevanceReasoning), birebir çakışma durumunu (isDirectOverlap) ve eğer uygunsa tezin literatürdeki stratejik rolünü (strategicRole, literaturePosition, strategicUtility) belirleyip `evaluations` dizisi olarak döndürmektir.",
 
-    rulesAndConstraints: `1. **Mutlak Olgusal Saha ve Ampirik Odak Kuralı (MUTLAK KURAL):**
-   - \`isRelevant: true\` YALNIZCA VE SADECE aday tezin ampirik araştırma nesnesi kullanıcının çalıştığı somut konu, aktörler, kurumlar veya süreçle DOĞRUDAN kesişiyorsa verilir.
+    rulesAndConstraints: `1. **Parçalı Stratejik Rol İlkesi (MUTLAK KURAL):**
+   - Aday tez; kullanıcının araştırma probleminin, sahasının veya odaklandığı nesnenin **EN AZ BİR SOMUT BOYUTUNU** (belirli bir aktör grubunu, birincil veri kaynağını, kurumsal yapısını veya tarihsel dönemini) ampirik olarak inceliyorsa \`isRelevant: true\` verilir.
+   - Stratejik roller: \`BROAD_CONTEXT\` (Geniş Çerçeve), \`SPECIFIC_FOCUS\` (Kısmi Odak), \`FOUNDATIONAL_WORK\` (Öncül Çalışma), \`METHODOLOGICAL_BENCHMARK\` (Yöntem Rehberi), \`ALTERNATIVE_PERSPECTIVE\` (Karşıt Yaklaşım).
 
-2. **Kuramsal Benzerlik Tuzağı ve Genel Derleme Yasağı (KESİN ELEME SEBEBİ):**
-   - Aday tez; somut aktörlerin birincil metinlerini, söylemlerini veya olgusal verilerini ampirik olarak incelemek yerine, yalnızca genel/ikincil kaynaklar üzerinden soyut kavramları tartışan genel bir literatür derlemesiyse KESİNLİKLE ELE (\`isRelevant: false\`).
+2. **Kesin Eleme Sebepleri (\`isRelevant: false\`):**
+   - Araştırılan konunun kendi iç dinamikleri yerine tamamen dışsal bağlamları (üçüncü ülkelerin dış politikasını veya sadece medyanın dışsal temsillerini) inceleyen tezler.
+   - Somut birincil/ampirik veriye dayanmayan genel ikincil literatür derlemeleri.
+   - Araştırma problemiyle ampirik kesişimi olmayan alakasız konular.`,
 
-3. **Medya ve Alakasız Dış Aktör Yasağı:**
-   - Araştırılan hareketin/konunun kendi iç dinamikleri yerine; ana akım medyanın temsillerini, üçüncü ülkelerin dış politikasını veya konuyla doğrudan bağı olmayan dış yapıları inceleyen tezleri KESİNLİKLE ELE (\`isRelevant: false\`).
-
-4. **Evrensel 5'li Stratejik Rol Tipolojisi (Yalnızca Olgusal Olarak Geçerli Tezler İçin):**
-   - \`BROAD_CONTEXT\` (Geniş Çerçeve): Konuyu daha geniş bir zaman diliminde veya makro bağlamda ele alan çalışmalar.
-   - \`SPECIFIC_FOCUS\` (Kısmi Odak): Araştırmanın tek bir parçasına, tek bir aktörüne, kurumuna veya birincil kaynağına odaklanan çalışmalar.
-   - \`FOUNDATIONAL_WORK\` (Öncül Çalışma): Konunun önceki evrelerini, tarihsel köklerini veya zeminini inceleyen çalışmalar.
-   - \`METHODOLOGICAL_BENCHMARK\` (Yöntem Rehberi): Benzer bir veri toplama, sınıflandırma, tipoloji veya analiz modeli uygulayan çalışmalar.
-   - \`ALTERNATIVE_PERSPECTIVE\` (Karşıt Yaklaşım): Farklı bir kuramsal gözlükle veya zıt bir açıklama modeliyle yaklaşan çalışmalar.`,
-
-    workflowSteps: `1. Her tezin somut ampirik araştırma nesnesini incele.
-2. Genel kuramsal derlemeleri, medya tezlerini ve ilgisiz alanları ele (isRelevant: false).
-3. Geçerli tezlerin strategicRole, literaturePosition ve strategicUtility değerlerini üret.`,
+    workflowSteps: `1. Her tezin somut ampirik araştırma nesnesini kullanıcının araştırma problemiyle karşılaştır.
+2. Araştırmanın en az bir boyutuna ampirik katkı sunan tezlere isRelevant: true ver ve strategicRole ata.
+3. Alakasız veya dışsal tezleri ele (isRelevant: false).`,
 
     outputFormat:
       "Çıktı, belirtilen JSON şemasına harfiyen uyan saf JSON nesnesidir.",
 
     examples: `<example>
 <input>
-=== KULLANICININ ARAŞTIRMA PROBLEMİ VE OLGUSAL ODAĞI ===
+=== KULLANICININ ARAŞTIRMA PROBLEMİ (subjectProblem) ===
 1991-1999 döneminde Kürt Özgürlük Hareketi'nin söylemsel dönüşümünü inceler.
 
 === DEĞERLENDİRİLECEK TEZLER ===
 Tez ID: 363401
 Başlık: 1990-2014 Dönemi Kürt Siyasal Hareketinin Söyleminin Dönüşümü
-Yazar: Ali Yılmaz (2015)
+Yazar: Kadriye Okudan Dernek (2014)
 Özet: 1990-2014 döneminde yasal Kürt partilerinin program ve söylemlerini inceler.
 </input>
 <output>
@@ -200,6 +178,7 @@ Yazar: Ali Yılmaz (2015)
     {
       "externalThesisId": "363401",
       "isRelevant": true,
+      "relevanceReasoning": "Yasal parti söylemi geleneğini (1990-2014) geniş bir perspektifle ele alarak araştırmanın kurumsal ayağına ampirik temel sunmaktadır.",
       "isDirectOverlap": false,
       "strategicRole": "BROAD_CONTEXT",
       "contributionAreas": ["Yasal parti söylemi", "1990'lar dönemselleştirmesi"],
@@ -211,7 +190,7 @@ Yazar: Ali Yılmaz (2015)
 </output>
 </example>`,
 
-    inputContext: `### KULLANICININ ARAŞTIRMA PROBLEMİ VE OLGUSAL ODAĞI:
+    inputContext: `### KULLANICININ ARAŞTIRMA PROBLEMİ (subjectProblem):
 ${input.subjectProblem}
 
 ### DEĞERLENDİRİLECEK TEZLER:
@@ -221,3 +200,4 @@ ${formattedTheses}`,
       "Yukarıdaki <context> içinde yer alan her bir tezi <instructions> kurallarına göre değerlendirerek `evaluations` dizisi içeren JSON formatında çıktı üret.",
   });
 }
+
