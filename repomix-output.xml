@@ -524,7 +524,6 @@ src/
       rag-search.ts
     storage/
       r2.ts
-_verify_no_retry_harness.ts
 .gitignore
 .neon
 AGENTS.md
@@ -944,366 +943,6 @@ const Toaster = ({ ...props }: ToasterProps) => {
 };
 
 export { Toaster };
-</file>
-
-<file path="_verify_no_retry_harness.ts">
-import fs from "fs";
-import path from "path";
-import { parse as dotenvParse } from "dotenv";
-import { GoogleGenAI, HarmCategory, HarmBlockThreshold } from "@google/genai";
-import { FLASH_LITE_31, GEMINI_SEED } from "@/lib/constants";
-import { getGeminiKeyPool, getProjectIndex } from "@/services/ai/gemini-key-pool";
-import {
-  createConcurrencyLimiter,
-  type ConcurrencyLimiter,
-} from "@/lib/rate-limiter";
-import { Logger, createFlowId } from "@/lib/logger";
-import { buildPerThesisEvaluationPromptPayload } from "@/features/positioning/prompts/per-thesis-evaluation.prompt";
-import { perThesisEvaluationJsonSchema } from "@/features/positioning/per-thesis-evaluation";
-import type { PositioningMatrixInput } from "@/features/positioning/validation";
-import type { SiftedThesis } from "@/features/positioning/sifting";
-
-const RAW_DIR =
-  "/private/var/folders/1t/zvkspc6x0fb44kwlhmbn_32c0000gn/T/opencode";
-
-for (const [key, value] of Object.entries(
-  dotenvParse(fs.readFileSync(path.resolve(process.cwd(), ".env.local"), "utf-8")),
-)) {
-  if (process.env[key] === undefined) process.env[key] = value;
-}
-
-process.env.NODE_ENV = "production";
-
-const captured = new Array<Record<string, unknown>>();
-
-function captureAllConsole() {
-  for (const method of ["log", "info", "warn", "error"] as const) {
-    const original = console[method].bind(console);
-    (console as unknown as Record<string, unknown>)[method] = (
-      ...args: unknown[]
-    ) => {
-      for (const arg of args) {
-        if (typeof arg === "string" && arg.startsWith("{")) {
-          try {
-            const parsed = JSON.parse(arg);
-            if (parsed && typeof parsed === "object" && "event" in parsed) {
-              captured.push(parsed);
-            }
-          } catch {
-            /* not JSON */
-          }
-        }
-      }
-      return original(...args);
-    };
-  }
-}
-
-const INPUT: PositioningMatrixInput = {
-  subjectProblem:
-    "1991-1999 döneminde Kürt Özgürlük Hareketi'nin söylemsel dönüşümünü manevra ve mevzi savaşı bağlamında PKK ve HEP-DEP-HADEP partiler hattı üzerinden inceler.",
-  theoreticalFramework:
-    "Kritik söylem çözümlemesi ve manevra/mevzi savaşı kavramları çerçevesinde söylemsel dönüşüm kavramsallaştırılır.",
-  methodology:
-    "Yasal parti söylemi ve silahlı kanat bildirilerine karşılaştırmalı nitel söylem analizi uygulanır.",
-};
-
-function makeThesis(idx: number): SiftedThesis {
-  const titles = [
-    "Kürt Siyasal Hareketinin Söylemsel Dönüşümü",
-    "1990-2000 Döneminde Yasal Kürt Partileri",
-    "Manevra Savaşı Bağlamında Siyasal İslam",
-    "Mezopotamya'da Ulusal Kimlik İnşası",
-    "Devlet ve Kürt Hareketi Arasında Müzakere",
-    "Kürdistan İşçi Partisi'nin Dönemsel Stratejileri",
-    "Yasal Siyaset ve Silahlı Mücadele Gerilimi",
-    "Kürt Meselesinde Çatışma ve Çözüm Denemeleri",
-    "Ortadoğu'da Etnik Mobilizasyon",
-    "Türkiye'de Söylem ve Siyasal Şiddet",
-  ];
-  const title = titles[idx % titles.length];
-  return {
-    id: 1_000_000 + idx,
-    title,
-    author: "Test Yazar " + (idx + 1),
-    university: "Test Üniversitesi",
-    year: 1985 + (idx % 25),
-    thesisType: idx % 2 === 0 ? "Doktora" : "Yüksek Lisans",
-    department: "Siyaset Bilimi",
-    language: "tr",
-    abstract:
-      title +
-      " konusunda 1990'lı yılların Türkiye siyasetindeki aktörler, partiler ve hareketler arası ilişkilerin söylemsel ve kurumsal boyutlarını karşılaştırmalı olarak ele alan, birincil kaynaklara dayalı akademik bir değerlendirme sunar.",
-    relevanceScore: 1 - idx / 100,
-  };
-}
-
-interface KeySendTracker {
-  firstSentAt: number | null;
-  count: number;
-}
-
-const keySendTrackers = new Map<number, KeySendTracker>();
-
-function trackSend(projectIndex: number): { seq: number; offsetMs: number } {
-  const t = keySendTrackers.get(projectIndex) ?? {
-    firstSentAt: null,
-    count: 0,
-  };
-  const now = Date.now();
-  if (t.firstSentAt === null) t.firstSentAt = now;
-  t.count += 1;
-  keySendTrackers.set(projectIndex, t);
-  return { seq: t.count, offsetMs: now - t.firstSentAt };
-}
-
-const SAFETY_SETTINGS = [
-  {
-    category: HarmCategory.HARM_CATEGORY_HATE_SPEECH,
-    threshold: HarmBlockThreshold.BLOCK_ONLY_HIGH,
-  },
-  {
-    category: HarmCategory.HARM_CATEGORY_HARASSMENT,
-    threshold: HarmBlockThreshold.BLOCK_ONLY_HIGH,
-  },
-  {
-    category: HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT,
-    threshold: HarmBlockThreshold.BLOCK_ONLY_HIGH,
-  },
-  {
-    category: HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT,
-    threshold: HarmBlockThreshold.BLOCK_ONLY_HIGH,
-  },
-];
-
-interface RequestResult {
-  projectIndex: number;
-  seq: number;
-  sendOffsetMs: number;
-  durationMs: number;
-  status: string;
-  is429: boolean;
-  thesisId: number;
-}
-
-const results: RequestResult[] = [];
-
-/**
- * EXACT single-attempt replica of the production Gemini call — same payload
- * object shape as generateStructuredContent (config, responseJsonSchema,
- * safetySettings, seed, thinkingConfig) but the SDK call runs exactly ONCE:
- * no withRetry, no backtracking. maxRetries is reported as 0.
- */
-async function evaluateSingleNoRetry(
-  input: PositioningMatrixInput,
-  thesis: SiftedThesis,
-  apiKey: string,
-  logger: Logger,
-): Promise<string> {
-  const payload = buildPerThesisEvaluationPromptPayload(input, thesis);
-  const projectIndex = getProjectIndex(apiKey) + 1;
-  const modelName = FLASH_LITE_31;
-  const { seq, offsetMs } = trackSend(projectIndex);
-  const startedAt = Date.now();
-
-  logger?.info("ai_attempt", {
-    service: "gemini",
-    filePath: "src/services/ai/providers/gemini-provider.ts",
-    data: {
-      attempt: 1,
-      maxRetries: 0,
-      projectIndex,
-      model: modelName,
-      retried: false,
-      seqInKey: seq,
-      msSinceFirstKeyRequest: offsetMs,
-    },
-  });
-
-  const geminiPayload = {
-    model: modelName,
-    contents: [{ role: "user", parts: [{ text: payload.userPrompt }] }],
-    config: {
-      systemInstruction: payload.systemInstruction,
-      responseMimeType: "application/json",
-      responseJsonSchema: perThesisEvaluationJsonSchema,
-      thinkingConfig: { thinkingLevel: "LOW" },
-      seed: GEMINI_SEED,
-      safetySettings: SAFETY_SETTINGS,
-    },
-  };
-
-  try {
-    const response = await getGeminiClient(apiKey).models.generateContent(
-      geminiPayload,
-    );
-    const durationMs = Date.now() - startedAt;
-    const status = response.text ? "OK" : "EMPTY_RESPONSE";
-    results.push({
-      projectIndex,
-      seq,
-      sendOffsetMs: offsetMs,
-      durationMs,
-      status,
-      is429: false,
-      thesisId: thesis.id,
-    });
-    return response.text ?? "";
-  } catch (error) {
-    const durationMs = Date.now() - startedAt;
-    const code = (error as { code?: number })?.code;
-    const errorStatus = (error as { status?: string })?.status;
-    const is429 = code === 429 || errorStatus === "RESOURCE_EXHAUSTED";
-    const statusLabel = is429
-      ? "429 (RESOURCE_EXHAUSTED)"
-      : `${errorStatus ?? code ?? ""}_${error instanceof Error ? error.name : "UNKNOWN"}`;
-
-    logger?.error("positioning_per_thesis_evaluation_failed", {
-      service: "gemini",
-      filePath: "src/services/ai/providers/gemini-provider.ts",
-      durationMs,
-      data: {
-        model: modelName,
-        projectIndex,
-        crossProjectRotation: false,
-        attempts: 1,
-        thinkingLevel: "LOW",
-        scenario: is429 ? "quota" : "system",
-      },
-      error,
-    });
-
-    results.push({
-      projectIndex,
-      seq,
-      sendOffsetMs: offsetMs,
-      durationMs,
-      status: statusLabel,
-      is429,
-      thesisId: thesis.id,
-    });
-
-    throw new Error(`HTTP ${code}: ${errorStatus ?? errorStatus}`);
-  }
-}
-
-const clients = new Map<string, GoogleGenAI>();
-
-function getGeminiClient(apiKey: string): GoogleGenAI {
-  const cached = clients.get(apiKey);
-  if (cached) return cached;
-  const client = new GoogleGenAI({
-    apiKey,
-    httpOptions: { retryOptions: { attempts: 1 } },
-  });
-  clients.set(apiKey, client);
-  return client;
-}
-
-async function main() {
-  captureAllConsole();
-  const logger = new Logger(createFlowId());
-  const theses = Array.from({ length: 35 }, (_, i) => makeThesis(i));
-  const apiKeys = getGeminiKeyPool().keys;
-  const t0 = Date.now();
-
-  console.info(
-    JSON.stringify({
-      event: "verify_harness_start",
-      model: FLASH_LITE_31,
-      keyCount: apiKeys.length,
-      thesisCount: theses.length,
-      concurrencyPerKey: 8,
-      retriesDisabled: true,
-    }),
-  );
-
-  const limiterByKey = new Map<string, ConcurrencyLimiter>();
-  for (const apiKey of apiKeys) {
-    limiterByKey.set(apiKey, createConcurrencyLimiter(8));
-  }
-
-  const settled = await Promise.allSettled(
-    theses.map((thesis, idx) => {
-      const assignedKey = apiKeys[idx % apiKeys.length];
-      const limiter = limiterByKey.get(assignedKey)!;
-      const task = () =>
-        evaluateSingleNoRetry(INPUT, thesis, assignedKey, logger);
-      return limiter
-        .exec(task)
-        .then(
-          (value) => value as unknown,
-          async (reason) => {
-            logger.error("positioning_per_thesis_single_failed", {
-              service: "positioning",
-              filePath: "src/features/positioning/per-thesis-evaluation.ts",
-              data: {
-                thesisId: thesis.id,
-                thesisTitle: thesis.title,
-              },
-              error: reason,
-            });
-            throw reason;
-          },
-        );
-    }),
-  );
-
-  const elapsedMs = Date.now() - t0;
-
-  const perKeyTables = new Map<number, RequestResult[]>();
-  for (const r of results) {
-    const list = perKeyTables.get(r.projectIndex) ?? [];
-    list.push(r);
-    perKeyTables.set(r.projectIndex, list);
-  }
-
-  const summary: Record<string, unknown> = {
-    event: "verify_harness_summary",
-    elapsedMs,
-    totalRequests: results.length,
-    okCount: results.filter((r) => r.status === "OK").length,
-    rateLimited429: results.filter((r) => r.is429).length,
-    otherFailed: results.filter((r) => r.status !== "OK" && !r.is429).length,
-    perKey: Array.from(perKeyTables.entries())
-      .sort((a, b) => a[0] - b[0])
-      .map(([projectIndex, list]) => {
-        const sorted = [...list].sort((a, b) => a.seq - b.seq);
-        const first429 = sorted.find((r) => r.is429);
-        return {
-          projectIndex,
-          totalSent: sorted.length,
-          order: sorted.map((r) => ({
-            seq: r.seq,
-            sendOffsetMs: r.sendOffsetMs,
-            status: r.status,
-            is429: r.is429,
-          })),
-          first429Seq: first429?.seq ?? null,
-          requestsSentByThen: first429 ? first429.seq : null,
-        };
-      }),
-    fulfilled:
-      settled.filter((s) => s.status === "fulfilled").length,
-    rejected: settled.filter((s) => s.status === "rejected").length,
-  };
-
-  console.info(JSON.stringify(summary));
-
-  fs.writeFileSync(
-    path.join(RAW_DIR, "rpm-no-retry-raw.log"),
-    captured.map((e) => JSON.stringify(e)).join("\n"),
-  );
-  fs.writeFileSync(
-    path.join(RAW_DIR, "rpm-no-retry-summary.json"),
-    JSON.stringify(summary, null, 2),
-  );
-}
-
-main().catch((e) => {
-  console.error("verify_harness_crashed", e);
-  process.exit(1);
-});
 </file>
 
 <file path="components.json">
@@ -8583,72 +8222,6 @@ export function cleanHtmlTags(text: string): string {
 }
 </file>
 
-<file path="src/services/ai/gemini-key-pool.ts">
-/**
- * Canonical Gemini API key pool.
- *
- * Single source of truth for the ordered set of Gemini API keys used across the
- * project (main `generateStructuredContent`, PDF parser, per-thesis evaluation).
- * The environment variables are the external contract (`GEMINI_API_KEY_1..3`);
- * every consumer reads ordering and rotation through this module rather than
- * touching `process.env.GEMINI_API_KEY_*` directly.
- */
-const GEMINI_ENV_KEYS = [
-  "GEMINI_API_KEY_1",
-  "GEMINI_API_KEY_2",
-  "GEMINI_API_KEY_3",
-] as const;
-
-/** Read-only ordered key collection exposed by the pool. */
-export interface GeminiKeyPool {
-  /** The enabled keys in assignment order [KEY_1, KEY_2, KEY_3]; empty values removed. */
-  readonly keys: readonly string[];
-}
-
-/**
- * Resolves the ordered, non-empty Gemini API keys from the environment.
- *
- * @returns Array of enabled key strings in `GEMINI_API_KEY_1..3` order.
- */
-function resolveGeminiKeys(): string[] {
-  const keys = GEMINI_ENV_KEYS.map((name) => process.env[name])
-    .map((value) => value?.trim() ?? "")
-    .filter(Boolean);
-
-  if (keys.length === 0) {
-    throw new Error("GEMINI_API_KEY_1 environment variable is not defined.");
-  }
-  return [...new Set(keys)];
-}
-
-let keyPool: GeminiKeyPool | null = null;
-
-/**
- * Returns the lazily-initialized shared Gemini key pool.
- *
- * @returns The canonical key pool instance.
- */
-export function getGeminiKeyPool(): GeminiKeyPool {
-  if (!keyPool) {
-    keyPool = { keys: resolveGeminiKeys() };
-  }
-  return keyPool;
-}
-
-/**
- * Resolves the 0-based project/key index for a given API key string.
- *
- * @param apiKey - The Gemini API key string.
- * @returns The 0-based index of the key in the pool, or 0 if not found.
- */
-export function getProjectIndex(apiKey?: string): number {
-  if (!apiKey) return 0;
-  const pool = getGeminiKeyPool();
-  const idx = pool.keys.indexOf(apiKey);
-  return idx >= 0 ? idx : 0;
-}
-</file>
-
 <file path="src/services/ai/index.ts">
 export * from "./llm-types";
 export * from "./llm-json";
@@ -8707,134 +8280,6 @@ export function validateStructuredOutput<T>(
   if (!validationResult.success) {
     throw new SchemaValidationError(validationResult.error);
   }
-}
-</file>
-
-<file path="src/services/ai/llm-retry.ts">
-export const DEFAULT_MAX_DELAY = 30000;
-
-/**
- * Structured HTTP error that carries status code and an optional
- * `Retry-After` header value so retry logic can use it as a floor.
- */
-export class HttpError extends Error {
-  public readonly status: number;
-  public readonly retryAfter: number | null;
-  public readonly responseBody: string;
-
-  /**
-   * Creates an HTTP error carrying a status code, raw response body, and optional Retry-After floor.
-   *
-   * @param status - The HTTP status code.
-   * @param responseBody - The raw response body text.
-   * @param retryAfter - A Retry-After value used as a delay floor, or null when absent.
-   */
-  constructor(status: number, responseBody: string, retryAfter: number | null) {
-    const msg = `HTTP ${status}: ${responseBody.slice(0, 200)}`;
-    super(msg);
-    this.name = "HttpError";
-    this.status = status;
-    this.responseBody = responseBody;
-    this.retryAfter = retryAfter;
-  }
-}
-
-/**
- * Computes a Full Jitter delay with exponential backoff, optionally shifted by a Retry-After floor.
- *
- * @param baseDelay - The base delay in milliseconds.
- * @param attempt - The current 1-based retry attempt number.
- * @param maxDelay - The maximum allowed delay in milliseconds.
- * @param retryAfter - A Retry-After floor in milliseconds, or null to ignore.
- * @returns The randomized delay in milliseconds.
- */
-export function fullJitterDelay(
-  baseDelay: number,
-  attempt: number,
-  maxDelay: number,
-  retryAfter: number | null,
-): number {
-  const cap = Math.min(maxDelay, baseDelay * Math.pow(2, attempt - 1));
-
-  if (retryAfter != null && retryAfter > 0) {
-    const window = Math.min(maxDelay - retryAfter, cap);
-    return retryAfter + Math.random() * Math.max(0, window);
-  }
-
-  return Math.random() * cap;
-}
-
-/**
- * Computes a long exponential backoff plus small jitter for server overload (503) retries.
- *
- * @param attempt - The 1-based retry attempt number.
- * @returns The delay in milliseconds, capped at 45s with a small jitter.
- */
-export function serverOverloadDelay(attempt: number): number {
-  const capped = Math.min(45_000, 1000 * Math.pow(3, attempt - 1));
-  return capped + Math.random() * Math.min(2000, capped * 0.25);
-}
-
-export interface RetryOptions {
-  maxRetries: number;
-  baseDelay: number;
-  maxDelay?: number;
-  getRetryAfter?: (error: unknown) => number | null;
-  onAttempt?: (attempt: number, previousError?: unknown) => void;
-  onRetry?: (attempt: number, delayMs: number, error: unknown) => void;
-  isRetryable?: (error: unknown, attempt: number) => boolean;
-  getDelay?: (attempt: number, error: unknown, defaultDelay: number) => number;
-}
-
-/**
- * Retries a task up to the configured limit using Full Jitter exponential backoff.
- *
- * @param fn - The async task to retry.
- * @param options - Retry configuration including limits and callbacks.
- * @returns A promise resolving to the task's eventual result.
- */
-export async function withRetry<T>(
-  fn: () => Promise<T>,
-  options: RetryOptions,
-): Promise<T> {
-  const {
-    maxRetries,
-    baseDelay,
-    maxDelay = DEFAULT_MAX_DELAY,
-    isRetryable,
-    onRetry,
-    getRetryAfter,
-    getDelay,
-    onAttempt,
-  } = options;
-  const shouldRetry = isRetryable ?? (() => true);
-  let attempt = 0;
-  let lastError: unknown;
-
-  while (++attempt <= maxRetries) {
-    onAttempt?.(attempt, lastError);
-    try {
-      return await fn();
-    } catch (error) {
-      lastError = error;
-      if (!shouldRetry(error, attempt)) throw error;
-      if (attempt >= maxRetries) break;
-      const retryAfter = getRetryAfter?.(error) ?? null;
-      const defaultDelay = fullJitterDelay(
-        baseDelay,
-        attempt,
-        maxDelay,
-        retryAfter,
-      );
-      const delay = getDelay
-        ? getDelay(attempt, error, defaultDelay)
-        : defaultDelay;
-      onRetry?.(attempt, delay, error);
-      await new Promise((resolve) => setTimeout(resolve, delay));
-    }
-  }
-
-  throw lastError;
 }
 </file>
 
@@ -19700,6 +19145,200 @@ export function getStepTanStackKeys(fromStep: OnboardingStep): string[][] {
 }
 </file>
 
+<file path="src/services/ai/gemini-key-pool.ts">
+/**
+ * Canonical Gemini API key pool.
+ *
+ * Single source of truth for the ordered set of Gemini API keys used across the
+ * project (main `generateStructuredContent`, PDF parser, per-thesis evaluation).
+ * The environment variables are the external contract (`GEMINI_API_KEY_1..3`);
+ * every consumer reads ordering and rotation through this module rather than
+ * touching `process.env.GEMINI_API_KEY_*` directly.
+ */
+const GEMINI_ENV_KEYS = [
+  "GEMINI_API_KEY_1",
+  "GEMINI_API_KEY_2",
+  "GEMINI_API_KEY_3",
+] as const;
+
+/** Read-only ordered key collection exposed by the pool. */
+export interface GeminiKeyPool {
+  /** The enabled keys in assignment order [KEY_1, KEY_2, KEY_3]; empty values removed. */
+  readonly keys: readonly string[];
+}
+
+/**
+ * Resolves the ordered, non-empty Gemini API keys from the environment.
+ *
+ * @returns Array of enabled key strings in `GEMINI_API_KEY_1..3` order.
+ */
+function resolveGeminiKeys(): string[] {
+  const keys = GEMINI_ENV_KEYS.map((name) => process.env[name])
+    .map((value) => value?.trim() ?? "")
+    .filter(Boolean);
+
+  if (keys.length === 0) {
+    throw new Error("GEMINI_API_KEY_1 environment variable is not defined.");
+  }
+  return [...new Set(keys)];
+}
+
+let keyPool: GeminiKeyPool | null = null;
+
+/**
+ * Returns the lazily-initialized shared Gemini key pool.
+ *
+ * @returns The canonical key pool instance.
+ */
+export function getGeminiKeyPool(): GeminiKeyPool {
+  if (!keyPool) {
+    keyPool = { keys: resolveGeminiKeys() };
+  }
+  return keyPool;
+}
+
+/**
+ * Resolves the 0-based project/key index for a given API key string.
+ *
+ * @param apiKey - The Gemini API key string.
+ * @returns The 0-based index of the key in the pool, or 0 if not found.
+ */
+export function getProjectIndex(apiKey?: string): number {
+  if (!apiKey) return 0;
+  const pool = getGeminiKeyPool();
+  const idx = pool.keys.indexOf(apiKey);
+  return idx >= 0 ? idx : 0;
+}
+</file>
+
+<file path="src/services/ai/llm-retry.ts">
+export const DEFAULT_MAX_DELAY = 30000;
+
+/**
+ * Structured HTTP error that carries status code and an optional
+ * `Retry-After` header value so retry logic can use it as a floor.
+ */
+export class HttpError extends Error {
+  public readonly status: number;
+  public readonly retryAfter: number | null;
+  public readonly responseBody: string;
+
+  /**
+   * Creates an HTTP error carrying a status code, raw response body, and optional Retry-After floor.
+   *
+   * @param status - The HTTP status code.
+   * @param responseBody - The raw response body text.
+   * @param retryAfter - A Retry-After value used as a delay floor, or null when absent.
+   */
+  constructor(status: number, responseBody: string, retryAfter: number | null) {
+    const msg = `HTTP ${status}: ${responseBody.slice(0, 200)}`;
+    super(msg);
+    this.name = "HttpError";
+    this.status = status;
+    this.responseBody = responseBody;
+    this.retryAfter = retryAfter;
+  }
+}
+
+/**
+ * Computes a Full Jitter delay with exponential backoff, optionally shifted by a Retry-After floor.
+ *
+ * @param baseDelay - The base delay in milliseconds.
+ * @param attempt - The current 1-based retry attempt number.
+ * @param maxDelay - The maximum allowed delay in milliseconds.
+ * @param retryAfter - A Retry-After floor in milliseconds, or null to ignore.
+ * @returns The randomized delay in milliseconds.
+ */
+export function fullJitterDelay(
+  baseDelay: number,
+  attempt: number,
+  maxDelay: number,
+  retryAfter: number | null,
+): number {
+  const cap = Math.min(maxDelay, baseDelay * Math.pow(2, attempt - 1));
+
+  if (retryAfter != null && retryAfter > 0) {
+    const window = Math.min(maxDelay - retryAfter, cap);
+    return retryAfter + Math.random() * Math.max(0, window);
+  }
+
+  return Math.random() * cap;
+}
+
+/**
+ * Computes a long exponential backoff plus small jitter for server overload (503) retries.
+ *
+ * @param attempt - The 1-based retry attempt number.
+ * @returns The delay in milliseconds, capped at 45s with a small jitter.
+ */
+export function serverOverloadDelay(attempt: number): number {
+  const capped = Math.min(45_000, 1000 * Math.pow(3, attempt - 1));
+  return capped + Math.random() * Math.min(2000, capped * 0.25);
+}
+
+export interface RetryOptions {
+  maxRetries: number;
+  baseDelay: number;
+  maxDelay?: number;
+  getRetryAfter?: (error: unknown) => number | null;
+  onAttempt?: (attempt: number, previousError?: unknown) => void;
+  onRetry?: (attempt: number, delayMs: number, error: unknown) => void;
+  isRetryable?: (error: unknown, attempt: number) => boolean;
+  getDelay?: (attempt: number, error: unknown, defaultDelay: number) => number;
+}
+
+/**
+ * Retries a task up to the configured limit using Full Jitter exponential backoff.
+ *
+ * @param fn - The async task to retry.
+ * @param options - Retry configuration including limits and callbacks.
+ * @returns A promise resolving to the task's eventual result.
+ */
+export async function withRetry<T>(
+  fn: () => Promise<T>,
+  options: RetryOptions,
+): Promise<T> {
+  const {
+    maxRetries,
+    baseDelay,
+    maxDelay = DEFAULT_MAX_DELAY,
+    isRetryable,
+    onRetry,
+    getRetryAfter,
+    getDelay,
+    onAttempt,
+  } = options;
+  const shouldRetry = isRetryable ?? (() => true);
+  let attempt = 0;
+  let lastError: unknown;
+
+  while (++attempt <= maxRetries) {
+    onAttempt?.(attempt, lastError);
+    try {
+      return await fn();
+    } catch (error) {
+      lastError = error;
+      if (!shouldRetry(error, attempt)) throw error;
+      if (attempt >= maxRetries) break;
+      const retryAfter = getRetryAfter?.(error) ?? null;
+      const defaultDelay = fullJitterDelay(
+        baseDelay,
+        attempt,
+        maxDelay,
+        retryAfter,
+      );
+      const delay = getDelay
+        ? getDelay(attempt, error, defaultDelay)
+        : defaultDelay;
+      onRetry?.(attempt, delay, error);
+      await new Promise((resolve) => setTimeout(resolve, delay));
+    }
+  }
+
+  throw lastError;
+}
+</file>
+
 <file path="src/services/pdf/chunker.ts">
 import type { PageAnalysis } from "./schema";
 import { normalizeAcademicText } from "./normalizer";
@@ -28931,323 +28570,6 @@ function parseRetryAfter(response: Response): number | null {
 }
 </file>
 
-<file path="src/services/ai/llm-errors.ts">
-import { z } from "zod";
-import { AiProviderError } from "@/lib/errors/app-error";
-
-export type ErrorScenario = "quota" | "network" | "system";
-
-/** Error thrown when structured LLM output fails Zod schema validation. */
-export class SchemaValidationError extends Error {
-  public readonly zodError: z.ZodError;
-
-  /**
-   * Creates a schema validation error carrying the underlying Zod error for diagnostics.
-   *
-   * @param zodError - The Zod error produced by the failed validation.
-   */
-  constructor(zodError: z.ZodError) {
-    super("Structured output failed Zod schema validation.");
-    this.name = "SchemaValidationError";
-    this.zodError = zodError;
-  }
-}
-
-/**
- * Extracts a readable string message from any error value.
- *
- * @param error - The error value to extract a message from.
- * @returns The extracted message, or an empty string.
- */
-export function extractMessage(error: unknown): string {
-  if (typeof error === "string") {
-    return error;
-  }
-
-  if (error instanceof Error) {
-    return error.message;
-  }
-
-  if (error && typeof error === "object") {
-    const obj = error as Record<string, unknown>;
-    if (typeof obj.error === "string") return obj.error;
-    if (typeof obj.message === "string") return obj.message;
-
-    try {
-      const serialized = JSON.stringify(error);
-      if (serialized && serialized !== "{}") return serialized;
-    } catch {}
-  }
-
-  return "";
-}
-
-/**
- * Extracts a human-readable HTTP status label from a thrown provider error.
- *
- * @param error - The thrown error to inspect.
- * @returns The formatted HTTP status string, or "unknown" when it cannot be determined.
- */
-export function extractHttpStatus(error: unknown): string {
-  if (error instanceof Error) {
-    const err = error as unknown as Record<string, unknown>;
-    const status = typeof err.status === "string" ? err.status : "";
-    const code = typeof err.code === "number" ? err.code : 0;
-
-    if (code === 429 || status === "RESOURCE_EXHAUSTED")
-      return "429 (RESOURCE_EXHAUSTED)";
-    if (code === 503 || status === "UNAVAILABLE") return "503 (UNAVAILABLE)";
-    if (status) return `${code} (${status})`;
-    if (code) return `${code}`;
-
-    if (error.message.includes("429") || error.message.includes("quota"))
-      return "429 (RESOURCE_EXHAUSTED)";
-    if (error.message.includes("503") || error.message.includes("UNAVAILABLE"))
-      return "503 (UNAVAILABLE)";
-  }
-  return "unknown";
-}
-
-/**
- * Determines whether a thrown provider error is a rate-limit (RPM/RPD/quota) failure.
- *
- * @param error - The thrown error to inspect.
- * @returns True when the error indicates the active key exhausted its rate limit.
- */
-export function isRateLimitError(error: unknown): boolean {
-  if (!(error instanceof Error)) return false;
-  const err = error as unknown as Record<string, unknown>;
-  const status = typeof err.status === "string" ? err.status : "";
-  const code = typeof err.code === "number" ? err.code : 0;
-  if (status === "RESOURCE_EXHAUSTED" || code === 429) return true;
-  const message = error.message.toLowerCase();
-  return (
-    message.includes("429") ||
-    message.includes("quota") ||
-    message.includes("rate limit") ||
-    message.includes("rpd") ||
-    message.includes("rpm")
-  );
-}
-
-/**
- * Determines whether a thrown provider error is a server-side overload (503 / UNAVAILABLE)
- * that affects all keys and is best handled with a long backoff rather than key rotation.
- *
- * @param error - The thrown error to inspect.
- * @returns True when the error indicates a server-side overload.
- */
-export function isServerOverloadError(error: unknown): boolean {
-  if (!(error instanceof Error)) return false;
-  const err = error as unknown as Record<string, unknown>;
-  const status = typeof err.status === "string" ? err.status : "";
-  const code = typeof err.code === "number" ? err.code : 0;
-  if (code === 503 || status === "UNAVAILABLE") return true;
-  const message = error.message.toLowerCase();
-  return (
-    message.includes("503") ||
-    message.includes("unavailable") ||
-    message.includes("high demand")
-  );
-}
-
-/**
- * Classifies any error into a user-facing scenario (quota, network, or system).
- *
- * @param error - The error value to classify.
- * @returns The matched error scenario.
- */
-export function classifyError(error: unknown): ErrorScenario {
-  const message = extractMessage(error);
-  if (!message) return "system";
-
-  const lower = message.toLowerCase();
-
-  if (
-    lower.includes("429") ||
-    lower.includes("resource_exhausted") ||
-    lower.includes("quota exceeded") ||
-    lower.includes("quota")
-  ) {
-    return "quota";
-  }
-
-  if (
-    lower.includes("fetch failed") ||
-    lower.includes("network") ||
-    lower.includes("timeout") ||
-    lower.includes("503") ||
-    lower.includes("502") ||
-    lower.includes("enotfound") ||
-    lower.includes("econnrefused") ||
-    lower.includes("eai_again") ||
-    lower.includes("econnreset")
-  ) {
-    return "network";
-  }
-
-  return "system";
-}
-
-/**
- * Extracts the recommended retry delay in milliseconds from a Google RPC RetryInfo error or message.
- *
- * @param error - The thrown error to inspect.
- * @returns The extracted delay in milliseconds, or null if not found.
- */
-export function extractRetryDelayMs(error: unknown): number | null {
-  if (!error) return null;
-
-  if (error instanceof Error) {
-    // Check parsed RPC details if present on error object
-    const errObj = error as unknown as Record<string, unknown>;
-    if (Array.isArray(errObj.details)) {
-      const retryInfo = errObj.details.find((d: Record<string, unknown>) =>
-        d?.["@type"]?.toString().includes("RetryInfo"),
-      );
-      if (retryInfo && typeof retryInfo.retryDelay === "string") {
-        const seconds = parseFloat(retryInfo.retryDelay.replace(/s$/, ""));
-        if (!isNaN(seconds) && seconds > 0) {
-          return Math.round(seconds * 1000);
-        }
-      }
-    }
-
-    // Check JSON in message
-    if (typeof error.message === "string") {
-      try {
-        const parsed = JSON.parse(error.message);
-        if (parsed?.error?.details && Array.isArray(parsed.error.details)) {
-          const retryInfo = parsed.error.details.find(
-            (d: Record<string, unknown>) =>
-              d?.["@type"]?.toString().includes("RetryInfo"),
-          );
-          if (retryInfo && typeof retryInfo.retryDelay === "string") {
-            const seconds = parseFloat(retryInfo.retryDelay.replace(/s$/, ""));
-            if (!isNaN(seconds) && seconds > 0) {
-              return Math.round(seconds * 1000);
-            }
-          }
-        }
-      } catch {
-        // message is plain text
-      }
-
-      const match = error.message.match(
-        /(?:please retry in|retry after|retry in)\s+([\d.]+)\s*s/i,
-      );
-      if (match && match[1]) {
-        const seconds = parseFloat(match[1]);
-        if (!isNaN(seconds) && seconds > 0) {
-          return Math.round(seconds * 1000);
-        }
-      }
-    }
-  }
-
-  return null;
-}
-
-export interface QuotaViolationDetails {
-  quotaMetric?: string;
-  quotaId?: string;
-  quotaValue?: string;
-  quotaDimensions?: Record<string, string>;
-  retryDelay?: string;
-  message?: string;
-}
-
-/**
- * Extracts structured QuotaFailure and RetryInfo metadata from a Google RPC error.
- *
- * @param error - The thrown error to inspect.
- * @returns Structured quota violation details or null when absent.
- */
-export function extractQuotaDetails(
-  error: unknown,
-): QuotaViolationDetails | null {
-  if (!error) return null;
-
-  let errorObj: Record<string, unknown> | null = null;
-
-  if (error instanceof Error) {
-    if (typeof error.message === "string") {
-      try {
-        const parsed = JSON.parse(error.message);
-        if (parsed?.error) {
-          errorObj = parsed.error;
-        }
-      } catch {
-        // not json
-      }
-    }
-    if (!errorObj && typeof error === "object") {
-      errorObj = error as unknown as Record<string, unknown>;
-    }
-  }
-
-  if (!errorObj) return null;
-
-  const details = Array.isArray(errorObj.details) ? errorObj.details : [];
-  const quotaFailure = details.find((d: Record<string, unknown>) =>
-    d?.["@type"]?.toString().includes("QuotaFailure"),
-  );
-  const retryInfo = details.find((d: Record<string, unknown>) =>
-    d?.["@type"]?.toString().includes("RetryInfo"),
-  );
-  const violation = (
-    quotaFailure as { violations?: Array<Record<string, unknown>> }
-  )?.violations?.[0];
-
-  if (!quotaFailure && !retryInfo && !errorObj.message) return null;
-
-  return {
-    quotaMetric: typeof violation?.quotaMetric === "string" ? violation.quotaMetric : undefined,
-    quotaId: typeof violation?.quotaId === "string" ? violation.quotaId : undefined,
-    quotaValue: typeof violation?.quotaValue === "string" ? violation.quotaValue : undefined,
-    quotaDimensions: (violation?.quotaDimensions as Record<string, string>) ?? undefined,
-    retryDelay: typeof retryInfo?.retryDelay === "string" ? retryInfo.retryDelay : undefined,
-    message: typeof errorObj.message === "string" ? errorObj.message : undefined,
-  };
-}
-
-const TURKISH_ERROR_BY_SCENARIO: Record<ErrorScenario, string> = {
-  quota:
-    "Yapay zeka hizmetinin anlık kullanım limitine ulaşıldı. Lütfen birkaç dakika sonra tekrar deneyin.",
-  network:
-    "Yapay zeka hizmetine bağlanılamadı. İnternet bağlantınızı kontrol edip tekrar deneyin.",
-  system:
-    "Yapay zeka hizmeti şu anda yanıt veremiyor. Lütfen daha sonra tekrar deneyin.",
-};
-
-/**
- * Wraps any thrown AI provider failure into an `AiProviderError` with a Turkish
- * scenario-based user message, preserving the original error as the cause.
- *
- * @param error - The raw thrown error from the provider call.
- * @param provider - The provider name used for technical diagnostics.
- * @returns An `AiProviderError` instance ready to cross the server boundary.
- */
-export function toAiProviderError(
-  error: unknown,
-  provider: string,
-): AiProviderError {
-  if (error instanceof AiProviderError) return error;
-
-  const scenario = classifyError(error);
-
-  return new AiProviderError({
-    cause: error,
-    technicalDetails: {
-      provider,
-      scenario,
-      httpStatus: extractHttpStatus(error),
-    },
-    userMessage: TURKISH_ERROR_BY_SCENARIO[scenario],
-  });
-}
-</file>
-
 <file path="src/services/pdf/prompts/pdf-parser.prompt.ts">
 import {
   buildPromptPayload,
@@ -33974,414 +33296,6 @@ export interface LiteraturePoolEntry {
 }
 </file>
 
-<file path="src/services/ai/providers/gemini-provider.ts">
-import { GoogleGenAI, HarmCategory, HarmBlockThreshold } from "@google/genai";
-import { Logger, createFlowId } from "@/lib/logger";
-import { getGeminiKeyPool, getProjectIndex } from "../gemini-key-pool";
-import { GEMINI_SEED } from "@/lib/constants";
-import {
-  SchemaValidationError,
-  classifyError,
-  extractHttpStatus,
-  extractQuotaDetails,
-  extractRetryDelayMs,
-  isRateLimitError,
-  isServerOverloadError,
-  toAiProviderError,
-} from "../llm-errors";
-import {
-  withRetry,
-  serverOverloadDelay,
-  DEFAULT_MAX_DELAY,
-} from "../llm-retry";
-import { sanitizeAndParseJson, validateStructuredOutput } from "../llm-json";
-import type { JsonSchema, StructuredGenerationOptions } from "../llm-types";
-import crypto from "crypto";
-import fs from "fs/promises";
-import path from "path";
-
-let aiInstance: GoogleGenAI | null = null;
-
-const aiInstancesByKey = new Map<string, GoogleGenAI>();
-
-/**
- * Disables the SDK's built-in HTTP retry so `withRetry` remains the single retry
- * owner. Empirically verified on @google/genai 2.16.0: the classic generateContent
- * / generateContentStream path retries ONLY when `httpOptions.retryOptions` is
- * present, and `attempts: 1` means the original request runs exactly once.
- */
-const SDK_SINGLE_ATTEMPT_HTTP_OPTIONS = {
-  httpOptions: { retryOptions: { attempts: 1 } },
-} as const;
-
-/**
- * Returns a lazily-initialized GoogleGenAI client, defaulting to the GEMINI_API_KEY_1
- * environment variable or a per-key cached client when an explicit key is provided.
- *
- * @param apiKey - Optional Gemini API key override for multi-key load distribution.
- * @returns The shared GoogleGenAI instance.
- */
-export function getAi(apiKey?: string): GoogleGenAI {
-  if (!apiKey) {
-    if (!aiInstance) {
-      const envKey = getGeminiKeyPool().keys[0];
-      aiInstance = new GoogleGenAI({
-        apiKey: envKey,
-        ...SDK_SINGLE_ATTEMPT_HTTP_OPTIONS,
-      });
-    }
-    return aiInstance;
-  }
-
-  const cached = aiInstancesByKey.get(apiKey);
-  if (cached) return cached;
-  const client = new GoogleGenAI({
-    apiKey,
-    ...SDK_SINGLE_ATTEMPT_HTTP_OPTIONS,
-  });
-  aiInstancesByKey.set(apiKey, client);
-  return client;
-}
-
-/**
- * In development, persists a hashed record of LLM inputs to `.next/logs/llm_inputs` for debugging.
- *
- * @param params - Object containing the model name, prompts, payload, thesis matrix, and optional stage label.
- * @param params.modelName - The Gemini model identifier used for the call.
- * @param params.systemInstruction - The system-level instructions sent to the model.
- * @param params.userPrompt - The user prompt sent to the model.
- * @param params.payload - The raw request payload sent to the model.
- * @param params.thesisMatrix - The thesis matrix context included in the log.
- * @param params.stage - Optional label identifying the pipeline stage.
- * @returns The SHA-256 hash of the logged inputs, or undefined when logging is skipped.
- */
-export async function logRawLlmCall(params: {
-  modelName: string;
-  systemInstruction: string;
-  userPrompt: string;
-  payload: unknown;
-  thesisMatrix: unknown;
-  stage?: string;
-}): Promise<string | undefined> {
-  if (process.env.NODE_ENV !== "development") return;
-  if (typeof window !== "undefined") return;
-
-  const timestamp = new Date().toISOString();
-  const combinedPrompt = `System Instruction:\n${params.systemInstruction}\n\nUser Prompt:\n${params.userPrompt}`;
-
-  const hashObject = {
-    systemInstruction: params.systemInstruction,
-    userPrompt: params.userPrompt,
-    combinedPrompt,
-    payload: params.payload,
-    thesisMatrix: params.thesisMatrix,
-  };
-
-  const hash = crypto
-    .createHash("sha256")
-    .update(JSON.stringify(hashObject))
-    .digest("hex");
-
-  const logData = {
-    timestamp,
-    hash,
-    stage: params.stage || "gemini",
-    ...hashObject,
-  };
-
-  try {
-    const dir = path.resolve(process.cwd(), ".next/logs/llm_inputs");
-    await fs.mkdir(dir, { recursive: true });
-    const cleanTime = timestamp.replace(/:/g, "-");
-    const filename = `${cleanTime}_${hash.substring(0, 8)}.json`;
-    await fs.writeFile(
-      path.join(dir, filename),
-      JSON.stringify(logData, null, 2),
-      "utf-8",
-    );
-  } catch (err) {
-    const log = new Logger(createFlowId());
-    log.error("write_llm_log_failed", {
-      service: "gemini",
-      data: { error: String(err) },
-    });
-  }
-
-  return hash;
-}
-
-/**
- * Requests structured JSON output from Gemini via responseJsonSchema, with retry on 429/5xx and optional Zod validation.
- * Each request is strictly bound to its assigned Google Cloud project API key with per-project 15 RPM pacing.
- *
- * @param modelName - The Gemini model identifier to call.
- * @param systemInstruction - The system-level instructions for the model.
- * @param prompt - The user prompt to send to the model.
- * @param schema - The JSON schema constraining the response shape.
- * @param logger - Optional logger for structured output and error events.
- * @param options - Optional settings for the request.
- * @returns The parsed and validated structured output of type T.
- */
-export async function generateStructuredContent<T>(
-  modelName: string,
-  systemInstruction: string,
-  prompt: string,
-  schema: JsonSchema,
-  logger?: Logger,
-  options?: StructuredGenerationOptions<T>,
-): Promise<T> {
-  const scheduledTime = performance.now();
-
-  const thinkingLevel = options?.thinkingConfig?.thinkingLevel;
-  const callLabel = options?.payloadStage ?? "gemini";
-
-  const keyPool = getGeminiKeyPool();
-  const assignedKey = options?.apiKey ?? keyPool.keys[0];
-  const projectIndex = getProjectIndex(assignedKey);
-
-  if (options?.quiet !== true) {
-    logger?.info(`${callLabel}_scheduled`, {
-      service: "gemini",
-      data: {
-        model: modelName,
-        projectIndex: projectIndex + 1,
-        instructionLength: systemInstruction.length,
-        promptLength: prompt.length,
-        thinkingLevel: thinkingLevel ?? undefined,
-      },
-    });
-  }
-
-  const thesisMatrix = options?.thesisMatrix || null;
-
-  const safetySettings = options?.safetySettings ?? [
-    {
-      category: HarmCategory.HARM_CATEGORY_HATE_SPEECH,
-      threshold: HarmBlockThreshold.BLOCK_ONLY_HIGH,
-    },
-    {
-      category: HarmCategory.HARM_CATEGORY_HARASSMENT,
-      threshold: HarmBlockThreshold.BLOCK_ONLY_HIGH,
-    },
-    {
-      category: HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT,
-      threshold: HarmBlockThreshold.BLOCK_ONLY_HIGH,
-    },
-    {
-      category: HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT,
-      threshold: HarmBlockThreshold.BLOCK_ONLY_HIGH,
-    },
-  ];
-
-  const payload = {
-    model: modelName,
-    contents: [{ role: "user", parts: [{ text: prompt }] }],
-    config: {
-      systemInstruction,
-      responseMimeType: "application/json",
-      responseJsonSchema: schema,
-      thinkingConfig: options?.thinkingConfig ?? undefined,
-      seed: options?.seed ?? GEMINI_SEED,
-      safetySettings,
-    },
-  };
-
-  await logRawLlmCall({
-    modelName,
-    systemInstruction,
-    userPrompt: prompt,
-    payload,
-    thesisMatrix,
-    stage: options?.payloadStage,
-  });
-
-  const maxRetries = 3;
-  let attempts = 0;
-
-  try {
-    const response = await withRetry(
-      async () => getAi(assignedKey).models.generateContent(payload),
-      {
-        maxRetries,
-        baseDelay: 2000,
-        onAttempt: (attempt, previousError) => {
-          attempts = attempt;
-          logger?.info("ai_attempt", {
-            service: "gemini",
-            filePath: "src/services/ai/providers/gemini-provider.ts",
-            data: {
-              attempt,
-              maxRetries,
-              projectIndex: projectIndex + 1,
-              model: modelName,
-              retried: attempt > 1,
-              previousError:
-                previousError instanceof Error
-                  ? previousError.message
-                  : undefined,
-            },
-          });
-        },
-        getDelay: (attempt, error, defaultDelay) => {
-          if (isServerOverloadError(error)) return serverOverloadDelay(attempt);
-          if (isRateLimitError(error)) {
-            const extractedDelay = extractRetryDelayMs(error);
-            if (extractedDelay && extractedDelay > 0) {
-              return extractedDelay + Math.random() * 500;
-            }
-            const capped = Math.min(
-              DEFAULT_MAX_DELAY,
-              2000 * Math.pow(2, attempt - 1),
-            );
-            return capped + Math.random() * Math.min(500, capped * 0.1);
-          }
-          return defaultDelay;
-        },
-        isRetryable: (error) => {
-          if (error instanceof Error) {
-            if (
-              ("status" in error &&
-                ((error as { status: string }).status === "UNAVAILABLE" ||
-                  (error as { status: string }).status ===
-                    "RESOURCE_EXHAUSTED")) ||
-              ("code" in error &&
-                ((error as { code: number }).code === 503 ||
-                  (error as { code: number }).code === 429)) ||
-              error.message.includes("high demand") ||
-              error.message.includes("503") ||
-              error.message.includes("UNAVAILABLE") ||
-              error.message.includes("429") ||
-              error.message.includes("quota") ||
-              error.message.includes("RESOURCE_EXHAUSTED")
-            ) {
-              return true;
-            }
-          }
-          return false;
-        },
-        onRetry: (attempt, delay, error) => {
-          const httpStatus = extractHttpStatus(error);
-          const quotaDetails = extractQuotaDetails(error);
-          const retryAfterMs = extractRetryDelayMs(error);
-          logger?.info("ai_retry_attempt", {
-            service: "gemini",
-            filePath: "src/services/ai/providers/gemini-provider.ts",
-            step: `retry_attempt_${attempt}`,
-            durationMs: delay,
-            data: {
-              attempt,
-              maxRetries,
-              projectIndex: projectIndex + 1,
-              crossProjectRotation: false,
-              delayMs: Math.round(delay),
-              retryAfterMs: retryAfterMs ?? undefined,
-              httpStatus,
-              quotaDetails: quotaDetails ?? undefined,
-              errorMessage:
-                error instanceof Error ? error.message : String(error),
-            },
-          });
-        },
-      },
-    );
-
-    const text = response.text;
-    if (!text) {
-      throw new Error("Gemini returned an empty response.");
-    }
-
-    const parsed = sanitizeAndParseJson<T>(text);
-
-    try {
-      validateStructuredOutput(parsed, options?.zodSchema);
-    } catch (err) {
-      if (err instanceof SchemaValidationError) {
-        logger?.error("ai_schema_validation_failed", {
-          service: "gemini",
-          filePath: "src/services/ai/providers/gemini-provider.ts",
-          data: {
-            model: modelName,
-            projectIndex: projectIndex + 1,
-            errorCount: err.zodError.issues.length,
-            issues: err.zodError.issues.map((i) => ({
-              path: i.path.join("."),
-              message: i.message,
-            })),
-          },
-          error: new Error(`Zod validation failed: ${err.zodError.message}`),
-        });
-        throw new Error(
-          "AI response did not match the expected structural schema. Please try again.",
-        );
-      }
-      throw err;
-    }
-
-    const durationMs = performance.now() - scheduledTime;
-    const metadata = (
-      response as unknown as {
-        usageMetadata?: {
-          promptTokenCount?: number;
-          candidatesTokenCount?: number;
-          totalTokenCount?: number;
-        };
-      }
-    )?.usageMetadata;
-
-    const tokens = metadata
-      ? {
-          input: metadata.promptTokenCount,
-          output: metadata.candidatesTokenCount,
-          total: metadata.totalTokenCount,
-        }
-      : undefined;
-
-    const payloadStage = options?.payloadStage ?? "gemini";
-    logger?.saveDebugPayload(payloadStage, modelName, prompt, text);
-
-    if (options?.quiet !== true) {
-      logger?.info(`${callLabel}_success`, {
-        service: "gemini",
-        durationMs,
-        tokens,
-        data: {
-          model: modelName,
-          projectIndex: projectIndex + 1,
-          crossProjectRotation: false,
-          attempt: attempts,
-          thinkingLevel: thinkingLevel ?? undefined,
-        },
-      });
-    }
-    return parsed;
-  } catch (error) {
-    const durationMs = performance.now() - scheduledTime;
-    const scenario = classifyError(error);
-    const quotaDetails = extractQuotaDetails(error);
-
-    const payloadStage = options?.payloadStage ?? "gemini";
-    logger?.saveDebugPayload(payloadStage, modelName, prompt);
-
-    logger?.error(`${callLabel}_failed`, {
-      service: "gemini",
-      filePath: "src/services/ai/providers/gemini-provider.ts",
-      durationMs,
-      data: {
-        model: modelName,
-        projectIndex: projectIndex + 1,
-        crossProjectRotation: false,
-        attempts,
-        thinkingLevel: thinkingLevel ?? undefined,
-        scenario,
-        quotaDetails: quotaDetails ?? undefined,
-      },
-      error,
-    });
-    throw toAiProviderError(error, "gemini");
-  }
-}
-</file>
-
 <file path="src/services/ai/cloudflare-ai.ts">
 import { Logger } from "@/lib/logger";
 import { withRetry, HttpError, DEFAULT_MAX_DELAY } from "@/lib/api-utils";
@@ -34745,6 +33659,323 @@ export async function rerankWithCohere(
   } finally {
     clearTimeout(timer);
   }
+}
+</file>
+
+<file path="src/services/ai/llm-errors.ts">
+import { z } from "zod";
+import { AiProviderError } from "@/lib/errors/app-error";
+
+export type ErrorScenario = "quota" | "network" | "system";
+
+/** Error thrown when structured LLM output fails Zod schema validation. */
+export class SchemaValidationError extends Error {
+  public readonly zodError: z.ZodError;
+
+  /**
+   * Creates a schema validation error carrying the underlying Zod error for diagnostics.
+   *
+   * @param zodError - The Zod error produced by the failed validation.
+   */
+  constructor(zodError: z.ZodError) {
+    super("Structured output failed Zod schema validation.");
+    this.name = "SchemaValidationError";
+    this.zodError = zodError;
+  }
+}
+
+/**
+ * Extracts a readable string message from any error value.
+ *
+ * @param error - The error value to extract a message from.
+ * @returns The extracted message, or an empty string.
+ */
+export function extractMessage(error: unknown): string {
+  if (typeof error === "string") {
+    return error;
+  }
+
+  if (error instanceof Error) {
+    return error.message;
+  }
+
+  if (error && typeof error === "object") {
+    const obj = error as Record<string, unknown>;
+    if (typeof obj.error === "string") return obj.error;
+    if (typeof obj.message === "string") return obj.message;
+
+    try {
+      const serialized = JSON.stringify(error);
+      if (serialized && serialized !== "{}") return serialized;
+    } catch {}
+  }
+
+  return "";
+}
+
+/**
+ * Extracts a human-readable HTTP status label from a thrown provider error.
+ *
+ * @param error - The thrown error to inspect.
+ * @returns The formatted HTTP status string, or "unknown" when it cannot be determined.
+ */
+export function extractHttpStatus(error: unknown): string {
+  if (error instanceof Error) {
+    const err = error as unknown as Record<string, unknown>;
+    const status = typeof err.status === "string" ? err.status : "";
+    const code = typeof err.code === "number" ? err.code : 0;
+
+    if (code === 429 || status === "RESOURCE_EXHAUSTED")
+      return "429 (RESOURCE_EXHAUSTED)";
+    if (code === 503 || status === "UNAVAILABLE") return "503 (UNAVAILABLE)";
+    if (status) return `${code} (${status})`;
+    if (code) return `${code}`;
+
+    if (error.message.includes("429") || error.message.includes("quota"))
+      return "429 (RESOURCE_EXHAUSTED)";
+    if (error.message.includes("503") || error.message.includes("UNAVAILABLE"))
+      return "503 (UNAVAILABLE)";
+  }
+  return "unknown";
+}
+
+/**
+ * Determines whether a thrown provider error is a rate-limit (RPM/RPD/quota) failure.
+ *
+ * @param error - The thrown error to inspect.
+ * @returns True when the error indicates the active key exhausted its rate limit.
+ */
+export function isRateLimitError(error: unknown): boolean {
+  if (!(error instanceof Error)) return false;
+  const err = error as unknown as Record<string, unknown>;
+  const status = typeof err.status === "string" ? err.status : "";
+  const code = typeof err.code === "number" ? err.code : 0;
+  if (status === "RESOURCE_EXHAUSTED" || code === 429) return true;
+  const message = error.message.toLowerCase();
+  return (
+    message.includes("429") ||
+    message.includes("quota") ||
+    message.includes("rate limit") ||
+    message.includes("rpd") ||
+    message.includes("rpm")
+  );
+}
+
+/**
+ * Determines whether a thrown provider error is a server-side overload (503 / UNAVAILABLE)
+ * that affects all keys and is best handled with a long backoff rather than key rotation.
+ *
+ * @param error - The thrown error to inspect.
+ * @returns True when the error indicates a server-side overload.
+ */
+export function isServerOverloadError(error: unknown): boolean {
+  if (!(error instanceof Error)) return false;
+  const err = error as unknown as Record<string, unknown>;
+  const status = typeof err.status === "string" ? err.status : "";
+  const code = typeof err.code === "number" ? err.code : 0;
+  if (code === 503 || status === "UNAVAILABLE") return true;
+  const message = error.message.toLowerCase();
+  return (
+    message.includes("503") ||
+    message.includes("unavailable") ||
+    message.includes("high demand")
+  );
+}
+
+/**
+ * Classifies any error into a user-facing scenario (quota, network, or system).
+ *
+ * @param error - The error value to classify.
+ * @returns The matched error scenario.
+ */
+export function classifyError(error: unknown): ErrorScenario {
+  const message = extractMessage(error);
+  if (!message) return "system";
+
+  const lower = message.toLowerCase();
+
+  if (
+    lower.includes("429") ||
+    lower.includes("resource_exhausted") ||
+    lower.includes("quota exceeded") ||
+    lower.includes("quota")
+  ) {
+    return "quota";
+  }
+
+  if (
+    lower.includes("fetch failed") ||
+    lower.includes("network") ||
+    lower.includes("timeout") ||
+    lower.includes("503") ||
+    lower.includes("502") ||
+    lower.includes("enotfound") ||
+    lower.includes("econnrefused") ||
+    lower.includes("eai_again") ||
+    lower.includes("econnreset")
+  ) {
+    return "network";
+  }
+
+  return "system";
+}
+
+/**
+ * Extracts the recommended retry delay in milliseconds from a Google RPC RetryInfo error or message.
+ *
+ * @param error - The thrown error to inspect.
+ * @returns The extracted delay in milliseconds, or null if not found.
+ */
+export function extractRetryDelayMs(error: unknown): number | null {
+  if (!error) return null;
+
+  if (error instanceof Error) {
+    // Check parsed RPC details if present on error object
+    const errObj = error as unknown as Record<string, unknown>;
+    if (Array.isArray(errObj.details)) {
+      const retryInfo = errObj.details.find((d: Record<string, unknown>) =>
+        d?.["@type"]?.toString().includes("RetryInfo"),
+      );
+      if (retryInfo && typeof retryInfo.retryDelay === "string") {
+        const seconds = parseFloat(retryInfo.retryDelay.replace(/s$/, ""));
+        if (!isNaN(seconds) && seconds > 0) {
+          return Math.round(seconds * 1000);
+        }
+      }
+    }
+
+    // Check JSON in message
+    if (typeof error.message === "string") {
+      try {
+        const parsed = JSON.parse(error.message);
+        if (parsed?.error?.details && Array.isArray(parsed.error.details)) {
+          const retryInfo = parsed.error.details.find(
+            (d: Record<string, unknown>) =>
+              d?.["@type"]?.toString().includes("RetryInfo"),
+          );
+          if (retryInfo && typeof retryInfo.retryDelay === "string") {
+            const seconds = parseFloat(retryInfo.retryDelay.replace(/s$/, ""));
+            if (!isNaN(seconds) && seconds > 0) {
+              return Math.round(seconds * 1000);
+            }
+          }
+        }
+      } catch {
+        // message is plain text
+      }
+
+      const match = error.message.match(
+        /(?:please retry in|retry after|retry in)\s+([\d.]+)\s*s/i,
+      );
+      if (match && match[1]) {
+        const seconds = parseFloat(match[1]);
+        if (!isNaN(seconds) && seconds > 0) {
+          return Math.round(seconds * 1000);
+        }
+      }
+    }
+  }
+
+  return null;
+}
+
+export interface QuotaViolationDetails {
+  quotaMetric?: string;
+  quotaId?: string;
+  quotaValue?: string;
+  quotaDimensions?: Record<string, string>;
+  retryDelay?: string;
+  message?: string;
+}
+
+/**
+ * Extracts structured QuotaFailure and RetryInfo metadata from a Google RPC error.
+ *
+ * @param error - The thrown error to inspect.
+ * @returns Structured quota violation details or null when absent.
+ */
+export function extractQuotaDetails(
+  error: unknown,
+): QuotaViolationDetails | null {
+  if (!error) return null;
+
+  let errorObj: Record<string, unknown> | null = null;
+
+  if (error instanceof Error) {
+    if (typeof error.message === "string") {
+      try {
+        const parsed = JSON.parse(error.message);
+        if (parsed?.error) {
+          errorObj = parsed.error;
+        }
+      } catch {
+        // not json
+      }
+    }
+    if (!errorObj && typeof error === "object") {
+      errorObj = error as unknown as Record<string, unknown>;
+    }
+  }
+
+  if (!errorObj) return null;
+
+  const details = Array.isArray(errorObj.details) ? errorObj.details : [];
+  const quotaFailure = details.find((d: Record<string, unknown>) =>
+    d?.["@type"]?.toString().includes("QuotaFailure"),
+  );
+  const retryInfo = details.find((d: Record<string, unknown>) =>
+    d?.["@type"]?.toString().includes("RetryInfo"),
+  );
+  const violation = (
+    quotaFailure as { violations?: Array<Record<string, unknown>> }
+  )?.violations?.[0];
+
+  if (!quotaFailure && !retryInfo && !errorObj.message) return null;
+
+  return {
+    quotaMetric: typeof violation?.quotaMetric === "string" ? violation.quotaMetric : undefined,
+    quotaId: typeof violation?.quotaId === "string" ? violation.quotaId : undefined,
+    quotaValue: typeof violation?.quotaValue === "string" ? violation.quotaValue : undefined,
+    quotaDimensions: (violation?.quotaDimensions as Record<string, string>) ?? undefined,
+    retryDelay: typeof retryInfo?.retryDelay === "string" ? retryInfo.retryDelay : undefined,
+    message: typeof errorObj.message === "string" ? errorObj.message : undefined,
+  };
+}
+
+const TURKISH_ERROR_BY_SCENARIO: Record<ErrorScenario, string> = {
+  quota:
+    "Yapay zeka hizmetinin anlık kullanım limitine ulaşıldı. Lütfen birkaç dakika sonra tekrar deneyin.",
+  network:
+    "Yapay zeka hizmetine bağlanılamadı. İnternet bağlantınızı kontrol edip tekrar deneyin.",
+  system:
+    "Yapay zeka hizmeti şu anda yanıt veremiyor. Lütfen daha sonra tekrar deneyin.",
+};
+
+/**
+ * Wraps any thrown AI provider failure into an `AiProviderError` with a Turkish
+ * scenario-based user message, preserving the original error as the cause.
+ *
+ * @param error - The raw thrown error from the provider call.
+ * @param provider - The provider name used for technical diagnostics.
+ * @returns An `AiProviderError` instance ready to cross the server boundary.
+ */
+export function toAiProviderError(
+  error: unknown,
+  provider: string,
+): AiProviderError {
+  if (error instanceof AiProviderError) return error;
+
+  const scenario = classifyError(error);
+
+  return new AiProviderError({
+    cause: error,
+    technicalDetails: {
+      provider,
+      scenario,
+      httpStatus: extractHttpStatus(error),
+    },
+    userMessage: TURKISH_ERROR_BY_SCENARIO[scenario],
+  });
 }
 </file>
 
@@ -37979,266 +37210,6 @@ export async function evaluateSingleBoxJury(
 }
 </file>
 
-<file path="src/features/positioning/per-thesis-evaluation.ts">
-import { z } from "zod";
-import { ThinkingLevel } from "@google/genai";
-import { FLASH_LITE_35, GEMINI_SEED } from "@/lib/constants";
-import {
-  generateGeminiStructuredContent,
-  type JsonSchema,
-} from "@/services/ai";
-import { getGeminiKeyPool } from "@/services/ai/gemini-key-pool";
-import {
-  createConcurrencyLimiter,
-  type ConcurrencyLimiter,
-} from "@/lib/rate-limiter";
-import type { Logger } from "@/lib/logger";
-import { buildPerThesisEvaluationPromptPayload } from "./prompts/per-thesis-evaluation.prompt";
-import { strategicRoleEnum, type PositioningMatrixInput } from "./validation";
-import type { SiftedThesis } from "./sifting";
-
-/** Max concurrent per-thesis Gemini evaluations per API key. */
-const CONCURRENCY_PER_KEY = 8;
-
-/** Zod schema for the single-thesis strategic relevance/originality/role evaluation output. */
-export const perThesisEvaluationSchema = z.object({
-  externalThesisId: z
-    .union([z.string(), z.number()])
-    .transform((val) => String(val))
-    .describe("Değerlendirilen tezin ID'si"),
-  isRelevant: z
-    .boolean()
-    .describe(
-      "Kullanıcının araştırma nesnesi/olgusal sahasıyla doğrudan alakalı mı?",
-    ),
-  relevanceReasoning: z
-    .string()
-    .optional()
-    .describe(
-      "Tezin ampirik olarak neden ilgili veya ilgisiz olduğuna dair somut gerekçe (1-2 cümle)",
-    ),
-  isDirectOverlap: z
-    .boolean()
-    .describe(
-      "Kullanıcının tezi ile birebir örtüşme var mı (kullanıcı tezi özgün değil mi)?",
-    ),
-  strategicRole: strategicRoleEnum
-    .optional()
-    .describe(
-      "Tezin kullanıcının tezindeki stratejik rolü: BROAD_CONTEXT | SPECIFIC_FOCUS | FOUNDATIONAL_WORK | METHODOLOGICAL_BENCHMARK | ALTERNATIVE_PERSPECTIVE",
-    ),
-  contributionAreas: z
-    .array(z.string())
-    .describe(
-      "Tezin kullanıcının tezine katkı sağladığı/benzediği spesifik odak alanları (1-3 adet)",
-    ),
-  literaturePosition: z
-    .string()
-    .describe("Tezin literatürdeki konumu ve ne yaptığı (1 net cümle)"),
-  strategicUtility: z
-    .string()
-    .describe(
-      "Tezin kullanıcının tezinde nasıl kullanılacağına ve hangi boşluğu dolduracağına dair stratejik rehber not (1-2 cümle)",
-    ),
-});
-
-/** Inferred type for a single-thesis evaluation result. */
-export type PerThesisEvaluation = z.infer<typeof perThesisEvaluationSchema>;
-
-/** JSON Schema for Gemini structured outputs of the per-thesis evaluation. */
-export const perThesisEvaluationJsonSchema: JsonSchema = {
-  type: "object",
-  properties: {
-    externalThesisId: {
-      type: "string",
-      description: "Değerlendirilen tezin ID'si",
-    },
-    isRelevant: {
-      type: "boolean",
-      description:
-        "Kullanıcının araştırma nesnesi/olgusal sahasıyla doğrudan alakalı mı? İlgisiz tezlerde false.",
-    },
-    relevanceReasoning: {
-      type: "string",
-      description:
-        "Tezin ampirik olarak neden ilgili veya ilgisiz olduğuna dair somut gerekçe (1-2 cümle)",
-    },
-    isDirectOverlap: {
-      type: "boolean",
-      description:
-        "Kullanıcının tezi ile birebir örtüşme var mı (kullanıcı tezi özgün değil mi)?",
-    },
-    strategicRole: {
-      type: "string",
-      enum: [
-        "BROAD_CONTEXT",
-        "SPECIFIC_FOCUS",
-        "FOUNDATIONAL_WORK",
-        "METHODOLOGICAL_BENCHMARK",
-        "ALTERNATIVE_PERSPECTIVE",
-      ],
-      description:
-        "Tezin stratejik rolü: BROAD_CONTEXT (Geniş Çerçeve), SPECIFIC_FOCUS (Kısmi Odak), FOUNDATIONAL_WORK (Öncül Çalışma), METHODOLOGICAL_BENCHMARK (Yöntem Rehberi), ALTERNATIVE_PERSPECTIVE (Karşıt Yaklaşım).",
-    },
-    contributionAreas: {
-      type: "array",
-      items: { type: "string" },
-      description:
-        "Tezin kullanıcının tezine katkı sağladığı spesifik odak alanları (1-3 adet). İlgisiz tezlerde boş dizi [].",
-    },
-    literaturePosition: {
-      type: "string",
-      description:
-        "Tezin literatürdeki konumu ve ne yaptığı (1 net cümle). İlgisiz tezlerde boş string.",
-    },
-    strategicUtility: {
-      type: "string",
-      description:
-        "Tezin kullanıcının tezinde nasıl kullanılacağına ve hangi boşluğu dolduracağına dair stratejik rehber not (1-2 cümle). İlgisiz tezlerde boş string.",
-    },
-  },
-  required: [
-    "externalThesisId",
-    "isRelevant",
-    "isDirectOverlap",
-    "contributionAreas",
-    "literaturePosition",
-    "strategicUtility",
-  ],
-  additionalProperties: false,
-};
-
-/**
- * Evaluates a single thesis against the user's thesis matrix via the 3-stage decision chain.
- *
- * @param input - The validated positioning matrix input.
- * @param thesis - The single thesis candidate to evaluate.
- * @param apiKey - Optional Gemini API key override for multi-key load distribution.
- * @param logger - Optional structured logger for pipeline events.
- * @returns The structured per-thesis evaluation result.
- */
-export async function evaluateSingleThesis(
-  input: PositioningMatrixInput,
-  thesis: SiftedThesis,
-  apiKey?: string,
-  logger?: Logger,
-): Promise<PerThesisEvaluation> {
-  const payload = buildPerThesisEvaluationPromptPayload(input, thesis);
-
-  const result = await generateGeminiStructuredContent<PerThesisEvaluation>(
-    FLASH_LITE_35,
-    payload.systemInstruction,
-    payload.userPrompt,
-    perThesisEvaluationJsonSchema,
-    logger,
-    {
-      zodSchema: perThesisEvaluationSchema,
-      payloadStage: "positioning_per_thesis_evaluation",
-      seed: GEMINI_SEED,
-      thinkingConfig: { thinkingLevel: ThinkingLevel.LOW },
-      thesisMatrix: input,
-      apiKey,
-      quiet: true,
-    },
-  );
-
-  return result;
-}
-
-/** A thesis paired with its per-thesis evaluation result. */
-export interface EvaluatedThesis {
-  thesis: SiftedThesis;
-  evaluation: PerThesisEvaluation;
-}
-
-/**
- * Evaluates all candidate theses independently in parallel,
- * distributed round-robin across the Gemini API key pool and throttled to
- * `CONCURRENCY_PER_KEY` simultaneous evaluations per key.
- *
- * Each thesis is assessed in its own dedicated LLM call to guarantee
- * absolute, non-relative evaluation accuracy without inter-thesis bias.
- *
- * @param input - The validated positioning matrix input.
- * @param theses - The full list of candidate theses to evaluate.
- * @param logger - Optional structured logger for pipeline events.
- * @returns The evaluated theses that were successfully processed, matching original order.
- */
-export async function evaluateThesesInParallel(
-  input: PositioningMatrixInput,
-  theses: SiftedThesis[],
-  logger?: Logger,
-): Promise<EvaluatedThesis[]> {
-  if (theses.length === 0) return [];
-
-  const apiKeys = getGeminiKeyPool().keys;
-  const startTime = performance.now();
-
-  logger?.info("positioning_per_thesis_evaluation_start", {
-    service: "positioning",
-    filePath: "src/features/positioning/per-thesis-evaluation.ts",
-    data: {
-      total: theses.length,
-      keyCount: apiKeys.length,
-      concurrencyPerKey: CONCURRENCY_PER_KEY,
-      mode: "individual_parallel",
-    },
-  });
-
-  const limiterByKey = new Map<string, ConcurrencyLimiter>();
-  for (const apiKey of apiKeys) {
-    limiterByKey.set(apiKey, createConcurrencyLimiter(CONCURRENCY_PER_KEY));
-  }
-
-  const settled = await Promise.allSettled(
-    theses.map((thesis, idx) => {
-      const assignedKey =
-        apiKeys.length > 0 ? apiKeys[idx % apiKeys.length] : undefined;
-      const limiter = assignedKey ? limiterByKey.get(assignedKey) : undefined;
-      const task = () =>
-        evaluateSingleThesis(input, thesis, assignedKey, logger);
-      return limiter ? limiter.exec(task) : task();
-    }),
-  );
-
-  const allEvaluated: EvaluatedThesis[] = [];
-
-  for (let idx = 0; idx < settled.length; idx++) {
-    const res = settled[idx];
-    const thesis = theses[idx];
-    if (res.status === "fulfilled") {
-      allEvaluated.push({
-        thesis,
-        evaluation: res.value,
-      });
-    } else {
-      logger?.error("positioning_per_thesis_single_failed", {
-        service: "positioning",
-        filePath: "src/features/positioning/per-thesis-evaluation.ts",
-        data: {
-          thesisId: thesis.id,
-          thesisTitle: thesis.title,
-        },
-        error: res.reason,
-      });
-    }
-  }
-
-  logger?.info("positioning_per_thesis_evaluation_success", {
-    service: "positioning",
-    filePath: "src/features/positioning/per-thesis-evaluation.ts",
-    durationMs: Math.round(performance.now() - startTime),
-    data: {
-      total: theses.length,
-      evaluatedCount: allEvaluated.length,
-      relevantCount: allEvaluated.filter((e) => e.evaluation.isRelevant).length,
-    },
-  });
-
-  return allEvaluated;
-}
-</file>
-
 <file path="src/lib/api-utils.ts">
 export const CONTACT_EMAIL =
   process.env.CROSSREF_CONTACT_EMAIL || "iletisim@fabricca.com";
@@ -38442,6 +37413,414 @@ export async function getProfile() {
     onboardingCompleted: user.onboardingCompleted,
     createdAt: user.createdAt,
   };
+}
+</file>
+
+<file path="src/services/ai/providers/gemini-provider.ts">
+import { GoogleGenAI, HarmCategory, HarmBlockThreshold } from "@google/genai";
+import { Logger, createFlowId } from "@/lib/logger";
+import { getGeminiKeyPool, getProjectIndex } from "../gemini-key-pool";
+import { GEMINI_SEED } from "@/lib/constants";
+import {
+  SchemaValidationError,
+  classifyError,
+  extractHttpStatus,
+  extractQuotaDetails,
+  extractRetryDelayMs,
+  isRateLimitError,
+  isServerOverloadError,
+  toAiProviderError,
+} from "../llm-errors";
+import {
+  withRetry,
+  serverOverloadDelay,
+  DEFAULT_MAX_DELAY,
+} from "../llm-retry";
+import { sanitizeAndParseJson, validateStructuredOutput } from "../llm-json";
+import type { JsonSchema, StructuredGenerationOptions } from "../llm-types";
+import crypto from "crypto";
+import fs from "fs/promises";
+import path from "path";
+
+let aiInstance: GoogleGenAI | null = null;
+
+const aiInstancesByKey = new Map<string, GoogleGenAI>();
+
+/**
+ * Disables the SDK's built-in HTTP retry so `withRetry` remains the single retry
+ * owner. Empirically verified on @google/genai 2.16.0: the classic generateContent
+ * / generateContentStream path retries ONLY when `httpOptions.retryOptions` is
+ * present, and `attempts: 1` means the original request runs exactly once.
+ */
+const SDK_SINGLE_ATTEMPT_HTTP_OPTIONS = {
+  httpOptions: { retryOptions: { attempts: 1 } },
+} as const;
+
+/**
+ * Returns a lazily-initialized GoogleGenAI client, defaulting to the GEMINI_API_KEY_1
+ * environment variable or a per-key cached client when an explicit key is provided.
+ *
+ * @param apiKey - Optional Gemini API key override for multi-key load distribution.
+ * @returns The shared GoogleGenAI instance.
+ */
+export function getAi(apiKey?: string): GoogleGenAI {
+  if (!apiKey) {
+    if (!aiInstance) {
+      const envKey = getGeminiKeyPool().keys[0];
+      aiInstance = new GoogleGenAI({
+        apiKey: envKey,
+        ...SDK_SINGLE_ATTEMPT_HTTP_OPTIONS,
+      });
+    }
+    return aiInstance;
+  }
+
+  const cached = aiInstancesByKey.get(apiKey);
+  if (cached) return cached;
+  const client = new GoogleGenAI({
+    apiKey,
+    ...SDK_SINGLE_ATTEMPT_HTTP_OPTIONS,
+  });
+  aiInstancesByKey.set(apiKey, client);
+  return client;
+}
+
+/**
+ * In development, persists a hashed record of LLM inputs to `.next/logs/llm_inputs` for debugging.
+ *
+ * @param params - Object containing the model name, prompts, payload, thesis matrix, and optional stage label.
+ * @param params.modelName - The Gemini model identifier used for the call.
+ * @param params.systemInstruction - The system-level instructions sent to the model.
+ * @param params.userPrompt - The user prompt sent to the model.
+ * @param params.payload - The raw request payload sent to the model.
+ * @param params.thesisMatrix - The thesis matrix context included in the log.
+ * @param params.stage - Optional label identifying the pipeline stage.
+ * @returns The SHA-256 hash of the logged inputs, or undefined when logging is skipped.
+ */
+export async function logRawLlmCall(params: {
+  modelName: string;
+  systemInstruction: string;
+  userPrompt: string;
+  payload: unknown;
+  thesisMatrix: unknown;
+  stage?: string;
+}): Promise<string | undefined> {
+  if (process.env.NODE_ENV !== "development") return;
+  if (typeof window !== "undefined") return;
+
+  const timestamp = new Date().toISOString();
+  const combinedPrompt = `System Instruction:\n${params.systemInstruction}\n\nUser Prompt:\n${params.userPrompt}`;
+
+  const hashObject = {
+    systemInstruction: params.systemInstruction,
+    userPrompt: params.userPrompt,
+    combinedPrompt,
+    payload: params.payload,
+    thesisMatrix: params.thesisMatrix,
+  };
+
+  const hash = crypto
+    .createHash("sha256")
+    .update(JSON.stringify(hashObject))
+    .digest("hex");
+
+  const logData = {
+    timestamp,
+    hash,
+    stage: params.stage || "gemini",
+    ...hashObject,
+  };
+
+  try {
+    const dir = path.resolve(process.cwd(), ".next/logs/llm_inputs");
+    await fs.mkdir(dir, { recursive: true });
+    const cleanTime = timestamp.replace(/:/g, "-");
+    const filename = `${cleanTime}_${hash.substring(0, 8)}.json`;
+    await fs.writeFile(
+      path.join(dir, filename),
+      JSON.stringify(logData, null, 2),
+      "utf-8",
+    );
+  } catch (err) {
+    const log = new Logger(createFlowId());
+    log.error("write_llm_log_failed", {
+      service: "gemini",
+      data: { error: String(err) },
+    });
+  }
+
+  return hash;
+}
+
+/**
+ * Requests structured JSON output from Gemini via responseJsonSchema, with retry on 429/5xx and optional Zod validation.
+ * Each request is strictly bound to its assigned Google Cloud project API key with per-project 15 RPM pacing.
+ *
+ * @param modelName - The Gemini model identifier to call.
+ * @param systemInstruction - The system-level instructions for the model.
+ * @param prompt - The user prompt to send to the model.
+ * @param schema - The JSON schema constraining the response shape.
+ * @param logger - Optional logger for structured output and error events.
+ * @param options - Optional settings for the request.
+ * @returns The parsed and validated structured output of type T.
+ */
+export async function generateStructuredContent<T>(
+  modelName: string,
+  systemInstruction: string,
+  prompt: string,
+  schema: JsonSchema,
+  logger?: Logger,
+  options?: StructuredGenerationOptions<T>,
+): Promise<T> {
+  const scheduledTime = performance.now();
+
+  const thinkingLevel = options?.thinkingConfig?.thinkingLevel;
+  const callLabel = options?.payloadStage ?? "gemini";
+
+  const keyPool = getGeminiKeyPool();
+  const assignedKey = options?.apiKey ?? keyPool.keys[0];
+  const projectIndex = getProjectIndex(assignedKey);
+
+  if (options?.quiet !== true) {
+    logger?.info(`${callLabel}_scheduled`, {
+      service: "gemini",
+      data: {
+        model: modelName,
+        projectIndex: projectIndex + 1,
+        instructionLength: systemInstruction.length,
+        promptLength: prompt.length,
+        thinkingLevel: thinkingLevel ?? undefined,
+      },
+    });
+  }
+
+  const thesisMatrix = options?.thesisMatrix || null;
+
+  const safetySettings = options?.safetySettings ?? [
+    {
+      category: HarmCategory.HARM_CATEGORY_HATE_SPEECH,
+      threshold: HarmBlockThreshold.BLOCK_ONLY_HIGH,
+    },
+    {
+      category: HarmCategory.HARM_CATEGORY_HARASSMENT,
+      threshold: HarmBlockThreshold.BLOCK_ONLY_HIGH,
+    },
+    {
+      category: HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT,
+      threshold: HarmBlockThreshold.BLOCK_ONLY_HIGH,
+    },
+    {
+      category: HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT,
+      threshold: HarmBlockThreshold.BLOCK_ONLY_HIGH,
+    },
+  ];
+
+  const payload = {
+    model: modelName,
+    contents: [{ role: "user", parts: [{ text: prompt }] }],
+    config: {
+      systemInstruction,
+      responseMimeType: "application/json",
+      responseJsonSchema: schema,
+      thinkingConfig: options?.thinkingConfig ?? undefined,
+      seed: options?.seed ?? GEMINI_SEED,
+      safetySettings,
+    },
+  };
+
+  await logRawLlmCall({
+    modelName,
+    systemInstruction,
+    userPrompt: prompt,
+    payload,
+    thesisMatrix,
+    stage: options?.payloadStage,
+  });
+
+  const maxRetries = 3;
+  let attempts = 0;
+
+  try {
+    const response = await withRetry(
+      async () => getAi(assignedKey).models.generateContent(payload),
+      {
+        maxRetries,
+        baseDelay: 2000,
+        onAttempt: (attempt, previousError) => {
+          attempts = attempt;
+          logger?.info("ai_attempt", {
+            service: "gemini",
+            filePath: "src/services/ai/providers/gemini-provider.ts",
+            data: {
+              attempt,
+              maxRetries,
+              projectIndex: projectIndex + 1,
+              model: modelName,
+              retried: attempt > 1,
+              previousError:
+                previousError instanceof Error
+                  ? previousError.message
+                  : undefined,
+            },
+          });
+        },
+        getDelay: (attempt, error, defaultDelay) => {
+          if (isServerOverloadError(error)) return serverOverloadDelay(attempt);
+          if (isRateLimitError(error)) {
+            const extractedDelay = extractRetryDelayMs(error);
+            if (extractedDelay && extractedDelay > 0) {
+              return extractedDelay + Math.random() * 500;
+            }
+            const capped = Math.min(
+              DEFAULT_MAX_DELAY,
+              2000 * Math.pow(2, attempt - 1),
+            );
+            return capped + Math.random() * Math.min(500, capped * 0.1);
+          }
+          return defaultDelay;
+        },
+        isRetryable: (error) => {
+          if (error instanceof Error) {
+            if (
+              ("status" in error &&
+                ((error as { status: string }).status === "UNAVAILABLE" ||
+                  (error as { status: string }).status ===
+                    "RESOURCE_EXHAUSTED")) ||
+              ("code" in error &&
+                ((error as { code: number }).code === 503 ||
+                  (error as { code: number }).code === 429)) ||
+              error.message.includes("high demand") ||
+              error.message.includes("503") ||
+              error.message.includes("UNAVAILABLE") ||
+              error.message.includes("429") ||
+              error.message.includes("quota") ||
+              error.message.includes("RESOURCE_EXHAUSTED")
+            ) {
+              return true;
+            }
+          }
+          return false;
+        },
+        onRetry: (attempt, delay, error) => {
+          const httpStatus = extractHttpStatus(error);
+          const quotaDetails = extractQuotaDetails(error);
+          const retryAfterMs = extractRetryDelayMs(error);
+          logger?.info("ai_retry_attempt", {
+            service: "gemini",
+            filePath: "src/services/ai/providers/gemini-provider.ts",
+            step: `retry_attempt_${attempt}`,
+            durationMs: delay,
+            data: {
+              attempt,
+              maxRetries,
+              projectIndex: projectIndex + 1,
+              crossProjectRotation: false,
+              delayMs: Math.round(delay),
+              retryAfterMs: retryAfterMs ?? undefined,
+              httpStatus,
+              quotaDetails: quotaDetails ?? undefined,
+              errorMessage:
+                error instanceof Error ? error.message : String(error),
+            },
+          });
+        },
+      },
+    );
+
+    const text = response.text;
+    if (!text) {
+      throw new Error("Gemini returned an empty response.");
+    }
+
+    const parsed = sanitizeAndParseJson<T>(text);
+
+    try {
+      validateStructuredOutput(parsed, options?.zodSchema);
+    } catch (err) {
+      if (err instanceof SchemaValidationError) {
+        logger?.error("ai_schema_validation_failed", {
+          service: "gemini",
+          filePath: "src/services/ai/providers/gemini-provider.ts",
+          data: {
+            model: modelName,
+            projectIndex: projectIndex + 1,
+            errorCount: err.zodError.issues.length,
+            issues: err.zodError.issues.map((i) => ({
+              path: i.path.join("."),
+              message: i.message,
+            })),
+          },
+          error: new Error(`Zod validation failed: ${err.zodError.message}`),
+        });
+        throw new Error(
+          "AI response did not match the expected structural schema. Please try again.",
+        );
+      }
+      throw err;
+    }
+
+    const durationMs = performance.now() - scheduledTime;
+    const metadata = (
+      response as unknown as {
+        usageMetadata?: {
+          promptTokenCount?: number;
+          candidatesTokenCount?: number;
+          totalTokenCount?: number;
+        };
+      }
+    )?.usageMetadata;
+
+    const tokens = metadata
+      ? {
+          input: metadata.promptTokenCount,
+          output: metadata.candidatesTokenCount,
+          total: metadata.totalTokenCount,
+        }
+      : undefined;
+
+    const payloadStage = options?.payloadStage ?? "gemini";
+    logger?.saveDebugPayload(payloadStage, modelName, prompt, text);
+
+    if (options?.quiet !== true) {
+      logger?.info(`${callLabel}_success`, {
+        service: "gemini",
+        durationMs,
+        tokens,
+        data: {
+          model: modelName,
+          projectIndex: projectIndex + 1,
+          crossProjectRotation: false,
+          attempt: attempts,
+          thinkingLevel: thinkingLevel ?? undefined,
+        },
+      });
+    }
+    return parsed;
+  } catch (error) {
+    const durationMs = performance.now() - scheduledTime;
+    const scenario = classifyError(error);
+    const quotaDetails = extractQuotaDetails(error);
+
+    const payloadStage = options?.payloadStage ?? "gemini";
+    logger?.saveDebugPayload(payloadStage, modelName, prompt);
+
+    logger?.error(`${callLabel}_failed`, {
+      service: "gemini",
+      filePath: "src/services/ai/providers/gemini-provider.ts",
+      durationMs,
+      data: {
+        model: modelName,
+        projectIndex: projectIndex + 1,
+        crossProjectRotation: false,
+        attempts,
+        thinkingLevel: thinkingLevel ?? undefined,
+        scenario,
+        quotaDetails: quotaDetails ?? undefined,
+      },
+      error,
+    });
+    throw toAiProviderError(error, "gemini");
+  }
 }
 </file>
 
@@ -41225,6 +40604,266 @@ export const outlineGenerationJsonSchema: JsonSchema = {
 };
 </file>
 
+<file path="src/features/positioning/per-thesis-evaluation.ts">
+import { z } from "zod";
+import { ThinkingLevel } from "@google/genai";
+import { FLASH_LITE_35, GEMINI_SEED } from "@/lib/constants";
+import {
+  generateGeminiStructuredContent,
+  type JsonSchema,
+} from "@/services/ai";
+import { getGeminiKeyPool } from "@/services/ai/gemini-key-pool";
+import {
+  createConcurrencyLimiter,
+  type ConcurrencyLimiter,
+} from "@/lib/rate-limiter";
+import type { Logger } from "@/lib/logger";
+import { buildPerThesisEvaluationPromptPayload } from "./prompts/per-thesis-evaluation.prompt";
+import { strategicRoleEnum, type PositioningMatrixInput } from "./validation";
+import type { SiftedThesis } from "./sifting";
+
+/** Max concurrent per-thesis Gemini evaluations per API key. */
+const CONCURRENCY_PER_KEY = 8;
+
+/** Zod schema for the single-thesis strategic relevance/originality/role evaluation output. */
+export const perThesisEvaluationSchema = z.object({
+  externalThesisId: z
+    .union([z.string(), z.number()])
+    .transform((val) => String(val))
+    .describe("Değerlendirilen tezin ID'si"),
+  isRelevant: z
+    .boolean()
+    .describe(
+      "Kullanıcının araştırma nesnesi/olgusal sahasıyla doğrudan alakalı mı?",
+    ),
+  relevanceReasoning: z
+    .string()
+    .optional()
+    .describe(
+      "Tezin ampirik olarak neden ilgili veya ilgisiz olduğuna dair somut gerekçe (1-2 cümle)",
+    ),
+  isDirectOverlap: z
+    .boolean()
+    .describe(
+      "Kullanıcının tezi ile birebir örtüşme var mı (kullanıcı tezi özgün değil mi)?",
+    ),
+  strategicRole: strategicRoleEnum
+    .optional()
+    .describe(
+      "Tezin kullanıcının tezindeki stratejik rolü: BROAD_CONTEXT | SPECIFIC_FOCUS | FOUNDATIONAL_WORK | METHODOLOGICAL_BENCHMARK | ALTERNATIVE_PERSPECTIVE",
+    ),
+  contributionAreas: z
+    .array(z.string())
+    .describe(
+      "Tezin kullanıcının tezine katkı sağladığı/benzediği spesifik odak alanları (1-3 adet)",
+    ),
+  literaturePosition: z
+    .string()
+    .describe("Tezin literatürdeki konumu ve ne yaptığı (1 net cümle)"),
+  strategicUtility: z
+    .string()
+    .describe(
+      "Tezin kullanıcının tezinde nasıl kullanılacağına ve hangi boşluğu dolduracağına dair stratejik rehber not (1-2 cümle)",
+    ),
+});
+
+/** Inferred type for a single-thesis evaluation result. */
+export type PerThesisEvaluation = z.infer<typeof perThesisEvaluationSchema>;
+
+/** JSON Schema for Gemini structured outputs of the per-thesis evaluation. */
+export const perThesisEvaluationJsonSchema: JsonSchema = {
+  type: "object",
+  properties: {
+    externalThesisId: {
+      type: "string",
+      description: "Değerlendirilen tezin ID'si",
+    },
+    isRelevant: {
+      type: "boolean",
+      description:
+        "Kullanıcının araştırma nesnesi/olgusal sahasıyla doğrudan alakalı mı? İlgisiz tezlerde false.",
+    },
+    relevanceReasoning: {
+      type: "string",
+      description:
+        "Tezin ampirik olarak neden ilgili veya ilgisiz olduğuna dair somut gerekçe (1-2 cümle)",
+    },
+    isDirectOverlap: {
+      type: "boolean",
+      description:
+        "Kullanıcının tezi ile birebir örtüşme var mı (kullanıcı tezi özgün değil mi)?",
+    },
+    strategicRole: {
+      type: "string",
+      enum: [
+        "BROAD_CONTEXT",
+        "SPECIFIC_FOCUS",
+        "FOUNDATIONAL_WORK",
+        "METHODOLOGICAL_BENCHMARK",
+        "ALTERNATIVE_PERSPECTIVE",
+      ],
+      description:
+        "Tezin stratejik rolü: BROAD_CONTEXT (Geniş Çerçeve), SPECIFIC_FOCUS (Kısmi Odak), FOUNDATIONAL_WORK (Öncül Çalışma), METHODOLOGICAL_BENCHMARK (Yöntem Rehberi), ALTERNATIVE_PERSPECTIVE (Karşıt Yaklaşım).",
+    },
+    contributionAreas: {
+      type: "array",
+      items: { type: "string" },
+      description:
+        "Tezin kullanıcının tezine katkı sağladığı spesifik odak alanları (1-3 adet). İlgisiz tezlerde boş dizi [].",
+    },
+    literaturePosition: {
+      type: "string",
+      description:
+        "Tezin literatürdeki konumu ve ne yaptığı (1 net cümle). İlgisiz tezlerde boş string.",
+    },
+    strategicUtility: {
+      type: "string",
+      description:
+        "Tezin kullanıcının tezinde nasıl kullanılacağına ve hangi boşluğu dolduracağına dair stratejik rehber not (1-2 cümle). İlgisiz tezlerde boş string.",
+    },
+  },
+  required: [
+    "externalThesisId",
+    "isRelevant",
+    "isDirectOverlap",
+    "contributionAreas",
+    "literaturePosition",
+    "strategicUtility",
+  ],
+  additionalProperties: false,
+};
+
+/**
+ * Evaluates a single thesis against the user's thesis matrix via the 3-stage decision chain.
+ *
+ * @param input - The validated positioning matrix input.
+ * @param thesis - The single thesis candidate to evaluate.
+ * @param apiKey - Optional Gemini API key override for multi-key load distribution.
+ * @param logger - Optional structured logger for pipeline events.
+ * @returns The structured per-thesis evaluation result.
+ */
+export async function evaluateSingleThesis(
+  input: PositioningMatrixInput,
+  thesis: SiftedThesis,
+  apiKey?: string,
+  logger?: Logger,
+): Promise<PerThesisEvaluation> {
+  const payload = buildPerThesisEvaluationPromptPayload(input, thesis);
+
+  const result = await generateGeminiStructuredContent<PerThesisEvaluation>(
+    FLASH_LITE_35,
+    payload.systemInstruction,
+    payload.userPrompt,
+    perThesisEvaluationJsonSchema,
+    logger,
+    {
+      zodSchema: perThesisEvaluationSchema,
+      payloadStage: "positioning_per_thesis_evaluation",
+      seed: GEMINI_SEED,
+      thinkingConfig: { thinkingLevel: ThinkingLevel.LOW },
+      thesisMatrix: input,
+      apiKey,
+      quiet: true,
+    },
+  );
+
+  return result;
+}
+
+/** A thesis paired with its per-thesis evaluation result. */
+export interface EvaluatedThesis {
+  thesis: SiftedThesis;
+  evaluation: PerThesisEvaluation;
+}
+
+/**
+ * Evaluates all candidate theses independently in parallel,
+ * distributed round-robin across the Gemini API key pool and throttled to
+ * `CONCURRENCY_PER_KEY` simultaneous evaluations per key.
+ *
+ * Each thesis is assessed in its own dedicated LLM call to guarantee
+ * absolute, non-relative evaluation accuracy without inter-thesis bias.
+ *
+ * @param input - The validated positioning matrix input.
+ * @param theses - The full list of candidate theses to evaluate.
+ * @param logger - Optional structured logger for pipeline events.
+ * @returns The evaluated theses that were successfully processed, matching original order.
+ */
+export async function evaluateThesesInParallel(
+  input: PositioningMatrixInput,
+  theses: SiftedThesis[],
+  logger?: Logger,
+): Promise<EvaluatedThesis[]> {
+  if (theses.length === 0) return [];
+
+  const apiKeys = getGeminiKeyPool().keys;
+  const startTime = performance.now();
+
+  logger?.info("positioning_per_thesis_evaluation_start", {
+    service: "positioning",
+    filePath: "src/features/positioning/per-thesis-evaluation.ts",
+    data: {
+      total: theses.length,
+      keyCount: apiKeys.length,
+      concurrencyPerKey: CONCURRENCY_PER_KEY,
+      mode: "individual_parallel",
+    },
+  });
+
+  const limiterByKey = new Map<string, ConcurrencyLimiter>();
+  for (const apiKey of apiKeys) {
+    limiterByKey.set(apiKey, createConcurrencyLimiter(CONCURRENCY_PER_KEY));
+  }
+
+  const settled = await Promise.allSettled(
+    theses.map((thesis, idx) => {
+      const assignedKey =
+        apiKeys.length > 0 ? apiKeys[idx % apiKeys.length] : undefined;
+      const limiter = assignedKey ? limiterByKey.get(assignedKey) : undefined;
+      const task = () =>
+        evaluateSingleThesis(input, thesis, assignedKey, logger);
+      return limiter ? limiter.exec(task) : task();
+    }),
+  );
+
+  const allEvaluated: EvaluatedThesis[] = [];
+
+  for (let idx = 0; idx < settled.length; idx++) {
+    const res = settled[idx];
+    const thesis = theses[idx];
+    if (res.status === "fulfilled") {
+      allEvaluated.push({
+        thesis,
+        evaluation: res.value,
+      });
+    } else {
+      logger?.error("positioning_per_thesis_single_failed", {
+        service: "positioning",
+        filePath: "src/features/positioning/per-thesis-evaluation.ts",
+        data: {
+          thesisId: thesis.id,
+          thesisTitle: thesis.title,
+        },
+        error: res.reason,
+      });
+    }
+  }
+
+  logger?.info("positioning_per_thesis_evaluation_success", {
+    service: "positioning",
+    filePath: "src/features/positioning/per-thesis-evaluation.ts",
+    durationMs: Math.round(performance.now() - startTime),
+    data: {
+      total: theses.length,
+      evaluatedCount: allEvaluated.length,
+      relevantCount: allEvaluated.filter((e) => e.evaluation.isRelevant).length,
+    },
+  });
+
+  return allEvaluated;
+}
+</file>
+
 <file path="src/app/(app)/library/resource-actions.ts">
 "use server";
 
@@ -42099,125 +41738,6 @@ async function persistOutlines(
 
   log.info("outline_persist_transaction_complete", {
     service: "outline",
-  });
-}
-</file>
-
-<file path="src/features/positioning/prompts/per-thesis-evaluation.prompt.ts">
-import {
-  buildPromptPayload,
-  type PromptPayload,
-} from "@/lib/ai/prompt-builder";
-import type { PositioningMatrixInput } from "@/features/positioning/validation";
-import type { SiftedThesis } from "@/features/positioning/sifting";
-
-/**
- * Builds the standardized PromptPayload for single-thesis strategic evaluation.
- * Strictly adheres to docs/LLM_INTEGRATION.md (Hybrid XML + Markdown Encapsulation).
- *
- * @param input - The validated positioning matrix input containing subjectProblem.
- * @param thesis - The candidate thesis to evaluate.
- * @returns Standardized PromptPayload containing systemInstruction and userPrompt.
- */
-export function buildPerThesisEvaluationPromptPayload(
-  input: PositioningMatrixInput | { subjectProblem: string },
-  thesis: SiftedThesis,
-): PromptPayload {
-  return buildPromptPayload({
-    roleAndExpertise:
-      "Akademik Tez Değerlendirme Kurulu Kıdemli Raportörüsünüz. Göreviniz aday tezin ampirik araştırma nesnesini, kullanıcının araştırma problemiyle tarafsız, titiz ve ilkeli bir biçimde karşılaştırarak stratejik ön eleme yapmaktır.",
-
-    primaryTask:
-      "Sana sunulan kullanıcının Araştırma Problemi (subjectProblem) ile adaya ait TEK BİR tezi karşılaştırarak; tezin ampirik uygunluğunu (isRelevant), gerekçesini (relevanceReasoning), birebir çakışma durumunu (isDirectOverlap) ve eğer uygunsa tezin literatürdeki stratejik rolünü (strategicRole, literaturePosition, strategicUtility) belirlemektir.",
-
-    rulesAndConstraints: `1. **Parçalı Stratejik Rol İlkesi (MUTLAK KURAL):**
-   - Literatürdeki yardımcı tezlerin kullanıcının tüm araştırma boyutlarını tek başına kapsamasını beklemek metodolojik bir hatadır (zaten tüm boyutları birebir kapsarsa özgünlük riski / çakışma oluşur).
-   - Aday tez; kullanıcının araştırma probleminin, sahasının veya odaklandığı nesnenin **EN AZ BİR SOMUT BOYUTUNU** (belirli bir aktör grubunu, birincil veri kaynağını, kurumsal yapısını veya tarihsel dönemini) ampirik olarak inceliyorsa \`isRelevant: true\` verilir:
-     * Konuyu daha geniş bir tarihsel/makro çerçevede ele alan çalışmalar -> \`BROAD_CONTEXT\`
-     * Araştırmanın tek bir boyutuna, aktörüne veya birincil kaynağına odaklanan çalışmalar -> \`SPECIFIC_FOCUS\`
-     * Konunun önceki evrelerini, tarihsel köklerini veya zeminini inceleyen çalışmalar -> \`FOUNDATIONAL_WORK\`
-     * Benzer bir ampirik veri toplama veya analiz modeli uygulayan çalışmalar -> \`METHODOLOGICAL_BENCHMARK\`
-     * Karşıt veya farklı bir açıklama modeli sunan çalışmalar -> \`ALTERNATIVE_PERSPECTIVE\`
-
-2. **Kesin Eleme Sebepleri (\`isRelevant: false\`):**
-   - Araştırılan hareketin/konunun iç dinamikleri yerine; tamamen dışsal bağlamları (üçüncü ülkelerin dış politikasını, doğrudan bağı olmayan dış yapıları veya sadece medyanın dışsal temsillerini) inceleyen tezler.
-   - Somut birincil/ampirik veriye dayanmayan, yalnızca genel/ikincil kaynaklar üzerinden soyut kavramları tartışan genel literatür derlemeleri.
-   - Kullanıcının araştırma problemiyle hiçbir ampirik, kurumsal veya olgusal kesişimi bulunmayan farklı konular.
-
-3. **Gerekçelendirme ve Eylem Odaklı Rehberlik Dili:**
-   - \`relevanceReasoning\`: Tezin neden ilgili veya ilgisiz olduğuna dair somut ampirik kanıt ve mantıksal gerekçe (1-2 net cümle).
-   - \`literaturePosition\`: Tezin başlık ve özetine dayanarak neyi, hangi veriyle incelediğini özetleyin (1 cümle).
-   - \`strategicUtility\`: Araştırmacıya doğrudan tez yazımında yol gösteren eylem dili kullanın: "Bu tezi Giriş / Literatür bölümünde [X] için referans verebilir; tezinizin farkını ise [Y] noktasında vurgulayabilirsiniz."`,
-
-    workflowSteps: `1. Aday tezin somut ampirik araştırma nesnesini kullanıcının araştırma problemiyle karşılaştır.
-2. Tez kullanıcının araştırma sahasının en az bir boyutuna doğrudan ampirik katkı sunuyor mu?
-3. Uygunsa \`isRelevant: true\` ver ve 5 stratejik rolden birini ata. Tamamen dışsal veya alakasız ise \`isRelevant: false\` ver.`,
-
-    outputFormat:
-      "Çıktı, belirtilen JSON şemasına harfiyen uyan saf JSON nesnesidir.",
-
-    examples: `<example>
-<input>
-=== KULLANICININ ARAŞTIRMA PROBLEMİ (subjectProblem) ===
-1991-1999 döneminde Kürt Özgürlük Hareketi'nin söylemsel dönüşümünü manevra ve mevzi savaşı bağlamında PKK ve HEP-DEP-HADEP partiler hattı üzerinden inceler.
-
-=== DEĞERLENDİRİLECEK TEZ ===
-Tez ID: 363401
-Başlık: 1990-2014 Dönemi Kürt Siyasal Hareketinin Söyleminin Dönüşümü
-Yazar: Kadriye Okudan Dernek (2014)
-Özet: 1990-2014 döneminde yasal Kürt partilerinin (HEP, DEP, HADEP, DEHAP, DTP, BDP, HDP) program ve söylemlerindeki evrimi inceler.
-</input>
-<output>
-{
-  "externalThesisId": "363401",
-  "isRelevant": true,
-  "relevanceReasoning": "Aday tez, kullanıcının araştırma sahasının yasal partiler hattını (1990-2014) geniş bir perspektifle inceleyerek araştırmanın kurumsal siyaset ayağına doğrudan ampirik zemin sunmaktadır.",
-  "isDirectOverlap": false,
-  "strategicRole": "BROAD_CONTEXT",
-  "contributionAreas": ["Yasal parti söylemi", "1990'lar dönemselleştirmesi"],
-  "literaturePosition": "1990-2014 dönemindeki yasal Kürt parti geleneğini geniş bir dönemsel perspektifle incelemiştir.",
-  "strategicUtility": "Bu tezi Giriş ve Literatür Taraması bölümlerinde yasal partilerin tarihsel seyrini temellendirmek için kullanabilir; tezinizin farkını ise bu çalışmanın yüzeysel geçtiği 1991-1999 kuluçka evresini silahlı kanatla karşılaştırmalı olarak derinleştirme noktasında vurgulayabilirsiniz."
-}
-</output>
-</example>
-
-<example>
-<input>
-=== KULLANICININ ARAŞTIRMA PROBLEMİ (subjectProblem) ===
-1991-1999 döneminde Kürt Özgürlük Hareketi'nin söylemsel dönüşümünü inceler.
-
-=== DEĞERLENDİRİLECEK TEZ ===
-Tez ID: 447567
-Başlık: Kürt Siyasal Hareketinde İslami Bir Aktör: Irak Kürdistan İslami Birlik Partisi
-Yazar: Lokman Karadağ (2016)
-Özet: Irak Kürdistan bölgesindeki İslami Birlik Partisi'nin siyasal katılımını inceler.
-</input>
-<output>
-{
-  "externalThesisId": "447567",
-  "isRelevant": false,
-  "relevanceReasoning": "Aday tez Türkiye'deki Kürt siyasal hareketini değil, Irak'taki bölgesel partileri incelemektedir; ampirik kesişimi bulunmamaktadır.",
-  "isDirectOverlap": false,
-  "contributionAreas": [],
-  "literaturePosition": "",
-  "strategicUtility": ""
-}
-</output>
-</example>`,
-
-    inputContext: `### KULLANICININ ARAŞTIRMA PROBLEMİ (subjectProblem):
-${input.subjectProblem}
-
-### DEĞERLENDİRİLECEK TEZ:
-Tez ID: ${thesis.id}
-Başlık: ${thesis.title}
-Yazar: ${thesis.author || "Bilinmiyor"} (${thesis.year || "N/A"})
-Üniversite/Bölüm: ${thesis.university || "N/A"} - ${thesis.department || "N/A"}
-Tür: ${thesis.thesisType || "N/A"} | Dil: ${thesis.language || "N/A"}
-Özet: ${thesis.abstract}`,
-
-    taskTrigger:
-      "Yukarıdaki <context> içinde yer alan tezi <instructions> kurallarına göre analiz ederek JSON formatında değerlendirme çıktısını üret.",
   });
 }
 </file>
@@ -44479,6 +43999,125 @@ export function PositioningMarkdownRenderer({
       </Card>
     </div>
   );
+}
+</file>
+
+<file path="src/features/positioning/prompts/per-thesis-evaluation.prompt.ts">
+import {
+  buildPromptPayload,
+  type PromptPayload,
+} from "@/lib/ai/prompt-builder";
+import type { PositioningMatrixInput } from "@/features/positioning/validation";
+import type { SiftedThesis } from "@/features/positioning/sifting";
+
+/**
+ * Builds the standardized PromptPayload for single-thesis strategic evaluation.
+ * Strictly adheres to docs/LLM_INTEGRATION.md (Hybrid XML + Markdown Encapsulation).
+ *
+ * @param input - The validated positioning matrix input containing subjectProblem.
+ * @param thesis - The candidate thesis to evaluate.
+ * @returns Standardized PromptPayload containing systemInstruction and userPrompt.
+ */
+export function buildPerThesisEvaluationPromptPayload(
+  input: PositioningMatrixInput | { subjectProblem: string },
+  thesis: SiftedThesis,
+): PromptPayload {
+  return buildPromptPayload({
+    roleAndExpertise:
+      "Akademik Tez Değerlendirme Kurulu Kıdemli Raportörüsünüz. Göreviniz aday tezin ampirik araştırma nesnesini, kullanıcının araştırma problemiyle tarafsız, titiz ve ilkeli bir biçimde karşılaştırarak stratejik ön eleme yapmaktır.",
+
+    primaryTask:
+      "Sana sunulan kullanıcının Araştırma Problemi (subjectProblem) ile adaya ait TEK BİR tezi karşılaştırarak; tezin ampirik uygunluğunu (isRelevant), gerekçesini (relevanceReasoning), birebir çakışma durumunu (isDirectOverlap) ve eğer uygunsa tezin literatürdeki stratejik rolünü (strategicRole, literaturePosition, strategicUtility) belirlemektir.",
+
+    rulesAndConstraints: `1. **Parçalı Stratejik Rol İlkesi (MUTLAK KURAL):**
+   - Literatürdeki yardımcı tezlerin kullanıcının tüm araştırma boyutlarını tek başına kapsamasını beklemek metodolojik bir hatadır (zaten tüm boyutları birebir kapsarsa özgünlük riski / çakışma oluşur).
+   - Aday tez; kullanıcının araştırma probleminin, sahasının veya odaklandığı nesnenin **EN AZ BİR SOMUT BOYUTUNU** (belirli bir aktör grubunu, birincil veri kaynağını, kurumsal yapısını veya tarihsel dönemini) ampirik olarak inceliyorsa \`isRelevant: true\` verilir:
+     * Konuyu daha geniş bir tarihsel/makro çerçevede ele alan çalışmalar -> \`BROAD_CONTEXT\`
+     * Araştırmanın tek bir boyutuna, aktörüne veya birincil kaynağına odaklanan çalışmalar -> \`SPECIFIC_FOCUS\`
+     * Konunun önceki evrelerini, tarihsel köklerini veya zeminini inceleyen çalışmalar -> \`FOUNDATIONAL_WORK\`
+     * Benzer bir ampirik veri toplama veya analiz modeli uygulayan çalışmalar -> \`METHODOLOGICAL_BENCHMARK\`
+     * Karşıt veya farklı bir açıklama modeli sunan çalışmalar -> \`ALTERNATIVE_PERSPECTIVE\`
+
+2. **Kesin Eleme Sebepleri (\`isRelevant: false\`):**
+   - Araştırılan hareketin/konunun iç dinamikleri yerine; tamamen dışsal bağlamları (üçüncü ülkelerin dış politikasını, doğrudan bağı olmayan dış yapıları veya sadece medyanın dışsal temsillerini) inceleyen tezler.
+   - Somut birincil/ampirik veriye dayanmayan, yalnızca genel/ikincil kaynaklar üzerinden soyut kavramları tartışan genel literatür derlemeleri.
+   - Kullanıcının araştırma problemiyle hiçbir ampirik, kurumsal veya olgusal kesişimi bulunmayan farklı konular.
+
+3. **Gerekçelendirme ve Eylem Odaklı Rehberlik Dili:**
+   - \`relevanceReasoning\`: Tezin neden ilgili veya ilgisiz olduğuna dair somut ampirik kanıt ve mantıksal gerekçe (1-2 net cümle).
+   - \`literaturePosition\`: Tezin başlık ve özetine dayanarak neyi, hangi veriyle incelediğini özetleyin (1 cümle).
+   - \`strategicUtility\`: Araştırmacıya doğrudan tez yazımında yol gösteren eylem dili kullanın: "Bu tezi Giriş / Literatür bölümünde [X] için referans verebilir; tezinizin farkını ise [Y] noktasında vurgulayabilirsiniz."`,
+
+    workflowSteps: `1. Aday tezin somut ampirik araştırma nesnesini kullanıcının araştırma problemiyle karşılaştır.
+2. Tez kullanıcının araştırma sahasının en az bir boyutuna doğrudan ampirik katkı sunuyor mu?
+3. Uygunsa \`isRelevant: true\` ver ve 5 stratejik rolden birini ata. Tamamen dışsal veya alakasız ise \`isRelevant: false\` ver.`,
+
+    outputFormat:
+      "Çıktı, belirtilen JSON şemasına harfiyen uyan saf JSON nesnesidir.",
+
+    examples: `<example>
+<input>
+=== KULLANICININ ARAŞTIRMA PROBLEMİ (subjectProblem) ===
+1991-1999 döneminde Kürt Özgürlük Hareketi'nin söylemsel dönüşümünü manevra ve mevzi savaşı bağlamında PKK ve HEP-DEP-HADEP partiler hattı üzerinden inceler.
+
+=== DEĞERLENDİRİLECEK TEZ ===
+Tez ID: 363401
+Başlık: 1990-2014 Dönemi Kürt Siyasal Hareketinin Söyleminin Dönüşümü
+Yazar: Kadriye Okudan Dernek (2014)
+Özet: 1990-2014 döneminde yasal Kürt partilerinin (HEP, DEP, HADEP, DEHAP, DTP, BDP, HDP) program ve söylemlerindeki evrimi inceler.
+</input>
+<output>
+{
+  "externalThesisId": "363401",
+  "isRelevant": true,
+  "relevanceReasoning": "Aday tez, kullanıcının araştırma sahasının yasal partiler hattını (1990-2014) geniş bir perspektifle inceleyerek araştırmanın kurumsal siyaset ayağına doğrudan ampirik zemin sunmaktadır.",
+  "isDirectOverlap": false,
+  "strategicRole": "BROAD_CONTEXT",
+  "contributionAreas": ["Yasal parti söylemi", "1990'lar dönemselleştirmesi"],
+  "literaturePosition": "1990-2014 dönemindeki yasal Kürt parti geleneğini geniş bir dönemsel perspektifle incelemiştir.",
+  "strategicUtility": "Bu tezi Giriş ve Literatür Taraması bölümlerinde yasal partilerin tarihsel seyrini temellendirmek için kullanabilir; tezinizin farkını ise bu çalışmanın yüzeysel geçtiği 1991-1999 kuluçka evresini silahlı kanatla karşılaştırmalı olarak derinleştirme noktasında vurgulayabilirsiniz."
+}
+</output>
+</example>
+
+<example>
+<input>
+=== KULLANICININ ARAŞTIRMA PROBLEMİ (subjectProblem) ===
+1991-1999 döneminde Kürt Özgürlük Hareketi'nin söylemsel dönüşümünü inceler.
+
+=== DEĞERLENDİRİLECEK TEZ ===
+Tez ID: 447567
+Başlık: Kürt Siyasal Hareketinde İslami Bir Aktör: Irak Kürdistan İslami Birlik Partisi
+Yazar: Lokman Karadağ (2016)
+Özet: Irak Kürdistan bölgesindeki İslami Birlik Partisi'nin siyasal katılımını inceler.
+</input>
+<output>
+{
+  "externalThesisId": "447567",
+  "isRelevant": false,
+  "relevanceReasoning": "Aday tez Türkiye'deki Kürt siyasal hareketini değil, Irak'taki bölgesel partileri incelemektedir; ampirik kesişimi bulunmamaktadır.",
+  "isDirectOverlap": false,
+  "contributionAreas": [],
+  "literaturePosition": "",
+  "strategicUtility": ""
+}
+</output>
+</example>`,
+
+    inputContext: `### KULLANICININ ARAŞTIRMA PROBLEMİ (subjectProblem):
+${input.subjectProblem}
+
+### DEĞERLENDİRİLECEK TEZ:
+Tez ID: ${thesis.id}
+Başlık: ${thesis.title}
+Yazar: ${thesis.author || "Bilinmiyor"} (${thesis.year || "N/A"})
+Üniversite/Bölüm: ${thesis.university || "N/A"} - ${thesis.department || "N/A"}
+Tür: ${thesis.thesisType || "N/A"} | Dil: ${thesis.language || "N/A"}
+Özet: ${thesis.abstract}`,
+
+    taskTrigger:
+      "Yukarıdaki <context> içinde yer alan tezi <instructions> kurallarına göre analiz ederek JSON formatında değerlendirme çıktısını üret.",
+  });
 }
 </file>
 
@@ -48719,6 +48358,267 @@ export function useAdvisorChat(initialSessionId?: number) {
 }
 </file>
 
+<file path="src/app/(app)/citation-cards/page.tsx">
+"use client";
+
+import { useCallback, useEffect, useState } from "react";
+import { toast } from "sonner";
+import { CitationCardsSkeleton } from "./_components/citation-cards-skeleton";
+import { useCitationCardsFilter } from "./_hooks/use-citation-cards-filter";
+import { CitationCard } from "./_components/citation-card";
+import { CitationCardDialog } from "./_components/citation-card-dialog";
+import { CitationSidebar } from "./_components/citation-sidebar";
+import { CitationCardsToolbar } from "./_components/citation-cards-toolbar";
+import { CitationCardsEmptyState } from "./_components/citation-cards-empty-state";
+import {
+  getCitationCardsDataAction,
+  createCitationCardAction,
+  updateCitationCardAction,
+  deleteCitationCardAction,
+  moveCitationCardBoxAction,
+} from "./actions";
+import type { BoxItem, CitationCardItem, SourceItem } from "./_lib/types";
+
+/**
+ * Citation Cards (Alıntı Fişleri) main page component.
+ * Features an elevated academic design with grid layout,
+ * interactive live metric filters, and topic-box/source filtering.
+ *
+ * @returns The complete citation cards interactive page markup.
+ */
+export default function CitationCardsPage() {
+  const [isLoading, setIsLoading] = useState(true);
+  const [data, setData] = useState<{
+    cards: CitationCardItem[];
+    boxes: BoxItem[];
+    sources: SourceItem[];
+  }>({ cards: [], boxes: [], sources: [] });
+
+  const { filters, setFilter, clearFilters, filteredCards, counts } =
+    useCitationCardsFilter(data.cards);
+
+  // Modal State
+  const [dialog, setDialog] = useState<{
+    open: boolean;
+    mode: "view" | "edit";
+    cardToEdit: CitationCardItem | null;
+  }>({ open: false, mode: "view", cardToEdit: null });
+
+  /**
+   * Refreshes citation cards data from database.
+   */
+  const refreshData = useCallback(async () => {
+    const res = await getCitationCardsDataAction();
+    if (res.success) {
+      setData({
+        cards: res.data.cards,
+        boxes: res.data.boxes,
+        sources: res.data.sources,
+      });
+    } else {
+      toast.error(res.error);
+    }
+  }, []);
+
+  useEffect(() => {
+    let isMounted = true;
+    getCitationCardsDataAction().then((res) => {
+      if (!isMounted) return;
+      if (res.success) {
+        setData({
+          cards: res.data.cards,
+          boxes: res.data.boxes,
+          sources: res.data.sources,
+        });
+      } else {
+        toast.error(res.error);
+      }
+      setIsLoading(false);
+    });
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  /** Handlers for card dialogs & actions */
+  const handleOpenAddDialog = () => {
+    setDialog({ open: true, mode: "edit", cardToEdit: null });
+  };
+
+  const handleOpenViewDialog = (card: CitationCardItem) => {
+    setDialog({ open: true, mode: "view", cardToEdit: card });
+  };
+
+  const handleOpenEditDialog = (card: CitationCardItem) => {
+    setDialog({ open: true, mode: "edit", cardToEdit: card });
+  };
+
+  const handleSaveCard = async (
+    cardData: Omit<CitationCardItem, "id" | "createdAt" | "updatedAt"> & {
+      id?: number;
+    },
+  ) => {
+    if (cardData.id) {
+      // Update existing card
+      const res = await updateCitationCardAction({
+        id: cardData.id,
+        sourceId: cardData.sourceId,
+        boxId: cardData.boxId,
+        noteType: cardData.noteType,
+        pageNumber: cardData.pageNumber,
+        content: cardData.content,
+        comment: cardData.comment,
+      });
+
+      if (res.success) {
+        toast.success("Alıntı fişi başarıyla güncellendi.");
+        await refreshData();
+      } else {
+        toast.error(res.error);
+      }
+    } else {
+      // Add new card
+      const res = await createCitationCardAction({
+        sourceId: cardData.sourceId,
+        boxId: cardData.boxId,
+        noteType: cardData.noteType,
+        pageNumber: cardData.pageNumber,
+        content: cardData.content,
+        comment: cardData.comment,
+      });
+
+      if (res.success) {
+        toast.success("Yeni alıntı fişi başarıyla eklendi.");
+        await refreshData();
+      } else {
+        toast.error(res.error);
+      }
+    }
+  };
+
+  const handleDeleteCard = async (id: number) => {
+    const res = await deleteCitationCardAction(id);
+    if (res.success) {
+      setData((prev) => ({
+        ...prev,
+        cards: prev.cards.filter((c) => c.id !== id),
+      }));
+      toast.success("Alıntı fişi silindi.");
+    } else {
+      toast.error(res.error);
+    }
+  };
+
+  const handleMoveBox = async (cardId: number, targetBoxId: number) => {
+    const res = await moveCitationCardBoxAction({ cardId, targetBoxId });
+    if (res.success) {
+      toast.success("Fiş yeni konu kutusuna taşındı.");
+      await refreshData();
+    } else {
+      toast.error(res.error);
+    }
+  };
+
+  // Resolve active titles for filter badge pills
+  const activeBox = data.boxes.find((b) => b.id === filters.selectedBoxId);
+  const activeSource = data.sources.find(
+    (s) => s.id === filters.selectedSourceId,
+  );
+
+  if (isLoading) {
+    return <CitationCardsSkeleton />;
+  }
+
+  const hasAnyCard = data.cards.length > 0;
+  const isFiltering =
+    filters.selectedBoxId !== null ||
+    filters.selectedSourceId !== null ||
+    filters.activeNoteTypeTab !== "ALL" ||
+    filters.searchQuery.trim() !== "";
+
+  return (
+    <div className="w-full space-y-6">
+      {/* Page Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-border pb-4">
+        <div>
+          <h1 className="font-serif text-2xl font-bold tracking-tight text-foreground">
+            Alıntı Fişleri
+          </h1>
+          <p className="text-xs text-muted-foreground mt-0.5">
+            Tez konu kutuları ve akademik kaynaklara göre dizinlenmiş alıntılar,
+            açımlamalar ve araştırma notları.
+          </p>
+        </div>
+      </div>
+
+      {/* Main Content Layout: Sidebar + Main Area */}
+      <div className="flex flex-col lg:flex-row gap-6 items-start">
+        {/* Left Sidebar */}
+        <CitationSidebar
+          boxes={data.boxes}
+          sources={data.sources}
+          cards={data.cards}
+          selectedBoxId={filters.selectedBoxId}
+          selectedSourceId={filters.selectedSourceId}
+          onSelectBox={(id) => setFilter("selectedBoxId", id)}
+          onSelectSource={(id) => setFilter("selectedSourceId", id)}
+        />
+
+        {/* Right Main Area */}
+        <div className="flex-1 flex flex-col gap-4 w-full min-w-0">
+          {/* Main Toolbar */}
+          <CitationCardsToolbar
+            filters={filters}
+            counts={counts}
+            onFilterChange={setFilter}
+            resultCount={filteredCards.length}
+            onAddNew={handleOpenAddDialog}
+            selectedBoxTitle={activeBox?.title}
+            selectedSourceTitle={activeSource?.title}
+            onClearAllFilters={clearFilters}
+          />
+
+          {/* Cards Display Section (Pure Grid) */}
+          {filteredCards.length === 0 ? (
+            <CitationCardsEmptyState
+              onClearFilters={clearFilters}
+              onAddNew={handleOpenAddDialog}
+              hasFilters={isFiltering || hasAnyCard}
+            />
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {filteredCards.map((card) => (
+                <CitationCard
+                  key={card.id}
+                  card={card}
+                  availableBoxes={data.boxes}
+                  onView={handleOpenViewDialog}
+                  onEdit={handleOpenEditDialog}
+                  onDelete={handleDeleteCard}
+                  onMoveBox={handleMoveBox}
+                />
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Add / Edit Dialog Modal */}
+      <CitationCardDialog
+        open={dialog.open}
+        onOpenChange={(open) => setDialog((prev) => ({ ...prev, open }))}
+        cardToEdit={dialog.cardToEdit}
+        mode={dialog.mode}
+        sources={data.sources}
+        boxes={data.boxes}
+        onSave={handleSaveCard}
+      />
+    </div>
+  );
+}
+</file>
+
 <file path="src/app/(app)/library/_components/sidebar-work-list.tsx">
 "use client";
 
@@ -49576,267 +49476,6 @@ export async function generateChatTitleAction(
   } catch (error) {
     return handleActionError(error);
   }
-}
-</file>
-
-<file path="src/app/(app)/citation-cards/page.tsx">
-"use client";
-
-import { useCallback, useEffect, useState } from "react";
-import { toast } from "sonner";
-import { CitationCardsSkeleton } from "./_components/citation-cards-skeleton";
-import { useCitationCardsFilter } from "./_hooks/use-citation-cards-filter";
-import { CitationCard } from "./_components/citation-card";
-import { CitationCardDialog } from "./_components/citation-card-dialog";
-import { CitationSidebar } from "./_components/citation-sidebar";
-import { CitationCardsToolbar } from "./_components/citation-cards-toolbar";
-import { CitationCardsEmptyState } from "./_components/citation-cards-empty-state";
-import {
-  getCitationCardsDataAction,
-  createCitationCardAction,
-  updateCitationCardAction,
-  deleteCitationCardAction,
-  moveCitationCardBoxAction,
-} from "./actions";
-import type { BoxItem, CitationCardItem, SourceItem } from "./_lib/types";
-
-/**
- * Citation Cards (Alıntı Fişleri) main page component.
- * Features an elevated academic design with grid layout,
- * interactive live metric filters, and topic-box/source filtering.
- *
- * @returns The complete citation cards interactive page markup.
- */
-export default function CitationCardsPage() {
-  const [isLoading, setIsLoading] = useState(true);
-  const [data, setData] = useState<{
-    cards: CitationCardItem[];
-    boxes: BoxItem[];
-    sources: SourceItem[];
-  }>({ cards: [], boxes: [], sources: [] });
-
-  const { filters, setFilter, clearFilters, filteredCards, counts } =
-    useCitationCardsFilter(data.cards);
-
-  // Modal State
-  const [dialog, setDialog] = useState<{
-    open: boolean;
-    mode: "view" | "edit";
-    cardToEdit: CitationCardItem | null;
-  }>({ open: false, mode: "view", cardToEdit: null });
-
-  /**
-   * Refreshes citation cards data from database.
-   */
-  const refreshData = useCallback(async () => {
-    const res = await getCitationCardsDataAction();
-    if (res.success) {
-      setData({
-        cards: res.data.cards,
-        boxes: res.data.boxes,
-        sources: res.data.sources,
-      });
-    } else {
-      toast.error(res.error);
-    }
-  }, []);
-
-  useEffect(() => {
-    let isMounted = true;
-    getCitationCardsDataAction().then((res) => {
-      if (!isMounted) return;
-      if (res.success) {
-        setData({
-          cards: res.data.cards,
-          boxes: res.data.boxes,
-          sources: res.data.sources,
-        });
-      } else {
-        toast.error(res.error);
-      }
-      setIsLoading(false);
-    });
-
-    return () => {
-      isMounted = false;
-    };
-  }, []);
-
-  /** Handlers for card dialogs & actions */
-  const handleOpenAddDialog = () => {
-    setDialog({ open: true, mode: "edit", cardToEdit: null });
-  };
-
-  const handleOpenViewDialog = (card: CitationCardItem) => {
-    setDialog({ open: true, mode: "view", cardToEdit: card });
-  };
-
-  const handleOpenEditDialog = (card: CitationCardItem) => {
-    setDialog({ open: true, mode: "edit", cardToEdit: card });
-  };
-
-  const handleSaveCard = async (
-    cardData: Omit<CitationCardItem, "id" | "createdAt" | "updatedAt"> & {
-      id?: number;
-    },
-  ) => {
-    if (cardData.id) {
-      // Update existing card
-      const res = await updateCitationCardAction({
-        id: cardData.id,
-        sourceId: cardData.sourceId,
-        boxId: cardData.boxId,
-        noteType: cardData.noteType,
-        pageNumber: cardData.pageNumber,
-        content: cardData.content,
-        comment: cardData.comment,
-      });
-
-      if (res.success) {
-        toast.success("Alıntı fişi başarıyla güncellendi.");
-        await refreshData();
-      } else {
-        toast.error(res.error);
-      }
-    } else {
-      // Add new card
-      const res = await createCitationCardAction({
-        sourceId: cardData.sourceId,
-        boxId: cardData.boxId,
-        noteType: cardData.noteType,
-        pageNumber: cardData.pageNumber,
-        content: cardData.content,
-        comment: cardData.comment,
-      });
-
-      if (res.success) {
-        toast.success("Yeni alıntı fişi başarıyla eklendi.");
-        await refreshData();
-      } else {
-        toast.error(res.error);
-      }
-    }
-  };
-
-  const handleDeleteCard = async (id: number) => {
-    const res = await deleteCitationCardAction(id);
-    if (res.success) {
-      setData((prev) => ({
-        ...prev,
-        cards: prev.cards.filter((c) => c.id !== id),
-      }));
-      toast.success("Alıntı fişi silindi.");
-    } else {
-      toast.error(res.error);
-    }
-  };
-
-  const handleMoveBox = async (cardId: number, targetBoxId: number) => {
-    const res = await moveCitationCardBoxAction({ cardId, targetBoxId });
-    if (res.success) {
-      toast.success("Fiş yeni konu kutusuna taşındı.");
-      await refreshData();
-    } else {
-      toast.error(res.error);
-    }
-  };
-
-  // Resolve active titles for filter badge pills
-  const activeBox = data.boxes.find((b) => b.id === filters.selectedBoxId);
-  const activeSource = data.sources.find(
-    (s) => s.id === filters.selectedSourceId,
-  );
-
-  if (isLoading) {
-    return <CitationCardsSkeleton />;
-  }
-
-  const hasAnyCard = data.cards.length > 0;
-  const isFiltering =
-    filters.selectedBoxId !== null ||
-    filters.selectedSourceId !== null ||
-    filters.activeNoteTypeTab !== "ALL" ||
-    filters.searchQuery.trim() !== "";
-
-  return (
-    <div className="w-full space-y-6">
-      {/* Page Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-border pb-4">
-        <div>
-          <h1 className="font-serif text-2xl font-bold tracking-tight text-foreground">
-            Alıntı Fişleri
-          </h1>
-          <p className="text-xs text-muted-foreground mt-0.5">
-            Tez konu kutuları ve akademik kaynaklara göre dizinlenmiş alıntılar,
-            açımlamalar ve araştırma notları.
-          </p>
-        </div>
-      </div>
-
-      {/* Main Content Layout: Sidebar + Main Area */}
-      <div className="flex flex-col lg:flex-row gap-6 items-start">
-        {/* Left Sidebar */}
-        <CitationSidebar
-          boxes={data.boxes}
-          sources={data.sources}
-          cards={data.cards}
-          selectedBoxId={filters.selectedBoxId}
-          selectedSourceId={filters.selectedSourceId}
-          onSelectBox={(id) => setFilter("selectedBoxId", id)}
-          onSelectSource={(id) => setFilter("selectedSourceId", id)}
-        />
-
-        {/* Right Main Area */}
-        <div className="flex-1 flex flex-col gap-4 w-full min-w-0">
-          {/* Main Toolbar */}
-          <CitationCardsToolbar
-            filters={filters}
-            counts={counts}
-            onFilterChange={setFilter}
-            resultCount={filteredCards.length}
-            onAddNew={handleOpenAddDialog}
-            selectedBoxTitle={activeBox?.title}
-            selectedSourceTitle={activeSource?.title}
-            onClearAllFilters={clearFilters}
-          />
-
-          {/* Cards Display Section (Pure Grid) */}
-          {filteredCards.length === 0 ? (
-            <CitationCardsEmptyState
-              onClearFilters={clearFilters}
-              onAddNew={handleOpenAddDialog}
-              hasFilters={isFiltering || hasAnyCard}
-            />
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {filteredCards.map((card) => (
-                <CitationCard
-                  key={card.id}
-                  card={card}
-                  availableBoxes={data.boxes}
-                  onView={handleOpenViewDialog}
-                  onEdit={handleOpenEditDialog}
-                  onDelete={handleDeleteCard}
-                  onMoveBox={handleMoveBox}
-                />
-              ))}
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* Add / Edit Dialog Modal */}
-      <CitationCardDialog
-        open={dialog.open}
-        onOpenChange={(open) => setDialog((prev) => ({ ...prev, open }))}
-        cardToEdit={dialog.cardToEdit}
-        mode={dialog.mode}
-        sources={data.sources}
-        boxes={data.boxes}
-        onSave={handleSaveCard}
-      />
-    </div>
-  );
 }
 </file>
 
