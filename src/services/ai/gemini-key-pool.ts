@@ -50,13 +50,15 @@ export function getGeminiKeyPool(): GeminiKeyPool {
 }
 
 /**
- * Computes the next circular key position in the pool.
+ * Resolves the 0-based project/key index for a given API key string.
  *
- * @param position - The current 0-based key position.
- * @param total - The number of keys in the pool.
- * @returns The next 0-based key position (wrapping to 0 past the end).
+ * @param apiKey - The Gemini API key string.
+ * @returns The 0-based index of the key in the pool, or 0 if not found.
  */
-export function nextKeyPosition(position: number, total: number): number {
-  if (total <= 0) return 0;
-  return (position + 1) % total;
+export function getProjectIndex(apiKey?: string): number {
+  if (!apiKey) return 0;
+  const pool = getGeminiKeyPool();
+  const idx = pool.keys.indexOf(apiKey);
+  return idx >= 0 ? idx : 0;
 }
+

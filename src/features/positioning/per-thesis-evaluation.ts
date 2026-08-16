@@ -6,16 +6,17 @@ import {
   type JsonSchema,
 } from "@/services/ai";
 import { getGeminiKeyPool } from "@/services/ai/gemini-key-pool";
+import {
+  createConcurrencyLimiter,
+  type ConcurrencyLimiter,
+} from "@/lib/rate-limiter";
 import type { Logger } from "@/lib/logger";
-import {
-  buildPerThesisEvaluationPromptPayload,
-  buildBatchPerThesisEvaluationPromptPayload,
-} from "./prompts/per-thesis-evaluation.prompt";
-import {
-  strategicRoleEnum,
-  type PositioningMatrixInput,
-} from "./validation";
+import { buildPerThesisEvaluationPromptPayload } from "./prompts/per-thesis-evaluation.prompt";
+import { strategicRoleEnum, type PositioningMatrixInput } from "./validation";
 import type { SiftedThesis } from "./sifting";
+
+/** Max concurrent per-thesis Gemini evaluations per API key. */
+const CONCURRENCY_PER_KEY = 8;
 
 /** Zod schema for the single-thesis strategic relevance/originality/role evaluation output. */
 export const perThesisEvaluationSchema = z.object({
@@ -61,16 +62,6 @@ export const perThesisEvaluationSchema = z.object({
 
 /** Inferred type for a single-thesis evaluation result. */
 export type PerThesisEvaluation = z.infer<typeof perThesisEvaluationSchema>;
-
-/** Zod schema for batched per-thesis evaluation outputs. */
-export const batchPerThesisEvaluationSchema = z.object({
-  evaluations: z.array(perThesisEvaluationSchema),
-});
-
-/** Inferred type for batched per-thesis evaluation output. */
-export type BatchPerThesisEvaluation = z.infer<
-  typeof batchPerThesisEvaluationSchema
->;
 
 /** JSON Schema for Gemini structured outputs of the per-thesis evaluation. */
 export const perThesisEvaluationJsonSchema: JsonSchema = {
@@ -135,20 +126,6 @@ export const perThesisEvaluationJsonSchema: JsonSchema = {
   additionalProperties: false,
 };
 
-/** JSON Schema for Gemini structured outputs of batched per-thesis evaluation. */
-export const batchPerThesisEvaluationJsonSchema: JsonSchema = {
-  type: "object",
-  properties: {
-    evaluations: {
-      type: "array",
-      items: perThesisEvaluationJsonSchema,
-      description: "Listedeki her bir tez için değerlendirme çıktısı dizisi.",
-    },
-  },
-  required: ["evaluations"],
-  additionalProperties: false,
-};
-
 /**
  * Evaluates a single thesis against the user's thesis matrix via the 3-stage decision chain.
  *
@@ -186,46 +163,6 @@ export async function evaluateSingleThesis(
   return result;
 }
 
-/**
- * Evaluates a batch chunk of thesis candidates against the user's matrix.
- *
- * @param input - The validated positioning matrix input.
- * @param theses - The chunk of candidate theses to evaluate.
- * @param apiKey - Optional Gemini API key override for multi-key load distribution.
- * @param logger - Optional structured logger for pipeline events.
- * @returns The array of structured per-thesis evaluations for the batch.
- */
-export async function evaluateBatchTheses(
-  input: PositioningMatrixInput,
-  theses: SiftedThesis[],
-  apiKey?: string,
-  logger?: Logger,
-): Promise<PerThesisEvaluation[]> {
-  if (theses.length === 0) return [];
-
-  const payload = buildBatchPerThesisEvaluationPromptPayload(input, theses);
-
-  const result =
-    await generateGeminiStructuredContent<BatchPerThesisEvaluation>(
-      FLASH_LITE_35,
-      payload.systemInstruction,
-      payload.userPrompt,
-      batchPerThesisEvaluationJsonSchema,
-      logger,
-      {
-        zodSchema: batchPerThesisEvaluationSchema,
-        payloadStage: "positioning_per_thesis_evaluation_batch",
-        seed: GEMINI_SEED,
-        thinkingConfig: { thinkingLevel: ThinkingLevel.LOW },
-        thesisMatrix: input,
-        apiKey,
-        quiet: true,
-      },
-    );
-
-  return result.evaluations || [];
-}
-
 /** A thesis paired with its per-thesis evaluation result. */
 export interface EvaluatedThesis {
   thesis: SiftedThesis;
@@ -233,13 +170,17 @@ export interface EvaluatedThesis {
 }
 
 /**
- * Evaluates all candidate theses independently and concurrently in pure 1-by-1 parallel calls
- * distributed across the Gemini API key pool to prevent relative evaluation bias.
+ * Evaluates all candidate theses independently in parallel,
+ * distributed round-robin across the Gemini API key pool and throttled to
+ * `CONCURRENCY_PER_KEY` simultaneous evaluations per key.
+ *
+ * Each thesis is assessed in its own dedicated LLM call to guarantee
+ * absolute, non-relative evaluation accuracy without inter-thesis bias.
  *
  * @param input - The validated positioning matrix input.
  * @param theses - The full list of candidate theses to evaluate.
  * @param logger - Optional structured logger for pipeline events.
- * @returns The evaluated theses that were successfully processed, in original order.
+ * @returns The evaluated theses that were successfully processed, matching original order.
  */
 export async function evaluateThesesInParallel(
   input: PositioningMatrixInput,
@@ -249,7 +190,6 @@ export async function evaluateThesesInParallel(
   if (theses.length === 0) return [];
 
   const apiKeys = getGeminiKeyPool().keys;
-
   const startTime = performance.now();
 
   logger?.info("positioning_per_thesis_evaluation_start", {
@@ -258,19 +198,25 @@ export async function evaluateThesesInParallel(
     data: {
       total: theses.length,
       keyCount: apiKeys.length,
-      mode: "pure_1_by_1_parallel",
+      concurrencyPerKey: CONCURRENCY_PER_KEY,
+      mode: "individual_parallel",
     },
   });
 
+  const limiterByKey = new Map<string, ConcurrencyLimiter>();
+  for (const apiKey of apiKeys) {
+    limiterByKey.set(apiKey, createConcurrencyLimiter(CONCURRENCY_PER_KEY));
+  }
+
   const settled = await Promise.allSettled(
-    theses.map((thesis, idx) =>
-      evaluateSingleThesis(
-        input,
-        thesis,
-        apiKeys[idx % apiKeys.length],
-        logger,
-      ),
-    ),
+    theses.map((thesis, idx) => {
+      const assignedKey =
+        apiKeys.length > 0 ? apiKeys[idx % apiKeys.length] : undefined;
+      const limiter = assignedKey ? limiterByKey.get(assignedKey) : undefined;
+      const task = () =>
+        evaluateSingleThesis(input, thesis, assignedKey, logger);
+      return limiter ? limiter.exec(task) : task();
+    }),
   );
 
   const allEvaluated: EvaluatedThesis[] = [];
@@ -279,12 +225,18 @@ export async function evaluateThesesInParallel(
     const res = settled[idx];
     const thesis = theses[idx];
     if (res.status === "fulfilled") {
-      allEvaluated.push({ thesis, evaluation: res.value });
+      allEvaluated.push({
+        thesis,
+        evaluation: res.value,
+      });
     } else {
-      logger?.error("positioning_per_thesis_single_evaluation_failed", {
+      logger?.error("positioning_per_thesis_single_failed", {
         service: "positioning",
         filePath: "src/features/positioning/per-thesis-evaluation.ts",
-        data: { thesisId: thesis.id, title: thesis.title },
+        data: {
+          thesisId: thesis.id,
+          thesisTitle: thesis.title,
+        },
         error: res.reason,
       });
     }

@@ -524,6 +524,7 @@ src/
       rag-search.ts
     storage/
       r2.ts
+_verify_no_retry_harness.ts
 .gitignore
 .neon
 AGENTS.md
@@ -945,11 +946,364 @@ const Toaster = ({ ...props }: ToasterProps) => {
 export { Toaster };
 </file>
 
-<file path=".neon">
-{
-  "orgId": "org-old-haze-71570114",
-  "projectId": "crimson-feather-32946628"
+<file path="_verify_no_retry_harness.ts">
+import fs from "fs";
+import path from "path";
+import { parse as dotenvParse } from "dotenv";
+import { GoogleGenAI, HarmCategory, HarmBlockThreshold } from "@google/genai";
+import { FLASH_LITE_31, GEMINI_SEED } from "@/lib/constants";
+import { getGeminiKeyPool, getProjectIndex } from "@/services/ai/gemini-key-pool";
+import {
+  createConcurrencyLimiter,
+  type ConcurrencyLimiter,
+} from "@/lib/rate-limiter";
+import { Logger, createFlowId } from "@/lib/logger";
+import { buildPerThesisEvaluationPromptPayload } from "@/features/positioning/prompts/per-thesis-evaluation.prompt";
+import { perThesisEvaluationJsonSchema } from "@/features/positioning/per-thesis-evaluation";
+import type { PositioningMatrixInput } from "@/features/positioning/validation";
+import type { SiftedThesis } from "@/features/positioning/sifting";
+
+const RAW_DIR =
+  "/private/var/folders/1t/zvkspc6x0fb44kwlhmbn_32c0000gn/T/opencode";
+
+for (const [key, value] of Object.entries(
+  dotenvParse(fs.readFileSync(path.resolve(process.cwd(), ".env.local"), "utf-8")),
+)) {
+  if (process.env[key] === undefined) process.env[key] = value;
 }
+
+process.env.NODE_ENV = "production";
+
+const captured = new Array<Record<string, unknown>>();
+
+function captureAllConsole() {
+  for (const method of ["log", "info", "warn", "error"] as const) {
+    const original = console[method].bind(console);
+    (console as unknown as Record<string, unknown>)[method] = (
+      ...args: unknown[]
+    ) => {
+      for (const arg of args) {
+        if (typeof arg === "string" && arg.startsWith("{")) {
+          try {
+            const parsed = JSON.parse(arg);
+            if (parsed && typeof parsed === "object" && "event" in parsed) {
+              captured.push(parsed);
+            }
+          } catch {
+            /* not JSON */
+          }
+        }
+      }
+      return original(...args);
+    };
+  }
+}
+
+const INPUT: PositioningMatrixInput = {
+  subjectProblem:
+    "1991-1999 döneminde Kürt Özgürlük Hareketi'nin söylemsel dönüşümünü manevra ve mevzi savaşı bağlamında PKK ve HEP-DEP-HADEP partiler hattı üzerinden inceler.",
+  theoreticalFramework:
+    "Kritik söylem çözümlemesi ve manevra/mevzi savaşı kavramları çerçevesinde söylemsel dönüşüm kavramsallaştırılır.",
+  methodology:
+    "Yasal parti söylemi ve silahlı kanat bildirilerine karşılaştırmalı nitel söylem analizi uygulanır.",
+};
+
+function makeThesis(idx: number): SiftedThesis {
+  const titles = [
+    "Kürt Siyasal Hareketinin Söylemsel Dönüşümü",
+    "1990-2000 Döneminde Yasal Kürt Partileri",
+    "Manevra Savaşı Bağlamında Siyasal İslam",
+    "Mezopotamya'da Ulusal Kimlik İnşası",
+    "Devlet ve Kürt Hareketi Arasında Müzakere",
+    "Kürdistan İşçi Partisi'nin Dönemsel Stratejileri",
+    "Yasal Siyaset ve Silahlı Mücadele Gerilimi",
+    "Kürt Meselesinde Çatışma ve Çözüm Denemeleri",
+    "Ortadoğu'da Etnik Mobilizasyon",
+    "Türkiye'de Söylem ve Siyasal Şiddet",
+  ];
+  const title = titles[idx % titles.length];
+  return {
+    id: 1_000_000 + idx,
+    title,
+    author: "Test Yazar " + (idx + 1),
+    university: "Test Üniversitesi",
+    year: 1985 + (idx % 25),
+    thesisType: idx % 2 === 0 ? "Doktora" : "Yüksek Lisans",
+    department: "Siyaset Bilimi",
+    language: "tr",
+    abstract:
+      title +
+      " konusunda 1990'lı yılların Türkiye siyasetindeki aktörler, partiler ve hareketler arası ilişkilerin söylemsel ve kurumsal boyutlarını karşılaştırmalı olarak ele alan, birincil kaynaklara dayalı akademik bir değerlendirme sunar.",
+    relevanceScore: 1 - idx / 100,
+  };
+}
+
+interface KeySendTracker {
+  firstSentAt: number | null;
+  count: number;
+}
+
+const keySendTrackers = new Map<number, KeySendTracker>();
+
+function trackSend(projectIndex: number): { seq: number; offsetMs: number } {
+  const t = keySendTrackers.get(projectIndex) ?? {
+    firstSentAt: null,
+    count: 0,
+  };
+  const now = Date.now();
+  if (t.firstSentAt === null) t.firstSentAt = now;
+  t.count += 1;
+  keySendTrackers.set(projectIndex, t);
+  return { seq: t.count, offsetMs: now - t.firstSentAt };
+}
+
+const SAFETY_SETTINGS = [
+  {
+    category: HarmCategory.HARM_CATEGORY_HATE_SPEECH,
+    threshold: HarmBlockThreshold.BLOCK_ONLY_HIGH,
+  },
+  {
+    category: HarmCategory.HARM_CATEGORY_HARASSMENT,
+    threshold: HarmBlockThreshold.BLOCK_ONLY_HIGH,
+  },
+  {
+    category: HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT,
+    threshold: HarmBlockThreshold.BLOCK_ONLY_HIGH,
+  },
+  {
+    category: HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT,
+    threshold: HarmBlockThreshold.BLOCK_ONLY_HIGH,
+  },
+];
+
+interface RequestResult {
+  projectIndex: number;
+  seq: number;
+  sendOffsetMs: number;
+  durationMs: number;
+  status: string;
+  is429: boolean;
+  thesisId: number;
+}
+
+const results: RequestResult[] = [];
+
+/**
+ * EXACT single-attempt replica of the production Gemini call — same payload
+ * object shape as generateStructuredContent (config, responseJsonSchema,
+ * safetySettings, seed, thinkingConfig) but the SDK call runs exactly ONCE:
+ * no withRetry, no backtracking. maxRetries is reported as 0.
+ */
+async function evaluateSingleNoRetry(
+  input: PositioningMatrixInput,
+  thesis: SiftedThesis,
+  apiKey: string,
+  logger: Logger,
+): Promise<string> {
+  const payload = buildPerThesisEvaluationPromptPayload(input, thesis);
+  const projectIndex = getProjectIndex(apiKey) + 1;
+  const modelName = FLASH_LITE_31;
+  const { seq, offsetMs } = trackSend(projectIndex);
+  const startedAt = Date.now();
+
+  logger?.info("ai_attempt", {
+    service: "gemini",
+    filePath: "src/services/ai/providers/gemini-provider.ts",
+    data: {
+      attempt: 1,
+      maxRetries: 0,
+      projectIndex,
+      model: modelName,
+      retried: false,
+      seqInKey: seq,
+      msSinceFirstKeyRequest: offsetMs,
+    },
+  });
+
+  const geminiPayload = {
+    model: modelName,
+    contents: [{ role: "user", parts: [{ text: payload.userPrompt }] }],
+    config: {
+      systemInstruction: payload.systemInstruction,
+      responseMimeType: "application/json",
+      responseJsonSchema: perThesisEvaluationJsonSchema,
+      thinkingConfig: { thinkingLevel: "LOW" },
+      seed: GEMINI_SEED,
+      safetySettings: SAFETY_SETTINGS,
+    },
+  };
+
+  try {
+    const response = await getGeminiClient(apiKey).models.generateContent(
+      geminiPayload,
+    );
+    const durationMs = Date.now() - startedAt;
+    const status = response.text ? "OK" : "EMPTY_RESPONSE";
+    results.push({
+      projectIndex,
+      seq,
+      sendOffsetMs: offsetMs,
+      durationMs,
+      status,
+      is429: false,
+      thesisId: thesis.id,
+    });
+    return response.text ?? "";
+  } catch (error) {
+    const durationMs = Date.now() - startedAt;
+    const code = (error as { code?: number })?.code;
+    const errorStatus = (error as { status?: string })?.status;
+    const is429 = code === 429 || errorStatus === "RESOURCE_EXHAUSTED";
+    const statusLabel = is429
+      ? "429 (RESOURCE_EXHAUSTED)"
+      : `${errorStatus ?? code ?? ""}_${error instanceof Error ? error.name : "UNKNOWN"}`;
+
+    logger?.error("positioning_per_thesis_evaluation_failed", {
+      service: "gemini",
+      filePath: "src/services/ai/providers/gemini-provider.ts",
+      durationMs,
+      data: {
+        model: modelName,
+        projectIndex,
+        crossProjectRotation: false,
+        attempts: 1,
+        thinkingLevel: "LOW",
+        scenario: is429 ? "quota" : "system",
+      },
+      error,
+    });
+
+    results.push({
+      projectIndex,
+      seq,
+      sendOffsetMs: offsetMs,
+      durationMs,
+      status: statusLabel,
+      is429,
+      thesisId: thesis.id,
+    });
+
+    throw new Error(`HTTP ${code}: ${errorStatus ?? errorStatus}`);
+  }
+}
+
+const clients = new Map<string, GoogleGenAI>();
+
+function getGeminiClient(apiKey: string): GoogleGenAI {
+  const cached = clients.get(apiKey);
+  if (cached) return cached;
+  const client = new GoogleGenAI({
+    apiKey,
+    httpOptions: { retryOptions: { attempts: 1 } },
+  });
+  clients.set(apiKey, client);
+  return client;
+}
+
+async function main() {
+  captureAllConsole();
+  const logger = new Logger(createFlowId());
+  const theses = Array.from({ length: 35 }, (_, i) => makeThesis(i));
+  const apiKeys = getGeminiKeyPool().keys;
+  const t0 = Date.now();
+
+  console.info(
+    JSON.stringify({
+      event: "verify_harness_start",
+      model: FLASH_LITE_31,
+      keyCount: apiKeys.length,
+      thesisCount: theses.length,
+      concurrencyPerKey: 8,
+      retriesDisabled: true,
+    }),
+  );
+
+  const limiterByKey = new Map<string, ConcurrencyLimiter>();
+  for (const apiKey of apiKeys) {
+    limiterByKey.set(apiKey, createConcurrencyLimiter(8));
+  }
+
+  const settled = await Promise.allSettled(
+    theses.map((thesis, idx) => {
+      const assignedKey = apiKeys[idx % apiKeys.length];
+      const limiter = limiterByKey.get(assignedKey)!;
+      const task = () =>
+        evaluateSingleNoRetry(INPUT, thesis, assignedKey, logger);
+      return limiter
+        .exec(task)
+        .then(
+          (value) => value as unknown,
+          async (reason) => {
+            logger.error("positioning_per_thesis_single_failed", {
+              service: "positioning",
+              filePath: "src/features/positioning/per-thesis-evaluation.ts",
+              data: {
+                thesisId: thesis.id,
+                thesisTitle: thesis.title,
+              },
+              error: reason,
+            });
+            throw reason;
+          },
+        );
+    }),
+  );
+
+  const elapsedMs = Date.now() - t0;
+
+  const perKeyTables = new Map<number, RequestResult[]>();
+  for (const r of results) {
+    const list = perKeyTables.get(r.projectIndex) ?? [];
+    list.push(r);
+    perKeyTables.set(r.projectIndex, list);
+  }
+
+  const summary: Record<string, unknown> = {
+    event: "verify_harness_summary",
+    elapsedMs,
+    totalRequests: results.length,
+    okCount: results.filter((r) => r.status === "OK").length,
+    rateLimited429: results.filter((r) => r.is429).length,
+    otherFailed: results.filter((r) => r.status !== "OK" && !r.is429).length,
+    perKey: Array.from(perKeyTables.entries())
+      .sort((a, b) => a[0] - b[0])
+      .map(([projectIndex, list]) => {
+        const sorted = [...list].sort((a, b) => a.seq - b.seq);
+        const first429 = sorted.find((r) => r.is429);
+        return {
+          projectIndex,
+          totalSent: sorted.length,
+          order: sorted.map((r) => ({
+            seq: r.seq,
+            sendOffsetMs: r.sendOffsetMs,
+            status: r.status,
+            is429: r.is429,
+          })),
+          first429Seq: first429?.seq ?? null,
+          requestsSentByThen: first429 ? first429.seq : null,
+        };
+      }),
+    fulfilled:
+      settled.filter((s) => s.status === "fulfilled").length,
+    rejected: settled.filter((s) => s.status === "rejected").length,
+  };
+
+  console.info(JSON.stringify(summary));
+
+  fs.writeFileSync(
+    path.join(RAW_DIR, "rpm-no-retry-raw.log"),
+    captured.map((e) => JSON.stringify(e)).join("\n"),
+  );
+  fs.writeFileSync(
+    path.join(RAW_DIR, "rpm-no-retry-summary.json"),
+    JSON.stringify(summary, null, 2),
+  );
+}
+
+main().catch((e) => {
+  console.error("verify_harness_crashed", e);
+  process.exit(1);
+});
 </file>
 
 <file path="components.json">
@@ -7698,193 +8052,6 @@ export const OUTLINE_GENERATION_STEPS: LoadingStep[] = [
 ];
 </file>
 
-<file path="src/features/positioning/prompts/query-generator.prompt.ts">
-import {
-  buildPromptPayload,
-  type PromptPayload,
-} from "@/lib/ai/prompt-builder";
-
-/**
- * Builds the standardized PromptPayload for extracting dense, noise-free multi-aspect semantic search queries
- * purely from the user's substantive research problem (subjectProblem).
- * Strictly adheres to docs/LLM_INTEGRATION.md (Hybrid XML + Markdown Encapsulation).
- *
- * @param subjectProblem - The substantive empirical research problem text.
- * @returns Standardized PromptPayload containing systemInstruction and userPrompt.
- */
-export function buildQueryGenerationPromptPayload(
-  subjectProblem: string,
-): PromptPayload {
-  return buildPromptPayload({
-    roleAndExpertise:
-      "Akademik Literatür Keşfi ve Semantik Arama Uzmanısınız. Göreviniz araştırma probleminden arama motorlarının tam isabetle literatür yakalamasını sağlayan yüksek yoğunluklu semantik sorgular ve olgusal anahtar kavramlar damıtmaktır.",
-
-    primaryTask:
-      "Kullanıcının araştırma problemi metnini (subjectProblem) analiz ederek; araştırmanın üzerinde çalıştığı somut ampirik sahayı, aktörleri, kurumları, birincil veri tabanını ve tarihsel/coğrafi dönemi en yüksek hassasiyetle yakalayan 3 tamamlayıcı semantik arama sorgusu ve anahtar kavramlar üretmektir.",
-
-    rulesAndConstraints: `1. **Mutlak Olgusal Saha ve Ampirik Odak (MUTLAK KURAL):**
-   - Arama sorguları ve anahtar kavramlar doğrudan araştırmanın incelediği somut olguya, aktörlere, kurumlara, birincil veri kaynaklarına ve tarihsel döneme odaklanmalıdır.
-   - Soyut metodolojik kelimeler (örn. "nitel analiz", "içerik analizi", "kodlama şeması") veya genel kuramsal şemsiye terimler (örn. "kuramsal çerçeve", "yapı-özne diyalektiği") KESİNLİKLE arama sorgularına konulmamalıdır.
-
-2. **3 Tamamlayıcı Semantik Arama Açısı:**
-   - \`primaryEmpiricalQuery\`: Araştırmanın temel ampirik sorunsalını, dönüşümünü veya olgusunu hedefleyen 20-25 kelimelik yoğun semantik sorgu.
-   - \`actorsAndSourcesQuery\`: Araştırmanın incelediği somut aktörleri, kurumları, partileri, örgütleri veya birincil yayın/veri kaynaklarını hedefleyen semantik sorgu.
-   - \`periodAndContextQuery\`: Araştırmanın odaklandığı tarihsel dönemi, dönemsel kırılmaları veya somut coğrafi/mekânsal bağlamı hedefleyen semantik sorgu.
-   - \`substantiveKeywords\`: Literatür eşleştirmesinde kullanılacak 4-6 adet somut olgusal/aktör/dönem kavramı.
-
-3. **Gürültüsüz ve Yoğun İfade:**
-   - Tüm sorgular doğrudan YÖK Tez / Qdrant vektör aramasında en ilgili tezleri getirecek netlikte, doğal akademik dille ve gereksiz bağlaçlardan arındırılmış olmalıdır.`,
-
-    workflowSteps: `1. Kullanıcının araştırma problemindeki ampirik olguyu, aktörleri, kurumları, birincil kaynakları ve dönemi belirle.
-2. Bu unsurları 3 tamamlayıcı semantik arama açısına ve somut anahtar kavramlara dönüştür.
-3. Çıktıyı JSON şemasına uygun olarak üret.`,
-
-    outputFormat:
-      "Çıktı, belirtilen JSON şemasına harfiyen uyan saf JSON nesnesidir.",
-
-    examples: `<example>
-<input>
-1991-1999 döneminde Kürt siyasal hareketinin taleplerindeki niteliksel dönüşümü manevra ve mevzi savaşı ekseninde PKK ve legal partiler (HEP, DEP, HADEP) üzerinden inceler. Birincil kaynak olarak Serxwebûn dergisi ve TBMM tutanakları kullanılır.
-</input>
-<output>
-{
-  "primaryEmpiricalQuery": "Kürt siyasal hareketi taleplerindeki niteliksel dönüşüm yasal partiler ve silahlı kanat söylem değişimi 1990lar",
-  "actorsAndSourcesQuery": "HEP DEP HADEP PKK Serxwebûn meclis tutanakları parti programları bildirgeler",
-  "periodAndContextQuery": "1991-1999 dönemi Kürt hareketi kuluçka evresi 1999 kırılması yerel seçimler",
-  "substantiveKeywords": ["Kürt siyasal hareketi", "HEP-DEP-HADEP", "PKK", "Serxwebûn", "1991-1999 dönemi", "Talep dönüşümü"]
-}
-</output>
-</example>`,
-
-    inputContext: `### Araştırma Problemi ve Olgusal Odak (subjectProblem):
-${subjectProblem}`,
-
-    taskTrigger:
-      "Yukarıdaki <context> içeriğindeki araştırma problemini analiz ederek <instructions> kurallarına göre `primaryEmpiricalQuery`, `actorsAndSourcesQuery`, `periodAndContextQuery` ve `substantiveKeywords` alanlarını içeren JSON formatında semantik arama sorgusu çıktısını üret.",
-  });
-}
-</file>
-
-<file path="src/features/positioning/query-generator.ts">
-import { z } from "zod";
-import { ThinkingLevel } from "@google/genai";
-import { FLASH_LITE_31, GEMINI_SEED } from "@/lib/constants";
-import {
-  generateGeminiStructuredContent,
-  type JsonSchema,
-} from "@/services/ai";
-import { buildQueryGenerationPromptPayload } from "./prompts/query-generator.prompt";
-import type { Logger } from "@/lib/logger";
-import type { PositioningMatrixInput } from "./validation";
-
-
-/** Zod schema for generated dense multi-aspect empirical semantic search queries. */
-export const positioningQuerySchema = z.object({
-  primaryEmpiricalQuery: z
-    .string()
-    .describe(
-      "Vektör arama motoru için araştırmanın temel ampirik sorunsalını ve olgusunu hedefleyen 20-25 kelimelik yoğun semantik sorgu.",
-    ),
-  actorsAndSourcesQuery: z
-    .string()
-    .describe(
-      "Araştırmanın incelediği somut aktörleri, kurumları, partileri veya birincil yayın/veri kaynaklarını hedefleyen semantik sorgu.",
-    ),
-  periodAndContextQuery: z
-    .string()
-    .describe(
-      "Araştırmanın odaklandığı tarihsel dönemi, dönemsel kırılmaları veya somut coğrafi/mekânsal bağlamı hedefleyen semantik sorgu.",
-    ),
-  substantiveKeywords: z
-    .array(z.string())
-    .describe(
-      "Literatür eşleştirmesinde ve yeniden sıralamada kullanılacak 4-6 adet spesifik akademik olgu, aktör ve dönem kavramı.",
-    ),
-});
-
-export type PositioningQuery = z.infer<typeof positioningQuerySchema>;
-
-/** Vanilla JSON schema for Gemini structured output. */
-export const positioningQueryJsonSchema: JsonSchema = {
-  type: "object",
-  properties: {
-    primaryEmpiricalQuery: {
-      type: "string",
-      description:
-        "Vektör arama motoru için araştırmanın temel ampirik sorunsalını ve olgusunu hedefleyen 20-25 kelimelik yoğun semantik sorgu.",
-    },
-    actorsAndSourcesQuery: {
-      type: "string",
-      description:
-        "Araştırmanın incelediği somut aktörleri, kurumları, partileri veya birincil yayın/veri kaynaklarını hedefleyen semantik sorgu.",
-    },
-    periodAndContextQuery: {
-      type: "string",
-      description:
-        "Araştırmanın odaklandığı tarihsel dönemi, dönemsel kırılmaları veya somut coğrafi/mekânsal bağlamı hedefleyen semantik sorgu.",
-    },
-    substantiveKeywords: {
-      type: "array",
-      items: { type: "string" },
-      description:
-        "Literatür eşleştirmesinde ve yeniden sıralamada kullanılacak 4-6 adet spesifik akademik olgu, aktör ve dönem kavramı.",
-    },
-  },
-  required: [
-    "primaryEmpiricalQuery",
-    "actorsAndSourcesQuery",
-    "periodAndContextQuery",
-    "substantiveKeywords",
-  ],
-  additionalProperties: false,
-};
-
-/**
- * Generates dense, multi-aspect empirical semantic search queries purely from the subjectProblem
- * using FLASH_LITE_31 and HIGH thinking.
- *
- * @param matrix - The positioning matrix containing subjectProblem.
- * @param logger - Optional logger for observability.
- * @returns The structured multi-aspect positioning query output.
- */
-export async function generatePositioningQuery(
-  matrix: PositioningMatrixInput | { subjectProblem: string },
-  logger?: Logger,
-): Promise<PositioningQuery> {
-  const payload = buildQueryGenerationPromptPayload(matrix.subjectProblem);
-
-  try {
-    const result = await generateGeminiStructuredContent<PositioningQuery>(
-      FLASH_LITE_31,
-      payload.systemInstruction,
-      payload.userPrompt,
-      positioningQueryJsonSchema,
-      logger,
-      {
-        zodSchema: positioningQuerySchema,
-        payloadStage: "positioning_query_generation",
-        seed: GEMINI_SEED,
-        thinkingConfig: { thinkingLevel: ThinkingLevel.HIGH },
-        thesisMatrix: matrix,
-        quiet: true,
-      },
-    );
-
-    return result;
-  } catch (error) {
-    logger?.warn("positioning_query_generation_fallback", { error });
-    // Safe fallback if LLM query generation fails
-    const fallbackSlice = matrix.subjectProblem.slice(0, 250);
-    return {
-      primaryEmpiricalQuery: fallbackSlice,
-      actorsAndSourcesQuery: fallbackSlice,
-      periodAndContextQuery: fallbackSlice,
-      substantiveKeywords: [],
-    };
-  }
-}
-</file>
-
 <file path="src/lib/academic/abstract-cleaner.ts">
 /**
  * Strips common prefix labels and trailing clutter from a raw academic abstract.
@@ -8469,15 +8636,16 @@ export function getGeminiKeyPool(): GeminiKeyPool {
 }
 
 /**
- * Computes the next circular key position in the pool.
+ * Resolves the 0-based project/key index for a given API key string.
  *
- * @param position - The current 0-based key position.
- * @param total - The number of keys in the pool.
- * @returns The next 0-based key position (wrapping to 0 past the end).
+ * @param apiKey - The Gemini API key string.
+ * @returns The 0-based index of the key in the pool, or 0 if not found.
  */
-export function nextKeyPosition(position: number, total: number): number {
-  if (total <= 0) return 0;
-  return (position + 1) % total;
+export function getProjectIndex(apiKey?: string): number {
+  if (!apiKey) return 0;
+  const pool = getGeminiKeyPool();
+  const idx = pool.keys.indexOf(apiKey);
+  return idx >= 0 ? idx : 0;
 }
 </file>
 
@@ -8612,6 +8780,7 @@ export interface RetryOptions {
   baseDelay: number;
   maxDelay?: number;
   getRetryAfter?: (error: unknown) => number | null;
+  onAttempt?: (attempt: number, previousError?: unknown) => void;
   onRetry?: (attempt: number, delayMs: number, error: unknown) => void;
   isRetryable?: (error: unknown, attempt: number) => boolean;
   getDelay?: (attempt: number, error: unknown, defaultDelay: number) => number;
@@ -8636,12 +8805,14 @@ export async function withRetry<T>(
     onRetry,
     getRetryAfter,
     getDelay,
+    onAttempt,
   } = options;
   const shouldRetry = isRetryable ?? (() => true);
   let attempt = 0;
   let lastError: unknown;
 
   while (++attempt <= maxRetries) {
+    onAttempt?.(attempt, lastError);
     try {
       return await fn();
     } catch (error) {
@@ -9716,6 +9887,13 @@ skills-lock.json
 
 # docs
 /docs
+</file>
+
+<file path=".neon">
+{
+  "orgId": "org-old-haze-71570114",
+  "projectId": "crimson-feather-32946628"
+}
 </file>
 
 <file path="next.config.ts">
@@ -18841,6 +19019,193 @@ export async function executePhase3Selection(
   }
 
   return subBoxResultsToPersist;
+}
+</file>
+
+<file path="src/features/positioning/prompts/query-generator.prompt.ts">
+import {
+  buildPromptPayload,
+  type PromptPayload,
+} from "@/lib/ai/prompt-builder";
+
+/**
+ * Builds the standardized PromptPayload for extracting dense, noise-free multi-aspect semantic search queries
+ * purely from the user's substantive research problem (subjectProblem).
+ * Strictly adheres to docs/LLM_INTEGRATION.md (Hybrid XML + Markdown Encapsulation).
+ *
+ * @param subjectProblem - The substantive empirical research problem text.
+ * @returns Standardized PromptPayload containing systemInstruction and userPrompt.
+ */
+export function buildQueryGenerationPromptPayload(
+  subjectProblem: string,
+): PromptPayload {
+  return buildPromptPayload({
+    roleAndExpertise:
+      "Akademik Literatür Keşfi ve Semantik Arama Uzmanısınız. Göreviniz araştırma probleminden arama motorlarının tam isabetle literatür yakalamasını sağlayan yüksek yoğunluklu semantik sorgular ve olgusal anahtar kavramlar damıtmaktır.",
+
+    primaryTask:
+      "Kullanıcının araştırma problemi metnini (subjectProblem) analiz ederek; araştırmanın üzerinde çalıştığı somut ampirik sahayı, aktörleri, kurumları, birincil veri tabanını ve tarihsel/coğrafi dönemi en yüksek hassasiyetle yakalayan 3 tamamlayıcı semantik arama sorgusu ve anahtar kavramlar üretmektir.",
+
+    rulesAndConstraints: `1. **Mutlak Olgusal Saha ve Ampirik Odak (MUTLAK KURAL):**
+   - Arama sorguları ve anahtar kavramlar doğrudan araştırmanın incelediği somut olguya, aktörlere, kurumlara, birincil veri kaynaklarına ve tarihsel döneme odaklanmalıdır.
+   - Soyut metodolojik kelimeler (örn. "nitel analiz", "içerik analizi", "kodlama şeması") veya genel kuramsal şemsiye terimler (örn. "kuramsal çerçeve", "yapı-özne diyalektiği") KESİNLİKLE arama sorgularına konulmamalıdır.
+
+2. **3 Tamamlayıcı Semantik Arama Açısı:**
+   - \`primaryEmpiricalQuery\`: Araştırmanın temel ampirik sorunsalını, dönüşümünü veya olgusunu hedefleyen 20-25 kelimelik yoğun semantik sorgu.
+   - \`actorsAndSourcesQuery\`: Araştırmanın incelediği somut aktörleri, kurumları, partileri, örgütleri veya birincil yayın/veri kaynaklarını hedefleyen semantik sorgu.
+   - \`periodAndContextQuery\`: Araştırmanın odaklandığı tarihsel dönemi, dönemsel kırılmaları veya somut coğrafi/mekânsal bağlamı hedefleyen semantik sorgu.
+   - \`substantiveKeywords\`: Literatür eşleştirmesinde kullanılacak 4-6 adet somut olgusal/aktör/dönem kavramı.
+
+3. **Gürültüsüz ve Yoğun İfade:**
+   - Tüm sorgular doğrudan YÖK Tez / Qdrant vektör aramasında en ilgili tezleri getirecek netlikte, doğal akademik dille ve gereksiz bağlaçlardan arındırılmış olmalıdır.`,
+
+    workflowSteps: `1. Kullanıcının araştırma problemindeki ampirik olguyu, aktörleri, kurumları, birincil kaynakları ve dönemi belirle.
+2. Bu unsurları 3 tamamlayıcı semantik arama açısına ve somut anahtar kavramlara dönüştür.
+3. Çıktıyı JSON şemasına uygun olarak üret.`,
+
+    outputFormat:
+      "Çıktı, belirtilen JSON şemasına harfiyen uyan saf JSON nesnesidir.",
+
+    examples: `<example>
+<input>
+1991-1999 döneminde Kürt siyasal hareketinin taleplerindeki niteliksel dönüşümü manevra ve mevzi savaşı ekseninde PKK ve legal partiler (HEP, DEP, HADEP) üzerinden inceler. Birincil kaynak olarak Serxwebûn dergisi ve TBMM tutanakları kullanılır.
+</input>
+<output>
+{
+  "primaryEmpiricalQuery": "Kürt siyasal hareketi taleplerindeki niteliksel dönüşüm yasal partiler ve silahlı kanat söylem değişimi 1990lar",
+  "actorsAndSourcesQuery": "HEP DEP HADEP PKK Serxwebûn meclis tutanakları parti programları bildirgeler",
+  "periodAndContextQuery": "1991-1999 dönemi Kürt hareketi kuluçka evresi 1999 kırılması yerel seçimler",
+  "substantiveKeywords": ["Kürt siyasal hareketi", "HEP-DEP-HADEP", "PKK", "Serxwebûn", "1991-1999 dönemi", "Talep dönüşümü"]
+}
+</output>
+</example>`,
+
+    inputContext: `### Araştırma Problemi ve Olgusal Odak (subjectProblem):
+${subjectProblem}`,
+
+    taskTrigger:
+      "Yukarıdaki <context> içeriğindeki araştırma problemini analiz ederek <instructions> kurallarına göre `primaryEmpiricalQuery`, `actorsAndSourcesQuery`, `periodAndContextQuery` ve `substantiveKeywords` alanlarını içeren JSON formatında semantik arama sorgusu çıktısını üret.",
+  });
+}
+</file>
+
+<file path="src/features/positioning/query-generator.ts">
+import { z } from "zod";
+import { ThinkingLevel } from "@google/genai";
+import { FLASH_LITE_31, GEMINI_SEED } from "@/lib/constants";
+import {
+  generateGeminiStructuredContent,
+  type JsonSchema,
+} from "@/services/ai";
+import { buildQueryGenerationPromptPayload } from "./prompts/query-generator.prompt";
+import type { Logger } from "@/lib/logger";
+import type { PositioningMatrixInput } from "./validation";
+
+
+/** Zod schema for generated dense multi-aspect empirical semantic search queries. */
+export const positioningQuerySchema = z.object({
+  primaryEmpiricalQuery: z
+    .string()
+    .describe(
+      "Vektör arama motoru için araştırmanın temel ampirik sorunsalını ve olgusunu hedefleyen 20-25 kelimelik yoğun semantik sorgu.",
+    ),
+  actorsAndSourcesQuery: z
+    .string()
+    .describe(
+      "Araştırmanın incelediği somut aktörleri, kurumları, partileri veya birincil yayın/veri kaynaklarını hedefleyen semantik sorgu.",
+    ),
+  periodAndContextQuery: z
+    .string()
+    .describe(
+      "Araştırmanın odaklandığı tarihsel dönemi, dönemsel kırılmaları veya somut coğrafi/mekânsal bağlamı hedefleyen semantik sorgu.",
+    ),
+  substantiveKeywords: z
+    .array(z.string())
+    .describe(
+      "Literatür eşleştirmesinde ve yeniden sıralamada kullanılacak 4-6 adet spesifik akademik olgu, aktör ve dönem kavramı.",
+    ),
+});
+
+export type PositioningQuery = z.infer<typeof positioningQuerySchema>;
+
+/** Vanilla JSON schema for Gemini structured output. */
+export const positioningQueryJsonSchema: JsonSchema = {
+  type: "object",
+  properties: {
+    primaryEmpiricalQuery: {
+      type: "string",
+      description:
+        "Vektör arama motoru için araştırmanın temel ampirik sorunsalını ve olgusunu hedefleyen 20-25 kelimelik yoğun semantik sorgu.",
+    },
+    actorsAndSourcesQuery: {
+      type: "string",
+      description:
+        "Araştırmanın incelediği somut aktörleri, kurumları, partileri veya birincil yayın/veri kaynaklarını hedefleyen semantik sorgu.",
+    },
+    periodAndContextQuery: {
+      type: "string",
+      description:
+        "Araştırmanın odaklandığı tarihsel dönemi, dönemsel kırılmaları veya somut coğrafi/mekânsal bağlamı hedefleyen semantik sorgu.",
+    },
+    substantiveKeywords: {
+      type: "array",
+      items: { type: "string" },
+      description:
+        "Literatür eşleştirmesinde ve yeniden sıralamada kullanılacak 4-6 adet spesifik akademik olgu, aktör ve dönem kavramı.",
+    },
+  },
+  required: [
+    "primaryEmpiricalQuery",
+    "actorsAndSourcesQuery",
+    "periodAndContextQuery",
+    "substantiveKeywords",
+  ],
+  additionalProperties: false,
+};
+
+/**
+ * Generates dense, multi-aspect empirical semantic search queries purely from the subjectProblem
+ * using FLASH_LITE_31 and HIGH thinking.
+ *
+ * @param matrix - The positioning matrix containing subjectProblem.
+ * @param logger - Optional logger for observability.
+ * @returns The structured multi-aspect positioning query output.
+ */
+export async function generatePositioningQuery(
+  matrix: PositioningMatrixInput | { subjectProblem: string },
+  logger?: Logger,
+): Promise<PositioningQuery> {
+  const payload = buildQueryGenerationPromptPayload(matrix.subjectProblem);
+
+  try {
+    const result = await generateGeminiStructuredContent<PositioningQuery>(
+      FLASH_LITE_31,
+      payload.systemInstruction,
+      payload.userPrompt,
+      positioningQueryJsonSchema,
+      logger,
+      {
+        zodSchema: positioningQuerySchema,
+        payloadStage: "positioning_query_generation",
+        seed: GEMINI_SEED,
+        thinkingConfig: { thinkingLevel: ThinkingLevel.HIGH },
+        thesisMatrix: matrix,
+        quiet: true,
+      },
+    );
+
+    return result;
+  } catch (error) {
+    logger?.warn("positioning_query_generation_fallback", { error });
+    // Safe fallback if LLM query generation fails
+    const fallbackSlice = matrix.subjectProblem.slice(0, 250);
+    return {
+      primaryEmpiricalQuery: fallbackSlice,
+      actorsAndSourcesQuery: fallbackSlice,
+      periodAndContextQuery: fallbackSlice,
+      substantiveKeywords: [],
+    };
+  }
 }
 </file>
 
@@ -28724,6 +29089,128 @@ export function classifyError(error: unknown): ErrorScenario {
   return "system";
 }
 
+/**
+ * Extracts the recommended retry delay in milliseconds from a Google RPC RetryInfo error or message.
+ *
+ * @param error - The thrown error to inspect.
+ * @returns The extracted delay in milliseconds, or null if not found.
+ */
+export function extractRetryDelayMs(error: unknown): number | null {
+  if (!error) return null;
+
+  if (error instanceof Error) {
+    // Check parsed RPC details if present on error object
+    const errObj = error as unknown as Record<string, unknown>;
+    if (Array.isArray(errObj.details)) {
+      const retryInfo = errObj.details.find((d: Record<string, unknown>) =>
+        d?.["@type"]?.toString().includes("RetryInfo"),
+      );
+      if (retryInfo && typeof retryInfo.retryDelay === "string") {
+        const seconds = parseFloat(retryInfo.retryDelay.replace(/s$/, ""));
+        if (!isNaN(seconds) && seconds > 0) {
+          return Math.round(seconds * 1000);
+        }
+      }
+    }
+
+    // Check JSON in message
+    if (typeof error.message === "string") {
+      try {
+        const parsed = JSON.parse(error.message);
+        if (parsed?.error?.details && Array.isArray(parsed.error.details)) {
+          const retryInfo = parsed.error.details.find(
+            (d: Record<string, unknown>) =>
+              d?.["@type"]?.toString().includes("RetryInfo"),
+          );
+          if (retryInfo && typeof retryInfo.retryDelay === "string") {
+            const seconds = parseFloat(retryInfo.retryDelay.replace(/s$/, ""));
+            if (!isNaN(seconds) && seconds > 0) {
+              return Math.round(seconds * 1000);
+            }
+          }
+        }
+      } catch {
+        // message is plain text
+      }
+
+      const match = error.message.match(
+        /(?:please retry in|retry after|retry in)\s+([\d.]+)\s*s/i,
+      );
+      if (match && match[1]) {
+        const seconds = parseFloat(match[1]);
+        if (!isNaN(seconds) && seconds > 0) {
+          return Math.round(seconds * 1000);
+        }
+      }
+    }
+  }
+
+  return null;
+}
+
+export interface QuotaViolationDetails {
+  quotaMetric?: string;
+  quotaId?: string;
+  quotaValue?: string;
+  quotaDimensions?: Record<string, string>;
+  retryDelay?: string;
+  message?: string;
+}
+
+/**
+ * Extracts structured QuotaFailure and RetryInfo metadata from a Google RPC error.
+ *
+ * @param error - The thrown error to inspect.
+ * @returns Structured quota violation details or null when absent.
+ */
+export function extractQuotaDetails(
+  error: unknown,
+): QuotaViolationDetails | null {
+  if (!error) return null;
+
+  let errorObj: Record<string, unknown> | null = null;
+
+  if (error instanceof Error) {
+    if (typeof error.message === "string") {
+      try {
+        const parsed = JSON.parse(error.message);
+        if (parsed?.error) {
+          errorObj = parsed.error;
+        }
+      } catch {
+        // not json
+      }
+    }
+    if (!errorObj && typeof error === "object") {
+      errorObj = error as unknown as Record<string, unknown>;
+    }
+  }
+
+  if (!errorObj) return null;
+
+  const details = Array.isArray(errorObj.details) ? errorObj.details : [];
+  const quotaFailure = details.find((d: Record<string, unknown>) =>
+    d?.["@type"]?.toString().includes("QuotaFailure"),
+  );
+  const retryInfo = details.find((d: Record<string, unknown>) =>
+    d?.["@type"]?.toString().includes("RetryInfo"),
+  );
+  const violation = (
+    quotaFailure as { violations?: Array<Record<string, unknown>> }
+  )?.violations?.[0];
+
+  if (!quotaFailure && !retryInfo && !errorObj.message) return null;
+
+  return {
+    quotaMetric: typeof violation?.quotaMetric === "string" ? violation.quotaMetric : undefined,
+    quotaId: typeof violation?.quotaId === "string" ? violation.quotaId : undefined,
+    quotaValue: typeof violation?.quotaValue === "string" ? violation.quotaValue : undefined,
+    quotaDimensions: (violation?.quotaDimensions as Record<string, string>) ?? undefined,
+    retryDelay: typeof retryInfo?.retryDelay === "string" ? retryInfo.retryDelay : undefined,
+    message: typeof errorObj.message === "string" ? errorObj.message : undefined,
+  };
+}
+
 const TURKISH_ERROR_BY_SCENARIO: Record<ErrorScenario, string> = {
   quota:
     "Yapay zeka hizmetinin anlık kullanım limitine ulaşıldı. Lütfen birkaç dakika sonra tekrar deneyin.",
@@ -33414,314 +33901,6 @@ export async function savePositioningReportTransaction(
 }
 </file>
 
-<file path="src/features/positioning/per-thesis-evaluation.ts">
-import { z } from "zod";
-import { ThinkingLevel } from "@google/genai";
-import { FLASH_LITE_35, GEMINI_SEED } from "@/lib/constants";
-import {
-  generateGeminiStructuredContent,
-  type JsonSchema,
-} from "@/services/ai";
-import { getGeminiKeyPool } from "@/services/ai/gemini-key-pool";
-import type { Logger } from "@/lib/logger";
-import {
-  buildPerThesisEvaluationPromptPayload,
-  buildBatchPerThesisEvaluationPromptPayload,
-} from "./prompts/per-thesis-evaluation.prompt";
-import {
-  strategicRoleEnum,
-  type PositioningMatrixInput,
-} from "./validation";
-import type { SiftedThesis } from "./sifting";
-
-/** Zod schema for the single-thesis strategic relevance/originality/role evaluation output. */
-export const perThesisEvaluationSchema = z.object({
-  externalThesisId: z
-    .union([z.string(), z.number()])
-    .transform((val) => String(val))
-    .describe("Değerlendirilen tezin ID'si"),
-  isRelevant: z
-    .boolean()
-    .describe(
-      "Kullanıcının araştırma nesnesi/olgusal sahasıyla doğrudan alakalı mı?",
-    ),
-  relevanceReasoning: z
-    .string()
-    .optional()
-    .describe(
-      "Tezin ampirik olarak neden ilgili veya ilgisiz olduğuna dair somut gerekçe (1-2 cümle)",
-    ),
-  isDirectOverlap: z
-    .boolean()
-    .describe(
-      "Kullanıcının tezi ile birebir örtüşme var mı (kullanıcı tezi özgün değil mi)?",
-    ),
-  strategicRole: strategicRoleEnum
-    .optional()
-    .describe(
-      "Tezin kullanıcının tezindeki stratejik rolü: BROAD_CONTEXT | SPECIFIC_FOCUS | FOUNDATIONAL_WORK | METHODOLOGICAL_BENCHMARK | ALTERNATIVE_PERSPECTIVE",
-    ),
-  contributionAreas: z
-    .array(z.string())
-    .describe(
-      "Tezin kullanıcının tezine katkı sağladığı/benzediği spesifik odak alanları (1-3 adet)",
-    ),
-  literaturePosition: z
-    .string()
-    .describe("Tezin literatürdeki konumu ve ne yaptığı (1 net cümle)"),
-  strategicUtility: z
-    .string()
-    .describe(
-      "Tezin kullanıcının tezinde nasıl kullanılacağına ve hangi boşluğu dolduracağına dair stratejik rehber not (1-2 cümle)",
-    ),
-});
-
-/** Inferred type for a single-thesis evaluation result. */
-export type PerThesisEvaluation = z.infer<typeof perThesisEvaluationSchema>;
-
-/** Zod schema for batched per-thesis evaluation outputs. */
-export const batchPerThesisEvaluationSchema = z.object({
-  evaluations: z.array(perThesisEvaluationSchema),
-});
-
-/** Inferred type for batched per-thesis evaluation output. */
-export type BatchPerThesisEvaluation = z.infer<
-  typeof batchPerThesisEvaluationSchema
->;
-
-/** JSON Schema for Gemini structured outputs of the per-thesis evaluation. */
-export const perThesisEvaluationJsonSchema: JsonSchema = {
-  type: "object",
-  properties: {
-    externalThesisId: {
-      type: "string",
-      description: "Değerlendirilen tezin ID'si",
-    },
-    isRelevant: {
-      type: "boolean",
-      description:
-        "Kullanıcının araştırma nesnesi/olgusal sahasıyla doğrudan alakalı mı? İlgisiz tezlerde false.",
-    },
-    relevanceReasoning: {
-      type: "string",
-      description:
-        "Tezin ampirik olarak neden ilgili veya ilgisiz olduğuna dair somut gerekçe (1-2 cümle)",
-    },
-    isDirectOverlap: {
-      type: "boolean",
-      description:
-        "Kullanıcının tezi ile birebir örtüşme var mı (kullanıcı tezi özgün değil mi)?",
-    },
-    strategicRole: {
-      type: "string",
-      enum: [
-        "BROAD_CONTEXT",
-        "SPECIFIC_FOCUS",
-        "FOUNDATIONAL_WORK",
-        "METHODOLOGICAL_BENCHMARK",
-        "ALTERNATIVE_PERSPECTIVE",
-      ],
-      description:
-        "Tezin stratejik rolü: BROAD_CONTEXT (Geniş Çerçeve), SPECIFIC_FOCUS (Kısmi Odak), FOUNDATIONAL_WORK (Öncül Çalışma), METHODOLOGICAL_BENCHMARK (Yöntem Rehberi), ALTERNATIVE_PERSPECTIVE (Karşıt Yaklaşım).",
-    },
-    contributionAreas: {
-      type: "array",
-      items: { type: "string" },
-      description:
-        "Tezin kullanıcının tezine katkı sağladığı spesifik odak alanları (1-3 adet). İlgisiz tezlerde boş dizi [].",
-    },
-    literaturePosition: {
-      type: "string",
-      description:
-        "Tezin literatürdeki konumu ve ne yaptığı (1 net cümle). İlgisiz tezlerde boş string.",
-    },
-    strategicUtility: {
-      type: "string",
-      description:
-        "Tezin kullanıcının tezinde nasıl kullanılacağına ve hangi boşluğu dolduracağına dair stratejik rehber not (1-2 cümle). İlgisiz tezlerde boş string.",
-    },
-  },
-  required: [
-    "externalThesisId",
-    "isRelevant",
-    "isDirectOverlap",
-    "contributionAreas",
-    "literaturePosition",
-    "strategicUtility",
-  ],
-  additionalProperties: false,
-};
-
-/** JSON Schema for Gemini structured outputs of batched per-thesis evaluation. */
-export const batchPerThesisEvaluationJsonSchema: JsonSchema = {
-  type: "object",
-  properties: {
-    evaluations: {
-      type: "array",
-      items: perThesisEvaluationJsonSchema,
-      description: "Listedeki her bir tez için değerlendirme çıktısı dizisi.",
-    },
-  },
-  required: ["evaluations"],
-  additionalProperties: false,
-};
-
-/**
- * Evaluates a single thesis against the user's thesis matrix via the 3-stage decision chain.
- *
- * @param input - The validated positioning matrix input.
- * @param thesis - The single thesis candidate to evaluate.
- * @param apiKey - Optional Gemini API key override for multi-key load distribution.
- * @param logger - Optional structured logger for pipeline events.
- * @returns The structured per-thesis evaluation result.
- */
-export async function evaluateSingleThesis(
-  input: PositioningMatrixInput,
-  thesis: SiftedThesis,
-  apiKey?: string,
-  logger?: Logger,
-): Promise<PerThesisEvaluation> {
-  const payload = buildPerThesisEvaluationPromptPayload(input, thesis);
-
-  const result = await generateGeminiStructuredContent<PerThesisEvaluation>(
-    FLASH_LITE_35,
-    payload.systemInstruction,
-    payload.userPrompt,
-    perThesisEvaluationJsonSchema,
-    logger,
-    {
-      zodSchema: perThesisEvaluationSchema,
-      payloadStage: "positioning_per_thesis_evaluation",
-      seed: GEMINI_SEED,
-      thinkingConfig: { thinkingLevel: ThinkingLevel.LOW },
-      thesisMatrix: input,
-      apiKey,
-      quiet: true,
-    },
-  );
-
-  return result;
-}
-
-/**
- * Evaluates a batch chunk of thesis candidates against the user's matrix.
- *
- * @param input - The validated positioning matrix input.
- * @param theses - The chunk of candidate theses to evaluate.
- * @param apiKey - Optional Gemini API key override for multi-key load distribution.
- * @param logger - Optional structured logger for pipeline events.
- * @returns The array of structured per-thesis evaluations for the batch.
- */
-export async function evaluateBatchTheses(
-  input: PositioningMatrixInput,
-  theses: SiftedThesis[],
-  apiKey?: string,
-  logger?: Logger,
-): Promise<PerThesisEvaluation[]> {
-  if (theses.length === 0) return [];
-
-  const payload = buildBatchPerThesisEvaluationPromptPayload(input, theses);
-
-  const result =
-    await generateGeminiStructuredContent<BatchPerThesisEvaluation>(
-      FLASH_LITE_35,
-      payload.systemInstruction,
-      payload.userPrompt,
-      batchPerThesisEvaluationJsonSchema,
-      logger,
-      {
-        zodSchema: batchPerThesisEvaluationSchema,
-        payloadStage: "positioning_per_thesis_evaluation_batch",
-        seed: GEMINI_SEED,
-        thinkingConfig: { thinkingLevel: ThinkingLevel.LOW },
-        thesisMatrix: input,
-        apiKey,
-        quiet: true,
-      },
-    );
-
-  return result.evaluations || [];
-}
-
-/** A thesis paired with its per-thesis evaluation result. */
-export interface EvaluatedThesis {
-  thesis: SiftedThesis;
-  evaluation: PerThesisEvaluation;
-}
-
-/**
- * Evaluates all candidate theses independently and concurrently in pure 1-by-1 parallel calls
- * distributed across the Gemini API key pool to prevent relative evaluation bias.
- *
- * @param input - The validated positioning matrix input.
- * @param theses - The full list of candidate theses to evaluate.
- * @param logger - Optional structured logger for pipeline events.
- * @returns The evaluated theses that were successfully processed, in original order.
- */
-export async function evaluateThesesInParallel(
-  input: PositioningMatrixInput,
-  theses: SiftedThesis[],
-  logger?: Logger,
-): Promise<EvaluatedThesis[]> {
-  if (theses.length === 0) return [];
-
-  const apiKeys = getGeminiKeyPool().keys;
-
-  const startTime = performance.now();
-
-  logger?.info("positioning_per_thesis_evaluation_start", {
-    service: "positioning",
-    filePath: "src/features/positioning/per-thesis-evaluation.ts",
-    data: {
-      total: theses.length,
-      keyCount: apiKeys.length,
-      mode: "pure_1_by_1_parallel",
-    },
-  });
-
-  const settled = await Promise.allSettled(
-    theses.map((thesis, idx) =>
-      evaluateSingleThesis(
-        input,
-        thesis,
-        apiKeys[idx % apiKeys.length],
-        logger,
-      ),
-    ),
-  );
-
-  const allEvaluated: EvaluatedThesis[] = [];
-
-  for (let idx = 0; idx < settled.length; idx++) {
-    const res = settled[idx];
-    const thesis = theses[idx];
-    if (res.status === "fulfilled") {
-      allEvaluated.push({ thesis, evaluation: res.value });
-    } else {
-      logger?.error("positioning_per_thesis_single_evaluation_failed", {
-        service: "positioning",
-        filePath: "src/features/positioning/per-thesis-evaluation.ts",
-        data: { thesisId: thesis.id, title: thesis.title },
-        error: res.reason,
-      });
-    }
-  }
-
-  logger?.info("positioning_per_thesis_evaluation_success", {
-    service: "positioning",
-    filePath: "src/features/positioning/per-thesis-evaluation.ts",
-    durationMs: Math.round(performance.now() - startTime),
-    data: {
-      total: theses.length,
-      evaluatedCount: allEvaluated.length,
-      relevantCount: allEvaluated.filter((e) => e.evaluation.isRelevant).length,
-    },
-  });
-
-  return allEvaluated;
-}
-</file>
-
 <file path="src/lib/types.ts">
 export type OnboardingActionResult =
   | { success: true; isProcessing?: boolean; error?: never }
@@ -33798,13 +33977,14 @@ export interface LiteraturePoolEntry {
 <file path="src/services/ai/providers/gemini-provider.ts">
 import { GoogleGenAI, HarmCategory, HarmBlockThreshold } from "@google/genai";
 import { Logger, createFlowId } from "@/lib/logger";
-import { createConcurrencyLimiter } from "@/lib/rate-limiter";
-import { getGeminiKeyPool, nextKeyPosition } from "../gemini-key-pool";
+import { getGeminiKeyPool, getProjectIndex } from "../gemini-key-pool";
 import { GEMINI_SEED } from "@/lib/constants";
 import {
   SchemaValidationError,
   classifyError,
   extractHttpStatus,
+  extractQuotaDetails,
+  extractRetryDelayMs,
   isRateLimitError,
   isServerOverloadError,
   toAiProviderError,
@@ -33825,10 +34005,14 @@ let aiInstance: GoogleGenAI | null = null;
 const aiInstancesByKey = new Map<string, GoogleGenAI>();
 
 /**
- * Caps concurrent in-flight Gemini requests across pipeline stages to prevent socket exhaustion
- * while enabling high-throughput parallel execution (up to 30 concurrent in-flight calls).
+ * Disables the SDK's built-in HTTP retry so `withRetry` remains the single retry
+ * owner. Empirically verified on @google/genai 2.16.0: the classic generateContent
+ * / generateContentStream path retries ONLY when `httpOptions.retryOptions` is
+ * present, and `attempts: 1` means the original request runs exactly once.
  */
-const geminiRequestQueue = createConcurrencyLimiter(30);
+const SDK_SINGLE_ATTEMPT_HTTP_OPTIONS = {
+  httpOptions: { retryOptions: { attempts: 1 } },
+} as const;
 
 /**
  * Returns a lazily-initialized GoogleGenAI client, defaulting to the GEMINI_API_KEY_1
@@ -33841,14 +34025,20 @@ export function getAi(apiKey?: string): GoogleGenAI {
   if (!apiKey) {
     if (!aiInstance) {
       const envKey = getGeminiKeyPool().keys[0];
-      aiInstance = new GoogleGenAI({ apiKey: envKey });
+      aiInstance = new GoogleGenAI({
+        apiKey: envKey,
+        ...SDK_SINGLE_ATTEMPT_HTTP_OPTIONS,
+      });
     }
     return aiInstance;
   }
 
   const cached = aiInstancesByKey.get(apiKey);
   if (cached) return cached;
-  const client = new GoogleGenAI({ apiKey });
+  const client = new GoogleGenAI({
+    apiKey,
+    ...SDK_SINGLE_ATTEMPT_HTTP_OPTIONS,
+  });
   aiInstancesByKey.set(apiKey, client);
   return client;
 }
@@ -33922,6 +34112,7 @@ export async function logRawLlmCall(params: {
 
 /**
  * Requests structured JSON output from Gemini via responseJsonSchema, with retry on 429/5xx and optional Zod validation.
+ * Each request is strictly bound to its assigned Google Cloud project API key with per-project 15 RPM pacing.
  *
  * @param modelName - The Gemini model identifier to call.
  * @param systemInstruction - The system-level instructions for the model.
@@ -33939,17 +34130,21 @@ export async function generateStructuredContent<T>(
   logger?: Logger,
   options?: StructuredGenerationOptions<T>,
 ): Promise<T> {
-  const startTime = performance.now();
-  let attempts: number | undefined;
+  const scheduledTime = performance.now();
 
   const thinkingLevel = options?.thinkingConfig?.thinkingLevel;
   const callLabel = options?.payloadStage ?? "gemini";
 
-  if (options?.quiet === false) {
-    logger?.info(`${callLabel}_start`, {
+  const keyPool = getGeminiKeyPool();
+  const assignedKey = options?.apiKey ?? keyPool.keys[0];
+  const projectIndex = getProjectIndex(assignedKey);
+
+  if (options?.quiet !== true) {
+    logger?.info(`${callLabel}_scheduled`, {
       service: "gemini",
       data: {
         model: modelName,
+        projectIndex: projectIndex + 1,
         instructionLength: systemInstruction.length,
         promptLength: prompt.length,
         thinkingLevel: thinkingLevel ?? undefined,
@@ -34000,35 +34195,45 @@ export async function generateStructuredContent<T>(
     stage: options?.payloadStage,
   });
 
-  let retryCount = 0;
-
-  const keyPool = getGeminiKeyPool();
-  const startingKey = options?.apiKey ?? keyPool.keys[0];
-  let activePosition = Math.max(0, keyPool.keys.indexOf(startingKey));
-  let activeKey = keyPool.keys[activePosition];
-  const maxRetries = Math.max(3, keyPool.keys.length);
+  const maxRetries = 3;
+  let attempts = 0;
 
   try {
     const response = await withRetry(
-      async () => {
-        retryCount++;
-        return geminiRequestQueue.exec(() =>
-          getAi(activeKey).models.generateContent(payload),
-        );
-      },
+      async () => getAi(assignedKey).models.generateContent(payload),
       {
         maxRetries,
-        baseDelay: 1000,
+        baseDelay: 2000,
+        onAttempt: (attempt, previousError) => {
+          attempts = attempt;
+          logger?.info("ai_attempt", {
+            service: "gemini",
+            filePath: "src/services/ai/providers/gemini-provider.ts",
+            data: {
+              attempt,
+              maxRetries,
+              projectIndex: projectIndex + 1,
+              model: modelName,
+              retried: attempt > 1,
+              previousError:
+                previousError instanceof Error
+                  ? previousError.message
+                  : undefined,
+            },
+          });
+        },
         getDelay: (attempt, error, defaultDelay) => {
           if (isServerOverloadError(error)) return serverOverloadDelay(attempt);
           if (isRateLimitError(error)) {
-            // Dynamic exponential backoff for quota/rate-limit errors
-            // (1s, 2s, 4s, ...) capped at 30s — no immediate retries.
+            const extractedDelay = extractRetryDelayMs(error);
+            if (extractedDelay && extractedDelay > 0) {
+              return extractedDelay + Math.random() * 500;
+            }
             const capped = Math.min(
               DEFAULT_MAX_DELAY,
-              1000 * Math.pow(2, attempt - 1),
+              2000 * Math.pow(2, attempt - 1),
             );
-            return capped + Math.random() * Math.min(250, capped * 0.1);
+            return capped + Math.random() * Math.min(500, capped * 0.1);
           }
           return defaultDelay;
         },
@@ -34046,7 +34251,8 @@ export async function generateStructuredContent<T>(
               error.message.includes("503") ||
               error.message.includes("UNAVAILABLE") ||
               error.message.includes("429") ||
-              error.message.includes("quota")
+              error.message.includes("quota") ||
+              error.message.includes("RESOURCE_EXHAUSTED")
             ) {
               return true;
             }
@@ -34054,14 +34260,9 @@ export async function generateStructuredContent<T>(
           return false;
         },
         onRetry: (attempt, delay, error) => {
-          if (isRateLimitError(error) && keyPool.keys.length > 1) {
-            activePosition = nextKeyPosition(
-              activePosition,
-              keyPool.keys.length,
-            );
-            activeKey = keyPool.keys[activePosition];
-          }
           const httpStatus = extractHttpStatus(error);
+          const quotaDetails = extractQuotaDetails(error);
+          const retryAfterMs = extractRetryDelayMs(error);
           logger?.info("ai_retry_attempt", {
             service: "gemini",
             filePath: "src/services/ai/providers/gemini-provider.ts",
@@ -34070,10 +34271,12 @@ export async function generateStructuredContent<T>(
             data: {
               attempt,
               maxRetries,
-              keyPositions: keyPool.keys.length,
-              activePosition,
+              projectIndex: projectIndex + 1,
+              crossProjectRotation: false,
               delayMs: Math.round(delay),
+              retryAfterMs: retryAfterMs ?? undefined,
               httpStatus,
+              quotaDetails: quotaDetails ?? undefined,
               errorMessage:
                 error instanceof Error ? error.message : String(error),
             },
@@ -34098,6 +34301,7 @@ export async function generateStructuredContent<T>(
           filePath: "src/services/ai/providers/gemini-provider.ts",
           data: {
             model: modelName,
+            projectIndex: projectIndex + 1,
             errorCount: err.zodError.issues.length,
             issues: err.zodError.issues.map((i) => ({
               path: i.path.join("."),
@@ -34113,7 +34317,7 @@ export async function generateStructuredContent<T>(
       throw err;
     }
 
-    const durationMs = performance.now() - startTime;
+    const durationMs = performance.now() - scheduledTime;
     const metadata = (
       response as unknown as {
         usageMetadata?: {
@@ -34132,18 +34336,18 @@ export async function generateStructuredContent<T>(
         }
       : undefined;
 
-    attempts = retryCount;
-
     const payloadStage = options?.payloadStage ?? "gemini";
     logger?.saveDebugPayload(payloadStage, modelName, prompt, text);
 
-    if (options?.quiet === false) {
+    if (options?.quiet !== true) {
       logger?.info(`${callLabel}_success`, {
         service: "gemini",
         durationMs,
         tokens,
         data: {
           model: modelName,
+          projectIndex: projectIndex + 1,
+          crossProjectRotation: false,
           attempt: attempts,
           thinkingLevel: thinkingLevel ?? undefined,
         },
@@ -34151,8 +34355,9 @@ export async function generateStructuredContent<T>(
     }
     return parsed;
   } catch (error) {
-    const durationMs = performance.now() - startTime;
+    const durationMs = performance.now() - scheduledTime;
     const scenario = classifyError(error);
+    const quotaDetails = extractQuotaDetails(error);
 
     const payloadStage = options?.payloadStage ?? "gemini";
     logger?.saveDebugPayload(payloadStage, modelName, prompt);
@@ -34163,9 +34368,12 @@ export async function generateStructuredContent<T>(
       durationMs,
       data: {
         model: modelName,
+        projectIndex: projectIndex + 1,
+        crossProjectRotation: false,
         attempts,
         thinkingLevel: thinkingLevel ?? undefined,
         scenario,
+        quotaDetails: quotaDetails ?? undefined,
       },
       error,
     });
@@ -37771,6 +37979,266 @@ export async function evaluateSingleBoxJury(
 }
 </file>
 
+<file path="src/features/positioning/per-thesis-evaluation.ts">
+import { z } from "zod";
+import { ThinkingLevel } from "@google/genai";
+import { FLASH_LITE_35, GEMINI_SEED } from "@/lib/constants";
+import {
+  generateGeminiStructuredContent,
+  type JsonSchema,
+} from "@/services/ai";
+import { getGeminiKeyPool } from "@/services/ai/gemini-key-pool";
+import {
+  createConcurrencyLimiter,
+  type ConcurrencyLimiter,
+} from "@/lib/rate-limiter";
+import type { Logger } from "@/lib/logger";
+import { buildPerThesisEvaluationPromptPayload } from "./prompts/per-thesis-evaluation.prompt";
+import { strategicRoleEnum, type PositioningMatrixInput } from "./validation";
+import type { SiftedThesis } from "./sifting";
+
+/** Max concurrent per-thesis Gemini evaluations per API key. */
+const CONCURRENCY_PER_KEY = 8;
+
+/** Zod schema for the single-thesis strategic relevance/originality/role evaluation output. */
+export const perThesisEvaluationSchema = z.object({
+  externalThesisId: z
+    .union([z.string(), z.number()])
+    .transform((val) => String(val))
+    .describe("Değerlendirilen tezin ID'si"),
+  isRelevant: z
+    .boolean()
+    .describe(
+      "Kullanıcının araştırma nesnesi/olgusal sahasıyla doğrudan alakalı mı?",
+    ),
+  relevanceReasoning: z
+    .string()
+    .optional()
+    .describe(
+      "Tezin ampirik olarak neden ilgili veya ilgisiz olduğuna dair somut gerekçe (1-2 cümle)",
+    ),
+  isDirectOverlap: z
+    .boolean()
+    .describe(
+      "Kullanıcının tezi ile birebir örtüşme var mı (kullanıcı tezi özgün değil mi)?",
+    ),
+  strategicRole: strategicRoleEnum
+    .optional()
+    .describe(
+      "Tezin kullanıcının tezindeki stratejik rolü: BROAD_CONTEXT | SPECIFIC_FOCUS | FOUNDATIONAL_WORK | METHODOLOGICAL_BENCHMARK | ALTERNATIVE_PERSPECTIVE",
+    ),
+  contributionAreas: z
+    .array(z.string())
+    .describe(
+      "Tezin kullanıcının tezine katkı sağladığı/benzediği spesifik odak alanları (1-3 adet)",
+    ),
+  literaturePosition: z
+    .string()
+    .describe("Tezin literatürdeki konumu ve ne yaptığı (1 net cümle)"),
+  strategicUtility: z
+    .string()
+    .describe(
+      "Tezin kullanıcının tezinde nasıl kullanılacağına ve hangi boşluğu dolduracağına dair stratejik rehber not (1-2 cümle)",
+    ),
+});
+
+/** Inferred type for a single-thesis evaluation result. */
+export type PerThesisEvaluation = z.infer<typeof perThesisEvaluationSchema>;
+
+/** JSON Schema for Gemini structured outputs of the per-thesis evaluation. */
+export const perThesisEvaluationJsonSchema: JsonSchema = {
+  type: "object",
+  properties: {
+    externalThesisId: {
+      type: "string",
+      description: "Değerlendirilen tezin ID'si",
+    },
+    isRelevant: {
+      type: "boolean",
+      description:
+        "Kullanıcının araştırma nesnesi/olgusal sahasıyla doğrudan alakalı mı? İlgisiz tezlerde false.",
+    },
+    relevanceReasoning: {
+      type: "string",
+      description:
+        "Tezin ampirik olarak neden ilgili veya ilgisiz olduğuna dair somut gerekçe (1-2 cümle)",
+    },
+    isDirectOverlap: {
+      type: "boolean",
+      description:
+        "Kullanıcının tezi ile birebir örtüşme var mı (kullanıcı tezi özgün değil mi)?",
+    },
+    strategicRole: {
+      type: "string",
+      enum: [
+        "BROAD_CONTEXT",
+        "SPECIFIC_FOCUS",
+        "FOUNDATIONAL_WORK",
+        "METHODOLOGICAL_BENCHMARK",
+        "ALTERNATIVE_PERSPECTIVE",
+      ],
+      description:
+        "Tezin stratejik rolü: BROAD_CONTEXT (Geniş Çerçeve), SPECIFIC_FOCUS (Kısmi Odak), FOUNDATIONAL_WORK (Öncül Çalışma), METHODOLOGICAL_BENCHMARK (Yöntem Rehberi), ALTERNATIVE_PERSPECTIVE (Karşıt Yaklaşım).",
+    },
+    contributionAreas: {
+      type: "array",
+      items: { type: "string" },
+      description:
+        "Tezin kullanıcının tezine katkı sağladığı spesifik odak alanları (1-3 adet). İlgisiz tezlerde boş dizi [].",
+    },
+    literaturePosition: {
+      type: "string",
+      description:
+        "Tezin literatürdeki konumu ve ne yaptığı (1 net cümle). İlgisiz tezlerde boş string.",
+    },
+    strategicUtility: {
+      type: "string",
+      description:
+        "Tezin kullanıcının tezinde nasıl kullanılacağına ve hangi boşluğu dolduracağına dair stratejik rehber not (1-2 cümle). İlgisiz tezlerde boş string.",
+    },
+  },
+  required: [
+    "externalThesisId",
+    "isRelevant",
+    "isDirectOverlap",
+    "contributionAreas",
+    "literaturePosition",
+    "strategicUtility",
+  ],
+  additionalProperties: false,
+};
+
+/**
+ * Evaluates a single thesis against the user's thesis matrix via the 3-stage decision chain.
+ *
+ * @param input - The validated positioning matrix input.
+ * @param thesis - The single thesis candidate to evaluate.
+ * @param apiKey - Optional Gemini API key override for multi-key load distribution.
+ * @param logger - Optional structured logger for pipeline events.
+ * @returns The structured per-thesis evaluation result.
+ */
+export async function evaluateSingleThesis(
+  input: PositioningMatrixInput,
+  thesis: SiftedThesis,
+  apiKey?: string,
+  logger?: Logger,
+): Promise<PerThesisEvaluation> {
+  const payload = buildPerThesisEvaluationPromptPayload(input, thesis);
+
+  const result = await generateGeminiStructuredContent<PerThesisEvaluation>(
+    FLASH_LITE_35,
+    payload.systemInstruction,
+    payload.userPrompt,
+    perThesisEvaluationJsonSchema,
+    logger,
+    {
+      zodSchema: perThesisEvaluationSchema,
+      payloadStage: "positioning_per_thesis_evaluation",
+      seed: GEMINI_SEED,
+      thinkingConfig: { thinkingLevel: ThinkingLevel.LOW },
+      thesisMatrix: input,
+      apiKey,
+      quiet: true,
+    },
+  );
+
+  return result;
+}
+
+/** A thesis paired with its per-thesis evaluation result. */
+export interface EvaluatedThesis {
+  thesis: SiftedThesis;
+  evaluation: PerThesisEvaluation;
+}
+
+/**
+ * Evaluates all candidate theses independently in parallel,
+ * distributed round-robin across the Gemini API key pool and throttled to
+ * `CONCURRENCY_PER_KEY` simultaneous evaluations per key.
+ *
+ * Each thesis is assessed in its own dedicated LLM call to guarantee
+ * absolute, non-relative evaluation accuracy without inter-thesis bias.
+ *
+ * @param input - The validated positioning matrix input.
+ * @param theses - The full list of candidate theses to evaluate.
+ * @param logger - Optional structured logger for pipeline events.
+ * @returns The evaluated theses that were successfully processed, matching original order.
+ */
+export async function evaluateThesesInParallel(
+  input: PositioningMatrixInput,
+  theses: SiftedThesis[],
+  logger?: Logger,
+): Promise<EvaluatedThesis[]> {
+  if (theses.length === 0) return [];
+
+  const apiKeys = getGeminiKeyPool().keys;
+  const startTime = performance.now();
+
+  logger?.info("positioning_per_thesis_evaluation_start", {
+    service: "positioning",
+    filePath: "src/features/positioning/per-thesis-evaluation.ts",
+    data: {
+      total: theses.length,
+      keyCount: apiKeys.length,
+      concurrencyPerKey: CONCURRENCY_PER_KEY,
+      mode: "individual_parallel",
+    },
+  });
+
+  const limiterByKey = new Map<string, ConcurrencyLimiter>();
+  for (const apiKey of apiKeys) {
+    limiterByKey.set(apiKey, createConcurrencyLimiter(CONCURRENCY_PER_KEY));
+  }
+
+  const settled = await Promise.allSettled(
+    theses.map((thesis, idx) => {
+      const assignedKey =
+        apiKeys.length > 0 ? apiKeys[idx % apiKeys.length] : undefined;
+      const limiter = assignedKey ? limiterByKey.get(assignedKey) : undefined;
+      const task = () =>
+        evaluateSingleThesis(input, thesis, assignedKey, logger);
+      return limiter ? limiter.exec(task) : task();
+    }),
+  );
+
+  const allEvaluated: EvaluatedThesis[] = [];
+
+  for (let idx = 0; idx < settled.length; idx++) {
+    const res = settled[idx];
+    const thesis = theses[idx];
+    if (res.status === "fulfilled") {
+      allEvaluated.push({
+        thesis,
+        evaluation: res.value,
+      });
+    } else {
+      logger?.error("positioning_per_thesis_single_failed", {
+        service: "positioning",
+        filePath: "src/features/positioning/per-thesis-evaluation.ts",
+        data: {
+          thesisId: thesis.id,
+          thesisTitle: thesis.title,
+        },
+        error: res.reason,
+      });
+    }
+  }
+
+  logger?.info("positioning_per_thesis_evaluation_success", {
+    service: "positioning",
+    filePath: "src/features/positioning/per-thesis-evaluation.ts",
+    durationMs: Math.round(performance.now() - startTime),
+    data: {
+      total: theses.length,
+      evaluatedCount: allEvaluated.length,
+      relevantCount: allEvaluated.filter((e) => e.evaluation.isRelevant).length,
+    },
+  });
+
+  return allEvaluated;
+}
+</file>
+
 <file path="src/lib/api-utils.ts">
 export const CONTACT_EMAIL =
   process.env.CROSSREF_CONTACT_EMAIL || "iletisim@fabricca.com";
@@ -40757,464 +41225,6 @@ export const outlineGenerationJsonSchema: JsonSchema = {
 };
 </file>
 
-<file path="src/features/positioning/prompts/per-thesis-evaluation.prompt.ts">
-import {
-  buildPromptPayload,
-  type PromptPayload,
-} from "@/lib/ai/prompt-builder";
-import type { PositioningMatrixInput } from "@/features/positioning/validation";
-import type { SiftedThesis } from "@/features/positioning/sifting";
-
-/**
- * Builds the standardized PromptPayload for single-thesis strategic evaluation.
- * Strictly adheres to docs/LLM_INTEGRATION.md (Hybrid XML + Markdown Encapsulation).
- *
- * @param input - The validated positioning matrix input containing subjectProblem.
- * @param thesis - The candidate thesis to evaluate.
- * @returns Standardized PromptPayload containing systemInstruction and userPrompt.
- */
-export function buildPerThesisEvaluationPromptPayload(
-  input: PositioningMatrixInput | { subjectProblem: string },
-  thesis: SiftedThesis,
-): PromptPayload {
-  return buildPromptPayload({
-    roleAndExpertise:
-      "Akademik Tez Değerlendirme Kurulu Kıdemli Raportörüsünüz. Göreviniz aday tezin ampirik araştırma nesnesini, kullanıcının araştırma problemiyle tarafsız, titiz ve ilkeli bir biçimde karşılaştırarak stratejik ön eleme yapmaktır.",
-
-    primaryTask:
-      "Sana sunulan kullanıcının Araştırma Problemi (subjectProblem) ile adaya ait TEK BİR tezi karşılaştırarak; tezin ampirik uygunluğunu (isRelevant), gerekçesini (relevanceReasoning), birebir çakışma durumunu (isDirectOverlap) ve eğer uygunsa tezin literatürdeki stratejik rolünü (strategicRole, literaturePosition, strategicUtility) belirlemektir.",
-
-    rulesAndConstraints: `1. **Parçalı Stratejik Rol İlkesi (MUTLAK KURAL):**
-   - Literatürdeki yardımcı tezlerin kullanıcının tüm araştırma boyutlarını tek başına kapsamasını beklemek metodolojik bir hatadır (zaten tüm boyutları birebir kapsarsa özgünlük riski / çakışma oluşur).
-   - Aday tez; kullanıcının araştırma probleminin, sahasının veya odaklandığı nesnenin **EN AZ BİR SOMUT BOYUTUNU** (belirli bir aktör grubunu, birincil veri kaynağını, kurumsal yapısını veya tarihsel dönemini) ampirik olarak inceliyorsa \`isRelevant: true\` verilir:
-     * Konuyu daha geniş bir tarihsel/makro çerçevede ele alan çalışmalar -> \`BROAD_CONTEXT\`
-     * Araştırmanın tek bir boyutuna, aktörüne veya birincil kaynağına odaklanan çalışmalar -> \`SPECIFIC_FOCUS\`
-     * Konunun önceki evrelerini, tarihsel köklerini veya zeminini inceleyen çalışmalar -> \`FOUNDATIONAL_WORK\`
-     * Benzer bir ampirik veri toplama veya analiz modeli uygulayan çalışmalar -> \`METHODOLOGICAL_BENCHMARK\`
-     * Karşıt veya farklı bir açıklama modeli sunan çalışmalar -> \`ALTERNATIVE_PERSPECTIVE\`
-
-2. **Kesin Eleme Sebepleri (\`isRelevant: false\`):**
-   - Araştırılan hareketin/konunun iç dinamikleri yerine; tamamen dışsal bağlamları (üçüncü ülkelerin dış politikasını, doğrudan bağı olmayan dış yapıları veya sadece medyanın dışsal temsillerini) inceleyen tezler.
-   - Somut birincil/ampirik veriye dayanmayan, yalnızca genel/ikincil kaynaklar üzerinden soyut kavramları tartışan genel literatür derlemeleri.
-   - Kullanıcının araştırma problemiyle hiçbir ampirik, kurumsal veya olgusal kesişimi bulunmayan farklı konular.
-
-3. **Gerekçelendirme ve Eylem Odaklı Rehberlik Dili:**
-   - \`relevanceReasoning\`: Tezin neden ilgili veya ilgisiz olduğuna dair somut ampirik kanıt ve mantıksal gerekçe (1-2 net cümle).
-   - \`literaturePosition\`: Tezin başlık ve özetine dayanarak neyi, hangi veriyle incelediğini özetleyin (1 cümle).
-   - \`strategicUtility\`: Araştırmacıya doğrudan tez yazımında yol gösteren eylem dili kullanın: "Bu tezi Giriş / Literatür bölümünde [X] için referans verebilir; tezinizin farkını ise [Y] noktasında vurgulayabilirsiniz."`,
-
-    workflowSteps: `1. Aday tezin somut ampirik araştırma nesnesini kullanıcının araştırma problemiyle karşılaştır.
-2. Tez kullanıcının araştırma sahasının en az bir boyutuna doğrudan ampirik katkı sunuyor mu?
-3. Uygunsa \`isRelevant: true\` ver ve 5 stratejik rolden birini ata. Tamamen dışsal veya alakasız ise \`isRelevant: false\` ver.`,
-
-    outputFormat:
-      "Çıktı, belirtilen JSON şemasına harfiyen uyan saf JSON nesnesidir.",
-
-    examples: `<example>
-<input>
-=== KULLANICININ ARAŞTIRMA PROBLEMİ (subjectProblem) ===
-1991-1999 döneminde Kürt Özgürlük Hareketi'nin söylemsel dönüşümünü manevra ve mevzi savaşı bağlamında PKK ve HEP-DEP-HADEP partiler hattı üzerinden inceler.
-
-=== DEĞERLENDİRİLECEK TEZ ===
-Tez ID: 363401
-Başlık: 1990-2014 Dönemi Kürt Siyasal Hareketinin Söyleminin Dönüşümü
-Yazar: Kadriye Okudan Dernek (2014)
-Özet: 1990-2014 döneminde yasal Kürt partilerinin (HEP, DEP, HADEP, DEHAP, DTP, BDP, HDP) program ve söylemlerindeki evrimi inceler.
-</input>
-<output>
-{
-  "externalThesisId": "363401",
-  "isRelevant": true,
-  "relevanceReasoning": "Aday tez, kullanıcının araştırma sahasının yasal partiler hattını (1990-2014) geniş bir perspektifle inceleyerek araştırmanın kurumsal siyaset ayağına doğrudan ampirik zemin sunmaktadır.",
-  "isDirectOverlap": false,
-  "strategicRole": "BROAD_CONTEXT",
-  "contributionAreas": ["Yasal parti söylemi", "1990'lar dönemselleştirmesi"],
-  "literaturePosition": "1990-2014 dönemindeki yasal Kürt parti geleneğini geniş bir dönemsel perspektifle incelemiştir.",
-  "strategicUtility": "Bu tezi Giriş ve Literatür Taraması bölümlerinde yasal partilerin tarihsel seyrini temellendirmek için kullanabilir; tezinizin farkını ise bu çalışmanın yüzeysel geçtiği 1991-1999 kuluçka evresini silahlı kanatla karşılaştırmalı olarak derinleştirme noktasında vurgulayabilirsiniz."
-}
-</output>
-</example>
-
-<example>
-<input>
-=== KULLANICININ ARAŞTIRMA PROBLEMİ (subjectProblem) ===
-1991-1999 döneminde Kürt Özgürlük Hareketi'nin söylemsel dönüşümünü inceler.
-
-=== DEĞERLENDİRİLECEK TEZ ===
-Tez ID: 447567
-Başlık: Kürt Siyasal Hareketinde İslami Bir Aktör: Irak Kürdistan İslami Birlik Partisi
-Yazar: Lokman Karadağ (2016)
-Özet: Irak Kürdistan bölgesindeki İslami Birlik Partisi'nin siyasal katılımını inceler.
-</input>
-<output>
-{
-  "externalThesisId": "447567",
-  "isRelevant": false,
-  "relevanceReasoning": "Aday tez Türkiye'deki Kürt siyasal hareketini değil, Irak'taki bölgesel partileri incelemektedir; ampirik kesişimi bulunmamaktadır.",
-  "isDirectOverlap": false,
-  "contributionAreas": [],
-  "literaturePosition": "",
-  "strategicUtility": ""
-}
-</output>
-</example>`,
-
-    inputContext: `### KULLANICININ ARAŞTIRMA PROBLEMİ (subjectProblem):
-${input.subjectProblem}
-
-### DEĞERLENDİRİLECEK TEZ:
-Tez ID: ${thesis.id}
-Başlık: ${thesis.title}
-Yazar: ${thesis.author || "Bilinmiyor"} (${thesis.year || "N/A"})
-Üniversite/Bölüm: ${thesis.university || "N/A"} - ${thesis.department || "N/A"}
-Tür: ${thesis.thesisType || "N/A"} | Dil: ${thesis.language || "N/A"}
-Özet: ${thesis.abstract}`,
-
-    taskTrigger:
-      "Yukarıdaki <context> içinde yer alan tezi <instructions> kurallarına göre analiz ederek JSON formatında değerlendirme çıktısını üret.",
-  });
-}
-
-/**
- * Builds the standardized PromptPayload for multi-thesis batch strategic evaluation.
- * Strictly adheres to docs/LLM_INTEGRATION.md (Hybrid XML + Markdown Encapsulation).
- *
- * @param input - The validated positioning matrix input containing subjectProblem.
- * @param theses - Candidate theses in the batch.
- * @returns Standardized PromptPayload containing systemInstruction and userPrompt.
- */
-export function buildBatchPerThesisEvaluationPromptPayload(
-  input: PositioningMatrixInput | { subjectProblem: string },
-  theses: SiftedThesis[],
-): PromptPayload {
-  const formattedTheses = theses
-    .map(
-      (t) => `Tez ID: ${t.id}
-Başlık: ${t.title}
-Yazar: ${t.author || "Bilinmiyor"} (${t.year || "N/A"})
-Üniversite/Bölüm: ${t.university || "N/A"} - ${t.department || "N/A"}
-Tür: ${t.thesisType || "N/A"} | Dil: ${t.language || "N/A"}
-Özet: ${t.abstract}`,
-    )
-    .join("\n\n---\n\n");
-
-  return buildPromptPayload({
-    roleAndExpertise:
-      "Akademik Tez Değerlendirme Kurulu Kıdemli Raportörüsünüz. Göreviniz listedeki aday tezleri kullanıcının araştırma problemiyle olgusal ve ampirik açıdan karşılaştırarak tarafsız ve ilkeli bir stratejik ön eleme yapmaktır.",
-
-    primaryTask:
-      "Sana sunulan kullanıcının Araştırma Problemi (subjectProblem) ile listedeki HER BİR TEZİ TEK TEK karşılaştırarak; tezin olgusal uygunluğunu (isRelevant), gerekçesini (relevanceReasoning), birebir çakışma durumunu (isDirectOverlap) ve eğer uygunsa tezin literatürdeki stratejik rolünü (strategicRole, literaturePosition, strategicUtility) belirleyip `evaluations` dizisi olarak döndürmektir.",
-
-    rulesAndConstraints: `1. **Parçalı Stratejik Rol İlkesi (MUTLAK KURAL):**
-   - Aday tez; kullanıcının araştırma probleminin, sahasının veya odaklandığı nesnenin **EN AZ BİR SOMUT BOYUTUNU** (belirli bir aktör grubunu, birincil veri kaynağını, kurumsal yapısını veya tarihsel dönemini) ampirik olarak inceliyorsa \`isRelevant: true\` verilir.
-   - Stratejik roller: \`BROAD_CONTEXT\` (Geniş Çerçeve), \`SPECIFIC_FOCUS\` (Kısmi Odak), \`FOUNDATIONAL_WORK\` (Öncül Çalışma), \`METHODOLOGICAL_BENCHMARK\` (Yöntem Rehberi), \`ALTERNATIVE_PERSPECTIVE\` (Karşıt Yaklaşım).
-
-2. **Kesin Eleme Sebepleri (\`isRelevant: false\`):**
-   - Araştırılan konunun kendi iç dinamikleri yerine tamamen dışsal bağlamları (üçüncü ülkelerin dış politikasını veya sadece medyanın dışsal temsillerini) inceleyen tezler.
-   - Somut birincil/ampirik veriye dayanmayan genel ikincil literatür derlemeleri.
-   - Araştırma problemiyle ampirik kesişimi olmayan alakasız konular.`,
-
-    workflowSteps: `1. Her tezin somut ampirik araştırma nesnesini kullanıcının araştırma problemiyle karşılaştır.
-2. Araştırmanın en az bir boyutuna ampirik katkı sunan tezlere isRelevant: true ver ve strategicRole ata.
-3. Alakasız veya dışsal tezleri ele (isRelevant: false).`,
-
-    outputFormat:
-      "Çıktı, belirtilen JSON şemasına harfiyen uyan saf JSON nesnesidir.",
-
-    examples: `<example>
-<input>
-=== KULLANICININ ARAŞTIRMA PROBLEMİ (subjectProblem) ===
-1991-1999 döneminde Kürt Özgürlük Hareketi'nin söylemsel dönüşümünü inceler.
-
-=== DEĞERLENDİRİLECEK TEZLER ===
-Tez ID: 363401
-Başlık: 1990-2014 Dönemi Kürt Siyasal Hareketinin Söyleminin Dönüşümü
-Yazar: Kadriye Okudan Dernek (2014)
-Özet: 1990-2014 döneminde yasal Kürt partilerinin program ve söylemlerini inceler.
-</input>
-<output>
-{
-  "evaluations": [
-    {
-      "externalThesisId": "363401",
-      "isRelevant": true,
-      "relevanceReasoning": "Yasal parti söylemi geleneğini (1990-2014) geniş bir perspektifle ele alarak araştırmanın kurumsal ayağına ampirik temel sunmaktadır.",
-      "isDirectOverlap": false,
-      "strategicRole": "BROAD_CONTEXT",
-      "contributionAreas": ["Yasal parti söylemi", "1990'lar dönemselleştirmesi"],
-      "literaturePosition": "1990-2014 dönemindeki yasal Kürt parti geleneğini geniş bir dönemsel perspektifle incelemiştir.",
-      "strategicUtility": "Giriş ve Literatür bölümlerinde tarihsel seyri temellendirmek için kullanılabilir."
-    }
-  ]
-}
-</output>
-</example>`,
-
-    inputContext: `### KULLANICININ ARAŞTIRMA PROBLEMİ (subjectProblem):
-${input.subjectProblem}
-
-### DEĞERLENDİRİLECEK TEZLER:
-${formattedTheses}`,
-
-    taskTrigger:
-      "Yukarıdaki <context> içinde yer alan her bir tezi <instructions> kurallarına göre değerlendirerek `evaluations` dizisi içeren JSON formatında çıktı üret.",
-  });
-}
-</file>
-
-<file path="src/features/positioning/analysis.ts">
-import { ThinkingLevel } from "@google/genai";
-import { z } from "zod";
-import { FLASH_36, GEMINI_SEED } from "@/lib/constants";
-import { getGeminiKeyPool } from "@/services/ai/gemini-key-pool";
-import {
-  generateGeminiStructuredContent,
-  type JsonSchema,
-} from "@/services/ai";
-import type { Logger } from "@/lib/logger";
-import { buildPositioningJuryPromptPayload } from "./prompts/jury-analysis.prompt";
-import type { EvaluatedThesis } from "./per-thesis-evaluation";
-import {
-  gapAnalysisStructuredSchema,
-  strategicRoleEnum,
-  type PositioningMatrixInput,
-} from "./validation";
-
-/** Zod schema for an individual recommended guiding thesis. */
-export const juryRecommendedThesisSchema = z.object({
-  externalThesisId: z
-    .union([z.string(), z.number()])
-    .transform((val) => String(val))
-    .describe("Süzülen tez listesindeki tez ID'si"),
-  title: z.string().describe("Tezin tam akademik başlığı"),
-  author: z.string().describe("Tezin yazarı"),
-  year: z.number().describe("Tezin hazırlanma yılı"),
-  university: z.string().describe("Tezin sunulduğu üniversite"),
-  strategicRole: strategicRoleEnum
-    .optional()
-    .describe(
-      "Tezin stratejik rolü: BROAD_CONTEXT | SPECIFIC_FOCUS | FOUNDATIONAL_WORK | METHODOLOGICAL_BENCHMARK | ALTERNATIVE_PERSPECTIVE",
-    ),
-  literaturePosition: z
-    .string()
-    .optional()
-    .describe("Tezin literatürdeki yerini ve ne yaptığını anlatan 1 net cümle"),
-  contributionArea: z
-    .string()
-    .describe(
-      "Tezin kullanıcının çalışmasında odaklandığı spesifik alan (Örn: Yasal Parti Söylemi ve Dönemselleştirme)",
-    ),
-  relevanceReason: z
-    .string()
-    .describe(
-      "Kullanıcının bu tezi Giriş ve Literatür bölümlerinde nasıl kaynak olarak kullanacağına ve tezin hangi boşluğunu dolduracağına dair stratejik rehber not",
-    ),
-  doi: z.string().optional().describe("Tezin DOI adresi (varsa)"),
-  thesisType: z
-    .string()
-    .optional()
-    .describe("Tezin türü (Örn: Yüksek Lisans veya Doktora)"),
-});
-
-/** Zod schema for the LLM jury analysis output. */
-export const juryAnalysisResultSchema = z.object({
-  globalStatus: z.enum([
-    "DIRECT_OVERLAP",
-    "NOVEL_GAP_IDENTIFIED",
-    "NO_RELATED_LITERATURE",
-  ]),
-  gapAnalysisSummary: gapAnalysisStructuredSchema,
-  recommendedTheses: z
-    .array(juryRecommendedThesisSchema)
-    .describe(
-      "Ön elemeden geçerek jüriye sunulan ilgili rehber tezlerin listesi.",
-    ),
-});
-
-/** Inferred type for the LLM jury analysis result. */
-export type JuryAnalysisResult = z.infer<typeof juryAnalysisResultSchema>;
-
-/** JSON Schema for Gemini structured outputs. */
-export const juryAnalysisResultJsonSchema: JsonSchema = {
-  type: "object",
-  properties: {
-    globalStatus: {
-      type: "string",
-      enum: ["DIRECT_OVERLAP", "NOVEL_GAP_IDENTIFIED", "NO_RELATED_LITERATURE"],
-      description:
-        "Yalnızca Konu + Teori + Analiz Birimi BİREBİR aynı ise DIRECT_OVERLAP verilir. Özgün katkı varsa NOVEL_GAP_IDENTIFIED verilir.",
-    },
-    gapAnalysisSummary: {
-      type: "object",
-      properties: {
-        literatureMapping: {
-          type: "string",
-          description:
-            "Mevcut Literatürün Haritalandırılması: Sunulan tezlerin araştırmanın hangi boyutlarını ele aldığının tematik haritası ve akademik özeti. Tezleri stratejik rollerine (Şemsiye, Paralel hat, Ardıl eşik) göre gruplayarak tematik özetle. Her tezden bahsederken mutlaka APA formatında atıf ver: (Yazar, Yıl).",
-        },
-        academicGap: {
-          type: "string",
-          description:
-            "Literatürdeki Boşluk: İncelediğin tezlerin neleri göz ardı ettiği veya yetersiz kaldığı alanların analizi. Mutlaka APA atıflarıyla açıkla.",
-        },
-        originalContribution: {
-          type: "string",
-          description:
-            "Çalışmanın Özgün Katkısı: Kullanıcının tez matrisinin bu boşluğu nasıl doldurduğu ve literatüre getirdiği akademik yenilik.",
-        },
-      },
-      required: ["literatureMapping", "academicGap", "originalContribution"],
-      additionalProperties: false,
-      description: "3 sabit akademik sentez bölümü",
-    },
-    recommendedTheses: {
-      type: "array",
-      items: {
-        type: "object",
-        properties: {
-          externalThesisId: {
-            type: "string",
-            description: "Tezin ID'si",
-          },
-          title: { type: "string", description: "Tezin başlığı" },
-          author: { type: "string", description: "Tezin yazarı" },
-          year: { type: "number", description: "Tezin yılı" },
-          university: { type: "string", description: "Tezin üniversitesi" },
-          strategicRole: {
-            type: "string",
-            enum: [
-              "BROAD_CONTEXT",
-              "SPECIFIC_FOCUS",
-              "FOUNDATIONAL_WORK",
-              "METHODOLOGICAL_BENCHMARK",
-              "ALTERNATIVE_PERSPECTIVE",
-            ],
-            description:
-              "Tezin stratejik rolü: BROAD_CONTEXT (Geniş Çerçeve), SPECIFIC_FOCUS (Kısmi Odak), FOUNDATIONAL_WORK (Öncül Çalışma), METHODOLOGICAL_BENCHMARK (Yöntem Rehberi), ALTERNATIVE_PERSPECTIVE (Karşıt Yaklaşım)",
-          },
-          literaturePosition: {
-            type: "string",
-            description:
-              "Tezin literatürdeki yerini ve ne yaptığını anlatan 1 net cümle",
-          },
-          contributionArea: {
-            type: "string",
-            description:
-              "Tezin kullanıcının matrisinde odaklandığı spesifik alan",
-          },
-          relevanceReason: {
-            type: "string",
-            description:
-              "Kullanıcının bu tezi Giriş ve Literatür bölümlerinde nasıl kaynak olarak kullanacağına ve tezin hangi boşluğunu dolduracağına dair stratejik rehber not.",
-          },
-        },
-        required: [
-          "externalThesisId",
-          "title",
-          "author",
-          "year",
-          "university",
-          "strategicRole",
-          "literaturePosition",
-          "contributionArea",
-          "relevanceReason",
-        ],
-        additionalProperties: false,
-      },
-      description:
-        "Ön elemeden geçerek jüriye sunulan ilgili rehber tezlerin listesi",
-    },
-  },
-  required: ["globalStatus", "gapAnalysisSummary", "recommendedTheses"],
-  additionalProperties: false,
-};
-
-/**
- * Runs the final synthesis jury LLM over the relevant evaluated theses in a single Gemini call.
- *
- * @param input - The validated positioning matrix input.
- * @param evaluatedTheses - The relevant evaluated theses to synthesize (irrelevant ones already dropped).
- * @param logger - Optional structured logger for pipeline events.
- * @returns The structured jury analysis result.
- */
-export async function analyzePositioningJury(
-  input: PositioningMatrixInput,
-  evaluatedTheses: EvaluatedThesis[],
-  logger?: Logger,
-): Promise<JuryAnalysisResult> {
-  const overlapping = evaluatedTheses.some(
-    (ev) => ev.evaluation.isDirectOverlap,
-  );
-
-  if (evaluatedTheses.length === 0) {
-    logger?.info("positioning_jury_no_theses", {
-      service: "positioning",
-      filePath: "src/features/positioning/analysis.ts",
-      data: { inputSubject: input.subjectProblem },
-    });
-
-    return {
-      globalStatus: "NO_RELATED_LITERATURE",
-      gapAnalysisSummary: {
-        literatureMapping:
-          "Veritabanında girilen tez matrisiyle doğrudan ilişkilendirilebilecek herhangi bir akademik teze rastlanmamıştır.",
-        academicGap:
-          "Doğrudan eşleşen bir çalışma bulunmadığı için mevcut literatürde tespit edilmiş bir çakışma veya doymuşluk alanı bulunmamaktadır.",
-        originalContribution:
-          "Çalışmanız literatürde henüz işlenmemiş son derece bakir ve yüksek özgünlüğe sahip bir alanda konumlanmaktadır.",
-      },
-      recommendedTheses: [],
-    };
-  }
-
-  const thesisListText = evaluatedTheses
-    .map((ev, idx) => {
-      const t = ev.thesis;
-      const e = ev.evaluation;
-      return `[Tez #${idx + 1}] ID: ${t.id}
-Başlık: ${t.title}
-Yazar: ${t.author || "Bilinmiyor"} (${t.year || "N/A"})
-Üniversite/Bölüm: ${t.university || "N/A"} - ${t.department || "N/A"}
-Tür: ${t.thesisType || "N/A"} | Dil: ${t.language || "N/A"}
-Birebir Örtüşme: ${e.isDirectOverlap ? "EVET" : "HAYIR"}
-Stratejik Rol: ${e.strategicRole || "UMBRELLA_MACRO"}
-Literatürdeki Yeri (Ne Yaptı?): ${e.literaturePosition || "N/A"}
-Stratejik Kullanım / Boşluk Doldurma: ${e.strategicUtility || "N/A"}
-Katkı/Odak Alanları: ${e.contributionAreas.join(", ") || "Yok"}
-Özet: ${t.abstract}`;
-    })
-    .join("\n\n---\n\n");
-
-  const payload = buildPositioningJuryPromptPayload({
-    input,
-    thesisListText,
-    evaluatedCount: evaluatedTheses.length,
-  });
-
-  const result = await generateGeminiStructuredContent<JuryAnalysisResult>(
-    FLASH_36,
-    payload.systemInstruction,
-    payload.userPrompt,
-    juryAnalysisResultJsonSchema,
-    logger,
-    {
-      zodSchema: juryAnalysisResultSchema,
-      payloadStage: "positioning_jury_analysis",
-      seed: GEMINI_SEED,
-      thinkingConfig: { thinkingLevel: ThinkingLevel.LOW },
-      thesisMatrix: { input, filteredThesesCount: evaluatedTheses.length },
-      apiKey: getGeminiKeyPool().keys[2] ?? getGeminiKeyPool().keys[0],
-    },
-  );
-
-  if (overlapping) {
-    result.globalStatus = "DIRECT_OVERLAP";
-  }
-
-  return result;
-}
-</file>
-
 <file path="src/app/(app)/library/resource-actions.ts">
 "use server";
 
@@ -42090,6 +42100,378 @@ async function persistOutlines(
   log.info("outline_persist_transaction_complete", {
     service: "outline",
   });
+}
+</file>
+
+<file path="src/features/positioning/prompts/per-thesis-evaluation.prompt.ts">
+import {
+  buildPromptPayload,
+  type PromptPayload,
+} from "@/lib/ai/prompt-builder";
+import type { PositioningMatrixInput } from "@/features/positioning/validation";
+import type { SiftedThesis } from "@/features/positioning/sifting";
+
+/**
+ * Builds the standardized PromptPayload for single-thesis strategic evaluation.
+ * Strictly adheres to docs/LLM_INTEGRATION.md (Hybrid XML + Markdown Encapsulation).
+ *
+ * @param input - The validated positioning matrix input containing subjectProblem.
+ * @param thesis - The candidate thesis to evaluate.
+ * @returns Standardized PromptPayload containing systemInstruction and userPrompt.
+ */
+export function buildPerThesisEvaluationPromptPayload(
+  input: PositioningMatrixInput | { subjectProblem: string },
+  thesis: SiftedThesis,
+): PromptPayload {
+  return buildPromptPayload({
+    roleAndExpertise:
+      "Akademik Tez Değerlendirme Kurulu Kıdemli Raportörüsünüz. Göreviniz aday tezin ampirik araştırma nesnesini, kullanıcının araştırma problemiyle tarafsız, titiz ve ilkeli bir biçimde karşılaştırarak stratejik ön eleme yapmaktır.",
+
+    primaryTask:
+      "Sana sunulan kullanıcının Araştırma Problemi (subjectProblem) ile adaya ait TEK BİR tezi karşılaştırarak; tezin ampirik uygunluğunu (isRelevant), gerekçesini (relevanceReasoning), birebir çakışma durumunu (isDirectOverlap) ve eğer uygunsa tezin literatürdeki stratejik rolünü (strategicRole, literaturePosition, strategicUtility) belirlemektir.",
+
+    rulesAndConstraints: `1. **Parçalı Stratejik Rol İlkesi (MUTLAK KURAL):**
+   - Literatürdeki yardımcı tezlerin kullanıcının tüm araştırma boyutlarını tek başına kapsamasını beklemek metodolojik bir hatadır (zaten tüm boyutları birebir kapsarsa özgünlük riski / çakışma oluşur).
+   - Aday tez; kullanıcının araştırma probleminin, sahasının veya odaklandığı nesnenin **EN AZ BİR SOMUT BOYUTUNU** (belirli bir aktör grubunu, birincil veri kaynağını, kurumsal yapısını veya tarihsel dönemini) ampirik olarak inceliyorsa \`isRelevant: true\` verilir:
+     * Konuyu daha geniş bir tarihsel/makro çerçevede ele alan çalışmalar -> \`BROAD_CONTEXT\`
+     * Araştırmanın tek bir boyutuna, aktörüne veya birincil kaynağına odaklanan çalışmalar -> \`SPECIFIC_FOCUS\`
+     * Konunun önceki evrelerini, tarihsel köklerini veya zeminini inceleyen çalışmalar -> \`FOUNDATIONAL_WORK\`
+     * Benzer bir ampirik veri toplama veya analiz modeli uygulayan çalışmalar -> \`METHODOLOGICAL_BENCHMARK\`
+     * Karşıt veya farklı bir açıklama modeli sunan çalışmalar -> \`ALTERNATIVE_PERSPECTIVE\`
+
+2. **Kesin Eleme Sebepleri (\`isRelevant: false\`):**
+   - Araştırılan hareketin/konunun iç dinamikleri yerine; tamamen dışsal bağlamları (üçüncü ülkelerin dış politikasını, doğrudan bağı olmayan dış yapıları veya sadece medyanın dışsal temsillerini) inceleyen tezler.
+   - Somut birincil/ampirik veriye dayanmayan, yalnızca genel/ikincil kaynaklar üzerinden soyut kavramları tartışan genel literatür derlemeleri.
+   - Kullanıcının araştırma problemiyle hiçbir ampirik, kurumsal veya olgusal kesişimi bulunmayan farklı konular.
+
+3. **Gerekçelendirme ve Eylem Odaklı Rehberlik Dili:**
+   - \`relevanceReasoning\`: Tezin neden ilgili veya ilgisiz olduğuna dair somut ampirik kanıt ve mantıksal gerekçe (1-2 net cümle).
+   - \`literaturePosition\`: Tezin başlık ve özetine dayanarak neyi, hangi veriyle incelediğini özetleyin (1 cümle).
+   - \`strategicUtility\`: Araştırmacıya doğrudan tez yazımında yol gösteren eylem dili kullanın: "Bu tezi Giriş / Literatür bölümünde [X] için referans verebilir; tezinizin farkını ise [Y] noktasında vurgulayabilirsiniz."`,
+
+    workflowSteps: `1. Aday tezin somut ampirik araştırma nesnesini kullanıcının araştırma problemiyle karşılaştır.
+2. Tez kullanıcının araştırma sahasının en az bir boyutuna doğrudan ampirik katkı sunuyor mu?
+3. Uygunsa \`isRelevant: true\` ver ve 5 stratejik rolden birini ata. Tamamen dışsal veya alakasız ise \`isRelevant: false\` ver.`,
+
+    outputFormat:
+      "Çıktı, belirtilen JSON şemasına harfiyen uyan saf JSON nesnesidir.",
+
+    examples: `<example>
+<input>
+=== KULLANICININ ARAŞTIRMA PROBLEMİ (subjectProblem) ===
+1991-1999 döneminde Kürt Özgürlük Hareketi'nin söylemsel dönüşümünü manevra ve mevzi savaşı bağlamında PKK ve HEP-DEP-HADEP partiler hattı üzerinden inceler.
+
+=== DEĞERLENDİRİLECEK TEZ ===
+Tez ID: 363401
+Başlık: 1990-2014 Dönemi Kürt Siyasal Hareketinin Söyleminin Dönüşümü
+Yazar: Kadriye Okudan Dernek (2014)
+Özet: 1990-2014 döneminde yasal Kürt partilerinin (HEP, DEP, HADEP, DEHAP, DTP, BDP, HDP) program ve söylemlerindeki evrimi inceler.
+</input>
+<output>
+{
+  "externalThesisId": "363401",
+  "isRelevant": true,
+  "relevanceReasoning": "Aday tez, kullanıcının araştırma sahasının yasal partiler hattını (1990-2014) geniş bir perspektifle inceleyerek araştırmanın kurumsal siyaset ayağına doğrudan ampirik zemin sunmaktadır.",
+  "isDirectOverlap": false,
+  "strategicRole": "BROAD_CONTEXT",
+  "contributionAreas": ["Yasal parti söylemi", "1990'lar dönemselleştirmesi"],
+  "literaturePosition": "1990-2014 dönemindeki yasal Kürt parti geleneğini geniş bir dönemsel perspektifle incelemiştir.",
+  "strategicUtility": "Bu tezi Giriş ve Literatür Taraması bölümlerinde yasal partilerin tarihsel seyrini temellendirmek için kullanabilir; tezinizin farkını ise bu çalışmanın yüzeysel geçtiği 1991-1999 kuluçka evresini silahlı kanatla karşılaştırmalı olarak derinleştirme noktasında vurgulayabilirsiniz."
+}
+</output>
+</example>
+
+<example>
+<input>
+=== KULLANICININ ARAŞTIRMA PROBLEMİ (subjectProblem) ===
+1991-1999 döneminde Kürt Özgürlük Hareketi'nin söylemsel dönüşümünü inceler.
+
+=== DEĞERLENDİRİLECEK TEZ ===
+Tez ID: 447567
+Başlık: Kürt Siyasal Hareketinde İslami Bir Aktör: Irak Kürdistan İslami Birlik Partisi
+Yazar: Lokman Karadağ (2016)
+Özet: Irak Kürdistan bölgesindeki İslami Birlik Partisi'nin siyasal katılımını inceler.
+</input>
+<output>
+{
+  "externalThesisId": "447567",
+  "isRelevant": false,
+  "relevanceReasoning": "Aday tez Türkiye'deki Kürt siyasal hareketini değil, Irak'taki bölgesel partileri incelemektedir; ampirik kesişimi bulunmamaktadır.",
+  "isDirectOverlap": false,
+  "contributionAreas": [],
+  "literaturePosition": "",
+  "strategicUtility": ""
+}
+</output>
+</example>`,
+
+    inputContext: `### KULLANICININ ARAŞTIRMA PROBLEMİ (subjectProblem):
+${input.subjectProblem}
+
+### DEĞERLENDİRİLECEK TEZ:
+Tez ID: ${thesis.id}
+Başlık: ${thesis.title}
+Yazar: ${thesis.author || "Bilinmiyor"} (${thesis.year || "N/A"})
+Üniversite/Bölüm: ${thesis.university || "N/A"} - ${thesis.department || "N/A"}
+Tür: ${thesis.thesisType || "N/A"} | Dil: ${thesis.language || "N/A"}
+Özet: ${thesis.abstract}`,
+
+    taskTrigger:
+      "Yukarıdaki <context> içinde yer alan tezi <instructions> kurallarına göre analiz ederek JSON formatında değerlendirme çıktısını üret.",
+  });
+}
+</file>
+
+<file path="src/features/positioning/analysis.ts">
+import { ThinkingLevel } from "@google/genai";
+import { z } from "zod";
+import { FLASH_36, GEMINI_SEED } from "@/lib/constants";
+import { getGeminiKeyPool } from "@/services/ai/gemini-key-pool";
+import {
+  generateGeminiStructuredContent,
+  type JsonSchema,
+} from "@/services/ai";
+import type { Logger } from "@/lib/logger";
+import { buildPositioningJuryPromptPayload } from "./prompts/jury-analysis.prompt";
+import type { EvaluatedThesis } from "./per-thesis-evaluation";
+import {
+  gapAnalysisStructuredSchema,
+  strategicRoleEnum,
+  type PositioningMatrixInput,
+} from "./validation";
+
+/** Zod schema for an individual recommended guiding thesis. */
+export const juryRecommendedThesisSchema = z.object({
+  externalThesisId: z
+    .union([z.string(), z.number()])
+    .transform((val) => String(val))
+    .describe("Süzülen tez listesindeki tez ID'si"),
+  title: z.string().describe("Tezin tam akademik başlığı"),
+  author: z.string().describe("Tezin yazarı"),
+  year: z.number().describe("Tezin hazırlanma yılı"),
+  university: z.string().describe("Tezin sunulduğu üniversite"),
+  strategicRole: strategicRoleEnum
+    .optional()
+    .describe(
+      "Tezin stratejik rolü: BROAD_CONTEXT | SPECIFIC_FOCUS | FOUNDATIONAL_WORK | METHODOLOGICAL_BENCHMARK | ALTERNATIVE_PERSPECTIVE",
+    ),
+  literaturePosition: z
+    .string()
+    .optional()
+    .describe("Tezin literatürdeki yerini ve ne yaptığını anlatan 1 net cümle"),
+  contributionArea: z
+    .string()
+    .describe(
+      "Tezin kullanıcının çalışmasında odaklandığı spesifik alan (Örn: Yasal Parti Söylemi ve Dönemselleştirme)",
+    ),
+  relevanceReason: z
+    .string()
+    .describe(
+      "Kullanıcının bu tezi Giriş ve Literatür bölümlerinde nasıl kaynak olarak kullanacağına ve tezin hangi boşluğunu dolduracağına dair stratejik rehber not",
+    ),
+  doi: z.string().optional().describe("Tezin DOI adresi (varsa)"),
+  thesisType: z
+    .string()
+    .optional()
+    .describe("Tezin türü (Örn: Yüksek Lisans veya Doktora)"),
+});
+
+/** Zod schema for the LLM jury analysis output. */
+export const juryAnalysisResultSchema = z.object({
+  globalStatus: z.enum([
+    "DIRECT_OVERLAP",
+    "NOVEL_GAP_IDENTIFIED",
+    "NO_RELATED_LITERATURE",
+  ]),
+  gapAnalysisSummary: gapAnalysisStructuredSchema,
+  recommendedTheses: z
+    .array(juryRecommendedThesisSchema)
+    .describe(
+      "Ön elemeden geçerek jüriye sunulan ilgili rehber tezlerin listesi.",
+    ),
+});
+
+/** Inferred type for the LLM jury analysis result. */
+export type JuryAnalysisResult = z.infer<typeof juryAnalysisResultSchema>;
+
+/** JSON Schema for Gemini structured outputs. */
+export const juryAnalysisResultJsonSchema: JsonSchema = {
+  type: "object",
+  properties: {
+    globalStatus: {
+      type: "string",
+      enum: ["DIRECT_OVERLAP", "NOVEL_GAP_IDENTIFIED", "NO_RELATED_LITERATURE"],
+      description:
+        "Yalnızca Konu + Teori + Analiz Birimi BİREBİR aynı ise DIRECT_OVERLAP verilir. Özgün katkı varsa NOVEL_GAP_IDENTIFIED verilir.",
+    },
+    gapAnalysisSummary: {
+      type: "object",
+      properties: {
+        literatureMapping: {
+          type: "string",
+          description:
+            "Mevcut Literatürün Haritalandırılması: Sunulan tezlerin araştırmanın hangi boyutlarını ele aldığının tematik haritası ve akademik özeti. Tezleri stratejik rollerine (Şemsiye, Paralel hat, Ardıl eşik) göre gruplayarak tematik özetle. Her tezden bahsederken mutlaka APA formatında atıf ver: (Yazar, Yıl).",
+        },
+        academicGap: {
+          type: "string",
+          description:
+            "Literatürdeki Boşluk: İncelediğin tezlerin neleri göz ardı ettiği veya yetersiz kaldığı alanların analizi. Mutlaka APA atıflarıyla açıkla.",
+        },
+        originalContribution: {
+          type: "string",
+          description:
+            "Çalışmanın Özgün Katkısı: Kullanıcının tez matrisinin bu boşluğu nasıl doldurduğu ve literatüre getirdiği akademik yenilik.",
+        },
+      },
+      required: ["literatureMapping", "academicGap", "originalContribution"],
+      additionalProperties: false,
+      description: "3 sabit akademik sentez bölümü",
+    },
+    recommendedTheses: {
+      type: "array",
+      items: {
+        type: "object",
+        properties: {
+          externalThesisId: {
+            type: "string",
+            description: "Tezin ID'si",
+          },
+          title: { type: "string", description: "Tezin başlığı" },
+          author: { type: "string", description: "Tezin yazarı" },
+          year: { type: "number", description: "Tezin yılı" },
+          university: { type: "string", description: "Tezin üniversitesi" },
+          strategicRole: {
+            type: "string",
+            enum: [
+              "BROAD_CONTEXT",
+              "SPECIFIC_FOCUS",
+              "FOUNDATIONAL_WORK",
+              "METHODOLOGICAL_BENCHMARK",
+              "ALTERNATIVE_PERSPECTIVE",
+            ],
+            description:
+              "Tezin stratejik rolü: BROAD_CONTEXT (Geniş Çerçeve), SPECIFIC_FOCUS (Kısmi Odak), FOUNDATIONAL_WORK (Öncül Çalışma), METHODOLOGICAL_BENCHMARK (Yöntem Rehberi), ALTERNATIVE_PERSPECTIVE (Karşıt Yaklaşım)",
+          },
+          literaturePosition: {
+            type: "string",
+            description:
+              "Tezin literatürdeki yerini ve ne yaptığını anlatan 1 net cümle",
+          },
+          contributionArea: {
+            type: "string",
+            description:
+              "Tezin kullanıcının matrisinde odaklandığı spesifik alan",
+          },
+          relevanceReason: {
+            type: "string",
+            description:
+              "Kullanıcının bu tezi Giriş ve Literatür bölümlerinde nasıl kaynak olarak kullanacağına ve tezin hangi boşluğunu dolduracağına dair stratejik rehber not.",
+          },
+        },
+        required: [
+          "externalThesisId",
+          "title",
+          "author",
+          "year",
+          "university",
+          "strategicRole",
+          "literaturePosition",
+          "contributionArea",
+          "relevanceReason",
+        ],
+        additionalProperties: false,
+      },
+      description:
+        "Ön elemeden geçerek jüriye sunulan ilgili rehber tezlerin listesi",
+    },
+  },
+  required: ["globalStatus", "gapAnalysisSummary", "recommendedTheses"],
+  additionalProperties: false,
+};
+
+/**
+ * Runs the final synthesis jury LLM over the relevant evaluated theses in a single Gemini call.
+ *
+ * @param input - The validated positioning matrix input.
+ * @param evaluatedTheses - The relevant evaluated theses to synthesize (irrelevant ones already dropped).
+ * @param logger - Optional structured logger for pipeline events.
+ * @returns The structured jury analysis result.
+ */
+export async function analyzePositioningJury(
+  input: PositioningMatrixInput,
+  evaluatedTheses: EvaluatedThesis[],
+  logger?: Logger,
+): Promise<JuryAnalysisResult> {
+  const overlapping = evaluatedTheses.some(
+    (ev) => ev.evaluation.isDirectOverlap,
+  );
+
+  if (evaluatedTheses.length === 0) {
+    logger?.info("positioning_jury_no_theses", {
+      service: "positioning",
+      filePath: "src/features/positioning/analysis.ts",
+      data: { inputSubject: input.subjectProblem },
+    });
+
+    return {
+      globalStatus: "NO_RELATED_LITERATURE",
+      gapAnalysisSummary: {
+        literatureMapping:
+          "Veritabanında girilen tez matrisiyle doğrudan ilişkilendirilebilecek herhangi bir akademik teze rastlanmamıştır.",
+        academicGap:
+          "Doğrudan eşleşen bir çalışma bulunmadığı için mevcut literatürde tespit edilmiş bir çakışma veya doymuşluk alanı bulunmamaktadır.",
+        originalContribution:
+          "Çalışmanız literatürde henüz işlenmemiş son derece bakir ve yüksek özgünlüğe sahip bir alanda konumlanmaktadır.",
+      },
+      recommendedTheses: [],
+    };
+  }
+
+  const thesisListText = evaluatedTheses
+    .map((ev, idx) => {
+      const t = ev.thesis;
+      const e = ev.evaluation;
+      return `[Tez #${idx + 1}] ID: ${t.id}
+Başlık: ${t.title}
+Yazar: ${t.author || "Bilinmiyor"} (${t.year || "N/A"})
+Üniversite/Bölüm: ${t.university || "N/A"} - ${t.department || "N/A"}
+Tür: ${t.thesisType || "N/A"} | Dil: ${t.language || "N/A"}
+Birebir Örtüşme: ${e.isDirectOverlap ? "EVET" : "HAYIR"}
+Stratejik Rol: ${e.strategicRole || "UMBRELLA_MACRO"}
+Literatürdeki Yeri (Ne Yaptı?): ${e.literaturePosition || "N/A"}
+Stratejik Kullanım / Boşluk Doldurma: ${e.strategicUtility || "N/A"}
+Katkı/Odak Alanları: ${e.contributionAreas.join(", ") || "Yok"}
+Özet: ${t.abstract}`;
+    })
+    .join("\n\n---\n\n");
+
+  const payload = buildPositioningJuryPromptPayload({
+    input,
+    thesisListText,
+    evaluatedCount: evaluatedTheses.length,
+  });
+
+  const result = await generateGeminiStructuredContent<JuryAnalysisResult>(
+    FLASH_36,
+    payload.systemInstruction,
+    payload.userPrompt,
+    juryAnalysisResultJsonSchema,
+    logger,
+    {
+      zodSchema: juryAnalysisResultSchema,
+      payloadStage: "positioning_jury_analysis",
+      seed: GEMINI_SEED,
+      thinkingConfig: { thinkingLevel: ThinkingLevel.LOW },
+      thesisMatrix: { input, filteredThesesCount: evaluatedTheses.length },
+      apiKey: getGeminiKeyPool().keys[2] ?? getGeminiKeyPool().keys[0],
+    },
+  );
+
+  if (overlapping) {
+    result.globalStatus = "DIRECT_OVERLAP";
+  }
+
+  return result;
 }
 </file>
 
@@ -47849,269 +48231,6 @@ export async function clearDownstreamDbAction(
 }
 </file>
 
-<file path="src/features/positioning/sifting.ts">
-import { searchTezara } from "@/features/tezara";
-import type { TezaraThesisDetails } from "@/lib/types";
-import { rerankWithCohere, COHERE_RERANK_MODEL } from "@/services/ai/cohere";
-import type { Logger } from "@/lib/logger";
-import type { PositioningMatrixInput } from "./validation";
-
-/** Candidate thesis extended with Cohere semantic relevance score. */
-export interface SiftedThesis extends TezaraThesisDetails {
-  relevanceScore?: number;
-}
-
-const ALLOWED_LANGUAGES = new Set([
-  "tr",
-  "tur",
-  "turkish",
-  "türkçe",
-  "en",
-  "eng",
-  "english",
-  "ingilizce",
-]);
-
-/**
- * Whether a thesis language tag matches Turkish or English; missing tags are kept.
- *
- * @param lang - The thesis language tag to check.
- * @returns True when the language is allowed or the tag is missing.
- */
-function isAllowedLanguage(lang?: string): boolean {
-  if (!lang || !lang.trim()) {
-    return true;
-  }
-  const normalized = lang
-    .replace(/İ/g, "i")
-    .replace(/I/g, "ı")
-    .toLowerCase()
-    .trim();
-  return ALLOWED_LANGUAGES.has(normalized);
-}
-
-/**
- * Sanitizes query text for vector search.
- *
- * @param rawQuery - The raw query string to sanitize.
- * @returns The cleaned query string.
- */
-export function sanitizeSearchQuery(rawQuery: string): string {
-  if (!rawQuery) return "";
-  return rawQuery
-    .replace(/\b(OR|AND|NOT)\b/gi, " ")
-    .replace(/[+*?:^~={}[\]()"\\]/g, " ")
-    .replace(/\s+/g, " ")
-    .trim();
-}
-
-/**
- * Formats a thesis's title and abstract into a YAML document for reranking.
- *
- * @param thesis - The thesis to format.
- * @returns The formatted YAML string.
- */
-function formatThesisToYaml(thesis: TezaraThesisDetails): string {
-  return [`Title: ${thesis.title}`, `Abstract: ${thesis.abstract}`].join("\n");
-}
-
-import { generatePositioningQuery, type PositioningQuery } from "./query-generator";
-
-/**
- * Formats the multi-aspect positioning query and matrix into a rich YAML query for Cohere cross-encoder reranking.
- *
- * @param query - The generated positioning query containing empirical sub-queries and substantive keywords.
- * @param input - The validated positioning matrix input.
- * @returns The formatted YAML query string.
- */
-function formatMatrixToYamlQuery(
-  query: PositioningQuery,
-  input: PositioningMatrixInput,
-): string {
-  const lines = [
-    `ResearchFocus: ${query.primaryEmpiricalQuery} ${query.actorsAndSourcesQuery}`,
-    `SubstantiveKeywords: ${query.substantiveKeywords.join(", ")}`,
-    `SubjectProblem: ${input.subjectProblem}`,
-  ];
-  return lines.join("\n");
-}
-
-/**
- * Merges multiple ranked candidate lists using Reciprocal Rank Fusion (RRF) to eliminate single-query blind spots.
- *
- * @param rankedLists - Array of thesis candidate lists.
- * @param k - Smoothing constant (default: 60).
- * @returns Deduplicated and fused list of theses.
- */
-function reciprocalRankFusion(
-  rankedLists: Array<TezaraThesisDetails[]>,
-  k = 60,
-): TezaraThesisDetails[] {
-  const scoreMap = new Map<
-    number,
-    { thesis: TezaraThesisDetails; rrfScore: number }
-  >();
-
-  for (const list of rankedLists) {
-    list.forEach((thesis, rank) => {
-      const id = thesis.id;
-      const current = scoreMap.get(id) || { thesis, rrfScore: 0 };
-      current.rrfScore += 1 / (k + rank + 1);
-      scoreMap.set(id, current);
-    });
-  }
-
-  return Array.from(scoreMap.values())
-    .sort((a, b) => b.rrfScore - a.rrfScore)
-    .map((item) => item.thesis);
-}
-
-/** Difference threshold under which two relevance scores are treated as a tie. */
-const SCORE_EPSILON = 1e-4;
-
-/**
- * Ultra-fast multi-aspect direct semantic thesis sifting engine:
- * Extracts 3 complementary empirical focus queries via FLASH_LITE_31 purely from subjectProblem,
- * fetches candidate theses from Qdrant Cloud in parallel, fuses them via RRF, filters valid abstracts
- * and languages, and applies Cohere Rerank v4.0 Pro to sort the top-N candidates.
- *
- * @param matrixInput - The validated positioning matrix input.
- * @param logger - Optional structured logger for pipeline events.
- * @param options - Optional settings for topN and candidateLimit.
- * @returns The selected top theses sorted deterministically.
- */
-export async function searchAndSiftTheses(
-  matrixInput: PositioningMatrixInput,
-  logger?: Logger,
-  options?: { topN?: number; candidateLimit?: number },
-): Promise<SiftedThesis[]> {
-  const topN = options?.topN ?? 35;
-  const singleQueryLimit = options?.candidateLimit ?? 100;
-
-  const queryGenStart = performance.now();
-  logger?.info("sifting_query_generation_start", {
-    service: "gemini",
-    filePath: "src/features/positioning/sifting.ts",
-  });
-
-  const distilledQuery = await generatePositioningQuery(matrixInput, logger);
-
-  const query1 = sanitizeSearchQuery(
-    distilledQuery.primaryEmpiricalQuery || matrixInput.subjectProblem,
-  );
-  const query2 = sanitizeSearchQuery(
-    distilledQuery.actorsAndSourcesQuery || matrixInput.subjectProblem,
-  );
-  const query3 = sanitizeSearchQuery(
-    distilledQuery.periodAndContextQuery || matrixInput.subjectProblem,
-  );
-
-  logger?.info("sifting_query_generation_success", {
-    service: "gemini",
-    filePath: "src/features/positioning/sifting.ts",
-    durationMs: performance.now() - queryGenStart,
-    data: {
-      query1,
-      query2,
-      query3,
-      keywords: distilledQuery.substantiveKeywords,
-    },
-  });
-
-  const searchStart = performance.now();
-
-  logger?.info("sifting_multi_search_start", {
-    service: "tezara",
-    filePath: "src/features/positioning/sifting.ts",
-    data: { queries: [query1, query2, query3], singleQueryLimit },
-  });
-
-  // 1. Multi-Aspect Parallel Qdrant Searches
-  const [res1, res2, res3] = await Promise.all([
-    searchTezara(query1, logger, { limit: singleQueryLimit }),
-    searchTezara(query2, logger, { limit: singleQueryLimit }),
-    searchTezara(query3, logger, { limit: singleQueryLimit }),
-  ]);
-
-  // 2. Fuse candidate pools via Reciprocal Rank Fusion (RRF)
-  const fusedTheses = reciprocalRankFusion([res1, res2, res3]);
-
-  // 3. Filter valid candidates
-  const filteredCandidates = fusedTheses.filter((thesis) => {
-    const hasSufficientAbstract =
-      thesis.abstract && thesis.abstract.trim().length >= 80;
-    if (!hasSufficientAbstract) return false;
-
-    const isValidLang = isAllowedLanguage(thesis.language);
-    if (!isValidLang) return false;
-
-    return true;
-  });
-
-  if (filteredCandidates.length === 0) {
-    logger?.info("sifting_no_candidates_remaining", {
-      service: "tezara",
-      filePath: "src/features/positioning/sifting.ts",
-      data: { query: query1 },
-    });
-    return [];
-  }
-
-  logger?.info("sifting_direct_search_success", {
-    service: "tezara",
-    filePath: "src/features/positioning/sifting.ts",
-    durationMs: performance.now() - searchStart,
-    data: { candidateCount: filteredCandidates.length },
-  });
-
-  // 4. Cohere Rerank v4.0 Pro
-  const targetYamlQuery = formatMatrixToYamlQuery(distilledQuery, matrixInput);
-  const candidateYamlDocs = filteredCandidates.map(formatThesisToYaml);
-
-  const rerankStart = performance.now();
-
-  logger?.info("cohere_rerank_start", {
-    service: "cohere",
-    filePath: "src/features/positioning/sifting.ts",
-    data: {
-      model: COHERE_RERANK_MODEL,
-      candidateCount: filteredCandidates.length,
-    },
-  });
-
-  const rerankResults = await rerankWithCohere({
-    query: targetYamlQuery,
-    documents: candidateYamlDocs,
-    logger,
-  });
-
-  const scoredTheses: SiftedThesis[] = rerankResults.map((res) => {
-    const candidate = filteredCandidates[res.index];
-    return {
-      ...candidate,
-      relevanceScore: res.relevanceScore,
-    };
-  });
-
-  scoredTheses.sort((a, b) => {
-    const delta = (b.relevanceScore ?? 0) - (a.relevanceScore ?? 0);
-    if (Math.abs(delta) > SCORE_EPSILON) return delta;
-    return a.id - b.id;
-  });
-
-  const selected = scoredTheses.slice(0, topN);
-
-  logger?.info("cohere_rerank_success", {
-    service: "cohere",
-    filePath: "src/features/positioning/sifting.ts",
-    durationMs: performance.now() - rerankStart,
-    data: { topCount: selected.length },
-  });
-
-  return selected;
-}
-</file>
-
 <file path="AGENTS.md">
 # AGENTS.md
 
@@ -48924,6 +49043,269 @@ export function SidebarWorkList({
       </AlertDialog>
     </Card>
   );
+}
+</file>
+
+<file path="src/features/positioning/sifting.ts">
+import { searchTezara } from "@/features/tezara";
+import type { TezaraThesisDetails } from "@/lib/types";
+import { rerankWithCohere, COHERE_RERANK_MODEL } from "@/services/ai/cohere";
+import type { Logger } from "@/lib/logger";
+import type { PositioningMatrixInput } from "./validation";
+
+/** Candidate thesis extended with Cohere semantic relevance score. */
+export interface SiftedThesis extends TezaraThesisDetails {
+  relevanceScore?: number;
+}
+
+const ALLOWED_LANGUAGES = new Set([
+  "tr",
+  "tur",
+  "turkish",
+  "türkçe",
+  "en",
+  "eng",
+  "english",
+  "ingilizce",
+]);
+
+/**
+ * Whether a thesis language tag matches Turkish or English; missing tags are kept.
+ *
+ * @param lang - The thesis language tag to check.
+ * @returns True when the language is allowed or the tag is missing.
+ */
+function isAllowedLanguage(lang?: string): boolean {
+  if (!lang || !lang.trim()) {
+    return true;
+  }
+  const normalized = lang
+    .replace(/İ/g, "i")
+    .replace(/I/g, "ı")
+    .toLowerCase()
+    .trim();
+  return ALLOWED_LANGUAGES.has(normalized);
+}
+
+/**
+ * Sanitizes query text for vector search.
+ *
+ * @param rawQuery - The raw query string to sanitize.
+ * @returns The cleaned query string.
+ */
+export function sanitizeSearchQuery(rawQuery: string): string {
+  if (!rawQuery) return "";
+  return rawQuery
+    .replace(/\b(OR|AND|NOT)\b/gi, " ")
+    .replace(/[+*?:^~={}[\]()"\\]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+/**
+ * Formats a thesis's title and abstract into a YAML document for reranking.
+ *
+ * @param thesis - The thesis to format.
+ * @returns The formatted YAML string.
+ */
+function formatThesisToYaml(thesis: TezaraThesisDetails): string {
+  return [`Title: ${thesis.title}`, `Abstract: ${thesis.abstract}`].join("\n");
+}
+
+import { generatePositioningQuery, type PositioningQuery } from "./query-generator";
+
+/**
+ * Formats the multi-aspect positioning query and matrix into a rich YAML query for Cohere cross-encoder reranking.
+ *
+ * @param query - The generated positioning query containing empirical sub-queries and substantive keywords.
+ * @param input - The validated positioning matrix input.
+ * @returns The formatted YAML query string.
+ */
+function formatMatrixToYamlQuery(
+  query: PositioningQuery,
+  input: PositioningMatrixInput,
+): string {
+  const lines = [
+    `ResearchFocus: ${query.primaryEmpiricalQuery} ${query.actorsAndSourcesQuery}`,
+    `SubstantiveKeywords: ${query.substantiveKeywords.join(", ")}`,
+    `SubjectProblem: ${input.subjectProblem}`,
+  ];
+  return lines.join("\n");
+}
+
+/**
+ * Merges multiple ranked candidate lists using Reciprocal Rank Fusion (RRF) to eliminate single-query blind spots.
+ *
+ * @param rankedLists - Array of thesis candidate lists.
+ * @param k - Smoothing constant (default: 60).
+ * @returns Deduplicated and fused list of theses.
+ */
+function reciprocalRankFusion(
+  rankedLists: Array<TezaraThesisDetails[]>,
+  k = 60,
+): TezaraThesisDetails[] {
+  const scoreMap = new Map<
+    number,
+    { thesis: TezaraThesisDetails; rrfScore: number }
+  >();
+
+  for (const list of rankedLists) {
+    list.forEach((thesis, rank) => {
+      const id = thesis.id;
+      const current = scoreMap.get(id) || { thesis, rrfScore: 0 };
+      current.rrfScore += 1 / (k + rank + 1);
+      scoreMap.set(id, current);
+    });
+  }
+
+  return Array.from(scoreMap.values())
+    .sort((a, b) => b.rrfScore - a.rrfScore)
+    .map((item) => item.thesis);
+}
+
+/** Difference threshold under which two relevance scores are treated as a tie. */
+const SCORE_EPSILON = 1e-4;
+
+/**
+ * Ultra-fast multi-aspect direct semantic thesis sifting engine:
+ * Extracts 3 complementary empirical focus queries via FLASH_LITE_31 purely from subjectProblem,
+ * fetches candidate theses from Qdrant Cloud in parallel, fuses them via RRF, filters valid abstracts
+ * and languages, and applies Cohere Rerank v4.0 Pro to sort the top-N candidates.
+ *
+ * @param matrixInput - The validated positioning matrix input.
+ * @param logger - Optional structured logger for pipeline events.
+ * @param options - Optional settings for topN and candidateLimit.
+ * @returns The selected top theses sorted deterministically.
+ */
+export async function searchAndSiftTheses(
+  matrixInput: PositioningMatrixInput,
+  logger?: Logger,
+  options?: { topN?: number; candidateLimit?: number },
+): Promise<SiftedThesis[]> {
+  const topN = options?.topN ?? 35;
+  const singleQueryLimit = options?.candidateLimit ?? 100;
+
+  const queryGenStart = performance.now();
+  logger?.info("sifting_query_generation_start", {
+    service: "gemini",
+    filePath: "src/features/positioning/sifting.ts",
+  });
+
+  const distilledQuery = await generatePositioningQuery(matrixInput, logger);
+
+  const query1 = sanitizeSearchQuery(
+    distilledQuery.primaryEmpiricalQuery || matrixInput.subjectProblem,
+  );
+  const query2 = sanitizeSearchQuery(
+    distilledQuery.actorsAndSourcesQuery || matrixInput.subjectProblem,
+  );
+  const query3 = sanitizeSearchQuery(
+    distilledQuery.periodAndContextQuery || matrixInput.subjectProblem,
+  );
+
+  logger?.info("sifting_query_generation_success", {
+    service: "gemini",
+    filePath: "src/features/positioning/sifting.ts",
+    durationMs: performance.now() - queryGenStart,
+    data: {
+      query1,
+      query2,
+      query3,
+      keywords: distilledQuery.substantiveKeywords,
+    },
+  });
+
+  const searchStart = performance.now();
+
+  logger?.info("sifting_multi_search_start", {
+    service: "tezara",
+    filePath: "src/features/positioning/sifting.ts",
+    data: { queries: [query1, query2, query3], singleQueryLimit },
+  });
+
+  // 1. Multi-Aspect Parallel Qdrant Searches
+  const [res1, res2, res3] = await Promise.all([
+    searchTezara(query1, logger, { limit: singleQueryLimit }),
+    searchTezara(query2, logger, { limit: singleQueryLimit }),
+    searchTezara(query3, logger, { limit: singleQueryLimit }),
+  ]);
+
+  // 2. Fuse candidate pools via Reciprocal Rank Fusion (RRF)
+  const fusedTheses = reciprocalRankFusion([res1, res2, res3]);
+
+  // 3. Filter valid candidates
+  const filteredCandidates = fusedTheses.filter((thesis) => {
+    const hasSufficientAbstract =
+      thesis.abstract && thesis.abstract.trim().length >= 80;
+    if (!hasSufficientAbstract) return false;
+
+    const isValidLang = isAllowedLanguage(thesis.language);
+    if (!isValidLang) return false;
+
+    return true;
+  });
+
+  if (filteredCandidates.length === 0) {
+    logger?.info("sifting_no_candidates_remaining", {
+      service: "tezara",
+      filePath: "src/features/positioning/sifting.ts",
+      data: { query: query1 },
+    });
+    return [];
+  }
+
+  logger?.info("sifting_direct_search_success", {
+    service: "tezara",
+    filePath: "src/features/positioning/sifting.ts",
+    durationMs: performance.now() - searchStart,
+    data: { candidateCount: filteredCandidates.length },
+  });
+
+  // 4. Cohere Rerank v4.0 Pro
+  const targetYamlQuery = formatMatrixToYamlQuery(distilledQuery, matrixInput);
+  const candidateYamlDocs = filteredCandidates.map(formatThesisToYaml);
+
+  const rerankStart = performance.now();
+
+  logger?.info("cohere_rerank_start", {
+    service: "cohere",
+    filePath: "src/features/positioning/sifting.ts",
+    data: {
+      model: COHERE_RERANK_MODEL,
+      candidateCount: filteredCandidates.length,
+    },
+  });
+
+  const rerankResults = await rerankWithCohere({
+    query: targetYamlQuery,
+    documents: candidateYamlDocs,
+    logger,
+  });
+
+  const scoredTheses: SiftedThesis[] = rerankResults.map((res) => {
+    const candidate = filteredCandidates[res.index];
+    return {
+      ...candidate,
+      relevanceScore: res.relevanceScore,
+    };
+  });
+
+  scoredTheses.sort((a, b) => {
+    const delta = (b.relevanceScore ?? 0) - (a.relevanceScore ?? 0);
+    if (Math.abs(delta) > SCORE_EPSILON) return delta;
+    return a.id - b.id;
+  });
+
+  const selected = scoredTheses.slice(0, topN);
+
+  logger?.info("cohere_rerank_success", {
+    service: "cohere",
+    filePath: "src/features/positioning/sifting.ts",
+    durationMs: performance.now() - rerankStart,
+    data: { topCount: selected.length },
+  });
+
+  return selected;
 }
 </file>
 

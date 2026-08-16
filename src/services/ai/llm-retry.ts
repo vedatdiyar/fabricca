@@ -67,6 +67,7 @@ export interface RetryOptions {
   baseDelay: number;
   maxDelay?: number;
   getRetryAfter?: (error: unknown) => number | null;
+  onAttempt?: (attempt: number, previousError?: unknown) => void;
   onRetry?: (attempt: number, delayMs: number, error: unknown) => void;
   isRetryable?: (error: unknown, attempt: number) => boolean;
   getDelay?: (attempt: number, error: unknown, defaultDelay: number) => number;
@@ -91,12 +92,14 @@ export async function withRetry<T>(
     onRetry,
     getRetryAfter,
     getDelay,
+    onAttempt,
   } = options;
   const shouldRetry = isRetryable ?? (() => true);
   let attempt = 0;
   let lastError: unknown;
 
   while (++attempt <= maxRetries) {
+    onAttempt?.(attempt, lastError);
     try {
       return await fn();
     } catch (error) {

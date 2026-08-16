@@ -1,12 +1,13 @@
 import { GoogleGenAI, HarmCategory, HarmBlockThreshold } from "@google/genai";
 import { Logger, createFlowId } from "@/lib/logger";
-import { createConcurrencyLimiter } from "@/lib/rate-limiter";
-import { getGeminiKeyPool, nextKeyPosition } from "../gemini-key-pool";
+import { getGeminiKeyPool, getProjectIndex } from "../gemini-key-pool";
 import { GEMINI_SEED } from "@/lib/constants";
 import {
   SchemaValidationError,
   classifyError,
   extractHttpStatus,
+  extractQuotaDetails,
+  extractRetryDelayMs,
   isRateLimitError,
   isServerOverloadError,
   toAiProviderError,
@@ -27,10 +28,14 @@ let aiInstance: GoogleGenAI | null = null;
 const aiInstancesByKey = new Map<string, GoogleGenAI>();
 
 /**
- * Caps concurrent in-flight Gemini requests across pipeline stages to prevent socket exhaustion
- * while enabling high-throughput parallel execution (up to 30 concurrent in-flight calls).
+ * Disables the SDK's built-in HTTP retry so `withRetry` remains the single retry
+ * owner. Empirically verified on @google/genai 2.16.0: the classic generateContent
+ * / generateContentStream path retries ONLY when `httpOptions.retryOptions` is
+ * present, and `attempts: 1` means the original request runs exactly once.
  */
-const geminiRequestQueue = createConcurrencyLimiter(30);
+const SDK_SINGLE_ATTEMPT_HTTP_OPTIONS = {
+  httpOptions: { retryOptions: { attempts: 1 } },
+} as const;
 
 /**
  * Returns a lazily-initialized GoogleGenAI client, defaulting to the GEMINI_API_KEY_1
@@ -43,14 +48,20 @@ export function getAi(apiKey?: string): GoogleGenAI {
   if (!apiKey) {
     if (!aiInstance) {
       const envKey = getGeminiKeyPool().keys[0];
-      aiInstance = new GoogleGenAI({ apiKey: envKey });
+      aiInstance = new GoogleGenAI({
+        apiKey: envKey,
+        ...SDK_SINGLE_ATTEMPT_HTTP_OPTIONS,
+      });
     }
     return aiInstance;
   }
 
   const cached = aiInstancesByKey.get(apiKey);
   if (cached) return cached;
-  const client = new GoogleGenAI({ apiKey });
+  const client = new GoogleGenAI({
+    apiKey,
+    ...SDK_SINGLE_ATTEMPT_HTTP_OPTIONS,
+  });
   aiInstancesByKey.set(apiKey, client);
   return client;
 }
@@ -124,6 +135,7 @@ export async function logRawLlmCall(params: {
 
 /**
  * Requests structured JSON output from Gemini via responseJsonSchema, with retry on 429/5xx and optional Zod validation.
+ * Each request is strictly bound to its assigned Google Cloud project API key with per-project 15 RPM pacing.
  *
  * @param modelName - The Gemini model identifier to call.
  * @param systemInstruction - The system-level instructions for the model.
@@ -141,17 +153,21 @@ export async function generateStructuredContent<T>(
   logger?: Logger,
   options?: StructuredGenerationOptions<T>,
 ): Promise<T> {
-  const startTime = performance.now();
-  let attempts: number | undefined;
+  const scheduledTime = performance.now();
 
   const thinkingLevel = options?.thinkingConfig?.thinkingLevel;
   const callLabel = options?.payloadStage ?? "gemini";
 
-  if (options?.quiet === false) {
-    logger?.info(`${callLabel}_start`, {
+  const keyPool = getGeminiKeyPool();
+  const assignedKey = options?.apiKey ?? keyPool.keys[0];
+  const projectIndex = getProjectIndex(assignedKey);
+
+  if (options?.quiet !== true) {
+    logger?.info(`${callLabel}_scheduled`, {
       service: "gemini",
       data: {
         model: modelName,
+        projectIndex: projectIndex + 1,
         instructionLength: systemInstruction.length,
         promptLength: prompt.length,
         thinkingLevel: thinkingLevel ?? undefined,
@@ -202,35 +218,45 @@ export async function generateStructuredContent<T>(
     stage: options?.payloadStage,
   });
 
-  let retryCount = 0;
-
-  const keyPool = getGeminiKeyPool();
-  const startingKey = options?.apiKey ?? keyPool.keys[0];
-  let activePosition = Math.max(0, keyPool.keys.indexOf(startingKey));
-  let activeKey = keyPool.keys[activePosition];
-  const maxRetries = Math.max(3, keyPool.keys.length);
+  const maxRetries = 3;
+  let attempts = 0;
 
   try {
     const response = await withRetry(
-      async () => {
-        retryCount++;
-        return geminiRequestQueue.exec(() =>
-          getAi(activeKey).models.generateContent(payload),
-        );
-      },
+      async () => getAi(assignedKey).models.generateContent(payload),
       {
         maxRetries,
-        baseDelay: 1000,
+        baseDelay: 2000,
+        onAttempt: (attempt, previousError) => {
+          attempts = attempt;
+          logger?.info("ai_attempt", {
+            service: "gemini",
+            filePath: "src/services/ai/providers/gemini-provider.ts",
+            data: {
+              attempt,
+              maxRetries,
+              projectIndex: projectIndex + 1,
+              model: modelName,
+              retried: attempt > 1,
+              previousError:
+                previousError instanceof Error
+                  ? previousError.message
+                  : undefined,
+            },
+          });
+        },
         getDelay: (attempt, error, defaultDelay) => {
           if (isServerOverloadError(error)) return serverOverloadDelay(attempt);
           if (isRateLimitError(error)) {
-            // Dynamic exponential backoff for quota/rate-limit errors
-            // (1s, 2s, 4s, ...) capped at 30s — no immediate retries.
+            const extractedDelay = extractRetryDelayMs(error);
+            if (extractedDelay && extractedDelay > 0) {
+              return extractedDelay + Math.random() * 500;
+            }
             const capped = Math.min(
               DEFAULT_MAX_DELAY,
-              1000 * Math.pow(2, attempt - 1),
+              2000 * Math.pow(2, attempt - 1),
             );
-            return capped + Math.random() * Math.min(250, capped * 0.1);
+            return capped + Math.random() * Math.min(500, capped * 0.1);
           }
           return defaultDelay;
         },
@@ -248,7 +274,8 @@ export async function generateStructuredContent<T>(
               error.message.includes("503") ||
               error.message.includes("UNAVAILABLE") ||
               error.message.includes("429") ||
-              error.message.includes("quota")
+              error.message.includes("quota") ||
+              error.message.includes("RESOURCE_EXHAUSTED")
             ) {
               return true;
             }
@@ -256,14 +283,9 @@ export async function generateStructuredContent<T>(
           return false;
         },
         onRetry: (attempt, delay, error) => {
-          if (isRateLimitError(error) && keyPool.keys.length > 1) {
-            activePosition = nextKeyPosition(
-              activePosition,
-              keyPool.keys.length,
-            );
-            activeKey = keyPool.keys[activePosition];
-          }
           const httpStatus = extractHttpStatus(error);
+          const quotaDetails = extractQuotaDetails(error);
+          const retryAfterMs = extractRetryDelayMs(error);
           logger?.info("ai_retry_attempt", {
             service: "gemini",
             filePath: "src/services/ai/providers/gemini-provider.ts",
@@ -272,10 +294,12 @@ export async function generateStructuredContent<T>(
             data: {
               attempt,
               maxRetries,
-              keyPositions: keyPool.keys.length,
-              activePosition,
+              projectIndex: projectIndex + 1,
+              crossProjectRotation: false,
               delayMs: Math.round(delay),
+              retryAfterMs: retryAfterMs ?? undefined,
               httpStatus,
+              quotaDetails: quotaDetails ?? undefined,
               errorMessage:
                 error instanceof Error ? error.message : String(error),
             },
@@ -300,6 +324,7 @@ export async function generateStructuredContent<T>(
           filePath: "src/services/ai/providers/gemini-provider.ts",
           data: {
             model: modelName,
+            projectIndex: projectIndex + 1,
             errorCount: err.zodError.issues.length,
             issues: err.zodError.issues.map((i) => ({
               path: i.path.join("."),
@@ -315,7 +340,7 @@ export async function generateStructuredContent<T>(
       throw err;
     }
 
-    const durationMs = performance.now() - startTime;
+    const durationMs = performance.now() - scheduledTime;
     const metadata = (
       response as unknown as {
         usageMetadata?: {
@@ -334,18 +359,18 @@ export async function generateStructuredContent<T>(
         }
       : undefined;
 
-    attempts = retryCount;
-
     const payloadStage = options?.payloadStage ?? "gemini";
     logger?.saveDebugPayload(payloadStage, modelName, prompt, text);
 
-    if (options?.quiet === false) {
+    if (options?.quiet !== true) {
       logger?.info(`${callLabel}_success`, {
         service: "gemini",
         durationMs,
         tokens,
         data: {
           model: modelName,
+          projectIndex: projectIndex + 1,
+          crossProjectRotation: false,
           attempt: attempts,
           thinkingLevel: thinkingLevel ?? undefined,
         },
@@ -353,8 +378,9 @@ export async function generateStructuredContent<T>(
     }
     return parsed;
   } catch (error) {
-    const durationMs = performance.now() - startTime;
+    const durationMs = performance.now() - scheduledTime;
     const scenario = classifyError(error);
+    const quotaDetails = extractQuotaDetails(error);
 
     const payloadStage = options?.payloadStage ?? "gemini";
     logger?.saveDebugPayload(payloadStage, modelName, prompt);
@@ -365,9 +391,12 @@ export async function generateStructuredContent<T>(
       durationMs,
       data: {
         model: modelName,
+        projectIndex: projectIndex + 1,
+        crossProjectRotation: false,
         attempts,
         thinkingLevel: thinkingLevel ?? undefined,
         scenario,
+        quotaDetails: quotaDetails ?? undefined,
       },
       error,
     });
