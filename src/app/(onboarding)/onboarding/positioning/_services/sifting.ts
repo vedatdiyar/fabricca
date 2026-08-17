@@ -1,6 +1,9 @@
-import { searchTezara } from "@/features/tezara";
+import { searchTezara } from "@/core/services/tezara";
 import type { TezaraThesisDetails } from "@/lib/types";
-import { rerankWithCohere, COHERE_RERANK_MODEL } from "@/services/ai/cohere";
+import {
+  rerankWithCohere,
+  COHERE_RERANK_MODEL,
+} from "@/core/services/ai/cohere";
 import type { Logger } from "@/lib/logger";
 import type { PositioningMatrixInput } from "./validation";
 import { generatePositioningQuery } from "./query-generator";

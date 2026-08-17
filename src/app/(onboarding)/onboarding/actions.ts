@@ -2,15 +2,21 @@
 
 import { revalidatePath } from "next/cache";
 import { eq, inArray } from "drizzle-orm";
-import { db } from "@/db";
-import { matrices, positioning, boxes, sources, outlines } from "@/db/schema";
+import { db } from "@/core/db";
+import {
+  matrices,
+  positioning,
+  boxes,
+  sources,
+  outlines,
+} from "@/core/db/schema";
 import {
   getSession,
   writeSessionCookie,
   SESSION_ERROR_MSG,
 } from "@/lib/session";
 import { createFlowId, Logger } from "@/lib/logger";
-import { resetUserOnboardingData } from "@/features/onboarding/services/reset-onboarding";
+import { resetUserOnboardingData } from "@/app/(onboarding)/onboarding/_services/reset-onboarding";
 import {
   revalidateOnboardingPaths,
   invalidateOnboardingCache,

@@ -1,4 +1,4 @@
-import { rerankWithCohere } from "@/services/ai/cohere";
+import { rerankWithCohere } from "@/core/services/ai/cohere";
 import type { CandidateSource } from "./types";
 import {
   selectWithCerebras,

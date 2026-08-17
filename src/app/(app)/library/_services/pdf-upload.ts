@@ -1,9 +1,9 @@
 import type { Logger } from "@/lib/logger";
-import { getPdfFromR2 } from "@/services/storage/r2";
-import { parsePdfToChunks } from "@/services/pdf";
-import type { DocumentAnalysisResult } from "@/services/pdf/schema";
-import type { DocumentChunk } from "@/services/pdf/chunker";
-import type { ParsedReference } from "@/db/schema";
+import { getPdfFromR2 } from "@/core/services/storage/r2";
+import { parsePdfToChunks } from "@/core/services/pdf";
+import type { DocumentAnalysisResult } from "@/core/services/pdf/schema";
+import type { DocumentChunk } from "@/core/services/pdf/chunker";
+import type { ParsedReference } from "@/core/db/schema";
 
 /** Extracted PDF content shared by all upload completion flows. */
 export interface ExtractedPdfContent {

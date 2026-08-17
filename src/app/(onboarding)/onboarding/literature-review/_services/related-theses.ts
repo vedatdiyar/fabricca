@@ -1,8 +1,8 @@
 import { and, eq } from "drizzle-orm";
-import { db } from "@/db";
-import { boxes, matrices, positioning, sources } from "@/db/schema";
+import { db } from "@/core/db";
+import { boxes, matrices, positioning, sources } from "@/core/db/schema";
 import { BOX_TYPE_DESCRIPTIONS } from "@/lib/box-constants";
-import type { RecommendedThesisItem } from "@/features/positioning/validation";
+import type { RecommendedThesisItem } from "@/app/(onboarding)/onboarding/positioning/_services/validation";
 
 /** Display title of the parent box holding strategic guide theses. */
 const RELATED_THESES_TITLE = "İlgili Tezler";

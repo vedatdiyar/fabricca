@@ -1,12 +1,12 @@
 "use client";
 
 import { useCallback, useRef } from "react";
-import { useLoadingOverlay } from "@/providers/loading-overlay-provider";
+import { useLoadingOverlay } from "@/core/providers/loading-overlay-provider";
 import {
   STEP_MIN_DURATION_MS,
   isNavigationStepText,
   type LoadingStep,
-} from "@/features/onboarding/loading-steps";
+} from "@/app/(onboarding)/onboarding/_services/loading-steps";
 
 /**
  * Shared loading-overlay step helpers used across the onboarding flow hooks.

@@ -1,7 +1,7 @@
 "use server";
 
-import { db } from "@/db";
-import { matrices } from "@/db/schema";
+import { db } from "@/core/db";
+import { matrices } from "@/core/db/schema";
 import { getSession } from "@/lib/session";
 import { eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";

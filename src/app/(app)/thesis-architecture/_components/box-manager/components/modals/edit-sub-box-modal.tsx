@@ -95,7 +95,6 @@ export function EditSubBoxModal({
               onChange={(e) => setTitle(e.target.value)}
               placeholder="Örn: 1991-1999 Dönemi Aktörler Arası Hegemonya Mücadelesi"
               className="font-sans text-sm bg-background border-border rounded-md"
-              autoFocus
             />
           </div>
 

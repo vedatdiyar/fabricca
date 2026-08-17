@@ -2,8 +2,14 @@ export const instant = false;
 
 import { redirect } from "next/navigation";
 import { eq } from "drizzle-orm";
-import { db } from "@/db";
-import { matrices, positioning, boxes, outlines, sources } from "@/db/schema";
+import { db } from "@/core/db";
+import {
+  matrices,
+  positioning,
+  boxes,
+  outlines,
+  sources,
+} from "@/core/db/schema";
 import { getProfile } from "@/lib/session";
 
 /**

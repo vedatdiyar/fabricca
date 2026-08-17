@@ -1,11 +1,11 @@
 "use server";
 
 import { eq } from "drizzle-orm";
-import { db } from "@/db";
-import { matrices, outlines } from "@/db/schema";
+import { db } from "@/core/db";
+import { matrices, outlines } from "@/core/db/schema";
 import { getSession, SESSION_ERROR_MSG } from "@/lib/session";
 import { invalidateOnboardingStepCache } from "@/lib/cache-tags";
-import { generateGeminiStructuredContent } from "@/services/ai";
+import { generateGeminiStructuredContent } from "@/core/services/ai";
 import { FLASH_36, GEMINI_SEED } from "@/lib/constants";
 import { ThinkingLevel } from "@google/genai";
 import { createFlowId, Logger } from "@/lib/logger";
@@ -15,7 +15,7 @@ import {
   type OutlineGenerationResponse,
 } from "./schema";
 
-import { buildOutlineGenerationPromptPayload } from "./prompts/outline-generation.prompt";
+import { buildOutlineGenerationPromptPayload } from "../_prompts/outline-generation.prompt";
 
 /**
  * Generates the thesis outline via Gemini without persisting it.

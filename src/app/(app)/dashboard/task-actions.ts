@@ -3,8 +3,8 @@
 import { eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { createFlowId, Logger } from "@/lib/logger";
-import { db } from "@/db";
-import { tasks, boxes } from "@/db/schema";
+import { db } from "@/core/db";
+import { tasks, boxes } from "@/core/db/schema";
 import { getSession, SESSION_ERROR_MSG } from "@/lib/session";
 import {
   AddTaskSchema,

@@ -2,7 +2,7 @@ import { createRateLimiter } from "@/lib/rate-limiter";
 import {
   OPENALEX_REGULAR_LIMITS,
   OPENALEX_SEMANTIC_LIMITS,
-} from "@/config/rate-limits";
+} from "@/core/config/rate-limits";
 import { OPENALEX_USER_AGENT, withRetry } from "@/lib/api-utils";
 import { parseOpenAlexResults } from "./parser";
 import type { RawPaper } from "../literature-review-papers";

@@ -8,11 +8,11 @@ import {
 import { toast } from "sonner";
 import { saveChatMessage, generateChatTitleAction } from "../actions";
 import { useAdvisorStream } from "./use-advisor-stream";
-import type { AdvisorPersona } from "@/features/advisor/classifier";
+import type { AdvisorPersona } from "@/app/(app)/advisor/_services/classifier";
 import type { PendingToolCall } from "../_components/tool-confirmation-card";
-import type { RagSearchResultItem } from "@/services/search/rag-search";
-import type { PipelineResult } from "@/features/advisor/pipeline/types";
-import type { PipelineResultData } from "@/db/schema";
+import type { RagSearchResultItem } from "@/core/services/search/rag-search";
+import type { PipelineResult } from "@/app/(app)/advisor/_services/pipeline/types";
+import type { PipelineResultData } from "@/core/db/schema";
 import type { Message } from "../_lib/types";
 import {
   type StreamingState,

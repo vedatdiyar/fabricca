@@ -2,7 +2,7 @@ import {
   buildPromptPayload,
   type PromptPayload,
 } from "@/lib/ai/prompt-builder";
-import type { AdvisorPersona } from "../classifier";
+import type { AdvisorPersona } from "../_services/classifier";
 
 /**
  * Builds the standardized PromptPayload for Advisor turns.

@@ -3,7 +3,7 @@
 import { useState, useMemo } from "react";
 import { Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import type { Box } from "@/db/schema";
+import type { Box } from "@/core/db/schema";
 import type { KanbanTask } from "../_lib/types";
 import { AddTaskModal } from "./add-task-modal";
 import { EditTaskModal } from "./edit-task-modal";

@@ -1,7 +1,7 @@
 import { sql, eq, innerProduct, asc, and } from "drizzle-orm";
-import { db } from "@/db";
-import { chunks, sources, boxes } from "@/db/schema";
-import { generateVectorEmbeddings } from "@/services/ai/cloudflare-ai";
+import { db } from "@/core/db";
+import { chunks, sources, boxes } from "@/core/db/schema";
+import { generateVectorEmbeddings } from "@/core/services/ai/cloudflare-ai";
 import type { Logger } from "@/lib/logger";
 import { RAG_CONFIG } from "./config";
 import type { DenseCandidate } from "./types";

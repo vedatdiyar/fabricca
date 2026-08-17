@@ -1,7 +1,7 @@
 import { eq, sql } from "drizzle-orm";
 import { cacheLife, cacheTag } from "next/cache";
-import { db } from "@/db";
-import { boxes } from "@/db/schema";
+import { db } from "@/core/db";
+import { boxes } from "@/core/db/schema";
 import type { GeminiThesisBox } from "@/lib/types";
 import { getSession } from "@/lib/session";
 import { BOX_ORDER_WEIGHT } from "@/lib/box-constants";

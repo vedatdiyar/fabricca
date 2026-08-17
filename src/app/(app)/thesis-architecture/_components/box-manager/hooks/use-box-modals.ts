@@ -1,3 +1,5 @@
+"use client";
+
 import { useState } from "react";
 import { toast } from "sonner";
 import {
@@ -25,39 +27,64 @@ export interface UseBoxModalsOptions {
   rootBoxes: BoxWithRelations[];
 }
 
+interface ModalState {
+  editSubBox: BoxWithRelations | null;
+  isSubSaving: boolean;
+  isAddOpen: boolean;
+  addParentId: number | null;
+  isAddSaving: boolean;
+  editRootBox: BoxWithRelations | null;
+  isRootSaving: boolean;
+  deleteTargetBox: BoxWithRelations | null;
+  isDeleting: boolean;
+}
+
 /**
  * Owns the open/close state of every box dialog (edit sub-box, add sub-box,
  * edit root box, delete confirmation) together with the server action calls,
  * loading flags and their success/error toasts.
  */
 export function useBoxModals({ rootBoxes }: UseBoxModalsOptions) {
-  // Edit Sub-Box Dialog
-  const [editSubBox, setEditSubBox] = useState<BoxWithRelations | null>(null);
-  const [isSubSaving, setIsSubSaving] = useState(false);
+  const [modalState, setModalState] = useState<ModalState>({
+    editSubBox: null,
+    isSubSaving: false,
+    isAddOpen: false,
+    addParentId: null,
+    isAddSaving: false,
+    editRootBox: null,
+    isRootSaving: false,
+    deleteTargetBox: null,
+    isDeleting: false,
+  });
 
-  const openEditSubModal = (box: BoxWithRelations) => setEditSubBox(box);
-  const closeEditSubModal = () => setEditSubBox(null);
+  const updateState = (patch: Partial<ModalState>) =>
+    setModalState((prev) => ({ ...prev, ...patch }));
+
+  // Edit Sub-Box Dialog
+  const openEditSubModal = (box: BoxWithRelations) =>
+    updateState({ editSubBox: box });
+  const closeEditSubModal = () => updateState({ editSubBox: null });
 
   const saveEditSubBox = async (data: SubBoxFormData): Promise<boolean> => {
-    if (!editSubBox) return false;
+    if (!modalState.editSubBox) return false;
     if (!data.title.trim()) {
       toast.error("Alt konu başlığı boş olamaz.");
       return false;
     }
 
-    setIsSubSaving(true);
+    updateState({ isSubSaving: true });
     const res = await updateBoxAction({
-      id: editSubBox.id,
+      id: modalState.editSubBox.id,
       title: data.title.trim(),
       description: data.description.trim() || undefined,
       concepts: data.concepts,
       semanticQuery: data.semanticQuery.trim() || undefined,
     });
-    setIsSubSaving(false);
+    updateState({ isSubSaving: false });
 
     if (res.success) {
       toast.success("Alt konu başarıyla güncellendi.");
-      setEditSubBox(null);
+      updateState({ editSubBox: null });
       return true;
     }
     toast.error(res.error ?? "Güncellenemedi.");
@@ -65,18 +92,18 @@ export function useBoxModals({ rootBoxes }: UseBoxModalsOptions) {
   };
 
   // Add Sub-Box Dialog
-  const [isAddOpen, setIsAddOpen] = useState(false);
-  const [addParentId, setAddParentId] = useState<number | null>(null);
-  const [isAddSaving, setIsAddSaving] = useState(false);
-
   const openAddModal = (parentId?: number) => {
-    setAddParentId(parentId ?? rootBoxes[0]?.id ?? null);
-    setIsAddOpen(true);
+    updateState({
+      addParentId: parentId ?? rootBoxes[0]?.id ?? null,
+      isAddOpen: true,
+    });
   };
-  const closeAddModal = () => setIsAddOpen(false);
+  const closeAddModal = () => updateState({ isAddOpen: false });
+  const setAddParentId = (id: number | null) =>
+    updateState({ addParentId: id });
 
   const saveAddSubBox = async (data: SubBoxFormData): Promise<boolean> => {
-    if (!addParentId) {
+    if (!modalState.addParentId) {
       toast.error("Lütfen bir ana araştırma ekseni seçin.");
       return false;
     }
@@ -85,19 +112,19 @@ export function useBoxModals({ rootBoxes }: UseBoxModalsOptions) {
       return false;
     }
 
-    setIsAddSaving(true);
+    updateState({ isAddSaving: true });
     const res = await createSubBoxAction({
-      parentId: addParentId,
+      parentId: modalState.addParentId,
       title: data.title.trim(),
       description: data.description.trim() || undefined,
       concepts: data.concepts,
       semanticQuery: data.semanticQuery.trim() || undefined,
     });
-    setIsAddSaving(false);
+    updateState({ isAddSaving: false });
 
     if (res.success) {
       toast.success("Yeni alt konu başarıyla eklendi.");
-      setIsAddOpen(false);
+      updateState({ isAddOpen: false });
       return true;
     }
     toast.error(res.error ?? "Alt konu eklenemedi.");
@@ -105,30 +132,28 @@ export function useBoxModals({ rootBoxes }: UseBoxModalsOptions) {
   };
 
   // Edit Root Box Dialog
-  const [editRootBox, setEditRootBox] = useState<BoxWithRelations | null>(null);
-  const [isRootSaving, setIsRootSaving] = useState(false);
-
-  const openEditRootModal = (box: BoxWithRelations) => setEditRootBox(box);
-  const closeEditRootModal = () => setEditRootBox(null);
+  const openEditRootModal = (box: BoxWithRelations) =>
+    updateState({ editRootBox: box });
+  const closeEditRootModal = () => updateState({ editRootBox: null });
 
   const saveEditRootBox = async (data: RootBoxFormData): Promise<boolean> => {
-    if (!editRootBox) return false;
+    if (!modalState.editRootBox) return false;
     if (!data.title.trim()) {
       toast.error("Eksen başlığı boş olamaz.");
       return false;
     }
 
-    setIsRootSaving(true);
+    updateState({ isRootSaving: true });
     const res = await updateBoxAction({
-      id: editRootBox.id,
+      id: modalState.editRootBox.id,
       title: data.title.trim(),
       description: data.description.trim() || undefined,
     });
-    setIsRootSaving(false);
+    updateState({ isRootSaving: false });
 
     if (res.success) {
       toast.success("Araştırma ekseni güncellendi.");
-      setEditRootBox(null);
+      updateState({ editRootBox: null });
       return true;
     }
     toast.error(res.error ?? "Güncellenemedi.");
@@ -136,23 +161,20 @@ export function useBoxModals({ rootBoxes }: UseBoxModalsOptions) {
   };
 
   // Delete Sub-Box Confirmation Dialog
-  const [deleteTargetBox, setDeleteTargetBox] =
-    useState<BoxWithRelations | null>(null);
-  const [isDeleting, setIsDeleting] = useState(false);
-
-  const requestDelete = (box: BoxWithRelations) => setDeleteTargetBox(box);
-  const closeDeleteModal = () => setDeleteTargetBox(null);
+  const requestDelete = (box: BoxWithRelations) =>
+    updateState({ deleteTargetBox: box });
+  const closeDeleteModal = () => updateState({ deleteTargetBox: null });
 
   const confirmDeleteSubBox = async (): Promise<boolean> => {
-    if (!deleteTargetBox) return false;
+    if (!modalState.deleteTargetBox) return false;
 
-    setIsDeleting(true);
-    const res = await deleteSubBoxAction(deleteTargetBox.id);
-    setIsDeleting(false);
+    updateState({ isDeleting: true });
+    const res = await deleteSubBoxAction(modalState.deleteTargetBox.id);
+    updateState({ isDeleting: false });
 
     if (res.success) {
-      toast.success(`"${deleteTargetBox.title}" silindi.`);
-      setDeleteTargetBox(null);
+      toast.success(`"${modalState.deleteTargetBox.title}" silindi.`);
+      updateState({ deleteTargetBox: null });
       return true;
     }
     toast.error(res.error ?? "Silinemedi.");
@@ -160,31 +182,30 @@ export function useBoxModals({ rootBoxes }: UseBoxModalsOptions) {
   };
 
   return {
-    // Edit Sub-Box
-    editSubBox,
+    editSubBox: modalState.editSubBox,
     openEditSubModal,
     closeEditSubModal,
     saveEditSubBox,
-    isSubSaving,
-    // Add Sub-Box
-    isAddOpen,
-    addParentId,
+    isSubSaving: modalState.isSubSaving,
+
+    isAddOpen: modalState.isAddOpen,
+    addParentId: modalState.addParentId,
     setAddParentId,
     openAddModal,
     closeAddModal,
     saveAddSubBox,
-    isAddSaving,
-    // Edit Root Box
-    editRootBox,
+    isAddSaving: modalState.isAddSaving,
+
+    editRootBox: modalState.editRootBox,
     openEditRootModal,
     closeEditRootModal,
     saveEditRootBox,
-    isRootSaving,
-    // Delete
-    deleteTargetBox,
+    isRootSaving: modalState.isRootSaving,
+
+    deleteTargetBox: modalState.deleteTargetBox,
     requestDelete,
     closeDeleteModal,
     confirmDeleteSubBox,
-    isDeleting,
+    isDeleting: modalState.isDeleting,
   };
 }

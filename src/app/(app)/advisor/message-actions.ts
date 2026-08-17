@@ -1,16 +1,16 @@
 "use server";
 
 import { eq } from "drizzle-orm";
-import { db } from "@/db";
+import { db } from "@/core/db";
 import {
   sessions,
   messages,
   type Message,
   type ChatToolCall,
-} from "@/db/schema";
+} from "@/core/db/schema";
 import { getSession } from "@/lib/session";
-import type { RagSearchResultItem } from "@/services/search/rag-search";
-import type { PipelineResultData } from "@/db/schema";
+import type { RagSearchResultItem } from "@/core/services/search/rag-search";
+import type { PipelineResultData } from "@/core/db/schema";
 import { handleActionError } from "@/lib/errors/handle-error";
 
 /**

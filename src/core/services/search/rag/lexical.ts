@@ -1,6 +1,6 @@
 import { sql, eq } from "drizzle-orm";
-import { db } from "@/db";
-import { chunks, sources, boxes } from "@/db/schema";
+import { db } from "@/core/db";
+import { chunks, sources, boxes } from "@/core/db/schema";
 
 export { buildLexicalTsQuery } from "./tsquery";
 

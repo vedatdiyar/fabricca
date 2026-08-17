@@ -1,12 +1,18 @@
 "use server";
 
-import { db } from "@/db";
-import { sources, boxes, matrices, critiques, annotations } from "@/db/schema";
+import { db } from "@/core/db";
+import {
+  sources,
+  boxes,
+  matrices,
+  critiques,
+  annotations,
+} from "@/core/db/schema";
 import { eq, sql } from "drizzle-orm";
 import { getSessionWithOnboarding } from "@/lib/session";
 import { createFlowId, Logger } from "@/lib/logger";
-import type { MatrixSourceRow } from "./types";
-import { hasMatrixCritiqueData } from "./types";
+import type { MatrixSourceRow } from "./_lib/types";
+import { hasMatrixCritiqueData } from "./_lib/types";
 
 /**
  * Server Action: Fetches all literature matrix source rows and topic boxes for the authenticated user.

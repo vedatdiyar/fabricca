@@ -1,7 +1,7 @@
 import { Logger } from "@/lib/logger";
 import { withRetry, HttpError, DEFAULT_MAX_DELAY } from "@/lib/api-utils";
 import { createRateLimiter } from "@/lib/rate-limiter";
-import { CLOUDFLARE_EMBEDDINGS_LIMITS } from "@/config/rate-limits";
+import { CLOUDFLARE_EMBEDDINGS_LIMITS } from "@/core/config/rate-limits";
 import { toAiProviderError } from "./llm-errors";
 
 const BGE_M3_MODEL = "@cf/baai/bge-m3";

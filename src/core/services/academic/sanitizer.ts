@@ -3,10 +3,10 @@ import { ThinkingLevel, HarmCategory, HarmBlockThreshold } from "@google/genai";
 import {
   generateGeminiStructuredContent,
   type JsonSchema,
-} from "@/services/ai";
+} from "@/core/services/ai";
 import { Logger } from "@/lib/logger";
 import { FLASH_LITE_35, GEMINI_SEED } from "@/lib/constants";
-import { buildSanitizePromptPayload } from "@/features/literature-review/prompts/sanitize.prompt";
+import { buildSanitizePromptPayload } from "@/app/(onboarding)/onboarding/literature-review/_prompts/sanitize.prompt";
 
 const SANITIZE_RESPONSE_SCHEMA: JsonSchema = {
   type: "object",

@@ -1,5 +1,5 @@
-import { db } from "@/db";
-import { matrices, boxes, annotations, tasks } from "@/db/schema";
+import { db } from "@/core/db";
+import { matrices, boxes, annotations, tasks } from "@/core/db/schema";
 import { eq, and } from "drizzle-orm";
 
 const READ_TOOL_NAMES = new Set([

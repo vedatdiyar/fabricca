@@ -105,14 +105,22 @@ export function MatrixPillarCard({
         {paragraphs.length > 0 ? (
           <div className="flex-1 rounded-md border border-border/40 bg-muted/10 p-4.5 font-sans text-sm leading-relaxed text-foreground min-h-[280px] space-y-3 select-text text-left">
             {paragraphs.map((p, idx) => (
-              <p key={idx} className="text-foreground/95">
+              <p
+                key={`para-${idx}-${p.slice(0, 10)}`}
+                className="text-foreground/95"
+              >
                 {p}
               </p>
             ))}
           </div>
         ) : (
           <div
+            role="button"
+            tabIndex={0}
             onClick={() => onEdit(card.key)}
+            onKeyDown={(e) =>
+              (e.key === "Enter" || e.key === " ") && onEdit(card.key)
+            }
             className="flex flex-1 cursor-pointer flex-col items-center justify-center rounded-md border border-dashed border-border/60 bg-muted/5 p-8 text-center hover:border-primary/40 hover:bg-muted/15 transition-colors min-h-[280px] space-y-2 group"
           >
             <div className="flex h-10 w-10 items-center justify-center rounded-full bg-muted/30 text-muted-foreground group-hover:text-primary transition-colors">

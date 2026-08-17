@@ -30,7 +30,10 @@ export function OutlineSkeleton() {
       {/* Section Cards Skeleton */}
       <div className="flex flex-col gap-4">
         {Array.from({ length: 4 }).map((_, sectionIdx) => (
-          <Card key={sectionIdx} className="rounded-md p-4 space-y-4">
+          <Card
+            key={`outline-sec-skel-${sectionIdx}`}
+            className="rounded-md p-4 space-y-4"
+          >
             <div className="flex items-start justify-between gap-3">
               <div className="flex items-start gap-3 flex-1">
                 <Skeleton className="size-7 shrink-0 rounded-full" />
@@ -50,7 +53,7 @@ export function OutlineSkeleton() {
               <div className="ml-4 pl-4 border-l-2 border-primary/20 space-y-3">
                 {Array.from({ length: 2 }).map((_, subIdx) => (
                   <div
-                    key={subIdx}
+                    key={`outline-sub-skel-${subIdx}`}
                     className="rounded-md border border-border/40 bg-muted/40 p-3 space-y-2"
                   >
                     <div className="flex items-center gap-2">

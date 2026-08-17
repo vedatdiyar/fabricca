@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Source, Annotation } from "@/db/schema";
+import { Source, Annotation } from "@/core/db/schema";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";

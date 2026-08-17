@@ -12,7 +12,7 @@ import {
   Database,
 } from "lucide-react";
 
-import type { Matrix } from "@/db/schema";
+import type { Matrix } from "@/core/db/schema";
 import type { ThesisMatrix } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";

@@ -1,22 +1,22 @@
 "use server";
 
 import { eq } from "drizzle-orm";
-import { db } from "@/db";
-import { positioning, matrices } from "@/db/schema";
-import type { Positioning } from "@/db/schema";
+import { db } from "@/core/db";
+import { positioning, matrices } from "@/core/db/schema";
+import type { Positioning } from "@/core/db/schema";
 import { getSession, SESSION_ERROR_MSG } from "@/lib/session";
 import { Logger } from "@/lib/logger";
 import type { ThesisMatrix } from "@/lib/types";
-import { positioningMatrixSchema } from "@/features/positioning/validation";
+import { positioningMatrixSchema } from "@/app/(onboarding)/onboarding/positioning/_services/validation";
 import {
   searchAndSiftTheses,
   type SiftedThesis,
-} from "@/features/positioning/sifting";
-import { evaluateThesesInParallel } from "@/features/positioning/per-thesis-evaluation";
-import { analyzePositioningJury } from "@/features/positioning/analysis";
-import { savePositioningReportTransaction } from "@/features/positioning/decision-engine";
-import { sanitizeAcademicDataBulk } from "@/services/academic";
-import type { JuryAnalysisResult } from "@/features/positioning/analysis";
+} from "@/app/(onboarding)/onboarding/positioning/_services/sifting";
+import { evaluateThesesInParallel } from "@/app/(onboarding)/onboarding/positioning/_services/per-thesis-evaluation";
+import { analyzePositioningJury } from "@/app/(onboarding)/onboarding/positioning/_services/analysis";
+import { savePositioningReportTransaction } from "@/app/(onboarding)/onboarding/positioning/_services/decision-engine";
+import { sanitizeAcademicDataBulk } from "@/core/services/academic";
+import type { JuryAnalysisResult } from "@/app/(onboarding)/onboarding/positioning/_services/analysis";
 
 /**
  * Runs query generation, Tezara search, and Cohere rerank; jury analysis and DB writes run separately.

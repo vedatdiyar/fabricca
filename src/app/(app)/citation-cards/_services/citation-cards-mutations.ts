@@ -1,16 +1,16 @@
 import { and, eq } from "drizzle-orm";
-import { db } from "@/db";
-import { annotations, noteTypeEnum, sources } from "@/db/schema";
+import { db } from "@/core/db";
+import { annotations, noteTypeEnum, sources } from "@/core/db/schema";
 import {
   ensureUserMatrixAndBoxes,
   getOwnedSource,
-} from "@/services/box/ownership";
+} from "@/core/services/box/ownership";
 import type { CitationCardItem } from "@/app/(app)/citation-cards/_lib/types";
 import type {
   CreateCitationCardInput,
   UpdateCitationCardInput,
 } from "@/app/(app)/citation-cards/_lib/schemas";
-import { mapAnnotationToCard } from "./citation-card-mapper";
+import { mapAnnotationToCard } from "../_lib/citation-card-mapper";
 
 /**
  * Creates a new citation card (annotation) linked to an owned source and target topic box, syncing the source's box when needed.

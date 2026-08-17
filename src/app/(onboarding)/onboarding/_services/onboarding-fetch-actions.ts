@@ -8,7 +8,7 @@ import {
   fetchBoxesWithFullShape as _fetchBoxesWithFullShape,
   fetchUncachedBoxesWithFullShape as _fetchUncachedBoxesWithFullShape,
   checkStepsDataAction as _checkStepsDataAction,
-} from "./services/fetch-actions";
+} from "./fetch-actions";
 
 export async function getCachedThesisMatrix(userId: number) {
   return _getCachedThesisMatrix(userId);

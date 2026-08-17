@@ -1,6 +1,6 @@
 import { eq } from "drizzle-orm";
-import { db } from "@/db";
-import { matrices } from "@/db/schema";
+import { db } from "@/core/db";
+import { matrices } from "@/core/db/schema";
 
 export interface LoadedMatrixData {
   id: number;

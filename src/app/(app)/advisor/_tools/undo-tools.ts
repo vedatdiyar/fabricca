@@ -1,4 +1,4 @@
-import { db } from "@/db";
+import { db } from "@/core/db";
 import {
   matrices,
   boxes,
@@ -10,7 +10,7 @@ import {
   type Annotation,
   type Task,
   type Matrix,
-} from "@/db/schema";
+} from "@/core/db/schema";
 import { eq, and } from "drizzle-orm";
 
 /**

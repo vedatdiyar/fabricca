@@ -27,7 +27,12 @@ export function SubBoxList({
   if (subBoxes.length === 0) {
     return (
       <div
+        role="button"
+        tabIndex={0}
         onClick={onAddSubBox}
+        onKeyDown={(e) =>
+          (e.key === "Enter" || e.key === " ") && onAddSubBox?.()
+        }
         className="flex flex-1 cursor-pointer flex-col items-center justify-center rounded-md border border-dashed border-border/60 bg-muted/5 p-6 text-center hover:border-primary/40 hover:bg-muted/15 transition-colors min-h-[140px] space-y-2 group"
       >
         <div className="flex h-8 w-8 items-center justify-center rounded-full bg-muted/40 text-muted-foreground group-hover:text-primary transition-colors">

@@ -85,7 +85,10 @@ export function EditMatrixColumnModal({
           </p>
           <div className="space-y-1 pl-5">
             {card.guidingQuestions.map((q, idx) => (
-              <p key={idx} className="text-xs text-muted-foreground list-item">
+              <p
+                key={`guide-${idx}-${q.slice(0, 10)}`}
+                className="text-xs text-muted-foreground list-item"
+              >
                 {q}
               </p>
             ))}
@@ -106,7 +109,6 @@ export function EditMatrixColumnModal({
             rows={14}
             className="textarea-academic flex-1 w-full rounded-md border border-primary/40 bg-background/60 p-4 font-sans text-sm leading-relaxed text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary focus-visible:border-primary resize-none"
             placeholder={card.placeholder}
-            autoFocus
           />
           <div className="flex items-center justify-between text-xs text-muted-foreground px-1">
             <span>⌘ + Enter ile hızlı kaydet</span>

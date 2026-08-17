@@ -3,7 +3,7 @@
 import React from "react";
 import { BookOpen, CheckCircle2, FileText, Layers } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
-import type { MatrixStats } from "../types";
+import type { MatrixStats } from "../_lib/types";
 
 interface LiteratureMatrixStatsProps {
   stats: MatrixStats;

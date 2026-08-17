@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Outline, Box, Annotation, Source } from "@/db/schema";
+import { Outline, Box, Annotation, Source } from "@/core/db/schema";
 import {
   Dialog,
   DialogContent,
@@ -129,7 +129,13 @@ export function ManageAnnotationLinksModal({
               return (
                 <div
                   key={annotation.id}
+                  role="button"
+                  tabIndex={0}
                   onClick={() => onToggleAnnotationLink(annotation.id)}
+                  onKeyDown={(e) =>
+                    (e.key === "Enter" || e.key === " ") &&
+                    onToggleAnnotationLink(annotation.id)
+                  }
                   className={`flex cursor-pointer items-start justify-between p-3 rounded-md border transition-all ${
                     isLinked
                       ? "border-primary bg-primary/10 ring-1 ring-primary/20"

@@ -1,6 +1,6 @@
 import { runStage1Audit } from "./stage1-audit";
 import type { PipelineResult } from "./types";
-import type { RagSearchResultItem } from "@/services/search/rag-search";
+import type { RagSearchResultItem } from "@/core/services/search/rag-search";
 import {
   formatAuditFindings,
   buildAuditHaltText,

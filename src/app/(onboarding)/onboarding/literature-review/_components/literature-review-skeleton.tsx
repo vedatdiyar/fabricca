@@ -21,7 +21,10 @@ export function LiteratureReviewSkeleton() {
 
       <div className="grid grid-cols-1 gap-4">
         {Array.from({ length: 2 }).map((_, index) => (
-          <Card key={index} className="space-y-4 rounded-md p-6">
+          <Card
+            key={`lit-rev-skel-${index}`}
+            className="space-y-4 rounded-md p-6"
+          >
             <div className="flex items-center gap-2">
               <Skeleton className="h-6 w-1.5 rounded-full bg-border/20" />
               <Skeleton className="h-7 w-56" />
@@ -32,7 +35,10 @@ export function LiteratureReviewSkeleton() {
 
             <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
               {Array.from({ length: 4 }).map((_, cardIndex) => (
-                <Card key={cardIndex} className="space-y-2 rounded-md p-4">
+                <Card
+                  key={`lit-rev-card-skel-${cardIndex}`}
+                  className="space-y-2 rounded-md p-4"
+                >
                   <div className="space-y-2">
                     <Skeleton className="h-3.5 w-4/5" />
                     <Skeleton className="h-3 w-1/3 bg-border/20" />

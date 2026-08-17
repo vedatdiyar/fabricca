@@ -1,7 +1,7 @@
-import { buildAdvisorTurnPromptPayload } from "./prompts/turn.prompt";
+import { buildAdvisorTurnPromptPayload } from "../_prompts/turn.prompt";
 import { sanitizeModelStreamText } from "@/lib/text-sanitizer";
 import { classifyAdvisorIntent } from "./classifier";
-import { runPipelineTurn } from "@/features/advisor/pipeline/orchestrator";
+import { runPipelineTurn } from "@/app/(app)/advisor/_services/pipeline/orchestrator";
 import type { AdvisorStreamWriter } from "./stream";
 import { prepareTurnContext, buildTurnChatContents } from "./turn-context";
 import { runAdvisorToolLoop } from "./tool-loop";

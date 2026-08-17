@@ -25,7 +25,7 @@ import {
 } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
-import type { MatrixFilterConfig, MatrixColumnVisibility } from "../types";
+import type { MatrixFilterConfig, MatrixColumnVisibility } from "../_lib/types";
 
 interface ColumnDef {
   key: string;

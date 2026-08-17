@@ -2,7 +2,7 @@ export const instant = false;
 
 import { redirect } from "next/navigation";
 import { getSession } from "@/lib/session";
-import { db } from "@/db";
+import { db } from "@/core/db";
 import {
   matrices,
   boxes,
@@ -11,7 +11,7 @@ import {
   sources,
   outlineAnnotations,
   outlineSources,
-} from "@/db/schema";
+} from "@/core/db/schema";
 import { eq, inArray } from "drizzle-orm";
 import { OutlineEditorView } from "../_components/outline-editor";
 import { Card } from "@/components/ui/card";

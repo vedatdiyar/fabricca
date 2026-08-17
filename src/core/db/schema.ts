@@ -23,11 +23,11 @@ import {
 import type {
   RecommendedThesisItem,
   GapAnalysisStructured,
-} from "@/features/positioning/validation";
-import type { RagSearchResultItem } from "@/services/search/rag-search";
-import type { ParsedReference } from "@/services/pdf/parsed-reference";
-import type { ChatToolCall } from "@/features/advisor/types";
-import type { PipelineResultData } from "@/features/advisor/pipeline/types";
+} from "@/app/(onboarding)/onboarding/positioning/_services/validation";
+import type { RagSearchResultItem } from "@/core/services/search/rag-search";
+import type { ParsedReference } from "@/core/services/pdf/parsed-reference";
+import type { ChatToolCall } from "@/app/(app)/advisor/_services/types";
+import type { PipelineResultData } from "@/app/(app)/advisor/_services/pipeline/types";
 
 export type {
   ParsedReference,

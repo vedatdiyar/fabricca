@@ -1,8 +1,14 @@
 "use server";
 
 import { and, eq, ne } from "drizzle-orm";
-import { db } from "@/db";
-import { matrices, positioning, boxes, sources, outlines } from "@/db/schema";
+import { db } from "@/core/db";
+import {
+  matrices,
+  positioning,
+  boxes,
+  sources,
+  outlines,
+} from "@/core/db/schema";
 import { getSession } from "@/lib/session";
 import { DatabaseError } from "@/lib/errors/app-error";
 

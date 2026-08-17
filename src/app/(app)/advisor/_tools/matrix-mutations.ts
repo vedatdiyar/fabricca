@@ -1,5 +1,5 @@
-import { db } from "@/db";
-import { matrices, type Matrix } from "@/db/schema";
+import { db } from "@/core/db";
+import { matrices, type Matrix } from "@/core/db/schema";
 import { eq } from "drizzle-orm";
 import type { MutationToolHandler, MutationToolResult } from "./mutation-types";
 

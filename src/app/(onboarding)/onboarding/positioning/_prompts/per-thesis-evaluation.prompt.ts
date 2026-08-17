@@ -2,8 +2,8 @@ import {
   buildPromptPayload,
   type PromptPayload,
 } from "@/lib/ai/prompt-builder";
-import type { PositioningMatrixInput } from "@/features/positioning/validation";
-import type { SiftedThesis } from "@/features/positioning/sifting";
+import type { PositioningMatrixInput } from "@/app/(onboarding)/onboarding/positioning/_services/validation";
+import type { SiftedThesis } from "@/app/(onboarding)/onboarding/positioning/_services/sifting";
 
 /**
  * Builds the standardized PromptPayload for batch or single-thesis strategic evaluation.

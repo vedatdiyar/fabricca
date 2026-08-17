@@ -1,5 +1,5 @@
-import { db } from "@/db";
-import { boxes, matrices, type Box } from "@/db/schema";
+import { db } from "@/core/db";
+import { boxes, matrices, type Box } from "@/core/db/schema";
 import { eq } from "drizzle-orm";
 import type { MutationToolHandler, MutationToolResult } from "./mutation-types";
 import { toNumericId } from "./mutation-types";

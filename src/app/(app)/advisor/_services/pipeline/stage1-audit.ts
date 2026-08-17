@@ -1,14 +1,14 @@
 import { eq, desc, and } from "drizzle-orm";
-import { db } from "@/db";
-import { annotations, sources } from "@/db/schema";
+import { db } from "@/core/db";
+import { annotations, sources } from "@/core/db/schema";
 import {
   performHybridRagSearch,
   type RagSearchResultItem,
-} from "@/services/search/rag-search";
+} from "@/core/services/search/rag-search";
 import { ThinkingLevel } from "@google/genai";
-import { generateGeminiStructuredContent } from "@/services/ai";
+import { generateGeminiStructuredContent } from "@/core/services/ai";
 import { FLASH_LITE_35 } from "@/lib/constants";
-import { buildStage1AuditPromptPayload } from "../prompts/stage1-audit.prompt";
+import { buildStage1AuditPromptPayload } from "../../_prompts/stage1-audit.prompt";
 import {
   auditReportJsonSchema,
   auditReportSchema,

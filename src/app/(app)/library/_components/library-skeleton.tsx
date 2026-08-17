@@ -27,14 +27,17 @@ export function LibrarySkeleton() {
 
           <div className="grid grid-cols-6 gap-1 rounded-md bg-muted p-1">
             {Array.from({ length: 6 }).map((_, index) => (
-              <Skeleton key={index} className="h-6 w-full bg-border/20" />
+              <Skeleton
+                key={`lib-tab-skel-${index}`}
+                className="h-6 w-full bg-border/20"
+              />
             ))}
           </div>
 
           <div className="min-h-0 flex-1 space-y-2 overflow-hidden">
             {Array.from({ length: 6 }).map((_, index) => (
               <div
-                key={index}
+                key={`lib-item-skel-${index}`}
                 className="space-y-2 rounded-md border border-border bg-background p-3"
               >
                 <Skeleton className="h-3.5 w-4/5" />

@@ -1,12 +1,12 @@
 "use server";
 
 import { desc, inArray } from "drizzle-orm";
-import { db } from "@/db";
-import { sources, annotations } from "@/db/schema";
+import { db } from "@/core/db";
+import { sources, annotations } from "@/core/db/schema";
 import { getSession } from "@/lib/session";
 import { createFlowId, Logger } from "@/lib/logger";
-import { ensureUserMatrixAndBoxes } from "@/services/box/ownership";
-import { mapSourceToResource } from "@/features/library/services/resource-mapper";
+import { ensureUserMatrixAndBoxes } from "@/core/services/box/ownership";
+import { mapSourceToResource } from "@/app/(app)/library/_services/resource-mapper";
 import type { NoteType } from "./_lib/types";
 
 /**

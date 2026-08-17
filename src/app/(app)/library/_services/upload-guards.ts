@@ -1,7 +1,7 @@
 import { eq } from "drizzle-orm";
-import { db } from "@/db";
-import { sources } from "@/db/schema";
-import { deletePdfFromR2 } from "@/services/storage/r2";
+import { db } from "@/core/db";
+import { sources } from "@/core/db/schema";
+import { deletePdfFromR2 } from "@/core/services/storage/r2";
 import type { Logger } from "@/lib/logger";
 import {
   findReadySourceByPdfName,

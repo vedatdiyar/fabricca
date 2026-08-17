@@ -101,7 +101,6 @@ export function AddSectionModal({
               onChange={(e) => setTitle(e.target.value)}
               placeholder="Örn: 2.1. Hegemonya ve Karşı-Hegemonya Kavramı"
               className="h-9 text-xs"
-              autoFocus
             />
           </div>
 

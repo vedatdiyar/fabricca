@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Source } from "@/db/schema";
+import { Source } from "@/core/db/schema";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";

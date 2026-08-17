@@ -51,21 +51,57 @@ function OutlineEditor({
 }: OutlineContainerProps) {
   const { proceedFromOutline } = useOutlineContinue();
 
-  const [sections, setSections] =
-    useState<OutlineSectionData[]>(initialSections);
-  const [academicField, setAcademicField] = useState<string | null>(
-    initialAcademicField,
-  );
-  const [confirming, setConfirming] = useState(false);
-  const [isRegenerating, setIsRegenerating] = useState(false);
+  const [containerState, setContainerState] = useState({
+    sections: initialSections,
+    academicField: initialAcademicField,
+    confirming: false,
+    isRegenerating: false,
+    draggedSectionIndex: null as number | null,
+    dragOverSectionIndex: null as number | null,
+  });
 
-  // Drag & drop state for main sections
-  const [draggedSectionIndex, setDraggedSectionIndex] = useState<number | null>(
-    null,
+  const {
+    sections,
+    academicField,
+    confirming,
+    isRegenerating,
+    draggedSectionIndex,
+    dragOverSectionIndex,
+  } = containerState;
+
+  const setSections = useCallback(
+    (
+      val:
+        | OutlineSectionData[]
+        | ((prev: OutlineSectionData[]) => OutlineSectionData[]),
+    ) => {
+      setContainerState((prev) => ({
+        ...prev,
+        sections: typeof val === "function" ? val(prev.sections) : val,
+      }));
+    },
+    [],
   );
-  const [dragOverSectionIndex, setDragOverSectionIndex] = useState<
-    number | null
-  >(null);
+
+  const setAcademicField = useCallback((val: string | null) => {
+    setContainerState((prev) => ({ ...prev, academicField: val }));
+  }, []);
+
+  const setConfirming = useCallback((val: boolean) => {
+    setContainerState((prev) => ({ ...prev, confirming: val }));
+  }, []);
+
+  const setIsRegenerating = useCallback((val: boolean) => {
+    setContainerState((prev) => ({ ...prev, isRegenerating: val }));
+  }, []);
+
+  const setDraggedSectionIndex = useCallback((val: number | null) => {
+    setContainerState((prev) => ({ ...prev, draggedSectionIndex: val }));
+  }, []);
+
+  const setDragOverSectionIndex = useCallback((val: number | null) => {
+    setContainerState((prev) => ({ ...prev, dragOverSectionIndex: val }));
+  }, []);
 
   // Expanded state set for main section indices
   const [expandedIndices, setExpandedIndices] = useState<Set<number>>(

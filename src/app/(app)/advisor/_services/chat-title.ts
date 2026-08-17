@@ -1,7 +1,7 @@
 import { z } from "zod";
-import { generateCerebrasStructuredContent } from "@/services/ai";
+import { generateCerebrasStructuredContent } from "@/core/services/ai";
 import { CEREBRAS_MODEL } from "@/lib/constants";
-import { buildChatTitlePromptPayload } from "./prompts/chat-title.prompt";
+import { buildChatTitlePromptPayload } from "../_prompts/chat-title.prompt";
 
 const CHAT_TITLE_ZOD_SCHEMA = z.object({
   title: z

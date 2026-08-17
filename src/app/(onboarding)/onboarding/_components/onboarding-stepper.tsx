@@ -4,7 +4,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import { Check } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { checkStepsDataAction } from "@/features/onboarding/services/fetch-actions";
+import { checkStepsDataAction } from "@/app/(onboarding)/onboarding/_services/fetch-actions";
 
 const STEPS = [
   { key: "matrix", label: "Çalışma Matrisi", route: "/onboarding/matrix" },

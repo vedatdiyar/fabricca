@@ -1,5 +1,5 @@
 import { z } from "zod";
-import type { JsonSchema } from "@/services/ai";
+import type { JsonSchema } from "@/core/services/ai";
 
 export const DocumentMetadataZodSchema = z.object({
   title: z.string(),

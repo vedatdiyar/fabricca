@@ -97,7 +97,13 @@ export function AddSubBoxModal({
                 return (
                   <div
                     key={root.id}
+                    role="button"
+                    tabIndex={0}
                     onClick={() => onParentIdChange(root.id)}
+                    onKeyDown={(e) =>
+                      (e.key === "Enter" || e.key === " ") &&
+                      onParentIdChange(root.id)
+                    }
                     className={`cursor-pointer flex items-center gap-2.5 p-2.5 rounded-md border text-xs transition-all ${
                       isSelected
                         ? "border-primary bg-primary/10 text-foreground font-semibold"
@@ -128,7 +134,6 @@ export function AddSubBoxModal({
               onChange={(e) => setTitle(e.target.value)}
               placeholder="Örn: Karşılaştırmalı Anayasa Mahkemesi Kararları Analizi"
               className="font-sans text-sm bg-background border-border rounded-md"
-              autoFocus
             />
           </div>
 

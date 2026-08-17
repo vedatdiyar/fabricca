@@ -4,11 +4,11 @@ import { useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { useQueryClient } from "@tanstack/react-query";
-import { useLoadingOverlay } from "@/providers/loading-overlay-provider";
+import { useLoadingOverlay } from "@/core/providers/loading-overlay-provider";
 import { getStepTanStackKeys } from "@/lib/onboarding-cache";
 import { clearDownstreamDbAction } from "../actions";
-import { fetchUncachedBoxesWithFullShape } from "@/features/onboarding/services/fetch-actions";
-import type { SubBoxInput } from "@/features/literature-review/literature-review-papers";
+import { fetchUncachedBoxesWithFullShape } from "@/app/(onboarding)/onboarding/_services/fetch-actions";
+import type { SubBoxInput } from "@/app/(onboarding)/onboarding/literature-review/_services/literature-review-papers";
 import { useLiteratureContinue } from "./use-literature-continue";
 
 /**

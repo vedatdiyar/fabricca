@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { getSession } from "@/lib/session";
-import { createSseStream } from "@/features/advisor/stream";
-import { runTurn } from "@/features/advisor/turn";
+import { createSseStream } from "@/app/(app)/advisor/_services/stream";
+import { runTurn } from "@/app/(app)/advisor/_services/turn";
 
 const requestSchema = z.object({
   query: z

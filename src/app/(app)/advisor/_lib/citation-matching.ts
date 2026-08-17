@@ -1,4 +1,4 @@
-import type { RagSearchResultItem } from "@/services/search/rag-search";
+import type { RagSearchResultItem } from "@/core/services/search/rag-search";
 
 /** Tailwind classes for clickable citation badges. */
 export const CITATION_BADGE_CLASS =

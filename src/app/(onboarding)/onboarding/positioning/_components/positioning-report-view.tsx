@@ -29,7 +29,7 @@ import {
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
-import type { JuryAnalysisResult } from "@/features/positioning/analysis";
+import type { JuryAnalysisResult } from "@/app/(onboarding)/onboarding/positioning/_services/analysis";
 import { PositioningMarkdownRenderer } from "./positioning-markdown-renderer";
 
 interface PositioningReportViewProps {

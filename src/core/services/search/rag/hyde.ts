@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { generateCerebrasStructuredContent } from "@/services/ai";
+import { generateCerebrasStructuredContent } from "@/core/services/ai";
 import { CEREBRAS_MODEL } from "@/lib/constants";
 import type { Logger } from "@/lib/logger";
 import { buildHyDePromptPayload } from "./prompts/hyde.prompt";

@@ -33,7 +33,10 @@ export function OnboardingStepSkeleton({
         {children ?? (
           <Card className="w-full space-y-5 rounded-md p-6">
             {Array.from({ length: 2 }).map((_, sectionIndex) => (
-              <div key={sectionIndex} className="space-y-3">
+              <div
+                key={`onboarding-step-skel-${sectionIndex}`}
+                className="space-y-3"
+              >
                 <div className="flex items-center gap-2">
                   <Skeleton className="h-5 w-5 rounded-md bg-border/20" />
                   <Skeleton className="h-4 w-48" />

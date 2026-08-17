@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Matrix } from "@/db/schema";
+import { Matrix } from "@/core/db/schema";
 import { toast } from "sonner";
 import { updateMatrixAction } from "../../../actions";
 import type { MatrixKey } from "../constants/matrix-cards";

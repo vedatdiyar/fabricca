@@ -92,7 +92,7 @@ export function SubBoxItem({
         <div className="flex flex-wrap items-center gap-1.5 pl-6 pt-0.5">
           {concepts.map((concept, cIdx) => (
             <Badge
-              key={cIdx}
+              key={`${concept}-${cIdx}`}
               variant="secondary"
               className="gap-1 border border-border/40 bg-card px-2 py-0.5 font-sans text-[10px] text-muted-foreground hover:text-foreground transition-colors"
             >

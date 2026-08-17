@@ -16,7 +16,7 @@ export function AdvisorSkeleton() {
           <div className="min-h-0 flex-1 space-y-3 overflow-hidden">
             {Array.from({ length: 6 }).map((_, index) => (
               <div
-                key={index}
+                key={`advisor-session-skel-${index}`}
                 className="space-y-2 rounded-md border border-border bg-background p-3"
               >
                 <Skeleton className="h-3.5 w-4/5" />
@@ -31,7 +31,7 @@ export function AdvisorSkeleton() {
         <div className="min-h-0 flex-1 space-y-5 px-2">
           {Array.from({ length: 2 }).map((_, index) => (
             <div
-              key={index}
+              key={`advisor-msg-skel-${index}`}
               className={`flex items-start gap-3 ${index % 2 === 1 ? "flex-row-reverse" : ""}`}
             >
               <Skeleton className="h-8 w-8 shrink-0 rounded-full bg-border/20" />

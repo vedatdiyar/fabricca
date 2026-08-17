@@ -11,7 +11,7 @@
 import {
   GEMINI_FALLBACK_CHAINS,
   GEMINI_FALLBACK_OPERATIONS,
-} from "@/config/rate-limits";
+} from "@/core/config/rate-limits";
 import { DailyQuotaExceededError } from "@/lib/rate-limiter";
 import { getGeminiKeyPool } from "./gemini-key-pool";
 import { isRateLimitError, isRpdError } from "./llm-errors";

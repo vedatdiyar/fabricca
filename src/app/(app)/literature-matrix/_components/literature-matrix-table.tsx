@@ -16,7 +16,7 @@ import type {
   MatrixColumnVisibility,
   MatrixSortField,
   MatrixSortDirection,
-} from "../types";
+} from "../_lib/types";
 
 export interface ColumnDef {
   key: string;
@@ -116,7 +116,12 @@ export function LiteratureMatrixTable({
             {/* Sticky Header for Source Title */}
             {isColVisible("title") && (
               <th
+                role="button"
+                tabIndex={0}
                 onClick={() => onSortChange("title")}
+                onKeyDown={(e) =>
+                  (e.key === "Enter" || e.key === " ") && onSortChange("title")
+                }
                 className="sticky left-0 z-20 cursor-pointer bg-muted/95 backdrop-blur-md p-3.5 min-w-[300px] max-w-[340px] transition-colors hover:text-foreground border-r border-border/60 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.3)] text-left"
               >
                 <div className="flex items-center justify-start gap-1">
@@ -128,7 +133,13 @@ export function LiteratureMatrixTable({
 
             {isColVisible("boxTitle") && (
               <th
+                role="button"
+                tabIndex={0}
                 onClick={() => onSortChange("boxTitle")}
+                onKeyDown={(e) =>
+                  (e.key === "Enter" || e.key === " ") &&
+                  onSortChange("boxTitle")
+                }
                 className="cursor-pointer p-3.5 min-w-[210px] transition-colors hover:text-foreground text-left"
               >
                 <div className="flex items-center justify-start gap-1">

@@ -1,8 +1,8 @@
 import { ThinkingLevel } from "@google/genai";
 import { FLASH_36, GEMINI_SEED } from "@/lib/constants";
-import { generateGeminiStructuredContent } from "@/services/ai";
+import { generateGeminiStructuredContent } from "@/core/services/ai";
 import type { Logger } from "@/lib/logger";
-import { buildPositioningJuryPromptPayload } from "./prompts/jury-analysis.prompt";
+import { buildPositioningJuryPromptPayload } from "../_prompts/jury-analysis.prompt";
 import type { EvaluatedThesis } from "./per-thesis-evaluation";
 import type { PositioningMatrixInput } from "./validation";
 import {

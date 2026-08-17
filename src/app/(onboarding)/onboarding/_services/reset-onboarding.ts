@@ -1,5 +1,5 @@
 import { eq } from "drizzle-orm";
-import { db } from "@/db";
+import { db } from "@/core/db";
 import {
   users,
   matrices,
@@ -8,8 +8,8 @@ import {
   boxes,
   sources,
   sessions,
-} from "@/db/schema";
-import { deletePdfFromR2 } from "@/services/storage/r2";
+} from "@/core/db/schema";
+import { deletePdfFromR2 } from "@/core/services/storage/r2";
 import type { Logger } from "@/lib/logger";
 
 /**

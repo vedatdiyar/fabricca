@@ -2,7 +2,7 @@
 
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { CitationPopoverContent } from "./citation-popover-content";
-import type { RagSearchResultItem } from "@/services/search/rag-search";
+import type { RagSearchResultItem } from "@/core/services/search/rag-search";
 
 interface AdvisorCitationDialogProps {
   isOpen: boolean;

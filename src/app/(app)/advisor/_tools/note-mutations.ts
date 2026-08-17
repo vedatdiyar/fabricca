@@ -1,5 +1,5 @@
-import { db } from "@/db";
-import { annotations, type Annotation } from "@/db/schema";
+import { db } from "@/core/db";
+import { annotations, type Annotation } from "@/core/db/schema";
 import { eq, and } from "drizzle-orm";
 import type { MutationToolHandler, MutationToolResult } from "./mutation-types";
 import { toNumericId } from "./mutation-types";

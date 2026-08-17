@@ -167,8 +167,10 @@ export function CitationCard(props: CitationCardProps) {
 
         {/* Action Buttons */}
         <div
+          role="presentation"
           className="flex items-center gap-0.5 shrink-0"
           onClick={(e) => e.stopPropagation()}
+          onKeyDown={(e) => e.stopPropagation()}
         >
           <MoveBoxDropdown
             card={card}

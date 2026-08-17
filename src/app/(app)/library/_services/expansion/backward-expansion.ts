@@ -1,5 +1,5 @@
-import { db } from "@/db";
-import { boxes, sources } from "@/db/schema";
+import { db } from "@/core/db";
+import { boxes, sources } from "@/core/db/schema";
 import { eq, inArray } from "drizzle-orm";
 import type { CandidateSource } from "./types";
 import type { Logger } from "@/lib/logger";

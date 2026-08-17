@@ -1,6 +1,6 @@
 import { OPENALEX_USER_AGENT, withRetry } from "@/lib/api-utils";
 import { createRateLimiter } from "@/lib/rate-limiter";
-import { OPENALEX_SEMANTIC_LIMITS } from "@/config/rate-limits";
+import { OPENALEX_SEMANTIC_LIMITS } from "@/core/config/rate-limits";
 import type { CandidateSource } from "./types";
 
 interface OpenAlexWorkItem {

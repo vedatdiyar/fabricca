@@ -1,12 +1,12 @@
 "use server";
 
 import { eq } from "drizzle-orm";
-import { db } from "@/db";
+import { db } from "@/core/db";
 import {
   revalidateOnboardingPaths,
   invalidateOnboardingCache,
 } from "@/lib/cache-tags";
-import { matrices } from "@/db/schema";
+import { matrices } from "@/core/db/schema";
 import { Logger, createFlowId } from "@/lib/logger";
 import { handleActionError } from "@/lib/errors/handle-error";
 import { getSession, SESSION_ERROR_MSG } from "@/lib/session";
@@ -15,7 +15,7 @@ import {
   persistLiteraturePool,
   persistRelatedTheses,
   fetchPreloadedPool,
-} from "@/features/literature-review/literature-persistence";
+} from "@/app/(onboarding)/onboarding/literature-review/_services/literature-persistence";
 
 /**
  * Persists the confirmed literature pool to the database.

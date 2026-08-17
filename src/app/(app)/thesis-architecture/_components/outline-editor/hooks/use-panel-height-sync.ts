@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Outline } from "@/db/schema";
+import { Outline } from "@/core/db/schema";
 
 interface UsePanelHeightSyncResult {
   rightPanelRef: React.RefObject<HTMLDivElement | null>;

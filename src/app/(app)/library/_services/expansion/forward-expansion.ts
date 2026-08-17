@@ -1,11 +1,11 @@
-import { db } from "@/db";
-import { boxes, matrices, sources } from "@/db/schema";
+import { db } from "@/core/db";
+import { boxes, matrices, sources } from "@/core/db/schema";
 import { eq, inArray } from "drizzle-orm";
 import type { CandidateSource } from "./types";
 import type { Logger } from "@/lib/logger";
 import { fetchOpenAlexForwardCitations } from "./openalex-expansion-client";
 import { fetchSemanticScholarRecommendations } from "./semantic-scholar-client";
-import { rerankWithCohere } from "@/services/ai/cohere";
+import { rerankWithCohere } from "@/core/services/ai/cohere";
 
 /**
  * Extended candidate representation carrying joint service presence flags.

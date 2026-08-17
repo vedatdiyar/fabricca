@@ -4,8 +4,8 @@ import { cookies } from "next/headers";
 import { eq } from "drizzle-orm";
 import { compare } from "bcrypt-ts";
 import { z } from "zod";
-import { db } from "@/db";
-import { users } from "@/db/schema";
+import { db } from "@/core/db";
+import { users } from "@/core/db/schema";
 import {
   getSessionWithOnboarding,
   SESSION_COOKIE_NAME,

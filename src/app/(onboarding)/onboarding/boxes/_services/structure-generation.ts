@@ -1,17 +1,17 @@
 "use server";
 
 import { getSession, SESSION_ERROR_MSG } from "@/lib/session";
-import { generateGeminiStructuredContent } from "@/services/ai";
+import { generateGeminiStructuredContent } from "@/core/services/ai";
 import { FLASH_LITE_31, GEMINI_SEED } from "@/lib/constants";
 import { ThinkingLevel } from "@google/genai";
 import { createFlowId, Logger } from "@/lib/logger";
-import { buildBoxStructurePromptPayload } from "./prompts/box-structure.prompt";
+import { buildBoxStructurePromptPayload } from "../_prompts/box-structure.prompt";
 import {
   boxStructureSchema,
   boxStructureJsonSchema,
   type RawBoxStructureResponse,
 } from "./schemas";
-import { fetchThesisMatrix } from "@/features/onboarding/services/fetch-actions";
+import { fetchThesisMatrix } from "@/app/(onboarding)/onboarding/_services/fetch-actions";
 
 /**
  * Phase 1: generates the 4-quadrant Turkish box structure only (no semantic queries).

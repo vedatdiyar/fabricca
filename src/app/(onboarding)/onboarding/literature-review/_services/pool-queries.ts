@@ -1,6 +1,6 @@
 import { eq } from "drizzle-orm";
-import { db } from "@/db";
-import { boxes, sources } from "@/db/schema";
+import { db } from "@/core/db";
+import { boxes, sources } from "@/core/db/schema";
 import type { LiteraturePoolEntry, JuryArticle } from "@/lib/types";
 
 /**

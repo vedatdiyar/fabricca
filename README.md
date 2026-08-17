@@ -150,68 +150,55 @@ src/
 ├── app/
 │   ├── globals.css                  # Global stiller (Tailwind v4)
 │   ├── layout.tsx                   # Root layout (font, QueryProvider, Toaster)
-│   ├── page.tsx                   # / → /login yönlendirmesi
+│   ├── page.tsx                     # / → /login yönlendirmesi
 │   ├── (auth)/                      # Kimlik doğrulama grubu
-│   │   ├── layout.tsx                # Oturum kontrolü + yönlendirme
-│   │   └── login/                    # /login — Giriş sayfası
+│   │   ├── layout.tsx               # Oturum kontrolü + yönlendirme
+│   │   └── login/                   # /login — Giriş sayfası
 │   ├── (onboarding)/                # Onboarding koruma grubu
-│   │   └── layout.tsx                # Oturum kontrolü
-│   └── (onboarding)/onboarding/      # 4 adımlı onboarding süreci
-│       ├── layout.tsx                # Adım navigasyonu (stepper)
-│       ├── actions.ts                # Ortak onboarding server action'ları
-│       ├── _components/              # Ortak onboarding bileşenleri
-│       ├── _hooks/                  # use-onboarding-navigation
-│       ├── _lib/                     # box-mapper, loading-steps
-│       ├── _services/fetch-actions.ts
-│       ├── matrix/                   # Adım 1: Çalışma Matrisi
-│       ├── positioning/              # Adım 2: Akademik Konumlandırma
-│       │   ├── _services/            # analysis, decision-engine, queries, sifting
-│       │   ├── _lib/validation.ts    # Zod şemaları
-│       │   └── _components/          # Rapor görünümü
-│       ├── boxes/                    # Adım 3: Konu Kutuları
-│       │   ├── _services/            # Gemini kutu üretimi
-│       │   └── _components/
-│       └── literature-review/        # Adım 4: Literatür Tarama
-│           ├── _services/            # orchestrator (phase1-3), openalex, clustering
-│           └── _hooks/
-│   └── (app)/                         # Giriş sonrası ana uygulama
-│       ├── layout.tsx                # Header + oturum/yönlendirme kontrolü
-│       ├── actions.ts                # Ortak uygulama server action'ları
-│       ├── _services/box-service.ts
-│       ├── dashboard/                # /dashboard — Genel Özet + Kanban
-│       ├── library/                  # /library — Kütüphane + PDF/RAG
-│       ├── advisor/                  # /advisor — Danışman Odası (RAG Chat)
-│       ├── citation-cards/           # /citation-cards — Alıntı Fişleri
-│   └── api/advisor/route.ts          # Danışman Odası streaming endpoint
+│   │   └── layout.tsx               # Oturum kontrolü
+│   ├── (onboarding)/onboarding/     # 4 adımlı onboarding süreci
+│   │   ├── layout.tsx               # Adım navigasyonu (stepper)
+│   │   ├── actions.ts               # Ortak onboarding server action'ları
+│   │   ├── _components/             # Ortak onboarding bileşenleri
+│   │   ├── _hooks/                  # Navigation & step hooks
+│   │   ├── _services/               # Onboarding fetch & step check servisleri
+│   │   ├── matrix/                  # Adım 1: Çalışma Matrisi
+│   │   ├── positioning/             # Adım 2: Akademik Konumlandırma (_services, _prompts)
+│   │   ├── boxes/                   # Adım 3: Konu Kutuları (_services, _prompts)
+│   │   └── literature-review/       # Adım 4: Literatür Tarama (_services, _prompts)
+│   └── (app)/                       # Giriş sonrası ana uygulama
+│       ├── layout.tsx               # Header + oturum/yönlendirme kontrolü
+│       ├── actions.ts               # Ortak uygulama server action'ları
+│       ├── dashboard/               # /dashboard — Genel Özet + Kanban
+│       ├── library/                 # /library — Kütüphane + PDF/RAG + Literature Expansion
+│       │   └── _services/           # PDF yükleme, RAG, expansion servisleri
+│       ├── advisor/                 # /advisor — Danışman Odası (RAG Chat)
+│       │   ├── _services/           # chat-title, classifier, stream, tool-loop, turn
+│       │   ├── _prompts/            # prompt şablonları
+│       │   └── _tools/              # advisor mutation & read araçları
+│       ├── citation-cards/          # /citation-cards — Alıntı Fişleri (_lib, _services)
+│       ├── literature-matrix/       # /literature-matrix — Matris Görünümü (_lib, _components)
+│       └── thesis-architecture/     # /thesis-architecture — Mimari Editör
+│   └── api/advisor/route.ts         # Danışman Odası streaming endpoint
 ├── components/
-│   ├── header.tsx                    # Üst/büyük navigasyon
-│   ├── ai-banner.tsx                 # Yapay zeka banner
-│   ├── error-display.tsx             # Hata görüntüleme
-│   ├── loading-spinner.tsx           # Yükleme göstergesi
-│   └── ui/                           # Shadcn UI bileşenleri
-├── providers/
-│   └── query-provider.tsx             # TanStack Query Provider
-├── db/
-│   ├── index.ts                       # Neon DB bağlantısı (WebSocket singleton)
-│   ├── schema.ts                      # 10 tablo şeması (Drizzle ORM)
-│   ├── seed.ts                        # Seed verisi (2 kullanıcı)
-│   └── reset.ts                       # DB sıfırlama
+│   ├── header.tsx                   # Üst/büyük navigasyon
+│   ├── ai-banner.tsx                # Yapay zeka banner
+│   ├── error-display.tsx            # Hata görüntüleme
+│   ├── loading-spinner.tsx          # Yükleme göstergesi
+│   ├── shared/                      # Ortak uygulama bileşenleri (literature-expansion-button vb.)
+│   └── ui/                          # Shadcn UI bileşenleri
+├── core/
+│   ├── db/                          # Neon DB bağlantısı, 10 tablo şeması, reset.ts ve seed.ts
+│   ├── config/                      # Rate limit konfigürasyonu
+│   ├── providers/                   # QueryProvider, LoadingOverlayProvider
+│   └── services/                    # Ortak çekirdek servisler (ai, search, pdf, storage, box, academic, tezara)
 ├── lib/
-│   ├── session.ts                    # Cookie tabanlı session yönetimi
-│   ├── constants.ts                  # Model sabitleri (FLASH_*, CEREBRAS, seed 42)
-│   ├── box-constants.ts             # Kutu türü sıra/etiket (single source of truth)
-│   ├── types.ts                      # Paylaşılan tipler + Zod şemaları
-│   ├── api-utils.ts                 # Polite pool e-posta, User-Agent, retry
-│   ├── cache-tags.ts                # Next.js cache tag sabitleri
-│   ├── error-utils.ts               # Hata sınıflandırma
-│   ├── logger.ts                    # Yapılandırılmış loglama sistemi
-│   ├── rate-limiter.ts              # Concurrency / rate limit yönetimi
-│   ├── academic/                    # DOI, OpenAlex ID, author formatlama
-│   ├── tezara/                      # TEZARA Meilisearch istemcisi
-│   ├── services/                    # gemini, cerebras, cohere, cloudflare-ai,
-│   │                                # r2, pdf-parser, rag, advisor-tools, sanitizer
-│   └── prompts/                     # Prompt şablonları (6 kullanım)
-└── ...
+│   ├── session.ts                   # Cookie tabanlı session yönetimi
+│   ├── constants.ts                 # Model sabitleri
+│   ├── box-constants.ts            # Kutu türü sıra/etiket
+│   ├── error-utils.ts              # Hata sınıflandırma
+│   ├── logger.ts                   # Yapılandırılmış loglama sistemi
+│   └── rate-limiter.ts             # Concurrency / rate limit yönetimi
 ```
 
 ---

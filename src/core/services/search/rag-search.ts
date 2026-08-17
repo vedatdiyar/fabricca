@@ -1,17 +1,17 @@
-import { RAG_CONFIG } from "@/services/search/rag/config";
+import { RAG_CONFIG } from "@/core/services/search/rag/config";
 import {
   searchLexical,
   type LexicalCandidate,
-} from "@/services/search/rag/lexical";
-import { prepareRagQueries } from "@/services/search/rag/query-prep";
-import { searchDense } from "@/services/search/rag/dense";
-import { fuseAndRerank } from "@/services/search/rag/fuse-and-rerank";
-import { assembleRagResults } from "@/services/search/rag/result-assembly";
+} from "@/core/services/search/rag/lexical";
+import { prepareRagQueries } from "@/core/services/search/rag/query-prep";
+import { searchDense } from "@/core/services/search/rag/dense";
+import { fuseAndRerank } from "@/core/services/search/rag/fuse-and-rerank";
+import { assembleRagResults } from "@/core/services/search/rag/result-assembly";
 import type {
   RagSearchDebug,
   RagSearchResultItem,
   RagSearchOptions,
-} from "@/services/search/rag/types";
+} from "@/core/services/search/rag/types";
 
 export type { RagSearchDebug, RagSearchResultItem, RagSearchOptions };
 

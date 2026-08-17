@@ -1,5 +1,5 @@
-import { db } from "@/db";
-import { boxes, expansions, sources, type NewSource } from "@/db/schema";
+import { db } from "@/core/db";
+import { boxes, expansions, sources, type NewSource } from "@/core/db/schema";
 import { eq } from "drizzle-orm";
 import type { CandidateSource } from "./types";
 

@@ -1,7 +1,7 @@
 import React from "react";
 import { Compass, ScanEye, Sparkles } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import type { GapAnalysisStructured } from "@/features/positioning/validation";
+import type { GapAnalysisStructured } from "@/app/(onboarding)/onboarding/positioning/_services/validation";
 
 interface PositioningMarkdownRendererProps {
   content: GapAnalysisStructured | string | unknown;

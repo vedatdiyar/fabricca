@@ -8,11 +8,11 @@ import { ChatMessageItem, PersonaBadge } from "./chat-message-item";
 import { MarkdownRenderer } from "./markdown-renderer";
 import { ToolConfirmationCard } from "./tool-confirmation-card";
 import { PipelineResultView } from "./pipeline-result-view";
-import type { AdvisorPersona } from "@/features/advisor/classifier";
+import type { AdvisorPersona } from "@/app/(app)/advisor/_services/classifier";
 import type { Message } from "../_lib/types";
 import type { PendingToolCall } from "./tool-confirmation-card";
-import type { RagSearchResultItem } from "@/services/search/rag-search";
-import type { PipelineResult } from "@/features/advisor/pipeline/types";
+import type { RagSearchResultItem } from "@/core/services/search/rag-search";
+import type { PipelineResult } from "@/app/(app)/advisor/_services/pipeline/types";
 
 interface ChatMessageListProps {
   messages: Message[];

@@ -21,7 +21,10 @@ export function DashboardSkeleton() {
       {/* 4 Metric Cards Skeleton */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {Array.from({ length: 4 }).map((_, index) => (
-          <Card key={index} className="border border-border bg-card">
+          <Card
+            key={`dash-metric-skel-${index}`}
+            className="border border-border bg-card"
+          >
             <CardContent className="flex items-center justify-between p-4.5">
               <div className="space-y-2 flex-1">
                 <Skeleton className="h-3.5 w-24 bg-border/20" />
@@ -46,7 +49,7 @@ export function DashboardSkeleton() {
         <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
           {Array.from({ length: 2 }).map((_, index) => (
             <Card
-              key={index}
+              key={`dash-box-skel-${index}`}
               className="flex h-full flex-col rounded-md border border-border bg-card"
             >
               <CardHeader className="p-5 pb-3 space-y-3">
@@ -69,7 +72,7 @@ export function DashboardSkeleton() {
                 <div className="space-y-2.5">
                   {Array.from({ length: 3 }).map((_, itemIndex) => (
                     <div
-                      key={itemIndex}
+                      key={`dash-subbox-skel-${itemIndex}`}
                       className="flex flex-col justify-between rounded-md border border-border/40 bg-background/40 p-3 space-y-2"
                     >
                       <div className="flex items-start gap-2">
@@ -102,7 +105,7 @@ export function DashboardSkeleton() {
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
           {Array.from({ length: 3 }).map((_, columnIndex) => (
             <div
-              key={columnIndex}
+              key={`dash-col-skel-${columnIndex}`}
               className="flex min-h-[360px] flex-col gap-4 rounded-md border border-border/60 bg-muted/15 p-4"
             >
               <div className="flex items-center justify-between border-b border-border/40 pb-3">
@@ -115,7 +118,7 @@ export function DashboardSkeleton() {
               <div className="flex flex-1 flex-col gap-3">
                 {Array.from({ length: 2 }).map((_, taskIndex) => (
                   <div
-                    key={taskIndex}
+                    key={`dash-task-skel-${taskIndex}`}
                     className="rounded-md border border-border/60 bg-card p-3.5 space-y-2.5"
                   >
                     <Skeleton className="h-4 w-1/3 bg-border/20 rounded" />

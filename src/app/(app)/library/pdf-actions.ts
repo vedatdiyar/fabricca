@@ -1,14 +1,14 @@
 "use server";
 
 import { eq } from "drizzle-orm";
-import { db } from "@/db";
-import { sources, chunks as chunkRows, annotations } from "@/db/schema";
+import { db } from "@/core/db";
+import { sources, chunks as chunkRows, annotations } from "@/core/db/schema";
 import { getSession } from "@/lib/session";
 import { createFlowId, Logger } from "@/lib/logger";
-import { deletePdfFromR2 } from "@/services/storage/r2";
-import { generateTempPdfUploadUrl } from "@/features/library/services/pdf-service";
-import { getOwnedSource } from "@/services/box/ownership";
-import { completePdfUploadCore } from "@/features/library/services/pdf-upload-complete";
+import { deletePdfFromR2 } from "@/core/services/storage/r2";
+import { generateTempPdfUploadUrl } from "@/app/(app)/library/_services/pdf-service";
+import { getOwnedSource } from "@/core/services/box/ownership";
+import { completePdfUploadCore } from "@/app/(app)/library/_services/pdf-upload-complete";
 import type { LibraryResourceItem } from "./_lib/types";
 
 /**

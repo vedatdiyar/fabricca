@@ -2,7 +2,7 @@
 
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { useLoadingOverlay } from "@/providers/loading-overlay-provider";
+import { useLoadingOverlay } from "@/core/providers/loading-overlay-provider";
 
 /**
  * Global onboarding loading screen rendered inside the blur overlay, using a segmented

@@ -1,7 +1,7 @@
 "use server";
 
 import { getSession } from "@/lib/session";
-import { generateChatTitle } from "@/features/advisor/chat-title";
+import { generateChatTitle } from "@/app/(app)/advisor/_services/chat-title";
 import { handleActionError } from "@/lib/errors/handle-error";
 import { renameChatSession } from "./session-actions";
 

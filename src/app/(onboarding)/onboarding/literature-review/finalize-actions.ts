@@ -1,12 +1,12 @@
 "use server";
 
 import { eq } from "drizzle-orm";
-import { db } from "@/db";
+import { db } from "@/core/db";
 import {
   revalidateOnboardingPaths,
   invalidateOnboardingCache,
 } from "@/lib/cache-tags";
-import { users } from "@/db/schema";
+import { users } from "@/core/db/schema";
 import { Logger, createFlowId } from "@/lib/logger";
 import {
   getSession,

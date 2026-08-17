@@ -38,7 +38,7 @@ export function MatrixGuidingAccordion({
         <div className="p-3 pt-1 border-t border-border/40 bg-muted/15 space-y-1.5">
           {questions.map((q, qIdx) => (
             <div
-              key={qIdx}
+              key={`question-${qIdx}-${q.slice(0, 10)}`}
               className="flex items-start gap-2 text-xs text-muted-foreground"
             >
               <span className="text-primary font-bold">•</span>

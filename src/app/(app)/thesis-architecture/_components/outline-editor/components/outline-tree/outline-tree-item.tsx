@@ -1,6 +1,6 @@
 "use client";
 
-import { Outline } from "@/db/schema";
+import { Outline } from "@/core/db/schema";
 import { Button } from "@/components/ui/button";
 import { Plus, ChevronRight, FileText, Quote } from "lucide-react";
 import { isIntroOrConclusion } from "../../utils/outline-helpers";
@@ -38,7 +38,10 @@ export function OutlineTreeItem({
 }: OutlineTreeItemProps) {
   return (
     <div
+      role="button"
+      tabIndex={0}
       onClick={onSelect}
+      onKeyDown={(e) => (e.key === "Enter" || e.key === " ") && onSelect()}
       className={`group relative flex cursor-pointer items-start justify-between rounded-md border p-3 transition-all ${
         isSelected
           ? "border-primary bg-primary/10 text-foreground font-semibold ring-1 ring-primary/20"

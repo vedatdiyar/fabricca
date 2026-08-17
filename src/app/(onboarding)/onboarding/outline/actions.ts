@@ -2,12 +2,12 @@
 
 import { eq } from "drizzle-orm";
 import { z } from "zod";
-import { db } from "@/db";
-import { matrices, outlines } from "@/db/schema";
+import { db } from "@/core/db";
+import { matrices, outlines } from "@/core/db/schema";
 import { getSession, SESSION_ERROR_MSG } from "@/lib/session";
 import { createFlowId, Logger } from "@/lib/logger";
 import { invalidateOnboardingStepCache } from "@/lib/cache-tags";
-import { generateOutlineAction } from "@/features/outline/generator";
+import { generateOutlineAction } from "@/app/(onboarding)/onboarding/outline/_services/generator";
 
 const sectionInputSchema = z.object({
   title: z.string().min(1, "Bölüm başlığı boş olamaz."),

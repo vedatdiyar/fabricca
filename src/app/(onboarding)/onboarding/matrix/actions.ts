@@ -2,8 +2,14 @@
 
 import { eq, inArray, sql } from "drizzle-orm";
 import { z } from "zod";
-import { db } from "@/db";
-import { matrices, positioning, boxes, sources, outlines } from "@/db/schema";
+import { db } from "@/core/db";
+import {
+  matrices,
+  positioning,
+  boxes,
+  sources,
+  outlines,
+} from "@/core/db/schema";
 import { getSession, SESSION_ERROR_MSG } from "@/lib/session";
 import { createFlowId, Logger } from "@/lib/logger";
 import {

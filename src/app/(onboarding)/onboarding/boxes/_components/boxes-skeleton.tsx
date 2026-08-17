@@ -21,7 +21,10 @@ export function BoxesSkeleton() {
 
       <div className="grid auto-rows-min grid-cols-1 gap-4">
         {Array.from({ length: 2 }).map((_, index) => (
-          <Card key={index} className="h-full space-y-4 rounded-md p-6">
+          <Card
+            key={`box-card-skel-${index}`}
+            className="h-full space-y-4 rounded-md p-6"
+          >
             <div className="flex items-center gap-2">
               <Skeleton className="h-3 w-12 bg-border/20" />
               <Skeleton className="ml-auto h-6 w-24 rounded-md bg-border/20" />
@@ -38,7 +41,7 @@ export function BoxesSkeleton() {
               <div className="flex flex-wrap gap-2">
                 {Array.from({ length: 3 }).map((_, conceptIndex) => (
                   <Skeleton
-                    key={conceptIndex}
+                    key={`box-concept-skel-${conceptIndex}`}
                     className="h-6 w-20 rounded-md bg-border/20"
                   />
                 ))}
@@ -48,7 +51,7 @@ export function BoxesSkeleton() {
               <Skeleton className="h-3 w-24 bg-border/20" />
               <div className="relative ml-3 space-y-3 border-l border-border/40 pl-4">
                 {Array.from({ length: 2 }).map((_, subIndex) => (
-                  <div key={subIndex} className="space-y-2">
+                  <div key={`box-sub-skel-${subIndex}`} className="space-y-2">
                     <Skeleton className="h-3.5 w-2/3" />
                     <Skeleton className="h-3 w-1/2 bg-border/20" />
                   </div>

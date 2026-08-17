@@ -4,8 +4,8 @@ import { useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { useQueryClient } from "@tanstack/react-query";
-import { useLoadingOverlay } from "@/providers/loading-overlay-provider";
-import { LITERATURE_PIPELINE_STEPS } from "@/features/onboarding/loading-steps";
+import { useLoadingOverlay } from "@/core/providers/loading-overlay-provider";
+import { LITERATURE_PIPELINE_STEPS } from "@/app/(onboarding)/onboarding/_services/loading-steps";
 import type { LiteraturePoolEntry } from "@/lib/types";
 import { getStepTanStackKeys } from "@/lib/onboarding-cache";
 import { clearDownstreamDbAction } from "../actions";
@@ -15,7 +15,7 @@ import {
   finalizeOnboardingAction,
   setLiteratureCancelledAction,
 } from "../literature-review/actions";
-import type { SubBoxInput } from "@/features/literature-review/literature-review-papers";
+import type { SubBoxInput } from "@/app/(onboarding)/onboarding/literature-review/_services/literature-review-papers";
 import { useLoadingOverlaySteps } from "./use-loading-overlay-steps";
 
 /**

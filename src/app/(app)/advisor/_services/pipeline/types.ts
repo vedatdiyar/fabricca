@@ -1,5 +1,5 @@
 import { z } from "zod";
-import type { JsonSchema } from "@/services/ai";
+import type { JsonSchema } from "@/core/services/ai";
 
 /** Pipeline stage identifiers emitted over the advisor SSE stream (Heavy Flow runs Stage 1 Audit only). */
 export type PipelineStage = "audit";

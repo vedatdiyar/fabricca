@@ -1,6 +1,6 @@
 import { ThinkingLevel } from "@google/genai";
 import type { Logger } from "@/lib/logger";
-import { generateGeminiStructuredContent } from "@/services/ai";
+import { generateGeminiStructuredContent } from "@/core/services/ai";
 import { GEMINI_SEED, FLASH_LITE_35 } from "@/lib/constants";
 import {
   buildPdfParserPromptPayload,

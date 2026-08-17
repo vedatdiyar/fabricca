@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import type { Box } from "@/db/schema";
+import type { Box } from "@/core/db/schema";
 
 interface TaskFormModalProps {
   mode: "add" | "edit";
@@ -128,7 +128,6 @@ export function TaskFormModal({
               placeholder="Örn: Metodoloji bölümü taslağını oluştur"
               className="h-9 font-sans text-sm rounded-md border-border bg-background"
               aria-label="Görev Başlığı"
-              autoFocus
             />
           </div>
 

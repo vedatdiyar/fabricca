@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Outline } from "@/db/schema";
+import { Outline } from "@/core/db/schema";
 import {
   createOutlineSectionAction,
   updateOutlineSectionAction,
@@ -85,6 +85,20 @@ interface UseOutlineCrudResult {
  * @param root0.applySourceLinkOverride - Applies/rolls back an optimistic source-link change.
  * @returns Modal states, open/close handlers and server action triggers.
  */
+interface OutlineModalState {
+  isAddOpen: boolean;
+  addParentId: number | null;
+  isAddSaving: boolean;
+  isEditOpen: boolean;
+  outlineToEdit: Outline | null;
+  isEditSaving: boolean;
+  isDeleteOpen: boolean;
+  outlineToDelete: Outline | null;
+  isDeleting: boolean;
+  isAnnotationLinkModalOpen: boolean;
+  isSourceLinkModalOpen: boolean;
+}
+
 export function useOutlineCrud({
   outlinesList,
   rootOutlines,
@@ -96,34 +110,28 @@ export function useOutlineCrud({
   localLinkedSourcesMap,
   applySourceLinkOverride,
 }: UseOutlineCrudOptions): UseOutlineCrudResult {
-  // Add new section modal state
-  const [isAddOpen, setIsAddOpen] = useState(false);
-  const [addParentId, setAddParentId] = useState<number | null>(null);
-  const [isAddSaving, setIsAddSaving] = useState(false);
+  const [modalState, setModalState] = useState<OutlineModalState>({
+    isAddOpen: false,
+    addParentId: null,
+    isAddSaving: false,
+    isEditOpen: false,
+    outlineToEdit: null,
+    isEditSaving: false,
+    isDeleteOpen: false,
+    outlineToDelete: null,
+    isDeleting: false,
+    isAnnotationLinkModalOpen: false,
+    isSourceLinkModalOpen: false,
+  });
 
-  // Edit section modal state
-  const [isEditOpen, setIsEditOpen] = useState(false);
-  const [outlineToEdit, setOutlineToEdit] = useState<Outline | null>(null);
-  const [isEditSaving, setIsEditSaving] = useState(false);
-
-  // Delete confirmation modal state
-  const [isDeleteOpen, setIsDeleteOpen] = useState(false);
-  const [outlineToDelete, setOutlineToDelete] = useState<Outline | null>(null);
-  const [isDeleting, setIsDeleting] = useState(false);
-
-  // Annotation (citation card) linkage modal state
-  const [isAnnotationLinkModalOpen, setIsAnnotationLinkModalOpen] =
-    useState(false);
-
-  // Source linkage modal state
-  const [isSourceLinkModalOpen, setIsSourceLinkModalOpen] = useState(false);
+  const updateModalState = (patch: Partial<OutlineModalState>) =>
+    setModalState((prev) => ({ ...prev, ...patch }));
 
   const openAddModal = (parentId: number | null = null) => {
-    setAddParentId(parentId);
-    setIsAddOpen(true);
+    updateModalState({ addParentId: parentId, isAddOpen: true });
   };
 
-  const closeAddModal = () => setIsAddOpen(false);
+  const closeAddModal = () => updateModalState({ isAddOpen: false });
 
   const createSection = async ({ title, description }: CreateSectionInput) => {
     if (!title.trim()) {
@@ -131,96 +139,95 @@ export function useOutlineCrud({
       return;
     }
 
-    setIsAddSaving(true);
-    const siblings = addParentId
-      ? outlinesList.filter((o) => o.parentId === addParentId)
+    updateModalState({ isAddSaving: true });
+    const siblings = modalState.addParentId
+      ? outlinesList.filter((o) => o.parentId === modalState.addParentId)
       : rootOutlines;
     const nextSortOrder = siblings.length + 1;
 
     const res = await createOutlineSectionAction({
       title: title.trim(),
       description: description.trim() || undefined,
-      parentId: addParentId,
+      parentId: modalState.addParentId,
       sortOrder: nextSortOrder,
     });
 
-    setIsAddSaving(false);
+    updateModalState({ isAddSaving: false });
     if (res.success) {
       toast.success("Bölüm başarıyla eklendi.");
-      setIsAddOpen(false);
+      updateModalState({ isAddOpen: false });
     } else {
       toast.error(res.error ?? "Bölüm eklenirken bir hata oluştu.");
     }
   };
 
   const openEditModal = (outline: Outline) => {
-    setOutlineToEdit(outline);
-    setIsEditOpen(true);
+    updateModalState({ outlineToEdit: outline, isEditOpen: true });
   };
 
-  const closeEditModal = () => setIsEditOpen(false);
+  const closeEditModal = () => updateModalState({ isEditOpen: false });
 
   const updateSection = async ({
     title,
     description,
     sortOrder,
   }: UpdateSectionInput) => {
-    if (!outlineToEdit) return;
+    if (!modalState.outlineToEdit) return;
     if (!title.trim()) {
       toast.error("Bölüm başlığı boş bırakılamaz.");
       return;
     }
 
-    setIsEditSaving(true);
+    updateModalState({ isEditSaving: true });
     const res = await updateOutlineSectionAction({
-      id: outlineToEdit.id,
+      id: modalState.outlineToEdit.id,
       title: title.trim(),
       description: description.trim() || undefined,
       sortOrder,
     });
 
-    setIsEditSaving(false);
+    updateModalState({ isEditSaving: false });
     if (res.success) {
       toast.success("Bölüm güncellendi.");
-      setIsEditOpen(false);
+      updateModalState({ isEditOpen: false });
     } else {
       toast.error(res.error ?? "Güncelleme sırasında bir hata oluştu.");
     }
   };
 
   const promptDelete = (outline: Outline) => {
-    setOutlineToDelete(outline);
-    setIsDeleteOpen(true);
+    updateModalState({ outlineToDelete: outline, isDeleteOpen: true });
   };
 
-  const closeDeleteModal = () => setIsDeleteOpen(false);
+  const closeDeleteModal = () => updateModalState({ isDeleteOpen: false });
 
   const confirmDelete = async () => {
-    if (!outlineToDelete) return;
-    setIsDeleting(true);
+    if (!modalState.outlineToDelete) return;
+    updateModalState({ isDeleting: true });
 
-    const res = await deleteOutlineSectionAction(outlineToDelete.id);
-    setIsDeleting(false);
+    const targetId = modalState.outlineToDelete.id;
+    const res = await deleteOutlineSectionAction(targetId);
+    updateModalState({ isDeleting: false });
 
     if (res.success) {
       toast.success("Bölüm silindi.");
-      setIsDeleteOpen(false);
-      if (selectedOutlineId === outlineToDelete.id) {
+      updateModalState({ isDeleteOpen: false, outlineToDelete: null });
+      if (selectedOutlineId === targetId) {
         const remaining = outlinesList.filter(
-          (o) =>
-            o.id !== outlineToDelete.id && o.parentId !== outlineToDelete.id,
+          (o) => o.id !== targetId && o.parentId !== targetId,
         );
         setSelectedOutlineId(remaining.length > 0 ? remaining[0].id : null);
       }
-      setOutlineToDelete(null);
     } else {
       toast.error(res.error ?? "Bölüm silinirken bir hata oluştu.");
     }
   };
 
-  const openAnnotationLinkModal = () => setIsAnnotationLinkModalOpen(true);
+  const openAnnotationLinkModal = () =>
+    updateModalState({ isAnnotationLinkModalOpen: true });
 
-  const closeAnnotationLinkModal = () => setIsAnnotationLinkModalOpen(false);
+  const closeAnnotationLinkModal = () =>
+    updateModalState({ isAnnotationLinkModalOpen: false });
 
   const toggleAnnotationLink = async (annotationId: number) => {
     if (!selectedOutline) return;
@@ -254,9 +261,11 @@ export function useOutlineCrud({
     }
   };
 
-  const openSourceLinkModal = () => setIsSourceLinkModalOpen(true);
+  const openSourceLinkModal = () =>
+    updateModalState({ isSourceLinkModalOpen: true });
 
-  const closeSourceLinkModal = () => setIsSourceLinkModalOpen(false);
+  const closeSourceLinkModal = () =>
+    updateModalState({ isSourceLinkModalOpen: false });
 
   const toggleSourceLink = async (sourceId: number) => {
     if (!selectedOutline) return;
@@ -288,29 +297,29 @@ export function useOutlineCrud({
   };
 
   return {
-    isAddOpen,
-    addParentId,
-    isAddSaving,
+    isAddOpen: modalState.isAddOpen,
+    addParentId: modalState.addParentId,
+    isAddSaving: modalState.isAddSaving,
     openAddModal,
     closeAddModal,
     createSection,
-    isEditOpen,
-    outlineToEdit,
-    isEditSaving,
+    isEditOpen: modalState.isEditOpen,
+    outlineToEdit: modalState.outlineToEdit,
+    isEditSaving: modalState.isEditSaving,
     openEditModal,
     closeEditModal,
     updateSection,
-    isDeleteOpen,
-    outlineToDelete,
-    isDeleting,
+    isDeleteOpen: modalState.isDeleteOpen,
+    outlineToDelete: modalState.outlineToDelete,
+    isDeleting: modalState.isDeleting,
     promptDelete,
     closeDeleteModal,
     confirmDelete,
-    isAnnotationLinkModalOpen,
+    isAnnotationLinkModalOpen: modalState.isAnnotationLinkModalOpen,
     openAnnotationLinkModal,
     closeAnnotationLinkModal,
     toggleAnnotationLink,
-    isSourceLinkModalOpen,
+    isSourceLinkModalOpen: modalState.isSourceLinkModalOpen,
     openSourceLinkModal,
     closeSourceLinkModal,
     toggleSourceLink,

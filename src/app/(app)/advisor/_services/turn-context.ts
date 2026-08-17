@@ -1,8 +1,8 @@
-import { formatRagSourceContext } from "@/features/advisor/pipeline/context";
+import { formatRagSourceContext } from "@/app/(app)/advisor/_services/pipeline/context";
 import {
   performHybridRagSearch,
   type RagSearchResultItem,
-} from "@/services/search/rag-search";
+} from "@/core/services/search/rag-search";
 
 export interface TurnContextResult {
   sources: RagSearchResultItem[];

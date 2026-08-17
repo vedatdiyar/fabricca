@@ -1,6 +1,6 @@
 "use client";
 
-import { Matrix } from "@/db/schema";
+import { Matrix } from "@/core/db/schema";
 import { MATRIX_CARDS } from "./constants/matrix-cards";
 import { useMatrixValues } from "./hooks/use-matrix-values";
 import { useMatrixStats } from "./hooks/use-matrix-stats";

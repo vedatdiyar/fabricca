@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo } from "react";
-import { Outline, Annotation, Source } from "@/db/schema";
+import { Outline, Annotation, Source } from "@/core/db/schema";
 import {
   filterRootOutlinesByQuery,
   filterSourcesByQuery,

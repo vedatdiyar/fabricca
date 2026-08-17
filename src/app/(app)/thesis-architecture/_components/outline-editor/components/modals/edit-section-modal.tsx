@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Outline } from "@/db/schema";
+import { Outline } from "@/core/db/schema";
 import {
   Dialog,
   DialogContent,

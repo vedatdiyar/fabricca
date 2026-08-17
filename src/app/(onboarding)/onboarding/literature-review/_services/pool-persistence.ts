@@ -1,9 +1,9 @@
 import { eq } from "drizzle-orm";
-import { db } from "@/db";
-import { sources } from "@/db/schema";
+import { db } from "@/core/db";
+import { sources } from "@/core/db/schema";
 import { normalizeTitle } from "@/lib/academic/utils";
 import type { LiteraturePoolEntry, JuryArticle } from "@/lib/types";
-import type { NewSource } from "@/db/schema";
+import type { NewSource } from "@/core/db/schema";
 
 export type TxClient = Parameters<Parameters<typeof db.transaction>[0]>[0];
 

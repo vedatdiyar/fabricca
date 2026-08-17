@@ -1,6 +1,6 @@
 "use client";
 
-import { Outline } from "@/db/schema";
+import { Outline } from "@/core/db/schema";
 import {
   Dialog,
   DialogContent,

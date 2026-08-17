@@ -1,3 +1,5 @@
+"use client";
+
 import { useCallback, useState } from "react";
 import type { Dispatch, FormEvent, KeyboardEvent, SetStateAction } from "react";
 

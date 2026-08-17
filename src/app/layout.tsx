@@ -7,7 +7,7 @@ import {
 } from "next/font/google";
 import "./globals.css";
 
-import QueryProvider from "@/providers/query-provider";
+import QueryProvider from "@/core/providers/query-provider";
 import { Toaster } from "@/components/ui/sonner";
 
 const fontSans = Space_Grotesk({

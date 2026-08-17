@@ -1,6 +1,6 @@
 "use client";
 
-import { Annotation, Source } from "@/db/schema";
+import { Annotation, Source } from "@/core/db/schema";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { BookOpen, Quote, Sparkles, Bookmark } from "lucide-react";

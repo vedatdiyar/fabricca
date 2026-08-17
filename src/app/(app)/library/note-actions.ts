@@ -2,11 +2,11 @@
 
 import { eq, and } from "drizzle-orm";
 import { z } from "zod";
-import { db } from "@/db";
-import { annotations } from "@/db/schema";
+import { db } from "@/core/db";
+import { annotations } from "@/core/db/schema";
 import { getSession } from "@/lib/session";
 import { createFlowId, Logger } from "@/lib/logger";
-import { getOwnedSource } from "@/services/box/ownership";
+import { getOwnedSource } from "@/core/services/box/ownership";
 import type { NoteType } from "./_lib/types";
 
 /** Note type validation enum matching annotations.noteTypeEnum. */

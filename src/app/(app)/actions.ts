@@ -3,14 +3,14 @@
 import { redirect } from "next/navigation";
 import { eq } from "drizzle-orm";
 import { createFlowId, Logger } from "@/lib/logger";
-import { db } from "@/db";
-import { users } from "@/db/schema";
+import { db } from "@/core/db";
+import { users } from "@/core/db/schema";
 import {
   getSession,
   writeSessionCookie,
   clearSessionCookie,
 } from "@/lib/session";
-import { resetUserOnboardingData } from "@/features/onboarding/services/reset-onboarding";
+import { resetUserOnboardingData } from "@/app/(onboarding)/onboarding/_services/reset-onboarding";
 import {
   revalidateOnboardingPaths,
   invalidateOnboardingCache,

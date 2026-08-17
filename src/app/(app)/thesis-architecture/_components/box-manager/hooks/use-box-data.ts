@@ -1,5 +1,7 @@
+"use client";
+
 import { useMemo } from "react";
-import type { Box } from "@/db/schema";
+import type { Box } from "@/core/db/schema";
 import { compareBoxTypes } from "@/lib/box-constants";
 import type { BoxWithRelations } from "../constants/quadrant-config";
 

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import type { Box } from "@/db/schema";
+import type { Box } from "@/core/db/schema";
 import type { BoxWithRelations } from "./constants/quadrant-config";
 import { useBoxData } from "./hooks/use-box-data";
 import { useBoxModals } from "./hooks/use-box-modals";

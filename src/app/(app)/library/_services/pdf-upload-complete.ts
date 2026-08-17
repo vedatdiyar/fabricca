@@ -1,6 +1,6 @@
 import { eq } from "drizzle-orm";
-import { db } from "@/db";
-import { sources } from "@/db/schema";
+import { db } from "@/core/db";
+import { sources } from "@/core/db/schema";
 import { getSession } from "@/lib/session";
 import { createFlowId, Logger } from "@/lib/logger";
 import { formatApaPdfFileName } from "@/lib/academic/utils";

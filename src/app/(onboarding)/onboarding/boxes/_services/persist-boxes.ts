@@ -2,14 +2,14 @@
 
 import { and, eq, ne } from "drizzle-orm";
 import { z } from "zod";
-import { db } from "@/db";
-import { boxes as boxRows } from "@/db/schema";
+import { db } from "@/core/db";
+import { boxes as boxRows } from "@/core/db/schema";
 import { getSession, SESSION_ERROR_MSG } from "@/lib/session";
 import { createFlowId, Logger } from "@/lib/logger";
 import { updateTag } from "next/cache";
 import { CACHE_TAGS, revalidateOnboardingPaths } from "@/lib/cache-tags";
 import { type OnboardingActionResult } from "@/lib/types";
-import { fetchThesisMatrix } from "@/features/onboarding/services/fetch-actions";
+import { fetchThesisMatrix } from "@/app/(onboarding)/onboarding/_services/fetch-actions";
 
 const confirmBoxSchema: z.ZodType<{
   title: string;

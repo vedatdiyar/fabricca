@@ -2,16 +2,16 @@
 
 import { createFlowId, Logger } from "@/lib/logger";
 import { type GeminiThesisBox } from "@/lib/types";
-import { mapToProductionShape } from "@/features/boxes/box-mapper";
-import { runBoxStructureAction as runBoxStructureActionImpl } from "@/features/boxes/structure-generation";
+import { mapToProductionShape } from "@/app/(onboarding)/onboarding/boxes/_services/box-mapper";
+import { runBoxStructureAction as runBoxStructureActionImpl } from "@/app/(onboarding)/onboarding/boxes/_services/structure-generation";
 import {
   generateSemanticQueriesAction as generateSemanticQueriesActionImpl,
   structureToQuadrants,
-} from "@/features/boxes/semantic-queries";
+} from "@/app/(onboarding)/onboarding/boxes/_services/semantic-queries";
 import {
   persistBoxesAction as persistBoxesActionImpl,
   confirmBoxesAction as confirmBoxesActionImpl,
-} from "@/features/boxes/persist-boxes";
+} from "@/app/(onboarding)/onboarding/boxes/_services/persist-boxes";
 
 /**
  * Re-exported service actions preserved for backward compatibility.

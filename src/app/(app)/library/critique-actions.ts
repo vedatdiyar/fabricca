@@ -1,11 +1,11 @@
 "use server";
 
 import { z } from "zod";
-import { db } from "@/db";
-import { critiques } from "@/db/schema";
+import { db } from "@/core/db";
+import { critiques } from "@/core/db/schema";
 import { getSession } from "@/lib/session";
 import { createFlowId, Logger } from "@/lib/logger";
-import { getOwnedSource } from "@/services/box/ownership";
+import { getOwnedSource } from "@/core/services/box/ownership";
 
 /** Validation schema for saving the 1:1 article analysis of a library source. */
 const saveResourceCritiqueSchema = z.object({

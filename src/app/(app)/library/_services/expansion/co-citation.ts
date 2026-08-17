@@ -1,4 +1,4 @@
-import type { ParsedReference } from "@/services/pdf/parsed-reference";
+import type { ParsedReference } from "@/core/services/pdf/parsed-reference";
 import type { CandidateSource } from "./types";
 import { normKey } from "./fuzzy-dedup";
 

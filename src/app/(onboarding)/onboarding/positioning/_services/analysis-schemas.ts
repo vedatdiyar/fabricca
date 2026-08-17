@@ -1,5 +1,5 @@
 import { z } from "zod";
-import type { JsonSchema } from "@/services/ai";
+import type { JsonSchema } from "@/core/services/ai";
 import { gapAnalysisStructuredSchema, strategicRoleEnum } from "./validation";
 
 /** Zod schema for an individual recommended guiding thesis. */

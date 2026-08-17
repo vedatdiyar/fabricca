@@ -2,7 +2,7 @@
 
 import type { Logger } from "@/lib/logger";
 import { createRateLimiter } from "@/lib/rate-limiter";
-import { CEREBRAS_LIMITS } from "@/config/rate-limits";
+import { CEREBRAS_LIMITS } from "@/core/config/rate-limits";
 import { CEREBRAS_SEED } from "@/lib/constants";
 import { HttpError, withRetry, DEFAULT_MAX_DELAY } from "../llm-retry";
 import { validateStructuredOutput } from "../llm-json";

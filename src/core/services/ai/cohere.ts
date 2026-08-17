@@ -1,7 +1,7 @@
 import { Logger } from "@/lib/logger";
 import { HttpError, withRetry, DEFAULT_MAX_DELAY } from "@/lib/api-utils";
 import { createRateLimiter } from "@/lib/rate-limiter";
-import { COHERE_LIMITS } from "@/config/rate-limits";
+import { COHERE_LIMITS } from "@/core/config/rate-limits";
 import { toAiProviderError } from "./llm-errors";
 
 /** Multilingual (incl. Turkish) Cohere Rerank model ID — 32,768-token context. */

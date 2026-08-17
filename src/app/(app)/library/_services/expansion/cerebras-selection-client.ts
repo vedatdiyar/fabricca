@@ -16,7 +16,7 @@ import { CEREBRAS_MODEL } from "@/lib/constants";
 import {
   generateCerebrasStructuredContent,
   type JsonSchema,
-} from "@/services/ai";
+} from "@/core/services/ai";
 import { buildPromptPayload } from "@/lib/ai/prompt-builder";
 import type { CandidateSource } from "./types";
 

@@ -7,14 +7,14 @@ import {
 import { Logger, createFlowId } from "@/lib/logger";
 import { getSession, SESSION_ERROR_MSG } from "@/lib/session";
 import type { LiteraturePoolEntry } from "@/lib/types";
-import type { SubBoxInput } from "@/features/literature-review/literature-review-papers";
-import { orchestrateBatchProcess } from "@/features/literature-review/batch-orchestrator";
+import type { SubBoxInput } from "@/app/(onboarding)/onboarding/literature-review/_services/literature-review-papers";
+import { orchestrateBatchProcess } from "@/app/(onboarding)/onboarding/literature-review/_services/batch-orchestrator";
 import {
   persistLiteraturePool,
   persistSubBoxEntry,
   persistRelatedTheses,
-} from "@/features/literature-review/literature-persistence";
-import { loadThesisMatrixAndBoxes } from "@/features/literature-review/process-boxes-data";
+} from "@/app/(onboarding)/onboarding/literature-review/_services/literature-persistence";
+import { loadThesisMatrixAndBoxes } from "@/app/(onboarding)/onboarding/literature-review/_services/process-boxes-data";
 import { isLiteratureCancelled } from "./cancel-state";
 import { resetLiteratureCancelledAction } from "./cancel-actions";
 

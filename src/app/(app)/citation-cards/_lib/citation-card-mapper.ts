@@ -1,4 +1,4 @@
-import type { Annotation, Box, Source } from "@/db/schema";
+import type { Annotation, Box, Source } from "@/core/db/schema";
 import { type ThesisBoxType } from "@/lib/box-constants";
 import { formatResourceAuthors } from "@/lib/academic/author-formatter";
 import type {

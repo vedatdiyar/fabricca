@@ -1,7 +1,7 @@
 import { eq } from "drizzle-orm";
 import { cacheLife, cacheTag } from "next/cache";
-import { db } from "@/db";
-import { matrices } from "@/db/schema";
+import { db } from "@/core/db";
+import { matrices } from "@/core/db/schema";
 import { getSession } from "@/lib/session";
 import { CACHE_TAGS } from "@/lib/cache-tags";
 import { DatabaseError } from "@/lib/errors/app-error";

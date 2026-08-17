@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Matrix, Box, Outline, Annotation, Source } from "@/db/schema";
+import { Matrix, Box, Outline, Annotation, Source } from "@/core/db/schema";
 import { MatrixEditorView } from "./matrix-editor";
 import { BoxManagerView } from "./box-manager";
 import { OutlineEditorView } from "./outline-editor";

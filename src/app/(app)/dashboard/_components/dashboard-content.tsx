@@ -2,7 +2,7 @@
 
 import { useMemo } from "react";
 import { FolderKanban, BookOpen, CheckSquare, Sparkles } from "lucide-react";
-import type { Box, Source } from "@/db/schema";
+import type { Box, Source } from "@/core/db/schema";
 import type { TaskRow } from "../_lib/schemas";
 import { Card, CardContent } from "@/components/ui/card";
 import { BoxCard } from "./box-card";

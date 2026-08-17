@@ -46,13 +46,7 @@ export interface CitationCardFormProps {
   onClose: () => void;
 }
 
-/**
- * Form handling inputs and state for card creation/editing.
- *
- * @param props - Form props.
- * @returns Form markup.
- */
-export function CitationCardForm(props: CitationCardFormProps) {
+function useCitationCardFormLogic(props: CitationCardFormProps) {
   const { cardToEdit, sources, boxes, onSave, onClose } = props;
   const isEditing = Boolean(cardToEdit);
 
@@ -89,44 +83,37 @@ export function CitationCardForm(props: CitationCardFormProps) {
     (b) => b.id === Number(formFields.selectedBoxId),
   );
 
-  /**
-   * Handles form submission and triggers onSave callback with filled data.
-   *
-   * @param e - Form submit event.
-   */
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
 
     if (!formFields.content.trim()) {
-      toast.error("Lütfen alıntı veya not içeriğini doldurun.");
+      toast.error("Fiş içeriği boş olamaz.");
       return;
     }
 
-    const sourceObj = selectedSourceObj || sources[0];
-    const boxObj = selectedBoxObj || boxes[0];
-
-    if (!sourceObj) {
-      toast.error(
-        "Lütfen önce Kütüphane sayfasından bir akademik kaynak ekleyin.",
-      );
+    if (!formFields.selectedSourceId) {
+      toast.error("Lütfen bağlı akademik kaynağı seçin.");
       return;
     }
 
-    if (!boxObj) {
-      toast.error("Lütfen geçerli bir konu kutusu seçin.");
+    if (!formFields.selectedBoxId) {
+      toast.error("Lütfen bağlı konu kutusunu seçin.");
       return;
     }
+
+    const formattedPage = formatPageNumber(formFields.pageNumber);
 
     onSave({
-      id: cardToEdit ? cardToEdit.id : undefined,
-      sourceId: sourceObj.id,
-      sourceTitle: sourceObj.title,
-      sourceAuthors: sourceObj.authors,
-      sourceYear: sourceObj.publicationYear,
-      boxId: boxObj.id,
-      boxType: boxObj.boxType,
-      boxTitle: boxObj.title,
-      pageNumber: formatPageNumber(formFields.pageNumber),
+      id: cardToEdit?.id,
+      sourceId: Number(formFields.selectedSourceId),
+      sourceTitle: selectedSourceObj?.title ?? "",
+      sourceAuthors: selectedSourceObj?.authors ?? [],
+      sourceYear: selectedSourceObj?.publicationYear ?? 0,
+      boxId: Number(formFields.selectedBoxId),
+      boxType:
+        selectedBoxObj?.boxType ?? boxes[0]?.boxType ?? "SUBJECT_PROBLEM",
+      boxTitle: selectedBoxObj?.title ?? "",
+      pageNumber: formattedPage,
       noteType: formFields.noteType,
       content: formFields.content.trim(),
       comment: formFields.comment.trim() || undefined,
@@ -160,11 +147,39 @@ export function CitationCardForm(props: CitationCardFormProps) {
     });
   };
 
+  return {
+    formFields,
+    setField,
+    selectedSourceObj,
+    selectedBoxObj,
+    handleSubmit,
+    handleContentPaste,
+    isEditing,
+  };
+}
+
+/**
+ * Form handling inputs and state for card creation/editing.
+ *
+ * @param props - Form props.
+ * @returns Form markup.
+ */
+export function CitationCardForm(props: CitationCardFormProps) {
+  const { sources, boxes, onClose } = props;
+  const {
+    formFields,
+    setField,
+    selectedSourceObj,
+    selectedBoxObj,
+    handleSubmit,
+    handleContentPaste,
+    isEditing,
+  } = useCitationCardFormLogic(props);
+
   return (
     <form onSubmit={handleSubmit} className="space-y-4 py-2">
       {/* Kaynak & Konu Kutusu Seçimi */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        {/* Akademik Kaynak */}
         <div className="space-y-1.5">
           <Label
             htmlFor="source-select"

@@ -1,6 +1,6 @@
 import { withRetry } from "@/lib/api-utils";
 import { createRateLimiter } from "@/lib/rate-limiter";
-import { SEMANTIC_SCHOLAR_LIMITS } from "@/config/rate-limits";
+import { SEMANTIC_SCHOLAR_LIMITS } from "@/core/config/rate-limits";
 import type { CandidateSource } from "./types";
 
 interface S2Author {

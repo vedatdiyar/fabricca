@@ -1,5 +1,5 @@
-import { db } from "@/db";
-import { boxes, sources } from "@/db/schema";
+import { db } from "@/core/db";
+import { boxes, sources } from "@/core/db/schema";
 import { eq, inArray } from "drizzle-orm";
 import { Logger, createFlowId } from "@/lib/logger";
 import type { ExpansionResult } from "./types";

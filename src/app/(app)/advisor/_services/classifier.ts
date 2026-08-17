@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { generateCerebrasStructuredContent } from "@/services/ai";
+import { generateCerebrasStructuredContent } from "@/core/services/ai";
 import { CEREBRAS_MODEL } from "@/lib/constants";
 
 export type AdvisorPersona = "SOCRATIC_ADVISOR" | "TEZ_ASSISTANT";
@@ -49,7 +49,7 @@ const classifierJsonSchema = {
   additionalProperties: false,
 };
 
-import { buildClassifierPromptPayload } from "./prompts/classifier.prompt";
+import { buildClassifierPromptPayload } from "../_prompts/classifier.prompt";
 
 /**
  * Classifies user intent into SOCRATIC_ADVISOR vs TEZ_ASSISTANT using Cerebras Gemma 4 (gemma-4-31b),

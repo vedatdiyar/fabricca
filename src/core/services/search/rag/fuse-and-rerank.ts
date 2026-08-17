@@ -1,6 +1,6 @@
-import { rerankWithCohere } from "@/services/ai/cohere";
+import { rerankWithCohere } from "@/core/services/ai/cohere";
 import type { Logger } from "@/lib/logger";
-import { buildChunkContextPrefix } from "@/services/pdf/context-prefix";
+import { buildChunkContextPrefix } from "@/core/services/pdf/context-prefix";
 import { RAG_CONFIG } from "./config";
 import { computeRrf, sortByRrfScore, type RrfScoredCandidate } from "./rrf";
 import type { LexicalCandidate } from "./lexical";

@@ -1,4 +1,4 @@
-import { Outline, Source } from "@/db/schema";
+import { Outline, Source } from "@/core/db/schema";
 
 /**
  * Determines whether an outline title corresponds to an intro/conclusion chapter.

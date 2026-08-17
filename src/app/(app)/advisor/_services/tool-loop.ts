@@ -1,6 +1,6 @@
 import { HarmCategory, HarmBlockThreshold, ThinkingLevel } from "@google/genai";
-import { getAi } from "@/services/ai";
-import { dispatchGeminiCall } from "@/services/ai/gemini-scheduler";
+import { getAi } from "@/core/services/ai";
+import { dispatchGeminiCall } from "@/core/services/ai/gemini-scheduler";
 import { FLASH_LITE_35, GEMINI_SEED } from "@/lib/constants";
 import { sanitizeModelStreamText } from "@/lib/text-sanitizer";
 import {
@@ -8,8 +8,8 @@ import {
   isReadTool,
   executeReadTool,
   getToolPreviousState,
-} from "@/features/advisor/tools";
-import { formatToolExplanation } from "@/features/advisor/tools/format-tool";
+} from "@/app/(app)/advisor/_tools";
+import { formatToolExplanation } from "@/app/(app)/advisor/_tools/format-tool";
 import type { AdvisorStreamWriter } from "./stream";
 
 /** Resolved stream object returned by Gemini's `generateContentStream`. */

@@ -1,6 +1,6 @@
 import { eq, asc, inArray } from "drizzle-orm";
-import { db } from "@/db";
-import { matrices, boxes, sources } from "@/db/schema";
+import { db } from "@/core/db";
+import { matrices, boxes, sources } from "@/core/db/schema";
 import { compareBoxTypes } from "@/lib/box-constants";
 
 export interface UserBoxData {

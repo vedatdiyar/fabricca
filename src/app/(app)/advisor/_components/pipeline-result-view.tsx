@@ -6,7 +6,7 @@ import type {
   AuditFindingSeverity,
   AuditReport,
   PipelineResult,
-} from "@/features/advisor/pipeline/types";
+} from "@/app/(app)/advisor/_services/pipeline/types";
 
 interface AuditBannerProps {
   audit: AuditReport;
@@ -97,7 +97,10 @@ export function PipelineResultView({
           </p>
           <ul className="space-y-2">
             {audit.findings.map((finding, index) => (
-              <li key={index} className="flex gap-2">
+              <li
+                key={`finding-${finding.severity}-${index}`}
+                className="flex gap-2"
+              >
                 <span
                   className={`shrink-0 text-[10px] font-semibold px-2 py-1 rounded-sm border ${SEVERITY_CLASSES[finding.severity]}`}
                 >

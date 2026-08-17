@@ -1,6 +1,6 @@
 import { sql } from "drizzle-orm";
-import { db } from "@/db";
-import { positioning } from "@/db/schema";
+import { db } from "@/core/db";
+import { positioning } from "@/core/db/schema";
 import { invalidateOnboardingStepCache } from "@/lib/cache-tags";
 import type { RecommendedThesisItem } from "./validation";
 import type { JuryAnalysisResult } from "./analysis";

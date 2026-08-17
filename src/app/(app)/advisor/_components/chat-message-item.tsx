@@ -4,7 +4,7 @@ import { Check, Copy, User, GraduationCap, BookOpen } from "lucide-react";
 import { MarkdownRenderer } from "./markdown-renderer";
 import { ToolConfirmationCard } from "./tool-confirmation-card";
 import { PipelineResultView } from "./pipeline-result-view";
-import type { AdvisorPersona } from "@/features/advisor/classifier";
+import type { AdvisorPersona } from "@/app/(app)/advisor/_services/classifier";
 import type { Message } from "../_lib/types";
 
 /**

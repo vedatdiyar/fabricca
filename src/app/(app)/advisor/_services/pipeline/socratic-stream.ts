@@ -1,7 +1,7 @@
 import { HarmCategory, HarmBlockThreshold, ThinkingLevel } from "@google/genai";
-import { getAi } from "@/services/ai";
-import { dispatchGeminiCall } from "@/services/ai/gemini-scheduler";
-import { buildAdvisorTurnPromptPayload } from "../prompts/turn.prompt";
+import { getAi } from "@/core/services/ai";
+import { dispatchGeminiCall } from "@/core/services/ai/gemini-scheduler";
+import { buildAdvisorTurnPromptPayload } from "../../_prompts/turn.prompt";
 import { FLASH_LITE_35, GEMINI_SEED } from "@/lib/constants";
 import type { PipelineSseWriter } from "./orchestrator";
 

@@ -1,15 +1,15 @@
 import { desc, eq, inArray } from "drizzle-orm";
-import { db } from "@/db";
-import { annotations, sources } from "@/db/schema";
+import { db } from "@/core/db";
+import { annotations, sources } from "@/core/db/schema";
 import { type ThesisBoxType } from "@/lib/box-constants";
 import { formatResourceAuthors } from "@/lib/academic/author-formatter";
-import { ensureUserMatrixAndBoxes } from "@/services/box/ownership";
+import { ensureUserMatrixAndBoxes } from "@/core/services/box/ownership";
 import type {
   BoxItem,
   CitationCardItem,
   SourceItem,
 } from "@/app/(app)/citation-cards/_lib/types";
-import { mapAnnotationToCard } from "./citation-card-mapper";
+import { mapAnnotationToCard } from "../_lib/citation-card-mapper";
 
 /**
  * Fetches the user's topic boxes, sources, and citation annotations, assembling client-facing card, box, and source DTOs.

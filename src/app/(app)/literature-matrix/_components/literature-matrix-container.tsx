@@ -14,8 +14,8 @@ import type {
   MatrixSortDirection,
   MatrixFilterConfig,
   MatrixStats,
-} from "../types";
-import { hasMatrixCritiqueData } from "../types";
+} from "../_lib/types";
+import { hasMatrixCritiqueData } from "../_lib/types";
 
 interface LiteratureMatrixContainerProps {
   initialRows: MatrixSourceRow[];

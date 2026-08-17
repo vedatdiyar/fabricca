@@ -1,8 +1,8 @@
 import { eq } from "drizzle-orm";
-import { db } from "@/db";
-import { boxes, sources } from "@/db/schema";
+import { db } from "@/core/db";
+import { boxes, sources } from "@/core/db/schema";
 import type { Logger } from "@/lib/logger";
-import { getOwnedSource } from "@/services/box/ownership";
+import { getOwnedSource } from "@/core/services/box/ownership";
 import type { ExtractedPdfContent } from "./pdf-upload";
 import {
   mapSourceToResource,

@@ -1,6 +1,6 @@
 import { eq } from "drizzle-orm";
-import { db } from "@/db";
-import { matrices, boxes, sources } from "@/db/schema";
+import { db } from "@/core/db";
+import { matrices, boxes, sources } from "@/core/db/schema";
 import { DEFAULT_PARENT_BOXES } from "@/lib/box-constants";
 
 /**

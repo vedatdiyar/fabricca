@@ -1,15 +1,15 @@
 import { eq } from "drizzle-orm";
-import { db } from "@/db";
-import { sources, chunks as chunkRows } from "@/db/schema";
-import type { NewChunk } from "@/db/schema";
-import { uploadPdfToR2 } from "@/services/storage/r2";
-import { parsePdfToChunks } from "@/services/pdf";
-import type { DocumentChunk } from "@/services/pdf/chunker";
-import { buildEmbeddingText } from "@/services/pdf/chunker";
-import { generateVectorEmbeddings } from "@/services/ai/cloudflare-ai";
+import { db } from "@/core/db";
+import { sources, chunks as chunkRows } from "@/core/db/schema";
+import type { NewChunk } from "@/core/db/schema";
+import { uploadPdfToR2 } from "@/core/services/storage/r2";
+import { parsePdfToChunks } from "@/core/services/pdf";
+import type { DocumentChunk } from "@/core/services/pdf/chunker";
+import { buildEmbeddingText } from "@/core/services/pdf/chunker";
+import { generateVectorEmbeddings } from "@/core/services/ai/cloudflare-ai";
 import type { Logger } from "@/lib/logger";
-import type { DocumentAnalysisResult } from "@/services/pdf/schema";
-import type { ParsedReference } from "@/db/schema";
+import type { DocumentAnalysisResult } from "@/core/services/pdf/schema";
+import type { ParsedReference } from "@/core/db/schema";
 
 interface ProcessPdfOptions {
   resourceId: number;

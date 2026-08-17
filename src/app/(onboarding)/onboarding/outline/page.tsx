@@ -2,8 +2,8 @@ export const instant = false;
 
 import { redirect } from "next/navigation";
 import { eq } from "drizzle-orm";
-import { db } from "@/db";
-import { matrices, outlines } from "@/db/schema";
+import { db } from "@/core/db";
+import { matrices, outlines } from "@/core/db/schema";
 import { getProfile } from "@/lib/session";
 import { OutlineContainer } from "./_components/outline-container";
 import { StartOverButton } from "../_components/start-over-button";

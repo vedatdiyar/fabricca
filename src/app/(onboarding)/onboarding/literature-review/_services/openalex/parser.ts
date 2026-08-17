@@ -1,4 +1,4 @@
-import { cleanHtmlTags } from "@/services/academic";
+import { cleanHtmlTags } from "@/core/services/academic";
 import {
   extractCleanDoi,
   extractOpenAlexId,

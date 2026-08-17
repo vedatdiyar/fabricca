@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Outline, Box, Source } from "@/db/schema";
+import { Outline, Box, Source } from "@/core/db/schema";
 import {
   Dialog,
   DialogContent,
@@ -122,7 +122,13 @@ export function ManageSourceLinksModal({
               return (
                 <div
                   key={source.id}
+                  role="button"
+                  tabIndex={0}
                   onClick={() => onToggleSourceLink(source.id)}
+                  onKeyDown={(e) =>
+                    (e.key === "Enter" || e.key === " ") &&
+                    onToggleSourceLink(source.id)
+                  }
                   className={`flex cursor-pointer items-start justify-between p-3 rounded-md border transition-all ${
                     isLinked
                       ? "border-primary bg-primary/10 ring-1 ring-primary/20"

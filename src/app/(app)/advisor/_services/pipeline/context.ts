@@ -1,4 +1,4 @@
-import type { RagSearchResultItem } from "@/services/search/rag-search";
+import type { RagSearchResultItem } from "@/core/services/search/rag-search";
 
 /**
  * Formats a RAG source page reference using Turkish academic APA conventions.

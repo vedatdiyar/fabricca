@@ -5,7 +5,7 @@ import { getSession } from "@/lib/session";
 import {
   executeMutationTool,
   undoMutationTool,
-} from "@/features/advisor/tools";
+} from "@/app/(app)/advisor/_tools";
 import { handleActionError } from "@/lib/errors/handle-error";
 
 const toolActionSchema = z.object({

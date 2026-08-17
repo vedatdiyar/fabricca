@@ -1,8 +1,8 @@
 "use client";
 
-import { LoadingOverlayProvider } from "@/providers/loading-overlay-provider";
+import { LoadingOverlayProvider } from "@/core/providers/loading-overlay-provider";
 import { OnboardingGlobalLoader } from "./onboarding-global-loader";
-import { useLoadingOverlay } from "@/providers/loading-overlay-provider";
+import { useLoadingOverlay } from "@/core/providers/loading-overlay-provider";
 
 /**
  * Inner content that reads loading state from context.

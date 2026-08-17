@@ -1,6 +1,6 @@
 "use client";
 
-import type { Box } from "@/db/schema";
+import type { Box } from "@/core/db/schema";
 import type { KanbanTask } from "../_lib/types";
 import { TaskFormModal } from "./task-form-modal";
 

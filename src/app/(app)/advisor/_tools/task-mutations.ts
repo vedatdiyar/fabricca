@@ -1,5 +1,5 @@
-import { db } from "@/db";
-import { tasks, type Task } from "@/db/schema";
+import { db } from "@/core/db";
+import { tasks, type Task } from "@/core/db/schema";
 import { eq, and } from "drizzle-orm";
 import type { MutationToolHandler, MutationToolResult } from "./mutation-types";
 import { toNumericId } from "./mutation-types";

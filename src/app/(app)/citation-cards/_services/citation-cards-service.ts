@@ -1,4 +1,4 @@
-export { mapAnnotationToCard } from "./citation-card-mapper";
+export { mapAnnotationToCard } from "../_lib/citation-card-mapper";
 export { fetchCitationCardsData } from "./citation-cards-query";
 export {
   createCitationCard,

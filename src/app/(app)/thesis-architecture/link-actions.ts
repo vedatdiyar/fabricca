@@ -1,7 +1,7 @@
 "use server";
 
-import { db } from "@/db";
-import { outlineAnnotations, outlineSources } from "@/db/schema";
+import { db } from "@/core/db";
+import { outlineAnnotations, outlineSources } from "@/core/db/schema";
 import { getSession } from "@/lib/session";
 import { eq, and } from "drizzle-orm";
 import { revalidatePath } from "next/cache";

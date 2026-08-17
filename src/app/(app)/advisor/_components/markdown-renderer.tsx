@@ -5,7 +5,7 @@ import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import rehypeRaw from "rehype-raw";
 import type { Components } from "react-markdown";
-import type { RagSearchResultItem } from "@/services/search/rag-search";
+import type { RagSearchResultItem } from "@/core/services/search/rag-search";
 import { CITATION_ATTR, formatContent } from "../_lib/citation-matching";
 
 const components: Components = {

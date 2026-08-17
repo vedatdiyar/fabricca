@@ -1,6 +1,6 @@
 import type { ComponentType } from "react";
 import { Target, Compass, Microscope, BookOpen } from "lucide-react";
-import type { Box } from "@/db/schema";
+import type { Box } from "@/core/db/schema";
 import type { ThesisBoxType } from "@/lib/box-constants";
 
 /** A topic box enriched with its lightweight relation summary counts. */

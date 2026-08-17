@@ -7,13 +7,13 @@ import type { GeminiThesisBox, LiteraturePoolEntry } from "@/lib/types";
 import {
   fetchBoxesWithFullShape,
   fetchUncachedBoxesWithFullShape,
-} from "@/features/onboarding/services/fetch-actions";
+} from "@/app/(onboarding)/onboarding/_services/fetch-actions";
 import { useLiteratureContinue } from "../../_hooks/use-literature-continue";
 import {
   fetchPreloadedLiteraturePool,
   runLiteraturePipelineAction,
 } from "../actions";
-import type { SubBoxInput } from "@/features/literature-review/literature-review-papers";
+import type { SubBoxInput } from "@/app/(onboarding)/onboarding/literature-review/_services/literature-review-papers";
 import { BOX_ORDER_WEIGHT } from "@/lib/box-constants";
 
 /** Processing status of a single sub-box within the literature review grid. */

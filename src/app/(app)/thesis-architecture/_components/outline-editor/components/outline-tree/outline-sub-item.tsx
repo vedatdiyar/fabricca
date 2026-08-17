@@ -1,6 +1,6 @@
 "use client";
 
-import { Outline } from "@/db/schema";
+import { Outline } from "@/core/db/schema";
 import { Quote } from "lucide-react";
 
 interface OutlineSubItemProps {
@@ -36,7 +36,10 @@ export function OutlineSubItem({
 }: OutlineSubItemProps) {
   return (
     <div
+      role="button"
+      tabIndex={0}
       onClick={onSelect}
+      onKeyDown={(e) => (e.key === "Enter" || e.key === " ") && onSelect()}
       className={`flex cursor-pointer items-start justify-between rounded-md border p-2.5 text-xs transition-all ${
         isSelected
           ? "border-primary/60 bg-primary/10 text-foreground font-semibold ring-1 ring-primary/20"

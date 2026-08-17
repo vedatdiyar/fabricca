@@ -1,7 +1,7 @@
 "use server";
 
 import { createFlowId, Logger } from "@/lib/logger";
-import { boxes, sources } from "@/db/schema";
+import { boxes, sources } from "@/core/db/schema";
 import { getSession, SESSION_ERROR_MSG } from "@/lib/session";
 import { getUsersMatrixAndBoxesWithResources } from "./_services/box-service";
 

@@ -1,4 +1,4 @@
-import type { sources } from "@/db/schema";
+import type { sources } from "@/core/db/schema";
 import { formatResourceAuthors } from "@/lib/academic/author-formatter";
 import type {
   ThesisBoxType,

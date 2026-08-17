@@ -4,8 +4,8 @@ import { FLASH_LITE_31, GEMINI_SEED } from "@/lib/constants";
 import {
   generateGeminiStructuredContent,
   type JsonSchema,
-} from "@/services/ai";
-import { buildQueryGenerationPromptPayload } from "./prompts/query-generator.prompt";
+} from "@/core/services/ai";
+import { buildQueryGenerationPromptPayload } from "../_prompts/query-generator.prompt";
 import type { Logger } from "@/lib/logger";
 import type { PositioningMatrixInput } from "./validation";
 

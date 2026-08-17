@@ -1,9 +1,9 @@
 import {
   generateGeminiStructuredContent,
   type JsonSchema,
-} from "@/services/ai";
+} from "@/core/services/ai";
 import { FLASH_LITE_35, GEMINI_SEED } from "@/lib/constants";
-import { buildJuryPromptPayload } from "./prompts/batch-jury.prompt";
+import { buildJuryPromptPayload } from "../_prompts/batch-jury.prompt";
 import { ThinkingLevel, HarmCategory, HarmBlockThreshold } from "@google/genai";
 import { Logger } from "@/lib/logger";
 import { extractOpenAlexId } from "@/lib/academic/utils";

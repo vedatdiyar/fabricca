@@ -1,8 +1,8 @@
 "use client";
 
-import type { Positioning } from "@/db/schema";
-import type { PositioningGlobalStatus } from "@/features/positioning/validation";
-import type { JuryAnalysisResult } from "@/features/positioning/analysis";
+import type { Positioning } from "@/core/db/schema";
+import type { PositioningGlobalStatus } from "@/app/(onboarding)/onboarding/positioning/_services/validation";
+import type { JuryAnalysisResult } from "@/app/(onboarding)/onboarding/positioning/_services/analysis";
 import { usePositioningContinue } from "../../_hooks/use-positioning-continue";
 import { PositioningReportView } from "./positioning-report-view";
 

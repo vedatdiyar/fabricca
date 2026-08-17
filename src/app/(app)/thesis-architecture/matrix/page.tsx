@@ -2,8 +2,8 @@ export const instant = false;
 
 import { redirect } from "next/navigation";
 import { getSession } from "@/lib/session";
-import { db } from "@/db";
-import { matrices } from "@/db/schema";
+import { db } from "@/core/db";
+import { matrices } from "@/core/db/schema";
 import { eq } from "drizzle-orm";
 import { MatrixEditorView } from "../_components/matrix-editor";
 import { Card } from "@/components/ui/card";

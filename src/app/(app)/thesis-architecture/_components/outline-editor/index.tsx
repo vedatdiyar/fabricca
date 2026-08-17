@@ -1,6 +1,6 @@
 "use client";
 
-import { Outline, Box, Source, Annotation } from "@/db/schema";
+import { Outline, Box, Source, Annotation } from "@/core/db/schema";
 import { Button } from "@/components/ui/button";
 import { Plus } from "lucide-react";
 import { TabActions } from "../tab-actions";

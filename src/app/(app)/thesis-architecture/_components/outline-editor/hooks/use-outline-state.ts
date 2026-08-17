@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Outline } from "@/db/schema";
+import { Outline } from "@/core/db/schema";
 
 interface UseOutlineStateOptions {
   outlinesList: Outline[];

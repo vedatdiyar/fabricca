@@ -2,16 +2,16 @@
 
 import { eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
-import { db } from "@/db";
-import { sources } from "@/db/schema";
+import { db } from "@/core/db";
+import { sources } from "@/core/db/schema";
 import { getSession } from "@/lib/session";
 import { createFlowId, Logger } from "@/lib/logger";
-import { deletePdfFromR2 } from "@/services/storage/r2";
+import { deletePdfFromR2 } from "@/core/services/storage/r2";
 import {
   ensureUserMatrixAndBoxes,
   getOwnedSource,
-} from "@/services/box/ownership";
-import { mapSourceToResource } from "@/features/library/services/resource-mapper";
+} from "@/core/services/box/ownership";
+import { mapSourceToResource } from "@/app/(app)/library/_services/resource-mapper";
 
 /**
  * Server Action: Sets (or toggles) the read status of a library resource.

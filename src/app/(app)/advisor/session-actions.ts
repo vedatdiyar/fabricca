@@ -1,8 +1,8 @@
 "use server";
 
 import { eq, desc } from "drizzle-orm";
-import { db } from "@/db";
-import { sessions, messages } from "@/db/schema";
+import { db } from "@/core/db";
+import { sessions, messages } from "@/core/db/schema";
 import { getSession } from "@/lib/session";
 import { handleActionError } from "@/lib/errors/handle-error";
 

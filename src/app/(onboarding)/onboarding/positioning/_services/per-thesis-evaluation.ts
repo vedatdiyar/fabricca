@@ -4,9 +4,9 @@ import { FLASH_LITE_35, GEMINI_SEED } from "@/lib/constants";
 import {
   generateGeminiStructuredContent,
   type JsonSchema,
-} from "@/services/ai";
+} from "@/core/services/ai";
 import type { Logger } from "@/lib/logger";
-import { buildPerThesisEvaluationPromptPayload } from "./prompts/per-thesis-evaluation.prompt";
+import { buildPerThesisEvaluationPromptPayload } from "../_prompts/per-thesis-evaluation.prompt";
 import { strategicRoleEnum, type PositioningMatrixInput } from "./validation";
 import type { SiftedThesis } from "./sifting";
 

@@ -2,7 +2,7 @@ import {
   buildPromptPayload,
   type PromptPayload,
 } from "@/lib/ai/prompt-builder";
-import type { PositioningMatrixInput } from "@/features/positioning/validation";
+import type { PositioningMatrixInput } from "@/app/(onboarding)/onboarding/positioning/_services/validation";
 
 export interface PositioningJuryPromptInput {
   input: PositioningMatrixInput;

@@ -1,5 +1,5 @@
 import { z } from "zod";
-import type { JsonSchema, JsonSchemaProperty } from "@/services/ai";
+import type { JsonSchema, JsonSchemaProperty } from "@/core/services/ai";
 
 /**
  * Recursive Zod schema for a single outline section (can contain subSections).

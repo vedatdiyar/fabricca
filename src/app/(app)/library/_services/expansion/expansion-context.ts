@@ -1,5 +1,5 @@
-import { db } from "@/db";
-import { boxes, matrices, sources } from "@/db/schema";
+import { db } from "@/core/db";
+import { boxes, matrices, sources } from "@/core/db/schema";
 import { eq, inArray } from "drizzle-orm";
 
 /**
