@@ -63,7 +63,10 @@ function formatThesisToYaml(thesis: TezaraThesisDetails): string {
   return [`Title: ${thesis.title}`, `Abstract: ${thesis.abstract}`].join("\n");
 }
 
-import { generatePositioningQuery, type PositioningQuery } from "./query-generator";
+import {
+  generatePositioningQuery,
+  type PositioningQuery,
+} from "./query-generator";
 
 /**
  * Formats the multi-aspect positioning query and matrix into a rich YAML query for Cohere cross-encoder reranking.
@@ -258,4 +261,3 @@ export async function searchAndSiftTheses(
 
   return selected;
 }
-

@@ -77,9 +77,10 @@ export function ManageSourceLinksModal({
             Bölüme Bağlı Kaynakları Yönet
           </DialogTitle>
           <DialogDescription className="font-sans text-xs text-muted-foreground">
-            &quot;{outline?.title}&quot; bölümünü yazarken kullanacağınız eserleri
-            kütüphanenizden seçin. Doğrudan bağlanan kaynaklar bölüm çalışma
-            masasında &quot;Kullanılan Kaynaklar&quot; listesinde görünür.
+            &quot;{outline?.title}&quot; bölümünü yazarken kullanacağınız
+            eserleri kütüphanenizden seçin. Doğrudan bağlanan kaynaklar bölüm
+            çalışma masasında &quot;Kullanılan Kaynaklar&quot; listesinde
+            görünür.
           </DialogDescription>
         </DialogHeader>
 

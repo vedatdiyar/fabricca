@@ -9,7 +9,6 @@ import { buildQueryGenerationPromptPayload } from "./prompts/query-generator.pro
 import type { Logger } from "@/lib/logger";
 import type { PositioningMatrixInput } from "./validation";
 
-
 /** Zod schema for generated dense multi-aspect empirical semantic search queries. */
 export const positioningQuerySchema = z.object({
   primaryEmpiricalQuery: z
@@ -115,4 +114,3 @@ export async function generatePositioningQuery(
     };
   }
 }
-

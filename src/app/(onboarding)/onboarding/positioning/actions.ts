@@ -133,9 +133,11 @@ export async function runPositioningJuryAction(
       const ev = evalByThesisId.get(String(rec.externalThesisId));
       return {
         ...rec,
-        strategicRole: rec.strategicRole || ev?.strategicRole || "BROAD_CONTEXT",
+        strategicRole:
+          rec.strategicRole || ev?.strategicRole || "BROAD_CONTEXT",
         literaturePosition: rec.literaturePosition || ev?.literaturePosition,
-        thesisType: thesisTypeById.get(String(rec.externalThesisId)) || undefined,
+        thesisType:
+          thesisTypeById.get(String(rec.externalThesisId)) || undefined,
       };
     });
 

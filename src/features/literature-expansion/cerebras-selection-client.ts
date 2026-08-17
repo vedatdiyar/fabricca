@@ -163,8 +163,7 @@ ${payload.confirmedCandidates
 
 ${suspiciousSection}`,
 
-    taskTrigger:
-      `Analyze the candidates in <context> against existing library sources and select exactly ${payload.targetCount} top relevant sources into structured JSON output according to <instructions>.`,
+    taskTrigger: `Analyze the candidates in <context> against existing library sources and select exactly ${payload.targetCount} top relevant sources into structured JSON output according to <instructions>.`,
   });
 }
 

@@ -1,7 +1,8 @@
 "use server";
 
 import type { Logger } from "@/lib/logger";
-import { createConcurrencyLimiter } from "@/lib/rate-limiter";
+import { createRateLimiter } from "@/lib/rate-limiter";
+import { CEREBRAS_LIMITS } from "@/config/rate-limits";
 import { CEREBRAS_SEED } from "@/lib/constants";
 import { HttpError, withRetry, DEFAULT_MAX_DELAY } from "../llm-retry";
 import { validateStructuredOutput } from "../llm-json";
@@ -10,8 +11,8 @@ import type { StructuredGenerationOptions } from "../llm-types";
 
 const CEREBRAS_BASE_URL = "https://api.cerebras.ai/v1";
 
-/** Serializes Cerebras requests (max 1 in-flight) to stay within the Free Trial per-minute request ceiling. */
-const cerebrasRequestQueue = createConcurrencyLimiter(1);
+/** Global Cerebras limiter (free trial: 5 RPM) shared by every consumer. */
+const cerebrasRequestQueue = createRateLimiter(CEREBRAS_LIMITS);
 
 const CEREBRAS_RETRY_CONFIG = {
   maxRetries: 5,
@@ -32,7 +33,8 @@ const CEREBRAS_RETRY_CONFIG = {
 };
 
 /**
- * Sends a chat completion to Cerebras with strict json_schema output, Full Jitter retry on 429/5xx, and a 1-in-flight concurrency cap.
+ * Sends a chat completion to Cerebras with strict json_schema output, Full Jitter retry on 429/5xx,
+ * and global per-minute rate limiting shared across all consumers.
  *
  * @param modelName - The Cerebras model identifier to call.
  * @param systemInstruction - The system-level instructions for the model.

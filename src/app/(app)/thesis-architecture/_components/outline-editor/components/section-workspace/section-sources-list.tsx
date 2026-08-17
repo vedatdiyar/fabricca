@@ -6,14 +6,7 @@ import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import {
-  Search,
-  X,
-  FileText,
-  ExternalLink,
-  Quote,
-  Link2,
-} from "lucide-react";
+import { Search, X, FileText, ExternalLink, Quote, Link2 } from "lucide-react";
 import { SectionSourceItem } from "./section-source-item";
 import { SectionAnnotationItem } from "./section-annotation-item";
 
@@ -200,8 +193,8 @@ export function SectionSourcesList({
                     : "Bu bölüme henüz doğrudan kaynak bağlanmadı."}
                 </p>
                 <p className="font-sans text-xs text-muted-foreground max-w-sm mx-auto">
-                  Kütüphanenizdeki eserleri bu bölüme doğrudan bağlayarak
-                  yazım sürecinde kullanacağınız kaynak setini oluşturabilirsiniz.
+                  Kütüphanenizdeki eserleri bu bölüme doğrudan bağlayarak yazım
+                  sürecinde kullanacağınız kaynak setini oluşturabilirsiniz.
                 </p>
               </div>
               {!sourceSearchQuery && (

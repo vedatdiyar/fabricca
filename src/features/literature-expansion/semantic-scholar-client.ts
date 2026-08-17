@@ -1,5 +1,6 @@
 import { withRetry } from "@/lib/api-utils";
-import { createConcurrencyLimiter } from "@/lib/rate-limiter";
+import { createRateLimiter } from "@/lib/rate-limiter";
+import { SEMANTIC_SCHOLAR_LIMITS } from "@/config/rate-limits";
 import type { CandidateSource } from "./types";
 
 interface S2Author {
@@ -40,10 +41,10 @@ interface S2RecommendationsResponse {
 const S2_RETRYABLE = "S2_RETRYABLE_ERROR";
 
 /**
- * Serializes Semantic Scholar recommendation requests (max 1 in-flight) to
- * stay within the service's rate ceiling and avoid 429 responses.
+ * Limits Semantic Scholar recommendation requests (keyed access: 1 req/s) so a
+ * full expansion run never trips the service's rate ceiling.
  */
-const semanticScholarRequestQueue = createConcurrencyLimiter(1);
+const semanticScholarRequestQueue = createRateLimiter(SEMANTIC_SCHOLAR_LIMITS);
 
 /**
  * Queries Semantic Scholar Recommendations API (v1) concurrently alongside OpenAlex.

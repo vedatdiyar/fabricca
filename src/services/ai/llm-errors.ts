@@ -268,12 +268,24 @@ export function extractQuotaDetails(
   if (!quotaFailure && !retryInfo && !errorObj.message) return null;
 
   return {
-    quotaMetric: typeof violation?.quotaMetric === "string" ? violation.quotaMetric : undefined,
-    quotaId: typeof violation?.quotaId === "string" ? violation.quotaId : undefined,
-    quotaValue: typeof violation?.quotaValue === "string" ? violation.quotaValue : undefined,
-    quotaDimensions: (violation?.quotaDimensions as Record<string, string>) ?? undefined,
-    retryDelay: typeof retryInfo?.retryDelay === "string" ? retryInfo.retryDelay : undefined,
-    message: typeof errorObj.message === "string" ? errorObj.message : undefined,
+    quotaMetric:
+      typeof violation?.quotaMetric === "string"
+        ? violation.quotaMetric
+        : undefined,
+    quotaId:
+      typeof violation?.quotaId === "string" ? violation.quotaId : undefined,
+    quotaValue:
+      typeof violation?.quotaValue === "string"
+        ? violation.quotaValue
+        : undefined,
+    quotaDimensions:
+      (violation?.quotaDimensions as Record<string, string>) ?? undefined,
+    retryDelay:
+      typeof retryInfo?.retryDelay === "string"
+        ? retryInfo.retryDelay
+        : undefined,
+    message:
+      typeof errorObj.message === "string" ? errorObj.message : undefined,
   };
 }
 
@@ -312,4 +324,3 @@ export function toAiProviderError(
     userMessage: TURKISH_ERROR_BY_SCENARIO[scenario],
   });
 }
-

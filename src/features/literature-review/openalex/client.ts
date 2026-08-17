@@ -1,17 +1,21 @@
 import { parseOpenAlexResults, parseOpenAlexMetadataResults } from "./parser";
-import { createGapEnforcedQueue } from "@/lib/rate-limiter";
+import { createRateLimiter } from "@/lib/rate-limiter";
+import {
+  OPENALEX_REGULAR_LIMITS,
+  OPENALEX_SEMANTIC_LIMITS,
+} from "@/config/rate-limits";
 import type { RawPaper, RefMetadata } from "../literature-review-papers";
 import { CROSSREF_USER_AGENT, withRetry } from "@/lib/api-utils";
 
 /**
  * Queue for semantic search, since OpenAlex enforces 1 req/s for this endpoint.
  */
-const semanticQueue = createGapEnforcedQueue<unknown>(1000);
+const semanticQueue = createRateLimiter(OPENALEX_SEMANTIC_LIMITS);
 
 /**
  * Queue for list/filter calls, since OpenAlex allows up to 100 req/s for these endpoints.
  */
-const openAlexQueue = createGapEnforcedQueue<unknown>(100);
+const openAlexQueue = createRateLimiter(OPENALEX_REGULAR_LIMITS);
 
 const OPENALEX_RETRYABLE = "OPENALEX_RETRYABLE_ERROR";
 

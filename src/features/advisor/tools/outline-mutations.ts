@@ -1,5 +1,10 @@
 import { db } from "@/db";
-import { matrices, outlines, outlineAnnotations, outlineSources } from "@/db/schema";
+import {
+  matrices,
+  outlines,
+  outlineAnnotations,
+  outlineSources,
+} from "@/db/schema";
 import { eq, and } from "drizzle-orm";
 import type { MutationToolHandler, MutationToolResult } from "./mutation-types";
 

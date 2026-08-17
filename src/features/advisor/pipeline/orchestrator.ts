@@ -3,8 +3,14 @@ import { runStage1Audit } from "./stage1-audit";
 import type { AuditReport, PipelineResult } from "./types";
 import type { RagSearchResultItem } from "@/services/search/rag-search";
 import { getAi } from "@/services/ai";
+import { dispatchGeminiCall } from "@/services/ai/gemini-scheduler";
 import { buildAdvisorTurnPromptPayload } from "../prompts/turn.prompt";
 import { FLASH_LITE_35, GEMINI_SEED } from "@/lib/constants";
+
+/** Resolved stream object returned by Gemini's `generateContentStream`. */
+type GeminiContentStream = Awaited<
+  ReturnType<ReturnType<typeof getAi>["models"]["generateContentStream"]>
+>;
 
 /** SSE event emission and text streaming interface used by the pipeline orchestrator. */
 export interface PipelineSseWriter {
@@ -93,7 +99,6 @@ export async function runPipelineTurn(
       "SOCRATIC_ADVISOR",
       userMessageText,
     );
-    const ai = getAi();
     const contents = [
       {
         role: "user",
@@ -107,33 +112,40 @@ export async function runPipelineTurn(
 
     let fullText = "";
 
-    const stream = await ai.models.generateContentStream({
+    const stream = await dispatchGeminiCall<GeminiContentStream>({
       model: FLASH_LITE_35,
-      contents: contents as unknown as Parameters<
-        typeof ai.models.generateContentStream
-      >[0]["contents"],
-      config: {
-        systemInstruction: payload.systemInstruction,
-        seed: GEMINI_SEED,
-        thinkingConfig: { thinkingLevel: ThinkingLevel.LOW },
-        safetySettings: [
-          {
-            category: HarmCategory.HARM_CATEGORY_HATE_SPEECH,
-            threshold: HarmBlockThreshold.BLOCK_ONLY_HIGH,
+      task: async ({ model, apiKey }) => {
+        const ai = getAi(apiKey);
+        const stream = await ai.models.generateContentStream({
+          model,
+          contents: contents as unknown as Parameters<
+            typeof ai.models.generateContentStream
+          >[0]["contents"],
+          config: {
+            systemInstruction: payload.systemInstruction,
+            seed: GEMINI_SEED,
+            thinkingConfig: { thinkingLevel: ThinkingLevel.LOW },
+            safetySettings: [
+              {
+                category: HarmCategory.HARM_CATEGORY_HATE_SPEECH,
+                threshold: HarmBlockThreshold.BLOCK_ONLY_HIGH,
+              },
+              {
+                category: HarmCategory.HARM_CATEGORY_HARASSMENT,
+                threshold: HarmBlockThreshold.BLOCK_ONLY_HIGH,
+              },
+              {
+                category: HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT,
+                threshold: HarmBlockThreshold.BLOCK_ONLY_HIGH,
+              },
+              {
+                category: HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT,
+                threshold: HarmBlockThreshold.BLOCK_ONLY_HIGH,
+              },
+            ],
           },
-          {
-            category: HarmCategory.HARM_CATEGORY_HARASSMENT,
-            threshold: HarmBlockThreshold.BLOCK_ONLY_HIGH,
-          },
-          {
-            category: HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT,
-            threshold: HarmBlockThreshold.BLOCK_ONLY_HIGH,
-          },
-          {
-            category: HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT,
-            threshold: HarmBlockThreshold.BLOCK_ONLY_HIGH,
-          },
-        ],
+        });
+        return stream;
       },
     });
 

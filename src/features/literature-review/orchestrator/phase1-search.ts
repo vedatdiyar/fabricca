@@ -1,5 +1,4 @@
 import { Logger } from "@/lib/logger";
-import { createConcurrencyLimiter } from "@/lib/rate-limiter";
 import type { SubBoxInput, SubBoxItem } from "../literature-review-papers";
 import { searchOpenAlex } from "../openalex/client";
 import type { SubBoxResult } from "./types";
@@ -20,34 +19,30 @@ export async function executePhase1Search(
 ): Promise<SubBoxResult[]> {
   logger.info("literature_openalex_search_start");
 
-  const limiter = createConcurrencyLimiter(3);
-
   const phase1Results = await Promise.allSettled(
-    activeJobs.map(({ box, subBox }) =>
-      limiter.exec(async (): Promise<SubBoxResult> => {
-        const query = subBox.semanticQuery?.trim();
+    activeJobs.map(async ({ box, subBox }): Promise<SubBoxResult> => {
+      const query = subBox.semanticQuery?.trim();
 
-        if (!query) {
-          return {
-            boxType: box.boxType ?? "PRIMARY_MATERIAL",
-            subBoxDescription: subBox.description ?? "",
-            subBox,
-            thesisBoxId: subBox.thesisBoxId,
-            rawPapers: [],
-          };
-        }
-
-        const rawPapers = await searchOpenAlex(query, 25, checkCancelled);
-
+      if (!query) {
         return {
-          boxType: box.boxType ?? "PROBLEMATIZATION",
+          boxType: box.boxType ?? "PRIMARY_MATERIAL",
           subBoxDescription: subBox.description ?? "",
           subBox,
           thesisBoxId: subBox.thesisBoxId,
-          rawPapers,
+          rawPapers: [],
         };
-      }),
-    ),
+      }
+
+      const rawPapers = await searchOpenAlex(query, 25, checkCancelled);
+
+      return {
+        boxType: box.boxType ?? "PROBLEMATIZATION",
+        subBoxDescription: subBox.description ?? "",
+        subBox,
+        thesisBoxId: subBox.thesisBoxId,
+        rawPapers,
+      };
+    }),
   );
 
   const fulfilledResults: SubBoxResult[] = [];

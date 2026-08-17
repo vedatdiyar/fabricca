@@ -1,10 +1,7 @@
 import { GoogleGenAI, HarmCategory, HarmBlockThreshold } from "@google/genai";
 import { Logger, createFlowId } from "@/lib/logger";
-import {
-  getGeminiKeyPool,
-  getNextGeminiKey,
-  getProjectIndex,
-} from "../gemini-key-pool";
+import { getGeminiKeyPool, getProjectIndex } from "../gemini-key-pool";
+import { dispatchGeminiCall } from "../gemini-scheduler";
 import { GEMINI_SEED } from "@/lib/constants";
 import {
   SchemaValidationError,
@@ -23,6 +20,10 @@ import {
 } from "../llm-retry";
 import { sanitizeAndParseJson, validateStructuredOutput } from "../llm-json";
 import type { JsonSchema, StructuredGenerationOptions } from "../llm-types";
+import {
+  DailyQuotaExceededError,
+  isDailyQuotaExceeded,
+} from "@/lib/rate-limiter";
 import crypto from "crypto";
 import fs from "fs/promises";
 import path from "path";
@@ -139,7 +140,9 @@ export async function logRawLlmCall(params: {
 
 /**
  * Requests structured JSON output from Gemini via responseJsonSchema, with retry on 429/5xx and optional Zod validation.
- * Each request is strictly bound to its assigned Google Cloud project API key with per-project 15 RPM pacing.
+ * Every call is dispatched through the quota-aware key scheduler, which binds it
+ * to a healthy `(model, apiKey)` pair, round-robins parallel fan-outs, and
+ * falls back to a weaker model only for loss-less operations.
  *
  * @param modelName - The Gemini model identifier to call.
  * @param systemInstruction - The system-level instructions for the model.
@@ -161,22 +164,8 @@ export async function generateStructuredContent<T>(
 
   const thinkingLevel = options?.thinkingConfig?.thinkingLevel;
   const callLabel = options?.payloadStage ?? "gemini";
-
-  const assignedKey = options?.apiKey ?? getNextGeminiKey();
-  const projectIndex = getProjectIndex(assignedKey);
-
-  if (options?.quiet !== true) {
-    logger?.info(`${callLabel}_scheduled`, {
-      service: "gemini",
-      data: {
-        model: modelName,
-        projectIndex: projectIndex + 1,
-        instructionLength: systemInstruction.length,
-        promptLength: prompt.length,
-        thinkingLevel: thinkingLevel ?? undefined,
-      },
-    });
-  }
+  const operation = options?.operation;
+  const maxRetries = 3;
 
   const thesisMatrix = options?.thesisMatrix || null;
 
@@ -199,210 +188,248 @@ export async function generateStructuredContent<T>(
     },
   ];
 
-  const payload = {
-    model: modelName,
-    contents: [{ role: "user", parts: [{ text: prompt }] }],
-    config: {
-      systemInstruction,
-      responseMimeType: "application/json",
-      responseJsonSchema: schema,
-      thinkingConfig: options?.thinkingConfig ?? undefined,
-      seed: options?.seed ?? GEMINI_SEED,
-      safetySettings,
-    },
-  };
-
-  await logRawLlmCall({
-    modelName,
-    systemInstruction,
-    userPrompt: prompt,
-    payload,
-    thesisMatrix,
-    stage: options?.payloadStage,
-  });
-
-  const maxRetries = 3;
-  let attempts = 0;
-
   try {
-    const response = await withRetry(
-      async () => getAi(assignedKey).models.generateContent(payload),
-      {
-        maxRetries,
-        baseDelay: 2000,
-        onAttempt: (attempt, previousError) => {
-          attempts = attempt;
-          logger?.info("ai_attempt", {
+    return await dispatchGeminiCall<T>({
+      model: modelName,
+      operation,
+      task: async ({ model, apiKey }) => {
+        const projectIndex = getProjectIndex(apiKey);
+
+        if (options?.quiet !== true) {
+          logger?.info(`${callLabel}_scheduled`, {
             service: "gemini",
-            filePath: "src/services/ai/providers/gemini-provider.ts",
             data: {
-              attempt,
-              maxRetries,
+              model,
               projectIndex: projectIndex + 1,
-              model: modelName,
-              retried: attempt > 1,
-              previousError:
-                previousError instanceof Error
-                  ? previousError.message
-                  : undefined,
+              instructionLength: systemInstruction.length,
+              promptLength: prompt.length,
+              thinkingLevel: thinkingLevel ?? undefined,
             },
           });
-        },
-        getDelay: (attempt, error, defaultDelay) => {
-          if (isServerOverloadError(error)) return serverOverloadDelay(attempt);
-          if (isRateLimitError(error)) {
-            const extractedDelay = extractRetryDelayMs(error);
-            if (extractedDelay && extractedDelay > 0) {
-              return extractedDelay + Math.random() * 500;
-            }
-            const capped = Math.min(
-              DEFAULT_MAX_DELAY,
-              2000 * Math.pow(2, attempt - 1),
-            );
-            return capped + Math.random() * Math.min(500, capped * 0.1);
+        }
+
+        const payload = {
+          model,
+          contents: [{ role: "user", parts: [{ text: prompt }] }],
+          config: {
+            systemInstruction,
+            responseMimeType: "application/json",
+            responseJsonSchema: schema,
+            thinkingConfig: options?.thinkingConfig ?? undefined,
+            seed: options?.seed ?? GEMINI_SEED,
+            safetySettings,
+          },
+        };
+
+        await logRawLlmCall({
+          modelName: model,
+          systemInstruction,
+          userPrompt: prompt,
+          payload,
+          thesisMatrix,
+          stage: options?.payloadStage,
+        });
+
+        let attempts = 0;
+
+        try {
+          const response = await withRetry(
+            async () => getAi(apiKey).models.generateContent(payload),
+            {
+              maxRetries,
+              baseDelay: 2000,
+              onAttempt: (attempt, previousError) => {
+                attempts = attempt;
+                logger?.info("ai_attempt", {
+                  service: "gemini",
+                  filePath: "src/services/ai/providers/gemini-provider.ts",
+                  data: {
+                    attempt,
+                    maxRetries,
+                    projectIndex: projectIndex + 1,
+                    model,
+                    retried: attempt > 1,
+                    previousError:
+                      previousError instanceof Error
+                        ? previousError.message
+                        : undefined,
+                  },
+                });
+              },
+              getDelay: (attempt, error, defaultDelay) => {
+                if (isServerOverloadError(error))
+                  return serverOverloadDelay(attempt);
+                if (isRateLimitError(error)) {
+                  const extractedDelay = extractRetryDelayMs(error);
+                  if (extractedDelay && extractedDelay > 0) {
+                    return extractedDelay + Math.random() * 500;
+                  }
+                  const capped = Math.min(
+                    DEFAULT_MAX_DELAY,
+                    2000 * Math.pow(2, attempt - 1),
+                  );
+                  return capped + Math.random() * Math.min(500, capped * 0.1);
+                }
+                return defaultDelay;
+              },
+              isRetryable: (error) => {
+                if (error instanceof Error) {
+                  if (
+                    ("status" in error &&
+                      ((error as { status: string }).status === "UNAVAILABLE" ||
+                        (error as { status: string }).status ===
+                          "RESOURCE_EXHAUSTED")) ||
+                    ("code" in error &&
+                      ((error as { code: number }).code === 503 ||
+                        (error as { code: number }).code === 429)) ||
+                    error.message.includes("high demand") ||
+                    error.message.includes("503") ||
+                    error.message.includes("UNAVAILABLE") ||
+                    error.message.includes("429") ||
+                    error.message.includes("quota") ||
+                    error.message.includes("RESOURCE_EXHAUSTED")
+                  ) {
+                    return true;
+                  }
+                }
+                return false;
+              },
+              onRetry: (attempt, delay, error) => {
+                const httpStatus = extractHttpStatus(error);
+                const quotaDetails = extractQuotaDetails(error);
+                const retryAfterMs = extractRetryDelayMs(error);
+                logger?.info("ai_retry_attempt", {
+                  service: "gemini",
+                  filePath: "src/services/ai/providers/gemini-provider.ts",
+                  step: `retry_attempt_${attempt}`,
+                  durationMs: delay,
+                  data: {
+                    attempt,
+                    maxRetries,
+                    projectIndex: projectIndex + 1,
+                    crossProjectRotation: true,
+                    delayMs: Math.round(delay),
+                    retryAfterMs: retryAfterMs ?? undefined,
+                    httpStatus,
+                    quotaDetails: quotaDetails ?? undefined,
+                    errorMessage:
+                      error instanceof Error ? error.message : String(error),
+                  },
+                });
+              },
+            },
+          );
+
+          const text = response.text;
+          if (!text) {
+            throw new Error("Gemini returned an empty response.");
           }
-          return defaultDelay;
-        },
-        isRetryable: (error) => {
-          if (error instanceof Error) {
-            if (
-              ("status" in error &&
-                ((error as { status: string }).status === "UNAVAILABLE" ||
-                  (error as { status: string }).status ===
-                    "RESOURCE_EXHAUSTED")) ||
-              ("code" in error &&
-                ((error as { code: number }).code === 503 ||
-                  (error as { code: number }).code === 429)) ||
-              error.message.includes("high demand") ||
-              error.message.includes("503") ||
-              error.message.includes("UNAVAILABLE") ||
-              error.message.includes("429") ||
-              error.message.includes("quota") ||
-              error.message.includes("RESOURCE_EXHAUSTED")
-            ) {
-              return true;
+
+          const parsed = sanitizeAndParseJson<T>(text);
+
+          try {
+            validateStructuredOutput(parsed, options?.zodSchema);
+          } catch (err) {
+            if (err instanceof SchemaValidationError) {
+              logger?.error("ai_schema_validation_failed", {
+                service: "gemini",
+                filePath: "src/services/ai/providers/gemini-provider.ts",
+                data: {
+                  model,
+                  projectIndex: projectIndex + 1,
+                  errorCount: err.zodError.issues.length,
+                  issues: err.zodError.issues.map((i) => ({
+                    path: i.path.join("."),
+                    message: i.message,
+                  })),
+                },
+                error: new Error(
+                  `Zod validation failed: ${err.zodError.message}`,
+                ),
+              });
+              throw new Error(
+                "AI response did not match the expected structural schema. Please try again.",
+              );
             }
+            throw err;
           }
-          return false;
-        },
-        onRetry: (attempt, delay, error) => {
-          const httpStatus = extractHttpStatus(error);
+
+          const durationMs = performance.now() - scheduledTime;
+          const metadata = (
+            response as unknown as {
+              usageMetadata?: {
+                promptTokenCount?: number;
+                candidatesTokenCount?: number;
+                totalTokenCount?: number;
+              };
+            }
+          )?.usageMetadata;
+
+          const tokens = metadata
+            ? {
+                input: metadata.promptTokenCount,
+                output: metadata.candidatesTokenCount,
+                total: metadata.totalTokenCount,
+              }
+            : undefined;
+
+          const payloadStage = options?.payloadStage ?? "gemini";
+          logger?.saveDebugPayload(payloadStage, model, prompt, text);
+
+          if (options?.quiet !== true) {
+            logger?.info(`${callLabel}_success`, {
+              service: "gemini",
+              durationMs,
+              tokens,
+              data: {
+                model,
+                projectIndex: projectIndex + 1,
+                crossProjectRotation: true,
+                attempt: attempts,
+                thinkingLevel: thinkingLevel ?? undefined,
+              },
+            });
+          }
+          return parsed;
+        } catch (error) {
+          const durationMs = performance.now() - scheduledTime;
+          const scenario = classifyError(error);
           const quotaDetails = extractQuotaDetails(error);
-          const retryAfterMs = extractRetryDelayMs(error);
-          logger?.info("ai_retry_attempt", {
+
+          const payloadStage = options?.payloadStage ?? "gemini";
+          logger?.saveDebugPayload(payloadStage, model, prompt);
+
+          logger?.error(`${callLabel}_failed`, {
             service: "gemini",
             filePath: "src/services/ai/providers/gemini-provider.ts",
-            step: `retry_attempt_${attempt}`,
-            durationMs: delay,
+            durationMs,
             data: {
-              attempt,
-              maxRetries,
+              model,
               projectIndex: projectIndex + 1,
               crossProjectRotation: true,
-              delayMs: Math.round(delay),
-              retryAfterMs: retryAfterMs ?? undefined,
-              httpStatus,
+              attempts,
+              thinkingLevel: thinkingLevel ?? undefined,
+              scenario,
               quotaDetails: quotaDetails ?? undefined,
-              errorMessage:
-                error instanceof Error ? error.message : String(error),
             },
+            error,
           });
-        },
-      },
-    );
-
-    const text = response.text;
-    if (!text) {
-      throw new Error("Gemini returned an empty response.");
-    }
-
-    const parsed = sanitizeAndParseJson<T>(text);
-
-    try {
-      validateStructuredOutput(parsed, options?.zodSchema);
-    } catch (err) {
-      if (err instanceof SchemaValidationError) {
-        logger?.error("ai_schema_validation_failed", {
-          service: "gemini",
-          filePath: "src/services/ai/providers/gemini-provider.ts",
-          data: {
-            model: modelName,
-            projectIndex: projectIndex + 1,
-            errorCount: err.zodError.issues.length,
-            issues: err.zodError.issues.map((i) => ({
-              path: i.path.join("."),
-              message: i.message,
-            })),
-          },
-          error: new Error(`Zod validation failed: ${err.zodError.message}`),
-        });
-        throw new Error(
-          "AI response did not match the expected structural schema. Please try again.",
-        );
-      }
-      throw err;
-    }
-
-    const durationMs = performance.now() - scheduledTime;
-    const metadata = (
-      response as unknown as {
-        usageMetadata?: {
-          promptTokenCount?: number;
-          candidatesTokenCount?: number;
-          totalTokenCount?: number;
-        };
-      }
-    )?.usageMetadata;
-
-    const tokens = metadata
-      ? {
-          input: metadata.promptTokenCount,
-          output: metadata.candidatesTokenCount,
-          total: metadata.totalTokenCount,
+          throw error;
         }
-      : undefined;
-
-    const payloadStage = options?.payloadStage ?? "gemini";
-    logger?.saveDebugPayload(payloadStage, modelName, prompt, text);
-
-    if (options?.quiet !== true) {
-      logger?.info(`${callLabel}_success`, {
+      },
+    });
+  } catch (error) {
+    if (isDailyQuotaExceeded(error)) {
+      logger?.info("gemini_daily_quota_exhausted", {
         service: "gemini",
-        durationMs,
-        tokens,
+        filePath: "src/services/ai/providers/gemini-provider.ts",
         data: {
           model: modelName,
-          projectIndex: projectIndex + 1,
-          crossProjectRotation: true,
-          attempt: attempts,
-          thinkingLevel: thinkingLevel ?? undefined,
+          operation: operation ?? undefined,
         },
       });
+      throw new DailyQuotaExceededError(`gemini_${modelName}`);
     }
-    return parsed;
-  } catch (error) {
-    const durationMs = performance.now() - scheduledTime;
-    const scenario = classifyError(error);
-    const quotaDetails = extractQuotaDetails(error);
-
-    const payloadStage = options?.payloadStage ?? "gemini";
-    logger?.saveDebugPayload(payloadStage, modelName, prompt);
-
-    logger?.error(`${callLabel}_failed`, {
-      service: "gemini",
-      filePath: "src/services/ai/providers/gemini-provider.ts",
-      durationMs,
-      data: {
-        model: modelName,
-        projectIndex: projectIndex + 1,
-        crossProjectRotation: true,
-        attempts,
-        thinkingLevel: thinkingLevel ?? undefined,
-        scenario,
-        quotaDetails: quotaDetails ?? undefined,
-      },
-      error,
-    });
     throw toAiProviderError(error, "gemini");
   }
 }

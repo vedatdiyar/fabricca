@@ -2,9 +2,9 @@
  * Canonical Gemini API key pool.
  *
  * Single source of truth for the ordered set of Gemini API keys used across the
- * project (main `generateStructuredContent`, PDF parser, per-thesis evaluation).
- * The environment variables are the external contract (`GEMINI_API_KEY_1..3`);
- * every consumer reads ordering and rotation through this module rather than
+ * project. The environment variables are the external contract
+ * (`GEMINI_API_KEY_1..3`); every consumer reads ordering and rotation through
+ * this module and the quota-aware scheduler (`gemini-scheduler.ts`) rather than
  * touching `process.env.GEMINI_API_KEY_*` directly.
  */
 const GEMINI_ENV_KEYS = [
@@ -49,23 +49,6 @@ export function getGeminiKeyPool(): GeminiKeyPool {
   return keyPool;
 }
 
-let nextKeyIndex = 0;
-
-/**
- * Returns the next Gemini key in round-robin order across the enabled keys.
- *
- * Distributes request traffic evenly across all enabled keys so that the
- * combined per-minute budget of every key is used (e.g. 3 keys × 15 RPM).
- *
- * @returns The next API key string in rotation order.
- */
-export function getNextGeminiKey(): string {
-  const pool = getGeminiKeyPool();
-  const key = pool.keys[nextKeyIndex % pool.keys.length];
-  nextKeyIndex++;
-  return key;
-}
-
 /**
  * Resolves the 0-based project/key index for a given API key string.
  *
@@ -78,4 +61,3 @@ export function getProjectIndex(apiKey?: string): number {
   const idx = pool.keys.indexOf(apiKey);
   return idx >= 0 ? idx : 0;
 }
-

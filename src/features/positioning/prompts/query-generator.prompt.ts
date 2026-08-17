@@ -62,4 +62,3 @@ ${subjectProblem}`,
       "Yukarıdaki <context> içeriğindeki araştırma problemini analiz ederek <instructions> kurallarına göre `primaryEmpiricalQuery`, `actorsAndSourcesQuery`, `periodAndContextQuery` ve `substantiveKeywords` alanlarını içeren JSON formatında semantik arama sorgusu çıktısını üret.",
   });
 }
-

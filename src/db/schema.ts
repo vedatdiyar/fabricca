@@ -520,19 +520,16 @@ export const outlineAnnotationsRelations = relations(
   }),
 );
 
-export const outlineSourcesRelations = relations(
-  outlineSources,
-  ({ one }) => ({
-    outline: one(outlines, {
-      fields: [outlineSources.outlineId],
-      references: [outlines.id],
-    }),
-    source: one(sources, {
-      fields: [outlineSources.sourceId],
-      references: [sources.id],
-    }),
+export const outlineSourcesRelations = relations(outlineSources, ({ one }) => ({
+  outline: one(outlines, {
+    fields: [outlineSources.outlineId],
+    references: [outlines.id],
   }),
-);
+  source: one(sources, {
+    fields: [outlineSources.sourceId],
+    references: [sources.id],
+  }),
+}));
 
 export const sourcesRelations = relations(sources, ({ one, many }) => ({
   box: one(boxes, {

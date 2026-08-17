@@ -1,25 +1,24 @@
 import { Logger } from "@/lib/logger";
 import { HttpError, withRetry, DEFAULT_MAX_DELAY } from "@/lib/api-utils";
-import { createConcurrencyLimiter } from "@/lib/rate-limiter";
+import { createRateLimiter } from "@/lib/rate-limiter";
+import { COHERE_LIMITS } from "@/config/rate-limits";
 import { toAiProviderError } from "./llm-errors";
 
 /** Multilingual (incl. Turkish) Cohere Rerank model ID — 32,768-token context. */
 export const COHERE_RERANK_MODEL = "rerank-v4.0-pro";
 /** Maximum duration to wait for a Cohere Rerank response before aborting. */
 const COHERE_TIMEOUT_MS = 30000;
-/** Maximum number of in-flight Cohere Rerank requests across all consumers. */
-const COHERE_MAX_CONCURRENCY = 3;
 /** Maximum retry attempts for transient Cohere failures (429/5xx). */
 const COHERE_MAX_RETRIES = 3;
 
 const COHERE_RERANK_URL = "https://api.cohere.com/v2/rerank";
 
 /**
- * Serializes Cohere Rerank requests (max 3 in-flight) so parallel pipeline
- * consumers (RAG search, positioning sifting, literature expansion) do not
- * exceed the service rate ceiling.
+ * Global Cohere Rerank limiter (trial key: 10 req/min). All parallel pipeline
+ * consumers (RAG search, positioning sifting, literature expansion) queue on the
+ * same limiter so combined traffic never exceeds the trial-rate ceiling.
  */
-const cohereRequestQueue = createConcurrencyLimiter(COHERE_MAX_CONCURRENCY);
+const cohereRequestQueue = createRateLimiter(COHERE_LIMITS);
 
 /**
  * Parses the `Retry-After` header from a Cohere API response into milliseconds.

@@ -1,11 +1,18 @@
 import { Logger } from "@/lib/logger";
 import { withRetry, HttpError, DEFAULT_MAX_DELAY } from "@/lib/api-utils";
-import { createConcurrencyLimiter } from "@/lib/rate-limiter";
+import { createRateLimiter } from "@/lib/rate-limiter";
+import { CLOUDFLARE_EMBEDDINGS_LIMITS } from "@/config/rate-limits";
 import { toAiProviderError } from "./llm-errors";
 
 const BGE_M3_MODEL = "@cf/baai/bge-m3";
 const MAX_EMBEDDING_RETRIES = 3;
 const RETRY_BASE_DELAY_MS = 500;
+
+/**
+ * Global embedding limiter (3000 req/min task ceiling) shared across every
+ * caller, so concurrent pipeline stages cannot overflow the service rate.
+ */
+const embeddingQueue = createRateLimiter(CLOUDFLARE_EMBEDDINGS_LIMITS);
 
 /**
  * Parses the `Retry-After` header from a Cloudflare API response into milliseconds.
@@ -26,7 +33,8 @@ function parseRetryAfterHeader(response: Response): number | null {
 }
 
 /**
- * Generates 1024-d embeddings via Cloudflare Workers AI (`@cf/baai/bge-m3`), batching with concurrency 5 and exponential backoff retry.
+ * Generates 1024-d embeddings via Cloudflare Workers AI (`@cf/baai/bge-m3`), batching with
+ * global rate limiting and exponential backoff retry.
  *
  * @param texts - The texts to embed.
  * @param logger - Optional logger for embedding events.
@@ -80,8 +88,6 @@ export async function generateCloudflareEmbeddings(
   }
 
   const batchResults: number[][][] = [];
-  const maxConcurrency = 5;
-  const embeddingQueue = createConcurrencyLimiter(maxConcurrency);
 
   const queuedBatches = batches.map((batchTexts, batchIndex) =>
     embeddingQueue.exec(() =>

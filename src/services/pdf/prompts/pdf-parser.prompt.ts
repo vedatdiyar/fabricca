@@ -10,7 +10,9 @@ import {
  * @param firstPagesText - Text extracted from the first pages of the document.
  * @returns Standardized PromptPayload containing systemInstruction and userPrompt.
  */
-export function buildPdfParserPromptPayload(firstPagesText: string): PromptPayload {
+export function buildPdfParserPromptPayload(
+  firstPagesText: string,
+): PromptPayload {
   return buildPromptPayload({
     roleAndExpertise:
       "You are an expert academic PDF parser. Your role is to analyze provided PDF pages and extract grounded structured metadata.",

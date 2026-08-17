@@ -87,9 +87,7 @@ export function buildPromptPayload(input: PromptBuilderInput): PromptPayload {
   ];
 
   if (input.workflowSteps?.trim()) {
-    instructionSections.push(
-      `# İşlem Adımları\n${input.workflowSteps.trim()}`,
-    );
+    instructionSections.push(`# İşlem Adımları\n${input.workflowSteps.trim()}`);
   }
 
   instructionSections.push(`# Çıktı Biçimi\n${input.outputFormat.trim()}`);
@@ -107,7 +105,9 @@ export function buildPromptPayload(input: PromptBuilderInput): PromptPayload {
     ) {
       systemInstructionParts.push(trimmedExamples);
     } else {
-      systemInstructionParts.push(`<examples>\n${trimmedExamples}\n</examples>`);
+      systemInstructionParts.push(
+        `<examples>\n${trimmedExamples}\n</examples>`,
+      );
     }
   }
 

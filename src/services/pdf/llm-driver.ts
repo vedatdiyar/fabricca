@@ -69,6 +69,7 @@ export async function extractDocumentMetadata(
         thinkingConfig: { thinkingLevel: ThinkingLevel.LOW },
         seed: GEMINI_SEED,
         payloadStage: "pdf_parser_metadata",
+        operation: "pdf_read",
       },
     );
 
@@ -114,6 +115,7 @@ export async function extractDocumentReferences(
         thinkingConfig: { thinkingLevel: ThinkingLevel.LOW },
         seed: GEMINI_SEED,
         payloadStage: "pdf_parser_references",
+        operation: "pdf_read",
       },
     );
 

@@ -83,9 +83,9 @@ export function ManageAnnotationLinksModal({
             Bölüme Bağlı Alıntı Kartlarını Yönet
           </DialogTitle>
           <DialogDescription className="font-sans text-xs text-muted-foreground">
-            &quot;{outline?.title}&quot; bölümüne doğrudan iliştirmek istediğiniz
-            alıntı, açımlama ve kişisel not kartlarını seçin. Kartın metni,
-            sayfası ve ait olduğu eser bölüm çalışma masasında görünür.
+            &quot;{outline?.title}&quot; bölümüne doğrudan iliştirmek
+            istediğiniz alıntı, açımlama ve kişisel not kartlarını seçin. Kartın
+            metni, sayfası ve ait olduğu eser bölüm çalışma masasında görünür.
           </DialogDescription>
         </DialogHeader>
 

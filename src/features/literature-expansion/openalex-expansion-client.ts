@@ -1,5 +1,6 @@
 import { CROSSREF_USER_AGENT, withRetry } from "@/lib/api-utils";
-import { createGapEnforcedQueue } from "@/lib/rate-limiter";
+import { createRateLimiter } from "@/lib/rate-limiter";
+import { OPENALEX_SEMANTIC_LIMITS } from "@/config/rate-limits";
 import type { CandidateSource } from "./types";
 
 interface OpenAlexWorkItem {
@@ -29,11 +30,11 @@ interface OpenAlexWorkItem {
 const OPENALEX_RETRYABLE = "OPENALEX_RETRYABLE_ERROR";
 
 /**
- * Gap-enforced queue for OpenAlex expansion requests. The forward-citation
- * endpoint may combine `filter` with a `search` query, so requests are spaced
- * to the 1 req/s semantic-search cadence to avoid 429 responses.
+ * Limiter for OpenAlex expansion requests. The forward-citation endpoint may
+ * combine `filter` with a `search` query, so requests keep the 1 req/s semantic
+ * search cadence to avoid 429 responses.
  */
-const openAlexExpansionQueue = createGapEnforcedQueue<Response | null>(1000);
+const openAlexExpansionQueue = createRateLimiter(OPENALEX_SEMANTIC_LIMITS);
 
 /**
  * Retry policy for OpenAlex expansion requests: retries 429/5xx/network errors

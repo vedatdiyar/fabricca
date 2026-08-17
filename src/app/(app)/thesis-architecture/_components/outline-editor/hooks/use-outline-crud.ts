@@ -20,7 +20,10 @@ interface UseOutlineCrudOptions {
   selectedOutlineId: number | null;
   setSelectedOutlineId: (id: number | null) => void;
   localPinnedAnnotationsMap: Record<number, number[]>;
-  applyAnnotationLinkOverride: (outlineId: number, annotationIds: number[]) => void;
+  applyAnnotationLinkOverride: (
+    outlineId: number,
+    annotationIds: number[],
+  ) => void;
   localLinkedSourcesMap: Record<number, number[]>;
   applySourceLinkOverride: (outlineId: number, sourceIds: number[]) => void;
 }
@@ -232,7 +235,10 @@ export function useOutlineCrud({
     applyAnnotationLinkOverride(selectedOutline.id, updated);
 
     const res = isLinked
-      ? await unlinkAnnotationFromOutlineAction(selectedOutline.id, annotationId)
+      ? await unlinkAnnotationFromOutlineAction(
+          selectedOutline.id,
+          annotationId,
+        )
       : await linkAnnotationToOutlineAction(selectedOutline.id, annotationId);
 
     if (res.success) {

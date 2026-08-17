@@ -114,4 +114,3 @@ Tür: ${thesis.thesisType || "N/A"} | Dil: ${thesis.language || "N/A"}
       "Yukarıdaki <context> içinde yer alan tezi <instructions> kurallarına göre analiz ederek JSON formatında değerlendirme çıktısını üret.",
   });
 }
-

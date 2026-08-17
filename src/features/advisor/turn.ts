@@ -1,5 +1,6 @@
 import { HarmCategory, HarmBlockThreshold, ThinkingLevel } from "@google/genai";
 import { getAi } from "@/services/ai";
+import { dispatchGeminiCall } from "@/services/ai/gemini-scheduler";
 import { FLASH_LITE_35, GEMINI_SEED } from "@/lib/constants";
 import { buildAdvisorTurnPromptPayload } from "./prompts/turn.prompt";
 import { sanitizeModelStreamText } from "@/lib/text-sanitizer";
@@ -26,9 +27,13 @@ export interface AdvisorTurnParams {
   history?: Array<{ role: "user" | "model"; content: string }>;
 }
 
+/** Resolved stream object returned by Gemini's `generateContentStream`. */
+type GeminiContentStream = Awaited<
+  ReturnType<ReturnType<typeof getAi>["models"]["generateContentStream"]>
+>;
+
 /** Internal inputs for the agent tool loop. */
 interface AdvisorToolLoopParams {
-  ai: ReturnType<typeof getAi>;
   systemInstruction: string;
   contents: Array<Record<string, unknown>>;
   userId: number;
@@ -42,14 +47,14 @@ interface AdvisorToolLoopParams {
  * emit a `tool_call_request` event for client-side approval and stop the loop.
  *
  * @param writer - The SSE writer for deltas and tool call events.
- * @param params - The AI client, system instruction, mutable contents, and user id.
+ * @param params - The system instruction, mutable contents, and user id.
  * @returns The full accumulated assistant text.
  */
 async function runAdvisorToolLoop(
   writer: AdvisorStreamWriter,
   params: AdvisorToolLoopParams,
 ): Promise<string> {
-  const { ai, systemInstruction, contents, userId } = params;
+  const { systemInstruction, contents, userId } = params;
 
   let fullText = "";
   let maxTurns = 5;
@@ -60,34 +65,41 @@ async function runAdvisorToolLoop(
     continueLoop = false;
     const turnModelParts: Array<Record<string, unknown>> = [];
 
-    const stream = await ai.models.generateContentStream({
+    const stream = await dispatchGeminiCall<GeminiContentStream>({
       model: FLASH_LITE_35,
-      contents: contents as unknown as Parameters<
-        typeof ai.models.generateContentStream
-      >[0]["contents"],
-      config: {
-        systemInstruction,
-        seed: GEMINI_SEED,
-        tools: [{ functionDeclarations: ADVISOR_TOOL_DECLARATIONS }],
-        thinkingConfig: { thinkingLevel: ThinkingLevel.LOW },
-        safetySettings: [
-          {
-            category: HarmCategory.HARM_CATEGORY_HATE_SPEECH,
-            threshold: HarmBlockThreshold.BLOCK_ONLY_HIGH,
+      task: async ({ model, apiKey }) => {
+        const ai = getAi(apiKey);
+        const stream = await ai.models.generateContentStream({
+          model,
+          contents: contents as unknown as Parameters<
+            typeof ai.models.generateContentStream
+          >[0]["contents"],
+          config: {
+            systemInstruction,
+            seed: GEMINI_SEED,
+            tools: [{ functionDeclarations: ADVISOR_TOOL_DECLARATIONS }],
+            thinkingConfig: { thinkingLevel: ThinkingLevel.LOW },
+            safetySettings: [
+              {
+                category: HarmCategory.HARM_CATEGORY_HATE_SPEECH,
+                threshold: HarmBlockThreshold.BLOCK_ONLY_HIGH,
+              },
+              {
+                category: HarmCategory.HARM_CATEGORY_HARASSMENT,
+                threshold: HarmBlockThreshold.BLOCK_ONLY_HIGH,
+              },
+              {
+                category: HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT,
+                threshold: HarmBlockThreshold.BLOCK_ONLY_HIGH,
+              },
+              {
+                category: HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT,
+                threshold: HarmBlockThreshold.BLOCK_ONLY_HIGH,
+              },
+            ],
           },
-          {
-            category: HarmCategory.HARM_CATEGORY_HARASSMENT,
-            threshold: HarmBlockThreshold.BLOCK_ONLY_HIGH,
-          },
-          {
-            category: HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT,
-            threshold: HarmBlockThreshold.BLOCK_ONLY_HIGH,
-          },
-          {
-            category: HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT,
-            threshold: HarmBlockThreshold.BLOCK_ONLY_HIGH,
-          },
-        ],
+        });
+        return stream;
       },
     });
 
@@ -253,7 +265,6 @@ export async function runTurn(
   const userMessageText = `Kütüphane Kaynak Bağlamı:\n${contextText}\n\nKullanıcı Sorgusu:\n${params.query}`;
   const payload = buildAdvisorTurnPromptPayload(persona, userMessageText);
 
-  const ai = getAi();
   const contents: Array<Record<string, unknown>> = [];
 
   if (params.history && params.history.length > 0) {
@@ -265,7 +276,6 @@ export async function runTurn(
   contents.push({ role: "user", parts: [{ text: payload.userPrompt }] });
 
   const fullText = await runAdvisorToolLoop(writer, {
-    ai,
     systemInstruction: payload.systemInstruction,
     contents,
     userId: params.userId,

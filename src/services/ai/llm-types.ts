@@ -52,8 +52,13 @@ export interface StructuredGenerationOptions<T> {
     threshold: HarmBlockThreshold;
   }>;
   quiet?: boolean;
-  apiKey?: string;
   temperature?: number;
   maxTokens?: number;
   topP?: number;
+  /**
+   * Pipeline operation key (e.g. "pdf_read", "sanitize"). Operations listed in
+   * `GEMINI_FALLBACK_OPERATIONS` may fall back to a weaker model when every key
+   * is daily-exhausted; all others hard-stop with a quota outcome.
+   */
+  operation?: string;
 }

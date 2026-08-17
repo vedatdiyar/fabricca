@@ -85,6 +85,7 @@ export async function sanitizeAcademicDataBulk(
         },
       ],
       payloadStage: "literature_bulk_sanitization",
+      operation: "sanitize",
     },
   );
 
@@ -135,6 +136,7 @@ export async function sanitizeTargetedArticles(
         },
       ],
       payloadStage: "literature_targeted_sanitization",
+      operation: "sanitize",
     },
   );
 

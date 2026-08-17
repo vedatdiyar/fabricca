@@ -1,7 +1,6 @@
 import { ThinkingLevel } from "@google/genai";
 import { z } from "zod";
 import { FLASH_36, GEMINI_SEED } from "@/lib/constants";
-import { getGeminiKeyPool } from "@/services/ai/gemini-key-pool";
 import {
   generateGeminiStructuredContent,
   type JsonSchema,
@@ -238,7 +237,6 @@ Katkı/Odak Alanları: ${e.contributionAreas.join(", ") || "Yok"}
       seed: GEMINI_SEED,
       thinkingConfig: { thinkingLevel: ThinkingLevel.LOW },
       thesisMatrix: { input, filteredThesesCount: evaluatedTheses.length },
-      apiKey: getGeminiKeyPool().keys[2] ?? getGeminiKeyPool().keys[0],
     },
   );
 

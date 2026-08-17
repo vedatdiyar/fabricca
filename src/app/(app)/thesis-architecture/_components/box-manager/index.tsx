@@ -21,9 +21,7 @@ export interface BoxManagerViewProps {
  * Orchestrator layout: wires the data/clipboard/modal hooks together and
  * renders the metric strip, the quadrant pillar grid and the four dialogs.
  */
-export function BoxManagerView({
-  boxesList,
-}: BoxManagerViewProps) {
+export function BoxManagerView({ boxesList }: BoxManagerViewProps) {
   const { rootBoxes, subBoxesByParent, pillarMetricsById } =
     useBoxData(boxesList);
   const { copySubBox } = useClipboardExport();
