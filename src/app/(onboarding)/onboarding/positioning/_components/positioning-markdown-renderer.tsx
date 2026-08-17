@@ -1,6 +1,7 @@
 import React from "react";
 import { Compass, ScanEye, Sparkles } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import type { GapAnalysisStructured } from "@/app/(onboarding)/onboarding/positioning/_services/validation";
 
 interface PositioningMarkdownRendererProps {
@@ -191,9 +192,12 @@ export function PositioningMarkdownRenderer({
               Mevcut Literatürün Haritalandırılması
             </CardTitle>
           </div>
-          <span className="text-xs font-medium uppercase tracking-wider text-muted-foreground shrink-0 hidden sm:inline-block">
+          <Badge
+            variant="outline"
+            className="bg-info/10 text-info border-info/20 px-2.5 py-0.5 text-xs font-medium shrink-0 hidden sm:inline-flex"
+          >
             Literatür Analizi
-          </span>
+          </Badge>
         </CardHeader>
         <CardContent className="p-4 sm:p-6 pt-4 text-sm leading-relaxed text-foreground space-y-3 font-sans">
           {data.literatureMapping.split("\n\n").map((para) => (
@@ -213,9 +217,12 @@ export function PositioningMarkdownRenderer({
               Literatürdeki Boşluk
             </CardTitle>
           </div>
-          <span className="text-xs font-medium uppercase tracking-wider text-muted-foreground shrink-0 hidden sm:inline-block">
+          <Badge
+            variant="outline"
+            className="bg-warning/10 text-warning border-warning/20 px-2.5 py-0.5 text-xs font-medium shrink-0 hidden sm:inline-flex"
+          >
             Akademik Boşluk
-          </span>
+          </Badge>
         </CardHeader>
         <CardContent className="p-4 sm:p-6 pt-4 text-sm leading-relaxed text-foreground space-y-3 font-sans">
           {data.academicGap.split("\n\n").map((para) => (
@@ -235,9 +242,12 @@ export function PositioningMarkdownRenderer({
               Çalışmanın Özgün Katkısı
             </CardTitle>
           </div>
-          <span className="text-xs font-medium uppercase tracking-wider text-muted-foreground shrink-0 hidden sm:inline-block">
+          <Badge
+            variant="outline"
+            className="bg-success/10 text-success border-success/20 px-2.5 py-0.5 text-xs font-medium shrink-0 hidden sm:inline-flex"
+          >
             Özgün Değer
-          </span>
+          </Badge>
         </CardHeader>
         <CardContent className="p-4 sm:p-6 pt-4 text-sm leading-relaxed text-foreground space-y-3 font-sans">
           {data.originalContribution.split("\n\n").map((para) => (
