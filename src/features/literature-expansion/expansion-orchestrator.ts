@@ -1,10 +1,11 @@
 import { db } from "@/db";
-import { boxes, expansions, sources, type NewSource } from "@/db/schema";
+import { boxes, sources } from "@/db/schema";
 import { eq, inArray } from "drizzle-orm";
 import { Logger, createFlowId } from "@/lib/logger";
 import type { ExpansionResult } from "./types";
 import { executeBackwardExpansion } from "./backward-expansion";
 import { executeForwardExpansion } from "./forward-expansion";
+import { persistExpansionResult } from "./expansion-persistence";
 
 /**
  * Main orchestrator for Sub-Box automatic literature expansion.
@@ -108,59 +109,19 @@ export async function runLiteratureExpansion(
     throw new Error("Literatür genişletme için uygun yeni kaynak bulunamadı.");
   }
 
-  // 4. Insert selected candidates into sources table
-  const newSourceRecords: NewSource[] = allSelectedCandidates.map((c) => ({
-    boxId,
-    title: c.title,
-    authors: c.authors,
-    publisher: c.publisher,
-    publicationYear: c.publicationYear,
-    doi: c.doi,
-    openalexId: c.openalexId,
-    relevanceScore: c.relevanceScore,
-    isRead: false,
-    pdfUrl: c.pdfUrl,
-    pdfStatus: c.pdfUrl ? "PROCESSING" : "NOT_UPLOADED",
-  }));
-
   logger.info("literature_db_write_start", {
     service: "literature",
     status: "START",
-    data: { boxId, insertCount: newSourceRecords.length },
+    data: { boxId, insertCount: allSelectedCandidates.length },
   });
 
   const nextCycle = (box.expansionCycle ?? 1) + 1;
 
-  const insertedSources = await db.transaction(async (tx) => {
-    const created = await tx
-      .insert(sources)
-      .values(newSourceRecords)
-      .returning({
-        id: sources.id,
-        title: sources.title,
-      });
-
-    const newActiveSeedIds = created.map((s) => s.id);
-
-    // Update Sub-Box activeSeedIds and expansionCycle
-    await tx
-      .update(boxes)
-      .set({
-        activeSeedIds: newActiveSeedIds,
-        expansionCycle: nextCycle,
-        updatedAt: new Date(),
-      })
-      .where(eq(boxes.id, boxId));
-
-    // Persist history so the latest cycle can be undone
-    await tx.insert(expansions).values({
-      boxId,
-      cycle: nextCycle,
-      previousActiveSeedIds: activeSeedIds,
-      newActiveSeedIds,
-    });
-
-    return created;
+  const insertedSources = await persistExpansionResult({
+    boxId,
+    nextCycle,
+    previousActiveSeedIds: activeSeedIds,
+    candidates: allSelectedCandidates,
   });
 
   const newActiveSeedIds = insertedSources.map((s) => s.id);

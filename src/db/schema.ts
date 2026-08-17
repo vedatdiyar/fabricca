@@ -24,23 +24,17 @@ import type {
   RecommendedThesisItem,
   GapAnalysisStructured,
 } from "@/features/positioning/validation";
+import type { RagSearchResultItem } from "@/services/search/rag-search";
+import type { ParsedReference } from "@/services/pdf/parsed-reference";
+import type { ChatToolCall } from "@/features/advisor/types";
+import type { PipelineResultData } from "@/features/advisor/pipeline/types";
 
-/** A single parsed bibliographic reference extracted from a resource's reference list. */
-export interface ParsedReference {
-  raw: string;
-  documentType:
-    "article-journal" | "book" | "chapter" | "thesis" | "other" | null;
-  title: string | null;
-  containerTitle: string | null;
-  authors: Array<{
-    name: string;
-    role: "author" | "editor" | "translator";
-  }>;
-  year: number | null;
-  publisher: string | null;
-  publisherPlace: string | null;
-  resolved: boolean;
-}
+export type {
+  ParsedReference,
+  ChatToolCall,
+  PipelineResultData,
+  RagSearchResultItem,
+};
 
 /** Users table — email is unique, password is bcrypt-hashed, onboardingCompleted tracks onboarding state. */
 export const users = pgTable("users", {
@@ -587,43 +581,6 @@ export type Session = InferSelectModel<typeof sessions>;
 
 export type NewSession = InferInsertModel<typeof sessions>;
 
-/** Structure for stored tool call requests in chat messages. */
-export interface ChatToolCall {
-  toolCallId: string;
-  name: string;
-  args: Record<string, unknown>;
-  explanation: string;
-  status: "pending" | "approved" | "rejected" | "undone";
-  executionResult?: unknown;
-  previousState?: Record<string, unknown>;
-}
-
-/** Pipeline result type for the three-stage Academic Pipeline stored on chat messages. */
-export interface PipelineResultData {
-  stage: "audit" | "socratic" | "redaction";
-  cycle: number;
-  originalDraft?: string;
-  audit?: {
-    summary: string;
-    findings: Array<{
-      message: string;
-      severity: "CRITICAL" | "WARNING" | "NOTE";
-      sourceTitle?: string;
-      citedPages?: string;
-    }>;
-    hasCriticalIssues: boolean;
-  };
-  verdict?: {
-    state: "REQUIRES_ANSWER" | "COMPLETE";
-    summary: string;
-    readinessScore: number;
-  };
-  diff?: {
-    original: string;
-    polished: string;
-  };
-}
-
 /** Messages table — stores individual messages within a chat session. */
 export const messages = pgTable(
   "messages",
@@ -646,17 +603,3 @@ export const messages = pgTable(
 export type Message = InferSelectModel<typeof messages>;
 
 export type NewMessage = InferInsertModel<typeof messages>;
-
-/** Lightweight type for RAG source references stored in chat messages. */
-export interface RagSearchResultItem {
-  resourceTitle: string;
-  resourceAuthors: string[];
-  content: string;
-  relevanceScore: number;
-  denseScore: number;
-  isPartialMatch: boolean;
-  pageStart: number | null;
-  pageEnd: number | null;
-  printedPageNumber: string | null;
-  sectionTitle: string | null;
-}

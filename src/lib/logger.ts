@@ -1,10 +1,24 @@
+import {
+  C_RESET,
+  C_GREEN,
+  deriveStatus,
+  statusIcon,
+  statusColor,
+  formatDuration,
+  extractReason,
+} from "./logger-format";
+import { createFlowId } from "./flow-id";
+
+export { createFlowId };
+export { deriveStatus, statusIcon, statusColor, formatDuration, extractReason };
+
 export interface TokenUsage {
   input?: number;
   output?: number;
   total?: number;
 }
 
-type ServiceName =
+export type ServiceName =
   | "gemini"
   | "cloudflare"
   | "tezara"
@@ -51,19 +65,12 @@ export interface LoggerInstance {
   info(arg1: string | Record<string, unknown>, params?: LogParams): void;
   error(arg1: string | Record<string, unknown>, params?: LogParams): void;
   warn(arg1: string | Record<string, unknown>, params?: LogParams): void;
-  step(n: string, m?: Record<string, unknown>): void;
-  file(r: string): void;
-  data(l: string, v: unknown): void;
-  preview(l: string, v: unknown): void;
-  prompt(m: string, c: string): void;
-  saveDebugPayload(
+  saveDebugPayload?(
     s: string,
     m: string,
     p: string,
     r?: string,
   ): string | undefined;
-  groupStart(event: string): void;
-  groupEnd(event: string, durationMs: number): void;
   total(
     event: string,
     durationMs: number,
@@ -71,91 +78,7 @@ export interface LoggerInstance {
   ): void;
 }
 
-/**
- * Derives START, SUCCESS, or FAILED status from an event name's suffix.
- *
- * @param event - Event name possibly ending with a status suffix.
- * @returns The derived status, or empty string when none matches.
- */
-function deriveStatus(event: string): string {
-  if (event.endsWith("_start")) return "START";
-  if (event.endsWith("_success")) return "SUCCESS";
-  if (
-    event.endsWith("_failed") ||
-    event.endsWith("_filtered") ||
-    event.endsWith("_empty")
-  )
-    return "FAILED";
-  return "";
-}
-
 const isDev = () => process.env.NODE_ENV === "development";
-
-const C_RESET = "\x1b[0m";
-const C_GREEN = "\x1b[32m";
-const C_RED = "\x1b[31m";
-const C_YELLOW = "\x1b[33m";
-
-/**
- * Returns the icon corresponding to a status.
- *
- * @param s - Status string (START, SUCCESS, FAILED, or RETRY).
- * @returns The matching icon.
- */
-function statusIcon(s: string): string {
-  return s === "START"
-    ? "⏳"
-    : s === "SUCCESS"
-      ? "✓"
-      : s === "FAILED"
-        ? "✖"
-        : s === "RETRY"
-          ? "↻"
-          : "•";
-}
-
-/**
- * Returns the ANSI color code for a status.
- *
- * @param s - Status string.
- * @returns The matching ANSI color code.
- */
-function statusColor(s: string): string {
-  if (s === "SUCCESS") return C_GREEN;
-  if (s === "FAILED") return C_RED;
-  if (s === "START" || s === "RETRY") return C_YELLOW;
-  return "";
-}
-
-/**
- * Formats a millisecond duration compactly ("497ms" or "1.5s").
- *
- * @param ms - Duration in milliseconds.
- * @returns Compact duration string.
- */
-function formatDuration(ms: number): string {
-  const safe = Math.max(0, ms);
-  if (safe < 1000) return `${Math.round(safe)}ms`;
-  const sec = safe / 1000;
-  if (Number.isInteger(sec)) return `${sec}s`;
-  return `${sec.toFixed(1)}s`;
-}
-
-/**
- * Converts an unknown error value into a short readable message.
- *
- * @param error - Error value of any type.
- * @returns Short readable message.
- */
-function extractReason(error: unknown): string {
-  if (error instanceof Error) return error.message;
-  if (typeof error === "string") return error;
-  try {
-    return JSON.stringify(error);
-  } catch {
-    return String(error);
-  }
-}
 
 export class Logger implements LoggerInstance {
   public readonly flowId: string;
@@ -205,59 +128,6 @@ export class Logger implements LoggerInstance {
   }
 
   /**
-   * Records a step marker in the current flow.
-   *
-   * @param n - Step name.
-   * @param m - Optional step metadata.
-   */
-  step(n: string, m?: Record<string, unknown>): void {
-    void n;
-    void m;
-  }
-
-  /**
-   * Records a file reference for the current flow.
-   *
-   * @param r - File path.
-   */
-  file(r: string): void {
-    void r;
-  }
-
-  /**
-   * Records a labeled data snapshot for the current flow.
-   *
-   * @param l - Snapshot label.
-   * @param v - Snapshot value.
-   */
-  data(l: string, v: unknown): void {
-    void l;
-    void v;
-  }
-
-  /**
-   * Records a labeled preview for the current flow.
-   *
-   * @param l - Preview label.
-   * @param v - Preview value.
-   */
-  preview(l: string, v: unknown): void {
-    void l;
-    void v;
-  }
-
-  /**
-   * Records a prompt message for the current flow.
-   *
-   * @param m - Prompt message.
-   * @param c - Contextual label.
-   */
-  prompt(m: string, c: string): void {
-    void m;
-    void c;
-  }
-
-  /**
    * Saves a debug payload for later inspection.
    *
    * @param s - Payload stage.
@@ -277,26 +147,6 @@ export class Logger implements LoggerInstance {
     void p;
     void r;
     return undefined;
-  }
-
-  /**
-   * Marks the start of a log group.
-   *
-   * @param event - Group event name.
-   */
-  groupStart(event: string): void {
-    void event;
-  }
-
-  /**
-   * Marks the end of a log group.
-   *
-   * @param event - Group event name.
-   * @param durationMs - Duration of the group in milliseconds.
-   */
-  groupEnd(event: string, durationMs: number): void {
-    void event;
-    void durationMs;
   }
 
   /**
@@ -459,13 +309,4 @@ export class Logger implements LoggerInstance {
     if (p?.error) entry.error = String(p.error);
     console[level](JSON.stringify(entry));
   }
-}
-
-/**
- * Generates a unique flow identifier in the form fl_<timestamp36>_<random>.
- *
- * @returns Unique flow identifier string.
- */
-export function createFlowId(): string {
-  return `fl_${Date.now().toString(36)}_${Math.random().toString(36).substring(2, 8)}`;
 }

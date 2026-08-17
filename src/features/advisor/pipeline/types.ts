@@ -79,3 +79,29 @@ export interface PipelineResult {
   stage: PipelineStage;
   audit?: AuditReport;
 }
+
+/** Pipeline result type for the three-stage Academic Pipeline stored on chat messages. */
+export interface PipelineResultData {
+  stage: "audit" | "socratic" | "redaction";
+  cycle: number;
+  originalDraft?: string;
+  audit?: {
+    summary: string;
+    findings: Array<{
+      message: string;
+      severity: "CRITICAL" | "WARNING" | "NOTE";
+      sourceTitle?: string;
+      citedPages?: string;
+    }>;
+    hasCriticalIssues: boolean;
+  };
+  verdict?: {
+    state: "REQUIRES_ANSWER" | "COMPLETE";
+    summary: string;
+    readinessScore: number;
+  };
+  diff?: {
+    original: string;
+    polished: string;
+  };
+}

@@ -1,0 +1,135 @@
+import type { Logger } from "@/lib/logger";
+import { getGeminiKeyPool } from "../gemini-key-pool";
+import {
+  isRateLimitError,
+  isRpdError,
+  isServerOverloadError,
+  extractHttpStatus,
+  extractQuotaDetails,
+  extractRetryDelayMs,
+} from "../llm-errors";
+import {
+  type RetryOptions,
+  serverOverloadDelay,
+  DEFAULT_MAX_DELAY,
+} from "../llm-retry";
+
+export interface GeminiRetryPolicyParams {
+  model: string;
+  projectIndex: number;
+  maxRetries?: number;
+  logger?: Logger;
+  onAttemptCallback?: (attempt: number) => void;
+}
+
+/**
+ * Creates the retry policy and callbacks for executing a Gemini API call with `withRetry`.
+ *
+ * @param params - Configuration including model, projectIndex, and logger.
+ * @returns Configured RetryOptions for withRetry.
+ */
+export function createGeminiRetryPolicy(
+  params: GeminiRetryPolicyParams,
+): RetryOptions {
+  const {
+    model,
+    projectIndex,
+    maxRetries = 3,
+    logger,
+    onAttemptCallback,
+  } = params;
+
+  return {
+    maxRetries,
+    baseDelay: 2000,
+    onAttempt: (attempt, previousError) => {
+      onAttemptCallback?.(attempt);
+      logger?.info("ai_attempt", {
+        service: "gemini",
+        filePath: "src/services/ai/providers/gemini-provider.ts",
+        data: {
+          attempt,
+          maxRetries,
+          projectIndex: projectIndex + 1,
+          model,
+          retried: attempt > 1,
+          previousError:
+            previousError instanceof Error ? previousError.message : undefined,
+        },
+      });
+    },
+    getDelay: (attempt, error, defaultDelay) => {
+      if (isServerOverloadError(error)) {
+        return serverOverloadDelay(attempt);
+      }
+      if (isRateLimitError(error)) {
+        const extractedDelay = extractRetryDelayMs(error);
+        if (extractedDelay && extractedDelay > 0) {
+          return extractedDelay + Math.random() * 500;
+        }
+        const capped = Math.min(
+          DEFAULT_MAX_DELAY,
+          2000 * Math.pow(2, attempt - 1),
+        );
+        return capped + Math.random() * Math.min(500, capped * 0.1);
+      }
+      return defaultDelay;
+    },
+    isRetryable: (error) => {
+      if (error instanceof Error) {
+        // If it's an RPD (Daily Quota) error, do not retry on the same key;
+        // let dispatchGeminiCall immediately switch to the next API key!
+        if (isRpdError(error)) {
+          return false;
+        }
+
+        // If it's an RPM rate limit error and multiple keys exist in the pool,
+        // fail fast on this key so dispatchGeminiCall switches to an idle key immediately!
+        if (isRateLimitError(error)) {
+          if (getGeminiKeyPool().keys.length > 1) {
+            return false;
+          }
+          return true;
+        }
+
+        if (
+          isServerOverloadError(error) ||
+          ("status" in error &&
+            ((error as { status: string }).status === "UNAVAILABLE" ||
+              (error as { status: string }).status === "RESOURCE_EXHAUSTED")) ||
+          ("code" in error &&
+            ((error as { code: number }).code === 503 ||
+              (error as { code: number }).code === 429)) ||
+          error.message.includes("high demand") ||
+          error.message.includes("503") ||
+          error.message.includes("UNAVAILABLE")
+        ) {
+          return true;
+        }
+      }
+      return false;
+    },
+    onRetry: (attempt, delay, error) => {
+      const httpStatus = extractHttpStatus(error);
+      const quotaDetails = extractQuotaDetails(error);
+      const retryAfterMs = extractRetryDelayMs(error);
+      logger?.info("ai_retry_attempt", {
+        service: "gemini",
+        filePath: "src/services/ai/providers/gemini-provider.ts",
+        step: `retry_attempt_${attempt}`,
+        durationMs: delay,
+        data: {
+          attempt,
+          maxRetries,
+          projectIndex: projectIndex + 1,
+          crossProjectRotation: true,
+          delayMs: Math.round(delay),
+          retryAfterMs: retryAfterMs ?? undefined,
+          httpStatus,
+          quotaDetails: quotaDetails ?? undefined,
+          errorMessage: error instanceof Error ? error.message : String(error),
+        },
+      });
+    },
+  };
+}

@@ -1,16 +1,14 @@
-import { HarmCategory, HarmBlockThreshold, ThinkingLevel } from "@google/genai";
 import { runStage1Audit } from "./stage1-audit";
-import type { AuditReport, PipelineResult } from "./types";
+import type { PipelineResult } from "./types";
 import type { RagSearchResultItem } from "@/services/search/rag-search";
-import { getAi } from "@/services/ai";
-import { dispatchGeminiCall } from "@/services/ai/gemini-scheduler";
-import { buildAdvisorTurnPromptPayload } from "../prompts/turn.prompt";
-import { FLASH_LITE_35, GEMINI_SEED } from "@/lib/constants";
+import {
+  formatAuditFindings,
+  buildAuditHaltText,
+  FALLBACK_SOCRATIC_TEXT,
+} from "./audit-formatter";
+import { streamSocraticAdvisorResponse } from "./socratic-stream";
 
-/** Resolved stream object returned by Gemini's `generateContentStream`. */
-type GeminiContentStream = Awaited<
-  ReturnType<ReturnType<typeof getAi>["models"]["generateContentStream"]>
->;
+export { formatAuditFindings };
 
 /** SSE event emission and text streaming interface used by the pipeline orchestrator. */
 export interface PipelineSseWriter {
@@ -29,29 +27,6 @@ export interface PipelineTurnOutput {
   text: string;
   sources: RagSearchResultItem[];
   pipeline: PipelineResult;
-}
-
-/**
- * Renders the Turkish findings list of a Stage 1 audit report.
- *
- * @param audit - The Stage 1 audit report.
- * @returns The rendered bulleted findings list, or the audit summary when empty.
- */
-function formatAuditFindings(audit: AuditReport): string {
-  if (audit.findings.length === 0) return audit.summary;
-
-  const SEVERITY_LABELS: Record<string, string> = {
-    CRITICAL: "Kritik",
-    WARNING: "Uyarı",
-    NOTE: "Not",
-  };
-
-  return audit.findings
-    .map((finding) => {
-      const label = SEVERITY_LABELS[finding.severity] ?? finding.severity;
-      return `- **${label}:** ${finding.message}`;
-    })
-    .join("\n");
 }
 
 /**
@@ -82,104 +57,23 @@ export async function runPipelineTurn(
 
   if (audit.hasCriticalIssues) {
     // Strict Verification Gate: halt immediately, no subsequent steps.
-    const text =
-      "### Denetim Durduruldu — Kritik Bulgular\n\n" +
-      "Taslak paragrafındaki kaynak atıflarında kritik uyumsuzluklar tespit edildi:\n\n" +
-      findingsText +
-      "\n\n> Devam etmeden önce bu bulguları gidermek için taslağınızı revize ederek yeniden gönderebilir veya onay vererek devam edebilirsiniz.";
-
+    const text = buildAuditHaltText(findingsText);
     writer.delta(text);
     return { text, sources, pipeline };
   }
 
   // Audit passed — stream Socratic Advisor response
   try {
-    const userMessageText = `Kütüphane Kaynak Bağlamı:\n${sourceContext}\n\nKullanıcı Taslağı:\n${input.originalDraft}`;
-    const payload = buildAdvisorTurnPromptPayload(
-      "SOCRATIC_ADVISOR",
-      userMessageText,
-    );
-    const contents = [
-      {
-        role: "user",
-        parts: [
-          {
-            text: payload.userPrompt,
-          },
-        ],
-      },
-    ];
-
-    let fullText = "";
-
-    const stream = await dispatchGeminiCall<GeminiContentStream>({
-      model: FLASH_LITE_35,
-      task: async ({ model, apiKey }) => {
-        const ai = getAi(apiKey);
-        const stream = await ai.models.generateContentStream({
-          model,
-          contents: contents as unknown as Parameters<
-            typeof ai.models.generateContentStream
-          >[0]["contents"],
-          config: {
-            systemInstruction: payload.systemInstruction,
-            seed: GEMINI_SEED,
-            thinkingConfig: { thinkingLevel: ThinkingLevel.LOW },
-            safetySettings: [
-              {
-                category: HarmCategory.HARM_CATEGORY_HATE_SPEECH,
-                threshold: HarmBlockThreshold.BLOCK_ONLY_HIGH,
-              },
-              {
-                category: HarmCategory.HARM_CATEGORY_HARASSMENT,
-                threshold: HarmBlockThreshold.BLOCK_ONLY_HIGH,
-              },
-              {
-                category: HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT,
-                threshold: HarmBlockThreshold.BLOCK_ONLY_HIGH,
-              },
-              {
-                category: HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT,
-                threshold: HarmBlockThreshold.BLOCK_ONLY_HIGH,
-              },
-            ],
-          },
-        });
-        return stream;
-      },
+    const fullText = await streamSocraticAdvisorResponse({
+      sourceContext,
+      originalDraft: input.originalDraft,
+      writer,
     });
-
-    for await (const chunk of stream) {
-      let text = "";
-      try {
-        if (chunk.candidates?.[0]?.content?.parts) {
-          for (const part of chunk.candidates[0].content.parts) {
-            if (part.text) text += part.text;
-          }
-        } else {
-          text = chunk.text ?? "";
-        }
-      } catch {
-        text = "";
-      }
-
-      if (text) {
-        fullText += text;
-        writer.delta(text);
-      }
-    }
 
     return { text: fullText, sources, pipeline };
   } catch {
     // Fallback: brief acknowledgment if Socratic generation fails
-    const fallbackText =
-      "### Denetim Başarılı\n\n" +
-      "Taslak paragrafınız kaynak ve alıntı doğruluğu açısından denetlendi; " +
-      "kritik düzeyde bir tutarsızlık tespit edilmedi.\n\n" +
-      "Şimdi tezinizin metodolojik çerçevesini ve teorik temellerini eleştirel bir şekilde değerlendirelim: " +
-      "Bu taslağınızda kullandığınız kaynakları hangi ölçüte göre seçtiniz ve neden bu kaynakları diğer alternatiflerin üzerine tercih ettiniz?";
-
-    writer.delta(fallbackText);
-    return { text: fallbackText, sources, pipeline };
+    writer.delta(FALLBACK_SOCRATIC_TEXT);
+    return { text: FALLBACK_SOCRATIC_TEXT, sources, pipeline };
   }
 }

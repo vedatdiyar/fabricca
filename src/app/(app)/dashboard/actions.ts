@@ -1,353 +1,46 @@
 "use server";
 
-import { eq } from "drizzle-orm";
-import { revalidatePath } from "next/cache";
-import { createFlowId, Logger } from "@/lib/logger";
-import { db } from "@/db";
-import { tasks, boxes, sources } from "@/db/schema";
-import { getSession, SESSION_ERROR_MSG } from "@/lib/session";
-import { getUsersMatrixAndBoxesWithResources } from "./_services/box-service";
 import {
-  AddTaskSchema,
-  UpdateTaskSchema,
-  TaskStatusSchema,
-  type TaskInput,
-  type UpdateTaskInput,
-  type TaskRow,
-} from "./_lib/schemas";
+  getTasksAction as _getTasksAction,
+  addTaskAction as _addTaskAction,
+  updateTaskAction as _updateTaskAction,
+  updateTaskStatusAction as _updateTaskStatusAction,
+  deleteTaskAction as _deleteTaskAction,
+} from "./task-actions";
+import { refreshDashboardDataAction as _refreshDashboardDataAction } from "./dashboard-data-actions";
 
-/**
- * Fetches all tasks for the current user, resolving box titles via LEFT JOIN.
- *
- * @returns The task list or an error message
- */
-export async function getTasksAction(): Promise<{
-  success: boolean;
-  data?: TaskRow[];
-  error?: string;
-}> {
-  const flowId = createFlowId();
-  const log = new Logger(flowId);
-
-  try {
-    const session = await getSession();
-    if (!session) return { success: false, error: SESSION_ERROR_MSG };
-
-    const rows = await db
-      .select({
-        id: tasks.id,
-        title: tasks.title,
-        description: tasks.description,
-        status: tasks.status,
-        priority: tasks.priority,
-        thesisBoxId: tasks.boxId,
-        boxTitle: boxes.title,
-        createdAt: tasks.createdAt,
-        updatedAt: tasks.updatedAt,
-      })
-      .from(tasks)
-      .leftJoin(boxes, eq(tasks.boxId, boxes.id))
-      .where(eq(tasks.userId, session.userId))
-      .orderBy(tasks.createdAt);
-
-    return { success: true, data: rows };
-  } catch (err) {
-    log.error("tasks_fetch_failed", {
-      service: "dashboard",
-      error: err,
-    });
-    return { success: false, error: "Görevler yüklenirken bir hata oluştu." };
-  }
+export async function getTasksAction(
+  ...args: Parameters<typeof _getTasksAction>
+) {
+  return _getTasksAction(...args);
 }
 
-/**
- * Creates a new task.
- *
- * @param input - The task creation payload
- * @returns The created task row or an error message
- */
-export async function addTaskAction(input: TaskInput): Promise<{
-  success: boolean;
-  data?: TaskRow;
-  error?: string;
-}> {
-  const flowId = createFlowId();
-  const log = new Logger(flowId);
-
-  try {
-    const session = await getSession();
-    if (!session) return { success: false, error: SESSION_ERROR_MSG };
-
-    const parsed = AddTaskSchema.safeParse(input);
-    if (!parsed.success) {
-      const firstIssue = parsed.error.issues[0];
-      return {
-        success: false,
-        error: firstIssue?.message ?? "Geçersiz giriş.",
-      };
-    }
-
-    const valid = parsed.data;
-
-    const [inserted] = await db
-      .insert(tasks)
-      .values({
-        userId: session.userId,
-        title: valid.title.trim(),
-        description: valid.description ?? null,
-        status: valid.status ?? "TODO",
-        priority: valid.priority ?? "MEDIUM",
-        boxId: valid.thesisBoxId ?? null,
-      })
-      .returning();
-
-    let boxTitle: string | null = null;
-    if (inserted.boxId) {
-      const [box] = await db
-        .select({ title: boxes.title })
-        .from(boxes)
-        .where(eq(boxes.id, inserted.boxId));
-      boxTitle = box?.title ?? null;
-    }
-
-    revalidatePath("/dashboard");
-
-    return {
-      success: true,
-      data: {
-        ...inserted,
-        thesisBoxId: inserted.boxId,
-        boxTitle,
-      },
-    };
-  } catch (err) {
-    log.error("task_create_failed", {
-      service: "dashboard",
-      error: err,
-    });
-    return { success: false, error: "Görev oluşturulurken bir hata oluştu." };
-  }
+export async function addTaskAction(
+  ...args: Parameters<typeof _addTaskAction>
+) {
+  return _addTaskAction(...args);
 }
 
-/**
- * Updates a task's title, priority, or linked box.
- *
- * @param taskId - The task ID to update
- * @param input - The fields to update
- * @returns The updated task row or an error message
- */
 export async function updateTaskAction(
-  taskId: number,
-  input: UpdateTaskInput,
-): Promise<{
-  success: boolean;
-  data?: TaskRow;
-  error?: string;
-}> {
-  const flowId = createFlowId();
-  const log = new Logger(flowId);
-
-  try {
-    const session = await getSession();
-    if (!session) return { success: false, error: SESSION_ERROR_MSG };
-
-    const parsed = UpdateTaskSchema.safeParse(input);
-    if (!parsed.success) {
-      const firstIssue = parsed.error.issues[0];
-      return {
-        success: false,
-        error: firstIssue?.message ?? "Geçersiz giriş.",
-      };
-    }
-
-    const valid = parsed.data;
-
-    const [existing] = await db
-      .select()
-      .from(tasks)
-      .where(eq(tasks.id, taskId));
-
-    if (!existing || existing.userId !== session.userId) {
-      return { success: false, error: "Görev bulunamadı." };
-    }
-
-    const updateValues: Record<string, unknown> = {};
-    if (valid.title !== undefined) updateValues.title = valid.title.trim();
-    if (valid.description !== undefined)
-      updateValues.description = valid.description;
-    if (valid.status !== undefined) updateValues.status = valid.status;
-    if (valid.priority !== undefined) updateValues.priority = valid.priority;
-    if (valid.thesisBoxId !== undefined) updateValues.boxId = valid.thesisBoxId;
-
-    const [updated] = await db
-      .update(tasks)
-      .set(updateValues)
-      .where(eq(tasks.id, taskId))
-      .returning();
-
-    let boxTitle: string | null = null;
-    if (updated.boxId) {
-      const [box] = await db
-        .select({ title: boxes.title })
-        .from(boxes)
-        .where(eq(boxes.id, updated.boxId));
-      boxTitle = box?.title ?? null;
-    }
-
-    revalidatePath("/dashboard");
-
-    return {
-      success: true,
-      data: { ...updated, thesisBoxId: updated.boxId, boxTitle },
-    };
-  } catch (err) {
-    log.error("task_update_failed", {
-      service: "dashboard",
-      error: err,
-    });
-    return { success: false, error: "Görev güncellenirken bir hata oluştu." };
-  }
+  ...args: Parameters<typeof _updateTaskAction>
+) {
+  return _updateTaskAction(...args);
 }
 
-/**
- * Updates a task's status (TODO / IN_PROGRESS / DONE) for the Kanban drag-and-drop flow.
- *
- * @param taskId - The task ID to update
- * @param newStatus - The new status value
- * @returns Success or error response
- */
 export async function updateTaskStatusAction(
-  taskId: number,
-  newStatus: "TODO" | "IN_PROGRESS" | "DONE",
-): Promise<{
-  success: boolean;
-  error?: string;
-}> {
-  const flowId = createFlowId();
-  const log = new Logger(flowId);
-
-  try {
-    const session = await getSession();
-    if (!session) return { success: false, error: SESSION_ERROR_MSG };
-
-    const parsed = TaskStatusSchema.safeParse(newStatus);
-    if (!parsed.success) {
-      return { success: false, error: "Geçersiz görev durumu." };
-    }
-
-    const [existing] = await db
-      .select()
-      .from(tasks)
-      .where(eq(tasks.id, taskId));
-
-    if (!existing || existing.userId !== session.userId) {
-      return { success: false, error: "Görev bulunamadı." };
-    }
-
-    await db
-      .update(tasks)
-      .set({ status: parsed.data })
-      .where(eq(tasks.id, taskId));
-
-    revalidatePath("/dashboard");
-
-    return { success: true };
-  } catch (err) {
-    log.error("task_status_update_failed", {
-      service: "dashboard",
-      error: err,
-    });
-    return {
-      success: false,
-      error: "Görev durumu güncellenirken bir hata oluştu.",
-    };
-  }
+  ...args: Parameters<typeof _updateTaskStatusAction>
+) {
+  return _updateTaskStatusAction(...args);
 }
 
-/**
- * Deletes a task.
- *
- * @param taskId - The task ID to delete
- * @returns Success or error response
- */
-export async function deleteTaskAction(taskId: number): Promise<{
-  success: boolean;
-  error?: string;
-}> {
-  const flowId = createFlowId();
-  const log = new Logger(flowId);
-
-  try {
-    const session = await getSession();
-    if (!session) return { success: false, error: SESSION_ERROR_MSG };
-
-    const [existing] = await db
-      .select()
-      .from(tasks)
-      .where(eq(tasks.id, taskId));
-
-    if (!existing || existing.userId !== session.userId) {
-      return { success: false, error: "Görev bulunamadı." };
-    }
-
-    await db.delete(tasks).where(eq(tasks.id, taskId));
-
-    revalidatePath("/dashboard");
-
-    return { success: true };
-  } catch (err) {
-    log.error("task_delete_failed", {
-      service: "dashboard",
-      error: err,
-    });
-    return { success: false, error: "Görev silinirken bir hata oluştu." };
-  }
+export async function deleteTaskAction(
+  ...args: Parameters<typeof _deleteTaskAction>
+) {
+  return _deleteTaskAction(...args);
 }
 
-/**
- * Fetches the current user's parent boxes and library resources so the client
- * can re-sync its local article state after literature expansion inserts new
- * sources into the database.
- *
- * @returns The fresh parent boxes and resources, or an error message.
- */
-export async function refreshDashboardDataAction(): Promise<
-  | {
-      success: true;
-      data: {
-        parentBoxes: (typeof boxes.$inferSelect)[];
-        resources: (typeof sources.$inferSelect)[];
-      };
-    }
-  | { success: false; error: string }
-> {
-  const flowId = createFlowId();
-  const log = new Logger(flowId);
-
-  try {
-    const session = await getSession();
-    if (!session) return { success: false, error: SESSION_ERROR_MSG };
-
-    const boxResult = await getUsersMatrixAndBoxesWithResources(session.userId);
-    if ("error" in boxResult) {
-      return { success: false, error: boxResult.error };
-    }
-
-    return {
-      success: true,
-      data: {
-        parentBoxes: boxResult.data.parentBoxes,
-        resources: boxResult.data.resources,
-      },
-    };
-  } catch (err) {
-    log.error("refresh_dashboard_data_failed", {
-      service: "dashboard",
-      error: err,
-    });
-    return {
-      success: false,
-      error: "Panel verileri yenilenirken bir hata oluştu.",
-    };
-  }
+export async function refreshDashboardDataAction(
+  ...args: Parameters<typeof _refreshDashboardDataAction>
+) {
+  return _refreshDashboardDataAction(...args);
 }

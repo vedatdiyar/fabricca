@@ -64,6 +64,19 @@ export function normalizeTurkishChars(s: string): string {
     .replace(/[ü]/g, "u");
 }
 
+/**
+ * Strips everything except lowercase ASCII alphanumerics.
+ * Used for bucket-key deduplication across candidate references.
+ */
+export function normKey(title: string): string {
+  return normalizeTurkishChars(title)
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z0-9]/g, "")
+    .trim();
+}
+
 // ---------------------------------------------------------------------------
 // Metric helpers
 // ---------------------------------------------------------------------------

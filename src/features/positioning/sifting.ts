@@ -3,118 +3,22 @@ import type { TezaraThesisDetails } from "@/lib/types";
 import { rerankWithCohere, COHERE_RERANK_MODEL } from "@/services/ai/cohere";
 import type { Logger } from "@/lib/logger";
 import type { PositioningMatrixInput } from "./validation";
+import { generatePositioningQuery } from "./query-generator";
+import {
+  sanitizeSearchQuery,
+  formatThesisToYaml,
+  formatMatrixToYamlQuery,
+} from "./sifting-formatters";
+import {
+  reciprocalRankFusion,
+  filterValidCandidates,
+} from "./candidate-fusion";
+
+export { sanitizeSearchQuery };
 
 /** Candidate thesis extended with Cohere semantic relevance score. */
 export interface SiftedThesis extends TezaraThesisDetails {
   relevanceScore?: number;
-}
-
-const ALLOWED_LANGUAGES = new Set([
-  "tr",
-  "tur",
-  "turkish",
-  "türkçe",
-  "en",
-  "eng",
-  "english",
-  "ingilizce",
-]);
-
-/**
- * Whether a thesis language tag matches Turkish or English; missing tags are kept.
- *
- * @param lang - The thesis language tag to check.
- * @returns True when the language is allowed or the tag is missing.
- */
-function isAllowedLanguage(lang?: string): boolean {
-  if (!lang || !lang.trim()) {
-    return true;
-  }
-  const normalized = lang
-    .replace(/İ/g, "i")
-    .replace(/I/g, "ı")
-    .toLowerCase()
-    .trim();
-  return ALLOWED_LANGUAGES.has(normalized);
-}
-
-/**
- * Sanitizes query text for vector search.
- *
- * @param rawQuery - The raw query string to sanitize.
- * @returns The cleaned query string.
- */
-export function sanitizeSearchQuery(rawQuery: string): string {
-  if (!rawQuery) return "";
-  return rawQuery
-    .replace(/\b(OR|AND|NOT)\b/gi, " ")
-    .replace(/[+*?:^~={}[\]()"\\]/g, " ")
-    .replace(/\s+/g, " ")
-    .trim();
-}
-
-/**
- * Formats a thesis's title and abstract into a YAML document for reranking.
- *
- * @param thesis - The thesis to format.
- * @returns The formatted YAML string.
- */
-function formatThesisToYaml(thesis: TezaraThesisDetails): string {
-  return [`Title: ${thesis.title}`, `Abstract: ${thesis.abstract}`].join("\n");
-}
-
-import {
-  generatePositioningQuery,
-  type PositioningQuery,
-} from "./query-generator";
-
-/**
- * Formats the multi-aspect positioning query and matrix into a rich YAML query for Cohere cross-encoder reranking.
- *
- * @param query - The generated positioning query containing empirical sub-queries and substantive keywords.
- * @param input - The validated positioning matrix input.
- * @returns The formatted YAML query string.
- */
-function formatMatrixToYamlQuery(
-  query: PositioningQuery,
-  input: PositioningMatrixInput,
-): string {
-  const lines = [
-    `ResearchFocus: ${query.primaryEmpiricalQuery} ${query.actorsAndSourcesQuery}`,
-    `SubstantiveKeywords: ${query.substantiveKeywords.join(", ")}`,
-    `SubjectProblem: ${input.subjectProblem}`,
-  ];
-  return lines.join("\n");
-}
-
-/**
- * Merges multiple ranked candidate lists using Reciprocal Rank Fusion (RRF) to eliminate single-query blind spots.
- *
- * @param rankedLists - Array of thesis candidate lists.
- * @param k - Smoothing constant (default: 60).
- * @returns Deduplicated and fused list of theses.
- */
-function reciprocalRankFusion(
-  rankedLists: Array<TezaraThesisDetails[]>,
-  k = 60,
-): TezaraThesisDetails[] {
-  const scoreMap = new Map<
-    number,
-    { thesis: TezaraThesisDetails; rrfScore: number }
-  >();
-
-  for (const list of rankedLists) {
-    list.forEach((thesis, rank) => {
-      const id = thesis.id;
-      const current = scoreMap.get(id) || { thesis, rrfScore: 0 };
-      current.rrfScore += 1 / (k + rank + 1);
-      scoreMap.set(id, current);
-    });
-  }
-
-  return Array.from(scoreMap.values())
-    .sort((a, b) => b.rrfScore - a.rrfScore)
-    .map((item) => item.thesis);
 }
 
 /** Difference threshold under which two relevance scores are treated as a tie. */
@@ -197,16 +101,7 @@ export async function searchAndSiftTheses(
   const fusedTheses = reciprocalRankFusion([res1, res2, res3]);
 
   // 3. Filter valid candidates
-  const filteredCandidates = fusedTheses.filter((thesis) => {
-    const hasSufficientAbstract =
-      thesis.abstract && thesis.abstract.trim().length >= 80;
-    if (!hasSufficientAbstract) return false;
-
-    const isValidLang = isAllowedLanguage(thesis.language);
-    if (!isValidLang) return false;
-
-    return true;
-  });
+  const filteredCandidates = filterValidCandidates(fusedTheses);
 
   if (filteredCandidates.length === 0) {
     logger?.info("sifting_multi_search_success", {
