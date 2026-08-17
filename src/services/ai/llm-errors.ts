@@ -112,7 +112,7 @@ export function isRpdError(error: unknown): boolean {
     message.includes("perday") ||
     message.includes("rpd") ||
     message.includes("free_tier_requests_per_day") ||
-    message.includes("quota exceeded")
+    message.includes("requests_per_day")
   ) {
     return true;
   }
@@ -124,7 +124,6 @@ export function isRpdError(error: unknown): boolean {
   }
   return false;
 }
-
 
 /**
  * Determines whether a thrown provider error is a server-side overload (503 / UNAVAILABLE)

@@ -1,38 +1,41 @@
 /**
- * Canonical Gemini API key pool.
+ * Canonical Gemini API key pool manager.
  *
- * Single source of truth for the ordered set of Gemini API keys used across the
- * project. The environment variables are the external contract
- * (`GEMINI_API_KEY_1..3`); every consumer reads ordering and rotation through
- * this module and the quota-aware scheduler (`gemini-scheduler.ts`) rather than
- * touching `process.env.GEMINI_API_KEY_*` directly.
+ * Single source of truth for the active set of Gemini API keys.
+ * Exposes the configured keys for balanced distribution, dynamic round-robin,
+ * and automatic failover across accounts.
  */
-const GEMINI_ENV_KEYS = [
-  "GEMINI_API_KEY_1",
-  "GEMINI_API_KEY_2",
-  "GEMINI_API_KEY_3",
-] as const;
 
 /** Read-only ordered key collection exposed by the pool. */
 export interface GeminiKeyPool {
-  /** The enabled keys in assignment order [KEY_1, KEY_2, KEY_3]; empty values removed. */
+  /** The enabled keys configured in the environment. */
   readonly keys: readonly string[];
 }
 
 /**
  * Resolves the ordered, non-empty Gemini API keys from the environment.
  *
- * @returns Array of enabled key strings in `GEMINI_API_KEY_1..3` order.
+ * @returns Array of enabled key strings in priority order.
  */
 function resolveGeminiKeys(): string[] {
-  const keys = GEMINI_ENV_KEYS.map((name) => process.env[name])
-    .map((value) => value?.trim() ?? "")
-    .filter(Boolean);
+  const primary = (
+    process.env.GEMINI_API_KEY_1 ??
+    process.env.GEMINI_API_KEY ??
+    ""
+  ).trim();
 
-  if (keys.length === 0) {
-    throw new Error("GEMINI_API_KEY_1 environment variable is not defined.");
+  const secondary = (process.env.GEMINI_API_KEY_2 ?? "").trim();
+  const tertiary = (process.env.GEMINI_API_KEY_3 ?? "").trim();
+
+  const rawKeys = [primary, secondary, tertiary].filter(Boolean);
+
+  if (rawKeys.length === 0) {
+    throw new Error(
+      "Neither GEMINI_API_KEY_1 nor GEMINI_API_KEY environment variable is defined.",
+    );
   }
-  return [...new Set(keys)];
+
+  return [...new Set(rawKeys)];
 }
 
 let keyPool: GeminiKeyPool | null = null;
@@ -52,7 +55,7 @@ export function getGeminiKeyPool(): GeminiKeyPool {
 /**
  * Resolves the 0-based project/key index for a given API key string.
  *
- * @param apiKey - The Gemini API key string.
+ * @param apiKey - Optional Gemini API key string.
  * @returns The 0-based index of the key in the pool, or 0 if not found.
  */
 export function getProjectIndex(apiKey?: string): number {

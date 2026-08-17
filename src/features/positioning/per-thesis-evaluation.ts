@@ -9,7 +9,6 @@ import type { Logger } from "@/lib/logger";
 import { buildPerThesisEvaluationPromptPayload } from "./prompts/per-thesis-evaluation.prompt";
 import { strategicRoleEnum, type PositioningMatrixInput } from "./validation";
 import type { SiftedThesis } from "./sifting";
-import { getGeminiKeyPool } from "@/services/ai/gemini-key-pool";
 
 /** Zod schema for the single-thesis strategic relevance/originality/role evaluation output. */
 export const perThesisEvaluationSchema = z.object({
@@ -155,14 +154,12 @@ export interface EvaluatedThesis {
  * @param input - The validated positioning matrix input.
  * @param batch - The slice of candidate theses to evaluate together.
  * @param logger - Optional structured logger for pipeline events.
- * @param pinnedKeyIndex - Optional 0-based key index to pin this call to a specific API key.
  * @returns Array of successfully evaluated theses in the batch.
  */
 export async function evaluateBatchTheses(
   input: PositioningMatrixInput,
   batch: SiftedThesis[],
   logger?: Logger,
-  pinnedKeyIndex?: number,
 ): Promise<EvaluatedThesis[]> {
   if (batch.length === 0) return [];
 
@@ -182,8 +179,6 @@ export async function evaluateBatchTheses(
         thinkingConfig: { thinkingLevel: ThinkingLevel.LOW },
         thesisMatrix: input,
         quiet: true,
-        pinnedKeyIndex,
-        bypassRateLimiter: true,
       },
     );
 
@@ -227,21 +222,14 @@ export async function evaluateBatchTheses(
  * @param input - The validated positioning matrix input.
  * @param thesis - The single thesis candidate to evaluate.
  * @param logger - Optional structured logger for pipeline events.
- * @param pinnedKeyIndex - Optional 0-based key index to pin this call to a specific API key.
  * @returns The structured per-thesis evaluation result.
  */
 export async function evaluateSingleThesis(
   input: PositioningMatrixInput,
   thesis: SiftedThesis,
   logger?: Logger,
-  pinnedKeyIndex?: number,
 ): Promise<PerThesisEvaluation> {
-  const evaluated = await evaluateBatchTheses(
-    input,
-    [thesis],
-    logger,
-    pinnedKeyIndex,
-  );
+  const evaluated = await evaluateBatchTheses(input, [thesis], logger);
   if (evaluated.length === 0) {
     throw new Error(`Failed to evaluate thesis ${thesis.id}`);
   }
@@ -298,12 +286,8 @@ export async function evaluateThesesInParallel(
     },
   });
 
-  const keyCount = getGeminiKeyPool().keys.length;
-
   const settled = await Promise.allSettled(
-    batches.map((batch, idx) =>
-      evaluateBatchTheses(input, batch, logger, idx % keyCount),
-    ),
+    batches.map((batch) => evaluateBatchTheses(input, batch, logger)),
   );
 
   const allEvaluated: EvaluatedThesis[] = [];

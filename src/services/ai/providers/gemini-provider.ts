@@ -194,8 +194,6 @@ export async function generateStructuredContent<T>(
     return await dispatchGeminiCall<T>({
       model: modelName,
       operation,
-      pinnedKeyIndex: options?.pinnedKeyIndex,
-      bypassRateLimiter: options?.bypassRateLimiter,
       task: async ({ model, apiKey }) => {
         const projectIndex = getProjectIndex(apiKey);
 
@@ -279,12 +277,22 @@ export async function generateStructuredContent<T>(
               isRetryable: (error) => {
                 if (error instanceof Error) {
                   // If it's an RPD (Daily Quota) error, do not retry on the same key;
-                  // let dispatchGeminiCall immediately switch to the other API key!
+                  // let dispatchGeminiCall immediately switch to the next API key!
                   if (isRpdError(error)) {
                     return false;
                   }
 
+                  // If it's an RPM rate limit error and multiple keys exist in the pool,
+                  // fail fast on this key so dispatchGeminiCall switches to an idle key immediately!
+                  if (isRateLimitError(error)) {
+                    if (getGeminiKeyPool().keys.length > 1) {
+                      return false;
+                    }
+                    return true;
+                  }
+
                   if (
+                    isServerOverloadError(error) ||
                     ("status" in error &&
                       ((error as { status: string }).status === "UNAVAILABLE" ||
                         (error as { status: string }).status ===
@@ -294,10 +302,7 @@ export async function generateStructuredContent<T>(
                         (error as { code: number }).code === 429)) ||
                     error.message.includes("high demand") ||
                     error.message.includes("503") ||
-                    error.message.includes("UNAVAILABLE") ||
-                    error.message.includes("429") ||
-                    error.message.includes("quota") ||
-                    error.message.includes("RESOURCE_EXHAUSTED")
+                    error.message.includes("UNAVAILABLE")
                   ) {
                     return true;
                   }

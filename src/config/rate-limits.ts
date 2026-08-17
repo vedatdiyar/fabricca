@@ -86,5 +86,3 @@ export type GeminiFallbackOperation =
   (typeof GEMINI_FALLBACK_OPERATIONS)[number];
 
 export const GEMINI_KEY_UTILIZATION = 1.0;
-
-

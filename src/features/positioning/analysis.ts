@@ -50,7 +50,10 @@ export const juryRecommendedThesisSchema = z.object({
     .describe("Tezin türü (Örn: Yüksek Lisans veya Doktora)"),
 });
 
-/** Zod schema for the LLM jury analysis output. */
+/** Inferred type for a single recommended guiding thesis card. */
+export type JuryRecommendedThesis = z.infer<typeof juryRecommendedThesisSchema>;
+
+/** Zod schema for the complete positioning report assembled after the LLM synthesis. */
 export const juryAnalysisResultSchema = z.object({
   globalStatus: z.enum([
     "DIRECT_OVERLAP",
@@ -65,11 +68,24 @@ export const juryAnalysisResultSchema = z.object({
     ),
 });
 
-/** Inferred type for the LLM jury analysis result. */
+/** Inferred type for the jury analysis result. */
 export type JuryAnalysisResult = z.infer<typeof juryAnalysisResultSchema>;
 
-/** JSON Schema for Gemini structured outputs. */
-export const juryAnalysisResultJsonSchema: JsonSchema = {
+/** Zod schema for the focused LLM jury synthesis output — global status and gap analysis only. */
+export const jurySynthesisResultSchema = z.object({
+  globalStatus: z.enum([
+    "DIRECT_OVERLAP",
+    "NOVEL_GAP_IDENTIFIED",
+    "NO_RELATED_LITERATURE",
+  ]),
+  gapAnalysisSummary: gapAnalysisStructuredSchema,
+});
+
+/** Inferred type for the LLM jury synthesis output. */
+export type JurySynthesisResult = z.infer<typeof jurySynthesisResultSchema>;
+
+/** JSON Schema for Gemini structured outputs of the focused jury synthesis. */
+export const jurySynthesisResultJsonSchema: JsonSchema = {
   type: "object",
   properties: {
     globalStatus: {
@@ -101,70 +117,47 @@ export const juryAnalysisResultJsonSchema: JsonSchema = {
       additionalProperties: false,
       description: "3 sabit akademik sentez bölümü",
     },
-    recommendedTheses: {
-      type: "array",
-      items: {
-        type: "object",
-        properties: {
-          externalThesisId: {
-            type: "string",
-            description: "Tezin ID'si",
-          },
-          title: { type: "string", description: "Tezin başlığı" },
-          author: { type: "string", description: "Tezin yazarı" },
-          year: { type: "number", description: "Tezin yılı" },
-          university: { type: "string", description: "Tezin üniversitesi" },
-          strategicRole: {
-            type: "string",
-            enum: [
-              "BROAD_CONTEXT",
-              "SPECIFIC_FOCUS",
-              "FOUNDATIONAL_WORK",
-              "METHODOLOGICAL_BENCHMARK",
-              "ALTERNATIVE_PERSPECTIVE",
-            ],
-            description:
-              "Tezin stratejik rolü: BROAD_CONTEXT (Geniş Çerçeve), SPECIFIC_FOCUS (Kısmi Odak), FOUNDATIONAL_WORK (Öncül Çalışma), METHODOLOGICAL_BENCHMARK (Yöntem Rehberi), ALTERNATIVE_PERSPECTIVE (Karşıt Yaklaşım)",
-          },
-          literaturePosition: {
-            type: "string",
-            description:
-              "Tezin literatürdeki yerini ve ne yaptığını anlatan 1 net cümle",
-          },
-          contributionArea: {
-            type: "string",
-            description:
-              "Tezin kullanıcının matrisinde odaklandığı spesifik alan",
-          },
-          relevanceReason: {
-            type: "string",
-            description:
-              "Kullanıcının bu tezi Giriş ve Literatür bölümlerinde nasıl kaynak olarak kullanacağına ve tezin hangi boşluğunu dolduracağına dair stratejik rehber not.",
-          },
-        },
-        required: [
-          "externalThesisId",
-          "title",
-          "author",
-          "year",
-          "university",
-          "strategicRole",
-          "literaturePosition",
-          "contributionArea",
-          "relevanceReason",
-        ],
-        additionalProperties: false,
-      },
-      description:
-        "Ön elemeden geçerek jüriye sunulan ilgili rehber tezlerin listesi",
-    },
   },
-  required: ["globalStatus", "gapAnalysisSummary", "recommendedTheses"],
+  required: ["globalStatus", "gapAnalysisSummary"],
   additionalProperties: false,
 };
 
 /**
- * Runs the final synthesis jury LLM over the relevant evaluated theses in a single Gemini call.
+ * Deterministically builds the recommended guiding thesis cards straight from the
+ * evaluated theses — no LLM involvement. Direct-overlap theses are excluded per
+ * the "Tam Kapsam" rule that previously lived in the prompt.
+ *
+ * @param evaluatedTheses - The relevant evaluated theses to convert into cards.
+ * @returns The recommended guiding thesis items.
+ */
+function mapRecommendedTheses(
+  evaluatedTheses: EvaluatedThesis[],
+): JuryRecommendedThesis[] {
+  return evaluatedTheses
+    .filter((ev) => ev.evaluation.isRelevant && !ev.evaluation.isDirectOverlap)
+    .map((ev) => {
+      const t = ev.thesis;
+      const e = ev.evaluation;
+      return {
+        externalThesisId: String(t.id),
+        title: t.title,
+        author: t.author,
+        year: t.year,
+        university: t.university,
+        strategicRole: e.strategicRole ?? "BROAD_CONTEXT",
+        literaturePosition: e.literaturePosition ?? "",
+        contributionArea: e.contributionAreas.join(", ") || "",
+        relevanceReason: e.strategicUtility ?? "",
+        thesisType: t.thesisType,
+      };
+    });
+}
+
+/**
+ * Runs the final synthesis jury LLM over the relevant evaluated theses to produce
+ * the global status and gap analysis in a single focused Gemini call. The
+ * recommended guiding thesis cards are assembled deterministically in TypeScript
+ * from the evaluated theses, keeping the LLM output lean and fast.
  *
  * @param input - The validated positioning matrix input.
  * @param evaluatedTheses - The relevant evaluated theses to synthesize (irrelevant ones already dropped).
@@ -214,8 +207,7 @@ Birebir Örtüşme: ${e.isDirectOverlap ? "EVET" : "HAYIR"}
 Stratejik Rol: ${e.strategicRole || "UMBRELLA_MACRO"}
 Literatürdeki Yeri (Ne Yaptı?): ${e.literaturePosition || "N/A"}
 Stratejik Kullanım / Boşluk Doldurma: ${e.strategicUtility || "N/A"}
-Katkı/Odak Alanları: ${e.contributionAreas.join(", ") || "Yok"}
-Özet: ${t.abstract}`;
+Katkı/Odak Alanları: ${e.contributionAreas.join(", ") || "Yok"}`;
     })
     .join("\n\n---\n\n");
 
@@ -225,14 +217,14 @@ Katkı/Odak Alanları: ${e.contributionAreas.join(", ") || "Yok"}
     evaluatedCount: evaluatedTheses.length,
   });
 
-  const result = await generateGeminiStructuredContent<JuryAnalysisResult>(
+  const synthesis = await generateGeminiStructuredContent<JurySynthesisResult>(
     FLASH_36,
     payload.systemInstruction,
     payload.userPrompt,
-    juryAnalysisResultJsonSchema,
+    jurySynthesisResultJsonSchema,
     logger,
     {
-      zodSchema: juryAnalysisResultSchema,
+      zodSchema: jurySynthesisResultSchema,
       payloadStage: "positioning_jury_analysis",
       seed: GEMINI_SEED,
       thinkingConfig: { thinkingLevel: ThinkingLevel.LOW },
@@ -242,8 +234,12 @@ Katkı/Odak Alanları: ${e.contributionAreas.join(", ") || "Yok"}
   );
 
   if (overlapping) {
-    result.globalStatus = "DIRECT_OVERLAP";
+    synthesis.globalStatus = "DIRECT_OVERLAP";
   }
 
-  return result;
+  return {
+    globalStatus: synthesis.globalStatus,
+    gapAnalysisSummary: synthesis.gapAnalysisSummary,
+    recommendedTheses: mapRecommendedTheses(evaluatedTheses),
+  };
 }

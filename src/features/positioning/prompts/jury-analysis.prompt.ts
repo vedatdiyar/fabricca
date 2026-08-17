@@ -11,7 +11,10 @@ export interface PositioningJuryPromptInput {
 }
 
 /**
- * Builds the standardized PromptPayload for the unified final LLM positioning jury synthesis.
+ * Builds the standardized PromptPayload for the unified final LLM positioning
+ * jury synthesis. The LLM only produces the global status and the gap analysis
+ * synthesis; the recommended guiding thesis cards are assembled deterministically
+ * in TypeScript and are NOT part of the LLM output contract.
  *
  * @param params - Matrix input, serialized thesis text, and candidate count.
  * @returns Standardized PromptPayload containing systemInstruction and userPrompt.
@@ -23,18 +26,18 @@ export function buildPositioningJuryPromptPayload(
 
   return buildPromptPayload({
     roleAndExpertise:
-      "Üniversiteler Üstü Akademik Jüri Başkanı ve İleri Derece Literatür Boşluğu (Gap Analysis) Uzmanısınız. Göreviniz ön elemeden geçen aday tezleri stratejik rollerine göre sentezleyerek APA formatında bütüncül bir Literatür Boşluğu Raporu ve Stratejik Rehber Tez Kartları üretmektir.",
+      "Üniversiteler Üstü Akademik Jüri Başkanı ve İleri Derece Literatür Boşluğu (Gap Analysis) Uzmanısınız. Göreviniz ön elemeden geçen aday tezleri stratejik rollerine göre sentezleyerek APA formatında bütüncül bir Literatür Boşluğu Raporu üretmektir.",
 
     primaryTask:
-      "Sana sunulan kullanıcının 3 bileşenli Tez Konumlandırma Matrisini ve ön elemeden geçerek stratejik rolleri belirlenen ilgili tezleri inceleyerek; tek bir bütüncül Akademik Jüri Değerlendirme Raporu (globalStatus, gapAnalysisSummary, recommendedTheses) üretmektir.",
+      "Sana sunulan kullanıcının 3 bileşenli Tez Konumlandırma Matrisini ve ön elemeden geçerek stratejik rolleri belirlenen ilgili tezleri inceleyerek; tek bir bütüncül Akademik Jüri Değerlendirme Sentezi (globalStatus ve gapAnalysisSummary) üretmektir. Rehber tez kartları (recommendedTheses) sistem tarafından ayrıca ve deterministik olarak oluşturulur; sen bunları üretmezsin.",
 
     rulesAndConstraints: `1. **Tez Matrisi ve Literatür Sınır İlkesi (MUTLAK KURAL):**
    - Kullanıcının 3 bileşenli Tez Matrisi (Araştırma Problemi/Odağı, Teorik Çerçevesi, Metodolojisi) araştırmanın kesin ve mutlak sınırıdır.
    - Değerlendirmeleri strictly kullanıcının matrisinde yer alan konu, kuram ve yöntem ile sana verilen ilgili tez listesi üzerinden yürütün; matriste veya tez listesinde bulunmayan hayali kaynaklar uydurmaktan kaçının.
 
 2. **globalStatus Belirleme Kuralı:**
-   - \`DIRECT_OVERLAP\`: İlgili tezlerden en az biri \`isDirectOverlap: true\` olarak işaretlendiyse KESİNLİKLE verilir (özgünlük riski).
-   - \`NOVEL_GAP_IDENTIFIED\`: İlgili tezler mevcut ancak hiçbiri \`isDirectOverlap: true\` değilse verilir (kullanıcının çalışması özgün bir kuluçka dönemi, çift hatlı sentez veya yeni kavramsal çatma sunuyor demektir).
+   - \`DIRECT_OVERLAP\`: İlgili tezlerden en az biri \`Birebir Örtüşme: EVET\` olarak işaretlendiyse KESİNLİKLE verilir (özgünlük riski).
+   - \`NOVEL_GAP_IDENTIFIED\`: İlgili tezler mevcut ancak hiçbiri \`Birebir Örtüşme: EVET\` değilse verilir (kullanıcının çalışması özgün bir kuluçka dönemi, çift hatlı sentez veya yeni kavramsal çatma sunuyor demektir).
    - \`NO_RELATED_LITERATURE\`: Ön elemeden hiçbir ilgili tez geçmediyse kullanılır.
 
 3. **gapAnalysisSummary Akademik Standartları:**
@@ -43,29 +46,16 @@ export function buildPositioningJuryPromptPayload(
    - \`academicGap\`: İncelenen bu çalışmaların neleri göz ardı ettiğini veya neden kullanıcının araştırma problemini açıklamada eksik kaldığını somut olarak ortaya koyun. APA atıflarını eksiksiz kullanın: (Yazar, Yıl).
    - \`originalContribution\` (Anti-Parroting Kuralı): Kullanıcının matrisindeki cümleleri aynen tekrarlamaktan kaçının. Doğrudan incelenen tezlerin bıraktığı boşluklarla mukayese ederek, kullanıcının konu odağının, kuramsal sentezinin ve metodolojisinin getirdiği özgün akademik yeniliği vurgulayın.
 
-4. **recommendedTheses — Stratejik Rehber Tez Kartları (Tam Kapsam Kuralı):**
-   - Birebir çakışan (\`isDirectOverlap: true\`) tezler kart olarak önerilmez.
-   - \`isDirectOverlap: false\` olan geçerli tezlerin TAMAMI (istisnasız) araştırmacının Literatür Taraması ve Boşluk bölümünde doğrudan kullanabilmesi için rehber kartı nesnesi olarak üretilmelidir:
-     * \`externalThesisId\`: Tezin ID dizesi.
-     * \`title\`: Tezin tam akademik başlığı.
-     * \`author\`: Tezin yazarı.
-     * \`year\`: Tezin yılı.
-     * \`university\`: Tezin üniversitesi.
-     * \`strategicRole\`: Tezin stratejik rolü (BROAD_CONTEXT | SPECIFIC_FOCUS | FOUNDATIONAL_WORK | METHODOLOGICAL_BENCHMARK | ALTERNATIVE_PERSPECTIVE).
-     * \`literaturePosition\`: Tezin literatürdeki yerini ve ne yaptığını anlatan 1 net cümle.
-     * \`contributionArea\`: Tezin odaklandığı spesifik alan.
-     * \`relevanceReason\`: Araştırmacıya doğrudan tez yazımında yol gösteren eylem dili: "Bu tezi Giriş / Literatür bölümünde [X] için referans verebilir; tezinizin farkını ise [Y] noktasında vurgulayabilirsiniz."
-
-5. **Sıfır Hallüsinasyon Kuralı (MUTLAK):**
+4. **Sıfır Hallüsinasyon Kuralı (MUTLAK):**
    - gapAnalysisSummary içinde yalnızca sana sunulan tez listesindeki gerçek yazar, yıl ve eser bilgilerini kullanın. Tüm APA (Yazar, Yıl) atıflarını doğrudan listedeki mevcut kayıtlardan türetin.`,
 
-    workflowSteps: `1. Ön elemeden geçen tezlerin stratejik rollerini ve özetlerini incele.
+    workflowSteps: `1. Ön elemeden geçen tezlerin stratejik rollerini ve künyelerini incele.
 2. Tezleri 5 stratejik role (Geniş Çerçeve, Kısmi Odak, Öncül Çalışma, Yöntem Rehberi, Karşıt Yaklaşım) göre tematik olarak grupla.
 3. gapAnalysisSummary (literatureMapping, academicGap, originalContribution) metinlerini APA atıflarıyla oluştur.
-4. Ön elemeden geçen tüm geçerli tezler için strategicRole bilgisini içeren recommendedTheses dizisini üret.`,
+4. globalStatus kuralına göre tek bir değer belirle.`,
 
     outputFormat:
-      "Çıktı, belirtilen JSON şemasına harfiyen uyan saf JSON nesnesidir.",
+      "Çıktı, yalnızca globalStatus ve gapAnalysisSummary alanlarını içeren belirtilen JSON şemasına harfiyen uyan saf JSON nesnesidir. recommendedTheses üretilmez.",
 
     examples: `<example>
 <input>
@@ -85,7 +75,6 @@ Stratejik Rol: BROAD_CONTEXT
 Literatürdeki Yeri (Ne Yaptı?): 1990-2014 dönemindeki yasal Kürt parti geleneğini geniş bir dönemsel perspektifle incelemiştir.
 Stratejik Kullanım / Boşluk Doldurma: Bu tezi Giriş ve Literatür Taraması bölümlerinde yasal partilerin tarihsel seyrini temellendirmek için kullanabilir; tezinizin farkını ise 1991-1999 kuluçka evresini silahlı kanatla karşılaştırmalı derinleştirme noktasında vurgulayabilirsiniz.
 Katkı/Odak Alanları: Yasal parti söylemi, 1990'lar dönemselleştirmesi
-Özet: 1990-2014 döneminde yasal Kürt partilerinin program ve söylemlerindeki evrimi inceler.
 </input>
 <output>
 {
@@ -94,20 +83,7 @@ Katkı/Odak Alanları: Yasal parti söylemi, 1990'lar dönemselleştirmesi
     "literatureMapping": "Mevcut literatürde Yılmaz (2015), 1990-2014 arasındaki yasal Kürt partilerinin söylemsel seyrini geniş bir makro çerçevede inceleyerek kurumsal siyasetin evrimini ortaya koymuştur.",
     "academicGap": "Yılmaz (2015) çalışmasında yasal parti geleneğini geniş bir dönemsel hatta ele almış; ancak 1991-1999 kuluçka döneminde yasal hat ile silahlı kanat arasındaki stratejik etkileşimi ve mevzi savaşı dinamiklerini karşılaştırmalı bir derinlikle işlememiştir.",
     "originalContribution": "Çalışmanız, mevcut literatürün genel geçtiği 1991-1999 dönemi kuluçka evresini Gramsciyen mevzi savaşı kavram setiyle ele alarak, yasal ve silahlı kanadın söylemsel dönüşümünü çift hatlı ampirik bir karşılaştırmayla aydınlatma noktasında özgün bir akademik katkı sunmaktadır."
-  },
-  "recommendedTheses": [
-    {
-      "externalThesisId": "363401",
-      "title": "1990-2014 Dönemi Kürt Siyasal Hareketinin Söyleminin Dönüşümü",
-      "author": "Ali Yılmaz",
-      "year": 2015,
-      "university": "Ankara Üniversitesi",
-      "strategicRole": "BROAD_CONTEXT",
-      "literaturePosition": "1990-2014 dönemindeki yasal Kürt parti geleneğini geniş bir dönemsel perspektifle incelemiştir.",
-      "contributionArea": "Yasal parti söylemi ve 1990'lar dönemselleştirmesi",
-      "relevanceReason": "Bu tezi Giriş ve Literatür bölümlerinde yasal partilerin tarihsel seyrini temellendirmek için referans verebilir; tezinizin farkını ise 1991-1999 kuluçka evresini silahlı kanatla karşılaştırmalı derinleştirme noktasında vurgulayabilirsiniz."
-    }
-  ]
+  }
 }
 </output>
 </example>`,
@@ -121,6 +97,6 @@ Katkı/Odak Alanları: Yasal parti söylemi, 1990'lar dönemselleştirmesi
 ${thesisListText}`,
 
     taskTrigger:
-      "Yukarıdaki <context> içeriğini <instructions> kurallarına göre analiz ederek Akademik Jüri Değerlendirme Raporunu (globalStatus, gapAnalysisSummary, recommendedTheses) eksiksiz JSON formatında üret.",
+      "Yukarıdaki <context> içeriğini <instructions> kurallarına göre analiz ederek Akademik Jüri Değerlendirme Sentezini (globalStatus, gapAnalysisSummary) eksiksiz JSON formatında üret.",
   });
 }
