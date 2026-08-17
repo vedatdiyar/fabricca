@@ -1,5 +1,5 @@
 import { Logger } from "@/lib/logger";
-import { HttpError, withRetry, DEFAULT_MAX_DELAY } from "@/lib/api-utils";
+import { HttpError, withRetry, DEFAULT_MAX_DELAY } from "@/core/services/ai/llm-retry";
 import { createRateLimiter } from "@/lib/rate-limiter";
 import { COHERE_LIMITS } from "@/core/config/rate-limits";
 import { toAiProviderError } from "./llm-errors";

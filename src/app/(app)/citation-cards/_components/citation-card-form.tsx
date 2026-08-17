@@ -1,8 +1,6 @@
 "use client";
 
-import { useState } from "react";
 import { MessageSquareQuote, BookOpen, FolderOpen } from "lucide-react";
-import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { DialogFooter } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -15,148 +13,17 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { cleanPageNumberInput, formatPageNumber } from "@/lib/academic/utils";
-import { normalizePastedText } from "@/lib/text-utils";
 import { BOX_TYPE_LABELS, getBoxTypeBadgeConfig } from "@/lib/box-constants";
 import { cn } from "@/lib/utils";
-import type {
-  CitationCardItem,
-  CitationNoteType,
-  BoxItem,
-  SourceItem,
-} from "../_lib/types";
+import { NOTE_TYPE_DISPLAY_LABELS } from "../_lib/note-type-labels";
+import {
+  useCitationCardForm,
+  type CitationCardFormProps,
+} from "../_hooks/use-citation-card-form";
+import type { CitationNoteType } from "../_lib/types";
 
-/** Turkish labels dictionary for note types. */
-export const NOTE_TYPE_DISPLAY_LABELS: Record<CitationNoteType, string> = {
-  DIRECT_QUOTE: "Doğrudan Alıntı",
-  PARAPHRASE: "Dolaylı Alıntı",
-  PERSONAL_NOTE: "Kişisel Not",
-};
-
-/** Props for the citation card form component. */
-export interface CitationCardFormProps {
-  cardToEdit?: CitationCardItem | null;
-  sources: SourceItem[];
-  boxes: BoxItem[];
-  onSave: (
-    card: Omit<CitationCardItem, "id" | "createdAt" | "updatedAt"> & {
-      id?: number;
-    },
-  ) => void;
-  onClose: () => void;
-}
-
-function useCitationCardFormLogic(props: CitationCardFormProps) {
-  const { cardToEdit, sources, boxes, onSave, onClose } = props;
-  const isEditing = Boolean(cardToEdit);
-
-  const [formFields, setFormFields] = useState({
-    selectedSourceId: cardToEdit
-      ? String(cardToEdit.sourceId)
-      : sources[0]
-        ? String(sources[0].id)
-        : "",
-    selectedBoxId: cardToEdit
-      ? String(cardToEdit.boxId)
-      : boxes[0]
-        ? String(boxes[0].id)
-        : "",
-    noteType: (cardToEdit
-      ? cardToEdit.noteType
-      : "DIRECT_QUOTE") as CitationNoteType,
-    pageNumber: cardToEdit ? cleanPageNumberInput(cardToEdit.pageNumber) : "1",
-    content: cardToEdit ? cardToEdit.content : "",
-    comment: cardToEdit ? (cardToEdit.comment ?? "") : "",
-  });
-
-  const setField = <K extends keyof typeof formFields>(
-    key: K,
-    value: (typeof formFields)[K],
-  ) => {
-    setFormFields((prev) => ({ ...prev, [key]: value }));
-  };
-
-  const selectedSourceObj = sources.find(
-    (s) => s.id === Number(formFields.selectedSourceId),
-  );
-  const selectedBoxObj = boxes.find(
-    (b) => b.id === Number(formFields.selectedBoxId),
-  );
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-
-    if (!formFields.content.trim()) {
-      toast.error("Fiş içeriği boş olamaz.");
-      return;
-    }
-
-    if (!formFields.selectedSourceId) {
-      toast.error("Lütfen bağlı akademik kaynağı seçin.");
-      return;
-    }
-
-    if (!formFields.selectedBoxId) {
-      toast.error("Lütfen bağlı konu kutusunu seçin.");
-      return;
-    }
-
-    const formattedPage = formatPageNumber(formFields.pageNumber);
-
-    onSave({
-      id: cardToEdit?.id,
-      sourceId: Number(formFields.selectedSourceId),
-      sourceTitle: selectedSourceObj?.title ?? "",
-      sourceAuthors: selectedSourceObj?.authors ?? [],
-      sourceYear: selectedSourceObj?.publicationYear ?? 0,
-      boxId: Number(formFields.selectedBoxId),
-      boxType:
-        selectedBoxObj?.boxType ?? boxes[0]?.boxType ?? "SUBJECT_PROBLEM",
-      boxTitle: selectedBoxObj?.title ?? "",
-      pageNumber: formattedPage,
-      noteType: formFields.noteType,
-      content: formFields.content.trim(),
-      comment: formFields.comment.trim() || undefined,
-      sentToCitationCards: true,
-    });
-
-    toast.success(
-      isEditing
-        ? "Alıntı fişi başarıyla güncellendi."
-        : "Yeni alıntı fişi başarıyla eklendi.",
-    );
-    onClose();
-  };
-
-  const handleContentPaste = (e: React.ClipboardEvent<HTMLTextAreaElement>) => {
-    const raw = e.clipboardData.getData("text/plain");
-    if (!raw) return;
-
-    const cleaned = normalizePastedText(raw);
-    if (cleaned === raw) return;
-
-    e.preventDefault();
-    const el = e.currentTarget;
-    const start = el.selectionStart;
-    const end = el.selectionEnd;
-    const next = el.value.slice(0, start) + cleaned + el.value.slice(end);
-
-    setField("content", next);
-    requestAnimationFrame(() => {
-      el.selectionStart = el.selectionEnd = start + cleaned.length;
-    });
-  };
-
-  return {
-    formFields,
-    setField,
-    selectedSourceObj,
-    selectedBoxObj,
-    handleSubmit,
-    handleContentPaste,
-    isEditing,
-  };
-}
+export type { CitationCardFormProps } from "../_hooks/use-citation-card-form";
+export { NOTE_TYPE_DISPLAY_LABELS } from "../_lib/note-type-labels";
 
 /**
  * Form handling inputs and state for card creation/editing.
@@ -174,7 +41,7 @@ export function CitationCardForm(props: CitationCardFormProps) {
     handleSubmit,
     handleContentPaste,
     isEditing,
-  } = useCitationCardFormLogic(props);
+  } = useCitationCardForm(props);
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4 py-2">

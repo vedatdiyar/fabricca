@@ -12,6 +12,9 @@ export interface PendingToolCall {
   previousState?: Record<string, unknown>;
 }
 
+/** Stored tool call request shape attached to chat messages. Alias of PendingToolCall. */
+export type ChatToolCall = PendingToolCall;
+
 export interface Message {
   id: string;
   dbId?: number;

@@ -9,6 +9,19 @@ import { parseBornDigitalPdf } from "./born-digital-parser";
 export type { DocumentAnalysisResult, PageAnalysis };
 export { DocumentAnalysisSchema, ReferencesOnlySchema } from "./schema";
 export type { PdfParseOptions, PdfChunkParseResult };
+export {
+  detectPrintedPageNumbers,
+  resolveAnchorChain,
+  isYear,
+  MAX_BACKWARD_EXTRAP_PAGES,
+  type PrintedPageDetection,
+  type PositionedTextItemInput,
+} from "./page-detection-born-digital";
+export {
+  parseRunningHeadNumber,
+  resolveMistralPrintedPages,
+  type MistralOcrPage,
+} from "./page-detection-ocr";
 
 /**
  * Parses a PDF document into structured page-level markdown, metadata, and references.

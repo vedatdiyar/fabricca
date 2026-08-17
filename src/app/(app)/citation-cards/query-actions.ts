@@ -2,7 +2,7 @@
 
 import { getSession } from "@/lib/session";
 import { createFlowId, Logger } from "@/lib/logger";
-import { fetchCitationCardsData } from "@/app/(app)/citation-cards/_services/citation-cards-service";
+import { fetchCitationCardsData } from "@/app/(app)/citation-cards/_services/citation-cards-query";
 import type { BoxItem, CitationCardItem, SourceItem } from "./_lib/types";
 
 /**

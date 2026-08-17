@@ -1,7 +1,7 @@
 import {
   type PrintedPageDetection,
   MAX_BACKWARD_EXTRAP_PAGES,
-} from "./printed-page-number";
+} from "./page-detection-born-digital";
 
 /**
  * Creates a resolver function that maps a 0-based PDF page index to its detected or extrapolated printed page number.

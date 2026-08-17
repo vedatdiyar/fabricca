@@ -1,5 +1,5 @@
 import type { Logger } from "@/lib/logger";
-import { DEFAULT_MAX_DELAY, HttpError, withRetry } from "@/lib/api-utils";
+import { DEFAULT_MAX_DELAY, HttpError, withRetry } from "@/core/services/ai/llm-retry";
 
 const HF_API_KEY = process.env.HUGGINGFACE_API_KEY ?? "";
 const HF_EMBEDDING_ENDPOINT =

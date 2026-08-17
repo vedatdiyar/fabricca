@@ -1,4 +1,4 @@
-export { cleanHtmlTags } from "./utils";
+export { cleanHtmlTags } from "./sanitizer";
 export {
   sanitizeAcademicDataBulk,
   sanitizeTargetedArticles,

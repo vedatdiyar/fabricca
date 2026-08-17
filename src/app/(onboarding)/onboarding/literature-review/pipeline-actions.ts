@@ -12,8 +12,8 @@ import { orchestrateBatchProcess } from "@/app/(onboarding)/onboarding/literatur
 import {
   persistLiteraturePool,
   persistSubBoxEntry,
-  persistRelatedTheses,
-} from "@/app/(onboarding)/onboarding/literature-review/_services/literature-persistence";
+} from "@/app/(onboarding)/onboarding/literature-review/_services/pool-persistence";
+import { persistRelatedTheses } from "@/app/(onboarding)/onboarding/literature-review/_services/related-theses";
 import { loadThesisMatrixAndBoxes } from "@/app/(onboarding)/onboarding/literature-review/_services/process-boxes-data";
 import { isLiteratureCancelled } from "./cancel-state";
 import { resetLiteratureCancelledAction } from "./cancel-actions";

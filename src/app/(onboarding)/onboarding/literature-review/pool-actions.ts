@@ -11,11 +11,9 @@ import { Logger, createFlowId } from "@/lib/logger";
 import { handleActionError } from "@/lib/errors/handle-error";
 import { getSession, SESSION_ERROR_MSG } from "@/lib/session";
 import type { LiteraturePoolEntry, OnboardingActionResult } from "@/lib/types";
-import {
-  persistLiteraturePool,
-  persistRelatedTheses,
-  fetchPreloadedPool,
-} from "@/app/(onboarding)/onboarding/literature-review/_services/literature-persistence";
+import { persistLiteraturePool } from "@/app/(onboarding)/onboarding/literature-review/_services/pool-persistence";
+import { persistRelatedTheses } from "@/app/(onboarding)/onboarding/literature-review/_services/related-theses";
+import { fetchPreloadedPool } from "@/app/(onboarding)/onboarding/literature-review/_services/pool-queries";
 
 /**
  * Persists the confirmed literature pool to the database.

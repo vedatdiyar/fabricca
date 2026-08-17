@@ -1,4 +1,4 @@
-import { withRetry } from "@/lib/api-utils";
+import { withRetry } from "@/core/services/ai/llm-retry";
 import { createRateLimiter } from "@/lib/rate-limiter";
 import { SEMANTIC_SCHOLAR_LIMITS } from "@/core/config/rate-limits";
 import type { CandidateSource } from "./types";

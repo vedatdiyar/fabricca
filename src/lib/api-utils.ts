@@ -4,11 +4,3 @@ export const CONTACT_EMAIL =
 export const OPENALEX_USER_AGENT = "FabriccaAcademicAssistant/1.0";
 
 export const CROSSREF_USER_AGENT = `FabriccaAcademicAssistant/1.0 (mailto:${CONTACT_EMAIL})`;
-
-export {
-  DEFAULT_MAX_DELAY,
-  HttpError,
-  fullJitterDelay,
-  withRetry,
-  type RetryOptions,
-} from "@/core/services/ai/llm-retry";

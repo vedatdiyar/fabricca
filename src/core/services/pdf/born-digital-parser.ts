@@ -4,7 +4,7 @@ import {
 } from "@firecrawl/pdf-inspector";
 import type { Logger } from "@/lib/logger";
 import { normalizeAcademicText } from "./normalizer";
-import { detectPrintedPageNumbers } from "./printed-page-number";
+import { detectPrintedPageNumbers } from "./page-detection-born-digital";
 import { createPrintedPageResolver } from "./page-resolution";
 import {
   findBibliographyPages,

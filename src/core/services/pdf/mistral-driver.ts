@@ -4,7 +4,7 @@ import { normalizeAcademicText } from "./normalizer";
 import {
   resolveMistralPrintedPages,
   type MistralOcrPage,
-} from "./printed-page-number";
+} from "./page-detection-ocr";
 
 const MISTRAL_OCR_URL = "https://api.mistral.ai/v1/ocr";
 const MAX_ATTEMPTS = 2;

@@ -26,7 +26,7 @@ import type {
 } from "@/app/(onboarding)/onboarding/positioning/_services/validation";
 import type { RagSearchResultItem } from "@/core/services/search/rag-search";
 import type { ParsedReference } from "@/core/services/pdf/parsed-reference";
-import type { ChatToolCall } from "@/app/(app)/advisor/_services/types";
+import type { ChatToolCall } from "@/app/(app)/advisor/_lib/types";
 import type { PipelineResultData } from "@/app/(app)/advisor/_services/pipeline/types";
 
 export type {

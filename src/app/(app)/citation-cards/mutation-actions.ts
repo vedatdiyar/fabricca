@@ -11,7 +11,7 @@ import {
   deleteCitationCard,
   moveCitationCardBox,
   updateCitationCard,
-} from "@/app/(app)/citation-cards/_services/citation-cards-service";
+} from "@/app/(app)/citation-cards/_services/citation-cards-mutations";
 import type { CitationCardItem, CitationNoteType } from "./_lib/types";
 
 /**

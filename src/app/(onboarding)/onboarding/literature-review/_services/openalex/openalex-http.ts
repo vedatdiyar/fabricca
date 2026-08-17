@@ -3,7 +3,8 @@ import {
   OPENALEX_REGULAR_LIMITS,
   OPENALEX_SEMANTIC_LIMITS,
 } from "@/core/config/rate-limits";
-import { OPENALEX_USER_AGENT, withRetry } from "@/lib/api-utils";
+import { OPENALEX_USER_AGENT } from "@/lib/api-utils";
+import { withRetry } from "@/core/services/ai/llm-retry";
 import { parseOpenAlexResults } from "./parser";
 import type { RawPaper } from "../literature-review-papers";
 

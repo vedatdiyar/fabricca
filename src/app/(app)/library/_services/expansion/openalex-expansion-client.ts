@@ -1,4 +1,5 @@
-import { OPENALEX_USER_AGENT, withRetry } from "@/lib/api-utils";
+import { OPENALEX_USER_AGENT } from "@/lib/api-utils";
+import { withRetry } from "@/core/services/ai/llm-retry";
 import { createRateLimiter } from "@/lib/rate-limiter";
 import { OPENALEX_SEMANTIC_LIMITS } from "@/core/config/rate-limits";
 import type { CandidateSource } from "./types";
