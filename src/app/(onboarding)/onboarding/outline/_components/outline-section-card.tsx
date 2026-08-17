@@ -22,7 +22,10 @@ import {
 } from "../_hooks/use-outline-section-card";
 import { SubSectionTreeList } from "./sub-section-tree-list";
 
-export type { OutlineSectionData, OutlineSubSectionData } from "../_hooks/use-outline-section-card";
+export type {
+  OutlineSectionData,
+  OutlineSubSectionData,
+} from "../_hooks/use-outline-section-card";
 
 /**
  * Renders an interactive main section card with inline editing, drag-and-drop
