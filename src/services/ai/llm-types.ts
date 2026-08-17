@@ -61,4 +61,15 @@ export interface StructuredGenerationOptions<T> {
    * is daily-exhausted; all others hard-stop with a quota outcome.
    */
   operation?: string;
+  /**
+   * When set, bypasses the round-robin cursor and pins the call to the key at
+   * this 0-based index in the pool. Used by batch fan-outs that pre-partition
+   * work across keys for deterministic 1/N load distribution.
+   */
+  pinnedKeyIndex?: number;
+  /**
+   * When true, bypasses the token-bucket RPM rate limiter queuing for this call,
+   * allowing immediate parallel execution without pacing delays.
+   */
+  bypassRateLimiter?: boolean;
 }

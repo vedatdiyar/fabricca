@@ -10,9 +10,11 @@ import {
   extractQuotaDetails,
   extractRetryDelayMs,
   isRateLimitError,
+  isRpdError,
   isServerOverloadError,
   toAiProviderError,
 } from "../llm-errors";
+
 import {
   withRetry,
   serverOverloadDelay,
@@ -192,6 +194,8 @@ export async function generateStructuredContent<T>(
     return await dispatchGeminiCall<T>({
       model: modelName,
       operation,
+      pinnedKeyIndex: options?.pinnedKeyIndex,
+      bypassRateLimiter: options?.bypassRateLimiter,
       task: async ({ model, apiKey }) => {
         const projectIndex = getProjectIndex(apiKey);
 
@@ -274,6 +278,12 @@ export async function generateStructuredContent<T>(
               },
               isRetryable: (error) => {
                 if (error instanceof Error) {
+                  // If it's an RPD (Daily Quota) error, do not retry on the same key;
+                  // let dispatchGeminiCall immediately switch to the other API key!
+                  if (isRpdError(error)) {
+                    return false;
+                  }
+
                   if (
                     ("status" in error &&
                       ((error as { status: string }).status === "UNAVAILABLE" ||
@@ -294,6 +304,7 @@ export async function generateStructuredContent<T>(
                 }
                 return false;
               },
+
               onRetry: (attempt, delay, error) => {
                 const httpStatus = extractHttpStatus(error);
                 const quotaDetails = extractQuotaDetails(error);

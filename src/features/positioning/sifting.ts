@@ -179,9 +179,18 @@ export async function searchAndSiftTheses(
 
   // 1. Multi-Aspect Parallel Qdrant Searches
   const [res1, res2, res3] = await Promise.all([
-    searchTezara(query1, logger, { limit: singleQueryLimit }),
-    searchTezara(query2, logger, { limit: singleQueryLimit }),
-    searchTezara(query3, logger, { limit: singleQueryLimit }),
+    searchTezara(query1, logger, {
+      limit: singleQueryLimit,
+      silent: true,
+    }),
+    searchTezara(query2, logger, {
+      limit: singleQueryLimit,
+      silent: true,
+    }),
+    searchTezara(query3, logger, {
+      limit: singleQueryLimit,
+      silent: true,
+    }),
   ]);
 
   // 2. Fuse candidate pools via Reciprocal Rank Fusion (RRF)
@@ -200,15 +209,16 @@ export async function searchAndSiftTheses(
   });
 
   if (filteredCandidates.length === 0) {
-    logger?.info("sifting_no_candidates_remaining", {
+    logger?.info("sifting_multi_search_success", {
       service: "tezara",
       filePath: "src/features/positioning/sifting.ts",
-      data: { query: query1 },
+      durationMs: performance.now() - searchStart,
+      data: { candidateCount: 0 },
     });
     return [];
   }
 
-  logger?.info("sifting_direct_search_success", {
+  logger?.info("sifting_multi_search_success", {
     service: "tezara",
     filePath: "src/features/positioning/sifting.ts",
     durationMs: performance.now() - searchStart,
@@ -221,7 +231,7 @@ export async function searchAndSiftTheses(
 
   const rerankStart = performance.now();
 
-  logger?.info("cohere_rerank_start", {
+  logger?.info("sifting_rerank_start", {
     service: "cohere",
     filePath: "src/features/positioning/sifting.ts",
     data: {
@@ -252,7 +262,7 @@ export async function searchAndSiftTheses(
 
   const selected = scoredTheses.slice(0, topN);
 
-  logger?.info("cohere_rerank_success", {
+  logger?.info("sifting_rerank_success", {
     service: "cohere",
     filePath: "src/features/positioning/sifting.ts",
     durationMs: performance.now() - rerankStart,

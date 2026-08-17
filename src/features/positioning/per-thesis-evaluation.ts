@@ -9,6 +9,7 @@ import type { Logger } from "@/lib/logger";
 import { buildPerThesisEvaluationPromptPayload } from "./prompts/per-thesis-evaluation.prompt";
 import { strategicRoleEnum, type PositioningMatrixInput } from "./validation";
 import type { SiftedThesis } from "./sifting";
+import { getGeminiKeyPool } from "@/services/ai/gemini-key-pool";
 
 /** Zod schema for the single-thesis strategic relevance/originality/role evaluation output. */
 export const perThesisEvaluationSchema = z.object({
@@ -55,7 +56,17 @@ export const perThesisEvaluationSchema = z.object({
 /** Inferred type for a single-thesis evaluation result. */
 export type PerThesisEvaluation = z.infer<typeof perThesisEvaluationSchema>;
 
-/** JSON Schema for Gemini structured outputs of the per-thesis evaluation. */
+/** Zod schema for batch thesis evaluation output. */
+export const batchThesisEvaluationSchema = z.object({
+  evaluations: z.array(perThesisEvaluationSchema),
+});
+
+/** Inferred type for batch thesis evaluation output. */
+export type BatchThesisEvaluationOutput = z.infer<
+  typeof batchThesisEvaluationSchema
+>;
+
+/** JSON Schema for single per-thesis evaluation item. */
 export const perThesisEvaluationJsonSchema: JsonSchema = {
   type: "object",
   properties: {
@@ -118,40 +129,19 @@ export const perThesisEvaluationJsonSchema: JsonSchema = {
   additionalProperties: false,
 };
 
-/**
- * Evaluates a single thesis against the user's thesis matrix via the 3-stage decision chain.
- * The Gemini call is dispatched by the quota-aware key scheduler.
- *
- * @param input - The validated positioning matrix input.
- * @param thesis - The single thesis candidate to evaluate.
- * @param logger - Optional structured logger for pipeline events.
- * @returns The structured per-thesis evaluation result.
- */
-export async function evaluateSingleThesis(
-  input: PositioningMatrixInput,
-  thesis: SiftedThesis,
-  logger?: Logger,
-): Promise<PerThesisEvaluation> {
-  const payload = buildPerThesisEvaluationPromptPayload(input, thesis);
-
-  const result = await generateGeminiStructuredContent<PerThesisEvaluation>(
-    FLASH_LITE_35,
-    payload.systemInstruction,
-    payload.userPrompt,
-    perThesisEvaluationJsonSchema,
-    logger,
-    {
-      zodSchema: perThesisEvaluationSchema,
-      payloadStage: "positioning_per_thesis_evaluation",
-      seed: GEMINI_SEED,
-      thinkingConfig: { thinkingLevel: ThinkingLevel.LOW },
-      thesisMatrix: input,
-      quiet: true,
+/** JSON Schema for Gemini structured outputs of the batch per-thesis evaluation. */
+export const batchThesisEvaluationJsonSchema: JsonSchema = {
+  type: "object",
+  properties: {
+    evaluations: {
+      type: "array",
+      items: perThesisEvaluationJsonSchema,
+      description: "Batch içerisindeki her bir adayın değerlendirme sonuçları",
     },
-  );
-
-  return result;
-}
+  },
+  required: ["evaluations"],
+  additionalProperties: false,
+};
 
 /** A thesis paired with its per-thesis evaluation result. */
 export interface EvaluatedThesis {
@@ -160,15 +150,117 @@ export interface EvaluatedThesis {
 }
 
 /**
- * Evaluates all candidate theses independently in parallel.
- * Each thesis is assessed in its own dedicated LLM call to guarantee
- * absolute, non-relative evaluation accuracy without inter-thesis bias.
- * The key scheduler round-robins the calls across every healthy Gemini key.
+ * Evaluates a batch of candidate theses against the user's thesis matrix via structured output.
+ *
+ * @param input - The validated positioning matrix input.
+ * @param batch - The slice of candidate theses to evaluate together.
+ * @param logger - Optional structured logger for pipeline events.
+ * @param pinnedKeyIndex - Optional 0-based key index to pin this call to a specific API key.
+ * @returns Array of successfully evaluated theses in the batch.
+ */
+export async function evaluateBatchTheses(
+  input: PositioningMatrixInput,
+  batch: SiftedThesis[],
+  logger?: Logger,
+  pinnedKeyIndex?: number,
+): Promise<EvaluatedThesis[]> {
+  if (batch.length === 0) return [];
+
+  const payload = buildPerThesisEvaluationPromptPayload(input, batch);
+
+  const result =
+    await generateGeminiStructuredContent<BatchThesisEvaluationOutput>(
+      FLASH_LITE_35,
+      payload.systemInstruction,
+      payload.userPrompt,
+      batchThesisEvaluationJsonSchema,
+      logger,
+      {
+        zodSchema: batchThesisEvaluationSchema,
+        payloadStage: "positioning_per_thesis_evaluation",
+        seed: GEMINI_SEED,
+        thinkingConfig: { thinkingLevel: ThinkingLevel.LOW },
+        thesisMatrix: input,
+        quiet: true,
+        pinnedKeyIndex,
+        bypassRateLimiter: true,
+      },
+    );
+
+  const evalMap = new Map<string, PerThesisEvaluation>();
+  for (const ev of result.evaluations) {
+    evalMap.set(String(ev.externalThesisId), ev);
+  }
+
+  const evaluatedTheses: EvaluatedThesis[] = [];
+  for (let i = 0; i < batch.length; i++) {
+    const thesis = batch[i];
+    const evaluation =
+      evalMap.get(String(thesis.id)) ?? result.evaluations[i] ?? null;
+
+    if (evaluation) {
+      evaluatedTheses.push({
+        thesis,
+        evaluation: {
+          ...evaluation,
+          externalThesisId: String(thesis.id),
+        },
+      });
+    } else {
+      logger?.warn("positioning_per_thesis_missing_in_batch_response", {
+        service: "positioning",
+        filePath: "src/features/positioning/per-thesis-evaluation.ts",
+        data: {
+          thesisId: thesis.id,
+          thesisTitle: thesis.title,
+        },
+      });
+    }
+  }
+
+  return evaluatedTheses;
+}
+
+/**
+ * Evaluates a single thesis against the user's thesis matrix via the 3-stage decision chain.
+ *
+ * @param input - The validated positioning matrix input.
+ * @param thesis - The single thesis candidate to evaluate.
+ * @param logger - Optional structured logger for pipeline events.
+ * @param pinnedKeyIndex - Optional 0-based key index to pin this call to a specific API key.
+ * @returns The structured per-thesis evaluation result.
+ */
+export async function evaluateSingleThesis(
+  input: PositioningMatrixInput,
+  thesis: SiftedThesis,
+  logger?: Logger,
+  pinnedKeyIndex?: number,
+): Promise<PerThesisEvaluation> {
+  const evaluated = await evaluateBatchTheses(
+    input,
+    [thesis],
+    logger,
+    pinnedKeyIndex,
+  );
+  if (evaluated.length === 0) {
+    throw new Error(`Failed to evaluate thesis ${thesis.id}`);
+  }
+  return evaluated[0].evaluation;
+}
+
+/**
+ * Evaluates all candidate theses in parallel batches.
+ * To respect the 15 RPM per-minute quota limit, the batch size is dynamically calculated as:
+ *   batchSize = Math.max(1, Math.ceil(theses.length / 15))
+ * (e.g. 30 theses -> 2 per batch, 45 theses -> 3 per batch).
+ *
+ * The candidate theses are always deterministically sorted by thesis ID prior to batching
+ * to guarantee identical grouping and deterministic evaluation across runs.
  *
  * @param input - The validated positioning matrix input.
  * @param theses - The full list of candidate theses to evaluate.
  * @param logger - Optional structured logger for pipeline events.
- * @returns The evaluated theses that were successfully processed, matching original order.
+ * @returns The evaluated theses that were successfully processed, matching deterministic order.
  */
 export async function evaluateThesesInParallel(
   input: PositioningMatrixInput,
@@ -179,36 +271,55 @@ export async function evaluateThesesInParallel(
 
   const startTime = performance.now();
 
+  // 1. Sort theses deterministically by thesis ID (numeric/alphanumeric order)
+  const sortedTheses = [...theses].sort((a, b) =>
+    String(a.id).localeCompare(String(b.id), undefined, {
+      numeric: true,
+      sensitivity: "base",
+    }),
+  );
+
+  // 2. Calculate batch size: minute limit is 15, so total batches will be <= 15 calls
+  const batchSize = Math.max(1, Math.ceil(sortedTheses.length / 15));
+
+  const batches: SiftedThesis[][] = [];
+  for (let i = 0; i < sortedTheses.length; i += batchSize) {
+    batches.push(sortedTheses.slice(i, i + batchSize));
+  }
+
   logger?.info("positioning_per_thesis_evaluation_start", {
     service: "positioning",
     filePath: "src/features/positioning/per-thesis-evaluation.ts",
     data: {
-      total: theses.length,
-      mode: "individual_parallel_scheduled",
+      total: sortedTheses.length,
+      batchSize,
+      batchCount: batches.length,
+      mode: "batch_parallel_scheduled",
     },
   });
 
+  const keyCount = getGeminiKeyPool().keys.length;
+
   const settled = await Promise.allSettled(
-    theses.map((thesis) => evaluateSingleThesis(input, thesis, logger)),
+    batches.map((batch, idx) =>
+      evaluateBatchTheses(input, batch, logger, idx % keyCount),
+    ),
   );
 
   const allEvaluated: EvaluatedThesis[] = [];
 
   for (let idx = 0; idx < settled.length; idx++) {
     const res = settled[idx];
-    const thesis = theses[idx];
+    const batch = batches[idx];
     if (res.status === "fulfilled") {
-      allEvaluated.push({
-        thesis,
-        evaluation: res.value,
-      });
+      allEvaluated.push(...res.value);
     } else {
-      logger?.error("positioning_per_thesis_single_failed", {
+      logger?.error("positioning_per_thesis_batch_failed", {
         service: "positioning",
         filePath: "src/features/positioning/per-thesis-evaluation.ts",
         data: {
-          thesisId: thesis.id,
-          thesisTitle: thesis.title,
+          batchIndex: idx,
+          thesisIds: batch.map((t) => t.id),
         },
         error: res.reason,
       });
@@ -220,7 +331,9 @@ export async function evaluateThesesInParallel(
     filePath: "src/features/positioning/per-thesis-evaluation.ts",
     durationMs: Math.round(performance.now() - startTime),
     data: {
-      total: theses.length,
+      total: sortedTheses.length,
+      batchSize,
+      batchCount: batches.length,
       evaluatedCount: allEvaluated.length,
       relevantCount: allEvaluated.filter((e) => e.evaluation.isRelevant).length,
     },

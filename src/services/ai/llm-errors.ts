@@ -97,6 +97,36 @@ export function isRateLimitError(error: unknown): boolean {
 }
 
 /**
+ * Determines whether a thrown provider error is specifically a daily quota (RPD / per-day) exhaustion.
+ *
+ * @param error - The thrown error to inspect.
+ * @returns True when the error indicates the active key exhausted its daily quota.
+ */
+export function isRpdError(error: unknown): boolean {
+  if (!(error instanceof Error)) return false;
+  const message = error.message.toLowerCase();
+  if (
+    message.includes("per day") ||
+    message.includes("requests per day") ||
+    message.includes("daily") ||
+    message.includes("perday") ||
+    message.includes("rpd") ||
+    message.includes("free_tier_requests_per_day") ||
+    message.includes("quota exceeded")
+  ) {
+    return true;
+  }
+  const quotaDetails = extractQuotaDetails(error);
+  const metric = quotaDetails?.quotaMetric?.toLowerCase() ?? "";
+  const qId = quotaDetails?.quotaId?.toLowerCase() ?? "";
+  if (metric.includes("day") || qId.includes("day")) {
+    return true;
+  }
+  return false;
+}
+
+
+/**
  * Determines whether a thrown provider error is a server-side overload (503 / UNAVAILABLE)
  * that affects all keys and is best handled with a long backoff rather than key rotation.
  *

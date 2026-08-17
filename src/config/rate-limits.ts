@@ -1,86 +1,76 @@
 /**
- * Single source of truth for every external-service rate limit.
+ * Single source of truth for every external-service rate and concurrency limit.
  *
- * Provider ceilings were taken from official documentation (2026-08):
- * - OpenAlex: regular `/works` queries 100 req/s (billing-budget bound long term);
- *   semantic search is HARD-limited to 1 req/s.
- * - Crossref: polite pool rate 10 / concurrency 2 (public pool is 5/1; send `mailto`).
- *   No Crossref HTTP call exists in the codebase today; these values await use.
- * - Semantic Scholar: keyed access 1 req/s.
- * - Cohere Rerank (trial key): 10 req/min.
- * - Cerebras `gemma-4-31b` (free trial): 5 RPM.
- * - Cloudflare Workers AI text embeddings: 3000 req/min.
- * - Gemini (per key, per model): Flash available 15 RPM / 500 RPD;
- *   3.6 Flash 5 RPM / 20 RPD. Daily quotas reset at Pacific midnight.
- *
- * Mistral OCR publishes no rate numbers, so it keeps its own retry-on-429 logic
- * and is intentionally NOT listed here.
+ * Configured limits:
+ * - OPENALEX_REGULAR_LIMITS: Saniyede max 100 istek (6.000 RPM)
+ * - OPENALEX_SEMANTIC_LIMITS: Saniyede max 1 istek (60 RPM, concurrency 1)
+ * - CROSSREF_LIMITS: Saniyede max 10 istek (600 RPM), concurrency 3
+ * - SEMANTIC_SCHOLAR_LIMITS: Saniyede max 1 istek (60 RPM, concurrency 1)
+ * - COHERE_LIMITS: Dakikada max 10 istek (10 RPM)
+ * - CEREBRAS_LIMITS: Dakikada max 5 istek (5 RPM)
+ * - CLOUDFLARE_EMBEDDINGS_LIMITS: Dakikada max 3.000 istek (3000 RPM)
+ * - GEMINI_MODEL_QUOTAS: Flash Lite modeller 15 RPM, Flash modeller 5 RPM
  */
 import { FLASH_LITE_31, FLASH_LITE_35, FLASH_36 } from "@/lib/constants";
 import type { RateLimiterOptions } from "@/lib/rate-limiter";
 
-/** OpenAlex regular `/works` queries — 10 req/s pace, provider ceiling 100 req/s. */
+/** OpenAlex regular `/works` queries — saniyede max 100 istek (6.000 req/min). */
 export const OPENALEX_REGULAR_LIMITS: RateLimiterOptions = {
   label: "openalex_regular",
-  rpm: 600,
-  concurrency: 2,
+  rpm: 6000,
 };
 
-/** OpenAlex semantic search — provider HARD limit is 1 req/s. Do not raise. */
+/** OpenAlex semantic search — saniyede max 1 istek (60 req/min, concurrency 1). */
 export const OPENALEX_SEMANTIC_LIMITS: RateLimiterOptions = {
   label: "openalex_semantic",
   rpm: 60,
   concurrency: 1,
 };
 
-/** Crossref polite pool — rate 10 / concurrency 2 (no live call yet; `mailto` required when used). */
+/** Crossref — saniyede max 10 istek (600 req/min), concurrency 3. */
 export const CROSSREF_LIMITS: RateLimiterOptions = {
   label: "crossref",
-  rpm: 10,
-  concurrency: 2,
+  rpm: 600,
+  concurrency: 3,
 };
 
-/** Semantic Scholar — keyed access is 1 req/s. */
+/** Semantic Scholar — saniyede max 1 istek (60 req/min, concurrency 1). */
 export const SEMANTIC_SCHOLAR_LIMITS: RateLimiterOptions = {
   label: "semantic_scholar",
   rpm: 60,
   concurrency: 1,
 };
 
-/** Cohere Rerank — trial key allows 10 req/min. */
+/** Cohere Rerank — dakikada max 10 istek (10 req/min). */
 export const COHERE_LIMITS: RateLimiterOptions = {
   label: "cohere",
   rpm: 10,
-  concurrency: 3,
 };
 
-/** Cerebras `gemma-4-31b` — free trial tier allows 5 RPM. */
+/** Cerebras — dakikada max 5 istek (5 req/min). */
 export const CEREBRAS_LIMITS: RateLimiterOptions = {
   label: "cerebras",
   rpm: 5,
-  concurrency: 1,
 };
 
-/** Cloudflare Workers AI text embeddings — 3000 req/min task ceiling. */
+/** Cloudflare Workers AI text embeddings — dakikada max 3.000 istek (3000 req/min). */
 export const CLOUDFLARE_EMBEDDINGS_LIMITS: RateLimiterOptions = {
   label: "cloudflare_embeddings",
   rpm: 3000,
-  concurrency: 5,
 };
 
-/** Per-model Gemini quota (per key). Counters reset at midnight Pacific. */
+/** Per-model Gemini quota (per key). */
 export interface GeminiModelQuota {
   rpm: number;
-  rpd: number;
 }
 
 export const GEMINI_MODEL_QUOTAS: Record<string, GeminiModelQuota> = {
-  [FLASH_LITE_31]: { rpm: 15, rpd: 500 },
-  [FLASH_LITE_35]: { rpm: 15, rpd: 500 },
-  [FLASH_36]: { rpm: 5, rpd: 20 },
+  [FLASH_LITE_31]: { rpm: 15 },
+  [FLASH_LITE_35]: { rpm: 15 },
+  [FLASH_36]: { rpm: 5 },
 };
 
-/** Primary model -> fallback, used ONLY when every key is daily-exhausted. */
+/** Primary model -> fallback. */
 export const GEMINI_FALLBACK_CHAINS: Record<string, string | null> = {
   [FLASH_LITE_35]: FLASH_LITE_31,
   [FLASH_LITE_31]: null,
@@ -88,18 +78,13 @@ export const GEMINI_FALLBACK_CHAINS: Record<string, string | null> = {
 };
 
 /**
- * Operations permitted to fall back to a weaker Gemini model when the daily
- * quota of every key is exhausted (user decision: loss-less for these only).
- * Every other operation hard-stops with a "quota exhausted" outcome instead.
+ * Operations permitted to fall back to a weaker Gemini model.
  */
 export const GEMINI_FALLBACK_OPERATIONS = ["pdf_read", "sanitize"] as const;
 
 export type GeminiFallbackOperation =
   (typeof GEMINI_FALLBACK_OPERATIONS)[number];
 
-/**
- * Planned utilization ceiling for Gemini keys. Scheduler reserves ~15% slack so
- * a single failed key can be rebalanced (or retried) without overflowing a
- * neighbor and triggering a 429 cascade.
- */
-export const GEMINI_KEY_UTILIZATION = 0.85;
+export const GEMINI_KEY_UTILIZATION = 1.0;
+
+

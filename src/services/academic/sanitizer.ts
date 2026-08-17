@@ -55,41 +55,67 @@ export async function sanitizeAcademicDataBulk(
   if (items.length === 0) return items;
 
   const payload = buildSanitizePromptPayload(items);
+  const startTime = performance.now();
 
-  const result = await generateGeminiStructuredContent<SanitizeResponse>(
-    FLASH_LITE_35,
-    payload.systemInstruction,
-    payload.userPrompt,
-    SANITIZE_RESPONSE_SCHEMA,
-    logger,
-    {
-      thinkingConfig: { thinkingLevel: ThinkingLevel.LOW },
-      zodSchema: sanitizeResponseSchema,
-      seed: GEMINI_SEED,
-      safetySettings: [
-        {
-          category: HarmCategory.HARM_CATEGORY_HATE_SPEECH,
-          threshold: HarmBlockThreshold.BLOCK_ONLY_HIGH,
-        },
-        {
-          category: HarmCategory.HARM_CATEGORY_HARASSMENT,
-          threshold: HarmBlockThreshold.BLOCK_ONLY_HIGH,
-        },
-        {
-          category: HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT,
-          threshold: HarmBlockThreshold.BLOCK_ONLY_HIGH,
-        },
-        {
-          category: HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT,
-          threshold: HarmBlockThreshold.BLOCK_ONLY_HIGH,
-        },
-      ],
-      payloadStage: "literature_bulk_sanitization",
-      operation: "sanitize",
-    },
-  );
+  logger?.info("literature_sanitization_start", {
+    service: "literature",
+    filePath: "src/services/academic/sanitizer.ts",
+    data: { itemCount: items.length },
+  });
 
-  return result.items;
+  try {
+    const result = await generateGeminiStructuredContent<SanitizeResponse>(
+      FLASH_LITE_35,
+      payload.systemInstruction,
+      payload.userPrompt,
+      SANITIZE_RESPONSE_SCHEMA,
+      logger,
+      {
+        thinkingConfig: { thinkingLevel: ThinkingLevel.LOW },
+        zodSchema: sanitizeResponseSchema,
+        seed: GEMINI_SEED,
+        safetySettings: [
+          {
+            category: HarmCategory.HARM_CATEGORY_HATE_SPEECH,
+            threshold: HarmBlockThreshold.BLOCK_ONLY_HIGH,
+          },
+          {
+            category: HarmCategory.HARM_CATEGORY_HARASSMENT,
+            threshold: HarmBlockThreshold.BLOCK_ONLY_HIGH,
+          },
+          {
+            category: HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT,
+            threshold: HarmBlockThreshold.BLOCK_ONLY_HIGH,
+          },
+          {
+            category: HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT,
+            threshold: HarmBlockThreshold.BLOCK_ONLY_HIGH,
+          },
+        ],
+        payloadStage: "literature_sanitization",
+        operation: "sanitize",
+        quiet: true,
+      },
+    );
+
+    logger?.info("literature_sanitization_success", {
+      service: "literature",
+      filePath: "src/services/academic/sanitizer.ts",
+      durationMs: Math.round(performance.now() - startTime),
+      data: { itemCount: items.length },
+    });
+
+    return result.items;
+  } catch (error) {
+    logger?.error("literature_sanitization_failed", {
+      service: "literature",
+      filePath: "src/services/academic/sanitizer.ts",
+      durationMs: Math.round(performance.now() - startTime),
+      data: { itemCount: items.length },
+      error,
+    });
+    throw error;
+  }
 }
 
 /**

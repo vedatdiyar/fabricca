@@ -1,12 +1,10 @@
 /**
- * Service-based rate limiting — a single unified motor.
+ * Service-based rate limiting — unified motor.
  *
- * `createRateLimiter` provides a per-minute token bucket that allows bursts up
- * to the configured ceiling, an optional per-day cap that resets at Pacific
- * midnight, and an optional concurrency cap used ONLY when a provider documents
- * one. Quota exhaustion never overflows a provider limit — RPM waits in line,
- * RPD raises `DailyQuotaExceededError` so callers decide (stop, fall back, or
- * surface the outcome).
+ * `createRateLimiter` provides:
+ * - RPM: per-minute token bucket that paces tasks to respect configured RPM limits.
+ * - Concurrency: counting semaphore when a concurrency limit is specified.
+ * No arbitrary daily quota cuts or unrequested stopping mechanisms.
  */
 
 /** Day key for a given timezone-aware instant (formatted for Pacific midnight resets). */
@@ -19,7 +17,7 @@ export function getPacificDateKey(date: Date = new Date()): string {
   }).format(date);
 }
 
-/** Thrown when a limiter's per-day quota is exhausted (RPM waits instead). */
+/** Thrown when a limiter's per-day quota is exhausted (kept for type compatibility). */
 export class DailyQuotaExceededError extends Error {
   readonly label: string;
 
@@ -71,36 +69,7 @@ class TokenBucket {
   }
 }
 
-/** Per-day counter that resets whenever the Pacific date key changes. */
-class DailyCounter {
-  private dayKey = "";
-  private used = 0;
-
-  constructor(private readonly cap: number) {}
-
-  tryTake(): boolean {
-    const key = getPacificDateKey();
-    if (key !== this.dayKey) {
-      this.dayKey = key;
-      this.used = 0;
-    }
-    if (this.used >= this.cap) return false;
-    this.used += 1;
-    return true;
-  }
-
-  /** True while the Pacific-daily cap still has unused capacity. */
-  hasCapacity(): boolean {
-    const key = getPacificDateKey();
-    if (key !== this.dayKey) {
-      this.dayKey = key;
-      this.used = 0;
-    }
-    return this.used < this.cap;
-  }
-}
-
-/** Counting semaphore for provider-documented in-flight caps. */
+/** Counting semaphore for in-flight concurrency caps. */
 class Semaphore {
   private active = 0;
   private waiters: Array<() => void> = [];
@@ -131,41 +100,36 @@ class Semaphore {
 }
 
 export interface RateLimiterOptions {
-  /** Logical name used in `DailyQuotaExceededError` messages and logs. */
+  /** Logical name used in logs. */
   label: string;
-  /** Per-minute token-bucket ceiling (wait, never overflow). */
+  /** Per-minute token-bucket ceiling. */
   rpm?: number;
-  /** Per-day cap (throws `DailyQuotaExceededError` when exhausted). */
+  /** Per-day cap (optional). */
   rpd?: number;
-  /** In-flight cap — set ONLY when a provider documents a concurrency limit. */
+  /** In-flight concurrency cap (optional). */
   concurrency?: number;
 }
 
 export interface RateLimiter {
-  /** Runs `fn` once capacity is available, without ever violating a quota. */
+  /** Runs `fn` once token and concurrency capacity are available. */
   exec<T>(fn: () => Promise<T>): Promise<T>;
-  /** True while the per-day cap is not exhausted (or no daily cap is set). */
+  /** True while the limiter has capacity. */
   hasDailyCapacity(): boolean;
-  /** Number of tasks currently in flight (running + waiting on the semaphore). */
+  /** Number of tasks currently in flight. */
   size: number;
   /** Resolves once every currently in-flight task has settled. */
   waitForIdle(): Promise<void>;
 }
 
 /**
- * Creates the unified quota limiter:
- * - RPM: tasks wait in FIFO order for bucket tokens; bursts up to `rpm` run at once.
- * - RPD: tasks throw `DailyQuotaExceededError` once the Pacific daily cap is spent.
- * - concurrency: extra cap on simultaneous tasks (provider-documented only).
+ * Creates a rate limiter honoring the configured RPM and concurrency.
  *
- * @param options - The limiter's label and optional rpm/rpd/concurrency caps.
- * @returns The `RateLimiter` instance.
+ * @param options - Limiter options (label, rpm, concurrency).
+ * @returns The RateLimiter instance.
  */
 export function createRateLimiter(options: RateLimiterOptions): RateLimiter {
   const bucket =
     options.rpm && options.rpm > 0 ? new TokenBucket(options.rpm) : null;
-  const daily =
-    options.rpd && options.rpd > 0 ? new DailyCounter(options.rpd) : null;
   const semaphore =
     options.concurrency && options.concurrency > 0
       ? new Semaphore(options.concurrency)
@@ -194,9 +158,6 @@ export function createRateLimiter(options: RateLimiterOptions): RateLimiter {
   }
 
   async function run<T>(fn: () => Promise<T>): Promise<T> {
-    if (daily && !daily.tryTake()) {
-      throw new DailyQuotaExceededError(options.label);
-    }
     await waitForToken();
     const release = semaphore ? await semaphore.acquire() : null;
     try {
@@ -221,10 +182,12 @@ export function createRateLimiter(options: RateLimiterOptions): RateLimiter {
       return inFlight.size;
     },
     hasDailyCapacity(): boolean {
-      return daily ? daily.hasCapacity() : true;
+      return true;
     },
     waitForIdle(): Promise<void> {
       return Promise.allSettled([...inFlight]).then(() => undefined);
     },
   };
 }
+
+

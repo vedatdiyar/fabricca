@@ -5,7 +5,7 @@ import {
   OPENALEX_SEMANTIC_LIMITS,
 } from "@/config/rate-limits";
 import type { RawPaper, RefMetadata } from "../literature-review-papers";
-import { CROSSREF_USER_AGENT, withRetry } from "@/lib/api-utils";
+import { OPENALEX_USER_AGENT, withRetry } from "@/lib/api-utils";
 
 /**
  * Queue for semantic search, since OpenAlex enforces 1 req/s for this endpoint.
@@ -38,7 +38,7 @@ async function queryOpenAlexWorks(
     if (checkCancelled?.()) return null;
 
     const res = await fetch(url, {
-      headers: { "User-Agent": CROSSREF_USER_AGENT },
+      headers: { "User-Agent": OPENALEX_USER_AGENT },
       signal: AbortSignal.timeout(30000),
     });
 
@@ -156,7 +156,7 @@ export async function fetchOpenAlexMetadataBatch(
       if (checkCancelled?.()) return null;
 
       const res = await fetch(url, {
-        headers: { "User-Agent": CROSSREF_USER_AGENT },
+        headers: { "User-Agent": OPENALEX_USER_AGENT },
         signal: AbortSignal.timeout(30000),
       });
 
@@ -249,7 +249,7 @@ export async function healAuthorsByTitle(title: string): Promise<string[]> {
 
   const fetchFunc = async (): Promise<Response | null> => {
     const res = await fetch(url, {
-      headers: { "User-Agent": CROSSREF_USER_AGENT },
+      headers: { "User-Agent": OPENALEX_USER_AGENT },
       signal: AbortSignal.timeout(30000),
     });
     if (res.status === 429) throw new Error(OPENALEX_RETRYABLE);

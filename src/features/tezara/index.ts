@@ -45,11 +45,13 @@ function getQdrantClient(): QdrantClient {
  *
  * @param query - Raw query text.
  * @param logger - Optional logger for observability.
+ * @param silent - When true, suppresses the start/success log pair for flat pipelines.
  * @returns 768-dimensional dense vector array.
  */
 export async function getE5QueryEmbedding(
   query: string,
   logger?: Logger,
+  silent = false,
 ): Promise<number[]> {
   if (!HF_API_KEY) {
     throw new Error("HUGGINGFACE_API_KEY environment variable is not defined.");
@@ -132,13 +134,15 @@ export async function getE5QueryEmbedding(
     );
 
     const durationMs = performance.now() - startTime;
-    logger?.info("hf_embedding_success", {
-      service: "tezara",
-      filePath: "src/features/tezara/index.ts",
-      step: "get_query_embedding",
-      durationMs,
-      data: { query: trimmed, dimensions: vector.length },
-    });
+    if (!silent) {
+      logger?.info("hf_embedding_success", {
+        service: "tezara",
+        filePath: "src/features/tezara/index.ts",
+        step: "get_query_embedding",
+        durationMs,
+        data: { query: trimmed, dimensions: vector.length },
+      });
+    }
 
     return vector;
   } catch (err) {
@@ -211,6 +215,8 @@ export interface TezaraSearchOptions {
   rankingScoreThreshold?: number;
   filter?: string;
   attributesToSearchOn?: string[];
+  /** When true, suppresses the start/success log pair for flat pipelines. */
+  silent?: boolean;
 }
 
 /**
@@ -230,10 +236,11 @@ export async function searchTezara(
 ): Promise<TezaraThesisDetails[]> {
   const startTime = performance.now();
   const limit = options?.limit ?? 100;
+  const silent = options?.silent ?? false;
   const client = getQdrantClient();
 
   try {
-    const embedding = await getE5QueryEmbedding(query, logger);
+    const embedding = await getE5QueryEmbedding(query, logger, silent);
     const queryStart = performance.now();
 
     const searchRes = await client.query("theses", {
@@ -252,18 +259,20 @@ export async function searchTezara(
       results.push(mapPayloadToDetails(Number(point.id), payload));
     }
 
-    logger?.info("qdrant_vector_search_success", {
-      service: "tezara",
-      filePath: "src/features/tezara/index.ts",
-      step: "search_qdrant_vector",
-      durationMs: totalDurationMs,
-      data: {
-        query,
-        resultCount: results.length,
-        qdrantDurationMs: Math.round(qdrantDurationMs),
-        limit,
-      },
-    });
+    if (!silent) {
+      logger?.info("qdrant_vector_search_success", {
+        service: "tezara",
+        filePath: "src/features/tezara/index.ts",
+        step: "search_qdrant_vector",
+        durationMs: totalDurationMs,
+        data: {
+          query,
+          resultCount: results.length,
+          qdrantDurationMs: Math.round(qdrantDurationMs),
+          limit,
+        },
+      });
+    }
 
     return results;
   } catch (err) {

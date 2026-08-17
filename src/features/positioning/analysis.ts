@@ -237,6 +237,7 @@ Katkı/Odak Alanları: ${e.contributionAreas.join(", ") || "Yok"}
       seed: GEMINI_SEED,
       thinkingConfig: { thinkingLevel: ThinkingLevel.LOW },
       thesisMatrix: { input, filteredThesesCount: evaluatedTheses.length },
+      quiet: true,
     },
   );
 

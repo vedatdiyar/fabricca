@@ -51,9 +51,7 @@ export async function runPositioningSearchAction(
     const session = await getSession();
     if (!session) return { error: SESSION_ERROR_MSG };
 
-    log.info("sifting_theses_start");
     const theses = await searchAndSiftTheses(validated, log);
-    log.info("sifting_theses_success");
 
     return { success: true, theses };
   } catch (error) {
@@ -227,7 +225,7 @@ export async function persistPositioningReportAction(
 }
 
 /**
- * Emits the final pipeline total-duration SUCCESS log line.
+ * Emits the final pipeline total-duration TOTAL log line.
  *
  * @param flowId - The pipeline flow identifier.
  * @param durationMs - Total pipeline duration in milliseconds.
@@ -237,8 +235,8 @@ export async function logPositioningPipelineSuccessAction(
   durationMs: number,
 ): Promise<void> {
   const log = new Logger(flowId);
-  log.info("positioning_pipeline_success", {
-    data: { durationMs: Math.round(durationMs) },
+  log.total("positioning_pipeline", Math.round(durationMs), {
+    service: "positioning",
   });
 }
 

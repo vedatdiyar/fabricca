@@ -22,38 +22,43 @@
 import {
   GEMINI_FALLBACK_CHAINS,
   GEMINI_FALLBACK_OPERATIONS,
-  GEMINI_KEY_UTILIZATION,
   GEMINI_MODEL_QUOTAS,
 } from "@/config/rate-limits";
 import {
   createRateLimiter,
   DailyQuotaExceededError,
-  isDailyQuotaExceeded,
+  getPacificDateKey,
   type RateLimiter,
 } from "@/lib/rate-limiter";
 import { getGeminiKeyPool } from "./gemini-key-pool";
-import { isRateLimitError, isServerOverloadError } from "./llm-errors";
-
-/** How long a key stays quarantined after exhausting its retry budget. */
-const KEY_COOLDOWN_MS = 30_000;
+import { isRateLimitError, isRpdError } from "./llm-errors";
 
 /** Cache of per-model/per-key limiters, keyed `${model}::${apiKey}`. */
 const limitersByModelKey = new Map<string, RateLimiter>();
 
-/** Keys currently in cooldown, keyed by apiKey → cooldown end timestamp. */
-const keyCooldowns = new Map<string, number>();
+/** Keys that exhausted their daily quota (RPD), mapped `${model}::${apiKey}` → Pacific date key. */
+const rpdExhaustedKeys = new Map<string, string>();
 
 /** Rotation cursor: the next dispatch starts scanning from this key. */
 let rotationCursor = 0;
 
-/** Effective (utilization-scaled) quota caps for a Gemini model. */
-function effectiveCaps(model: string): { rpm: number; rpd: number } | null {
-  const quota = GEMINI_MODEL_QUOTAS[model];
-  if (!quota) return null;
-  return {
-    rpm: Math.max(1, Math.floor(quota.rpm * GEMINI_KEY_UTILIZATION)),
-    rpd: Math.max(1, Math.floor(quota.rpd * GEMINI_KEY_UTILIZATION)),
-  };
+/** Checks if a specific key has hit RPD exhaustion for the given model today. */
+function isKeyRpdExhausted(model: string, apiKey: string): boolean {
+  const cacheKey = `${model}::${apiKey}`;
+  const exhaustedDate = rpdExhaustedKeys.get(cacheKey);
+  if (!exhaustedDate) return false;
+  const today = getPacificDateKey();
+  if (exhaustedDate !== today) {
+    rpdExhaustedKeys.delete(cacheKey);
+    return false;
+  }
+  return true;
+}
+
+/** Marks a specific key as RPD exhausted for the given model today. */
+function markKeyRpdExhausted(model: string, apiKey: string): void {
+  const cacheKey = `${model}::${apiKey}`;
+  rpdExhaustedKeys.set(cacheKey, getPacificDateKey());
 }
 
 /** Returns the shared limiter for a `(model, apiKey)` pair, creating it on first use. */
@@ -61,20 +66,12 @@ function limiterFor(model: string, apiKey: string): RateLimiter {
   const cacheKey = `${model}::${apiKey}`;
   let limiter = limitersByModelKey.get(cacheKey);
   if (!limiter) {
-    const caps = effectiveCaps(model);
-    if (!caps) {
-      throw new Error(`Unknown Gemini quota for model "${model}".`);
-    }
-    limiter = createRateLimiter({ label: `gemini_${model}`, ...caps });
+    const quota = GEMINI_MODEL_QUOTAS[model];
+    const rpm = quota?.rpm ?? (model.includes("lite") ? 15 : 5);
+    limiter = createRateLimiter({ label: `gemini_${model}`, rpm });
     limitersByModelKey.set(cacheKey, limiter);
   }
   return limiter;
-}
-
-/** True while the key is quarantined in cooldown. */
-function isCoolingDown(apiKey: string): boolean {
-  const until = keyCooldowns.get(apiKey);
-  return until !== undefined && until > Date.now();
 }
 
 /** The `(model, apiKey)` pair a Gemini call is dispatched on. */
@@ -90,26 +87,32 @@ export interface GeminiDispatchParams<T> {
   model: string;
   /**
    * Pipeline operation key. When present and listed in
-   * `GEMINI_FALLBACK_OPERATIONS`, a model fallback may be attempted after
-   * every key's daily quota for the preferred model is spent.
+   * `GEMINI_FALLBACK_OPERATIONS`, a model fallback may be attempted.
    */
   operation?: string;
   /**
-   * Runs the actual LLM call under the resolved target. Executed through the
-   * target's quota limiter; internal retries stay on the same key.
+   * When set, bypasses the round-robin cursor and pins the call to the key at
+   * this 0-based index in the pool.
+   */
+  pinnedKeyIndex?: number;
+  /**
+   * When true, bypasses limiter queuing for this call.
+   */
+  bypassRateLimiter?: boolean;
+  /**
+   * Runs the actual LLM call under the resolved target.
    */
   task: (target: GeminiTarget) => Promise<T>;
 }
 
 /**
- * Dispatches a Gemini call to a healthy `(model, apiKey)` pair, applying
- * round-robin rotation, daily-quota skipping, loss-less model fallback, and
- * per-key cooldown on repeated quota/server failures.
+ * Dispatches a Gemini call across available API keys for the specified model.
+ * When a key encounters an RPD (Daily Quota) exhaustion error, it immediately
+ * switches to the next healthy API key on the SAME model.
  *
  * @typeParam T - The structured output type produced by the task.
  * @param params - The dispatch parameters (preferred model, operation, task).
  * @returns The task result.
- * @throws `DailyQuotaExceededError` when every key (and fallback, if any) is exhausted.
  */
 export async function dispatchGeminiCall<T>(
   params: GeminiDispatchParams<T>,
@@ -133,33 +136,47 @@ export async function dispatchGeminiCall<T>(
 
   rotationCursor = (rotationCursor + 1) % pool.length;
 
+  const startIdx =
+    params.pinnedKeyIndex !== undefined
+      ? params.pinnedKeyIndex % pool.length
+      : rotationCursor;
+
   for (const model of models) {
-    const candidates: Array<{ apiKey: string; limiter: RateLimiter }> = [];
+    // Collect healthy keys first; if all keys exhausted on this model, allow trying fallback
+    const keyIndices: number[] = [];
     for (let i = 0; i < pool.length; i++) {
-      const apiKey = pool[(rotationCursor + i) % pool.length];
-      if (isCoolingDown(apiKey)) continue;
-      const limiter = limiterFor(model, apiKey);
-      if (limiter.hasDailyCapacity()) {
-        candidates.push({ apiKey, limiter });
+      const idx = (startIdx + i) % pool.length;
+      const apiKey = pool[idx];
+      if (!isKeyRpdExhausted(model, apiKey) || pool.length === 1) {
+        keyIndices.push(idx);
       }
     }
 
-    if (candidates.length === 0) continue;
+    // If all keys in pool are already marked RPD-exhausted for this model, try next model
+    if (keyIndices.length === 0) {
+      continue;
+    }
 
-    for (const candidate of candidates) {
+    for (let i = 0; i < keyIndices.length; i++) {
+      const apiKey = pool[keyIndices[i]];
+      const limiter = limiterFor(model, apiKey);
       try {
-        const value = await candidate.limiter.exec(() =>
-          params.task({ model, apiKey: candidate.apiKey }),
-        );
-        keyCooldowns.delete(candidate.apiKey);
-        return value;
+        return params.bypassRateLimiter
+          ? await params.task({ model, apiKey })
+          : await limiter.exec(() => params.task({ model, apiKey }));
       } catch (error) {
-        if (isDailyQuotaExceeded(error)) continue;
-        if (isRateLimitError(error) || isServerOverloadError(error)) {
-          keyCooldowns.set(candidate.apiKey, Date.now() + KEY_COOLDOWN_MS);
-          continue;
+        if (isRpdError(error) || isRateLimitError(error)) {
+          markKeyRpdExhausted(model, apiKey);
+          // If other keys exist for this same model, switch to the next key immediately
+          if (i < keyIndices.length - 1) {
+            continue;
+          }
         }
-        throw error;
+
+        // If this is the last key attempt on the last available model, throw
+        if (i === keyIndices.length - 1 && model === models[models.length - 1]) {
+          throw error;
+        }
       }
     }
   }
@@ -167,9 +184,11 @@ export async function dispatchGeminiCall<T>(
   throw new DailyQuotaExceededError(`gemini_${params.model}`);
 }
 
-/** Clears key cooldowns and rotation state (test/restart support). */
+/** Clears limiter, RPD exhaustion records, and rotation state (test/restart support). */
 export function resetGeminiScheduler(): void {
   limitersByModelKey.clear();
-  keyCooldowns.clear();
+  rpdExhaustedKeys.clear();
   rotationCursor = 0;
 }
+
+

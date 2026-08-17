@@ -1,4 +1,4 @@
-import { CROSSREF_USER_AGENT, withRetry } from "@/lib/api-utils";
+import { OPENALEX_USER_AGENT, withRetry } from "@/lib/api-utils";
 import { createRateLimiter } from "@/lib/rate-limiter";
 import { OPENALEX_SEMANTIC_LIMITS } from "@/config/rate-limits";
 import type { CandidateSource } from "./types";
@@ -67,7 +67,7 @@ function buildOpenAlexExpansionRetryOptions() {
 async function fetchOpenAlexUrl(url: string): Promise<Response | null> {
   const fetchWithRetry = async (): Promise<Response | null> => {
     const res = await fetch(url, {
-      headers: { "User-Agent": CROSSREF_USER_AGENT },
+      headers: { "User-Agent": OPENALEX_USER_AGENT },
       signal: AbortSignal.timeout(30000),
     });
 

@@ -314,7 +314,7 @@ export class Logger implements LoggerInstance {
     if (this.devMode) {
       const timeTag = this.timestamp();
       console.log(
-        `${timeTag} ${C_GREEN}✓${C_RESET} TOTAL ${event} (${formatDuration(durationMs)})`,
+        `${timeTag} TOTAL ${C_GREEN}✓${C_RESET} ${event} (${formatDuration(durationMs)})`,
       );
       return;
     }
