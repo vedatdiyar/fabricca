@@ -17,8 +17,6 @@ import { Textarea } from "@/components/ui/textarea";
 import {
   useOutlineSectionCard,
   type OutlineSectionCardProps,
-  type OutlineSectionData,
-  type OutlineSubSectionData,
 } from "../_hooks/use-outline-section-card";
 import { SubSectionTreeList } from "./sub-section-tree-list";
 

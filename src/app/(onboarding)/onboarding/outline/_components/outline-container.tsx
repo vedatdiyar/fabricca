@@ -162,7 +162,7 @@ function OutlineEditor({
     setSections(nextSections);
     setExpandedIndices((prev) => new Set([...prev, insertIndex]));
     toast.success("Yeni gövde bölümü eklendi.");
-  }, [sections]);
+  }, [sections, setSections]);
 
   const handleUpdateSection = useCallback(
     (index: number, updated: OutlineSectionData) => {
@@ -172,7 +172,7 @@ function OutlineEditor({
         return next;
       });
     },
-    [],
+    [setSections],
   );
 
   const handleDeleteSection = useCallback(
@@ -197,17 +197,23 @@ function OutlineEditor({
       });
       toast.info("Bölüm silindi.");
     },
-    [sections.length],
+    [sections.length, setSections],
   );
 
   // Main Section Drag & Drop Handlers
-  const handleDragStartSection = useCallback((index: number) => {
-    setDraggedSectionIndex(index);
-  }, []);
+  const handleDragStartSection = useCallback(
+    (index: number) => {
+      setDraggedSectionIndex(index);
+    },
+    [setDraggedSectionIndex],
+  );
 
-  const handleDragOverSection = useCallback((index: number) => {
-    setDragOverSectionIndex(index);
-  }, []);
+  const handleDragOverSection = useCallback(
+    (index: number) => {
+      setDragOverSectionIndex(index);
+    },
+    [setDragOverSectionIndex],
+  );
 
   const handleDropSection = useCallback(
     (targetIndex: number) => {
@@ -227,13 +233,18 @@ function OutlineEditor({
       setDraggedSectionIndex(null);
       setDragOverSectionIndex(null);
     },
-    [draggedSectionIndex],
+    [
+      draggedSectionIndex,
+      setDraggedSectionIndex,
+      setDragOverSectionIndex,
+      setSections,
+    ],
   );
 
   const handleDragEndSection = useCallback(() => {
     setDraggedSectionIndex(null);
     setDragOverSectionIndex(null);
-  }, []);
+  }, [setDraggedSectionIndex, setDragOverSectionIndex]);
 
   const handleRegenerate = useCallback(async () => {
     if (isRegenerating) return;
@@ -251,7 +262,7 @@ function OutlineEditor({
     } finally {
       setIsRegenerating(false);
     }
-  }, [isRegenerating]);
+  }, [isRegenerating, setIsRegenerating, setAcademicField, setSections]);
 
   const handleConfirm = useCallback(async () => {
     if (confirming) return;
@@ -284,7 +295,7 @@ function OutlineEditor({
     } finally {
       setConfirming(false);
     }
-  }, [confirming, academicField, sections, proceedFromOutline]);
+  }, [confirming, setConfirming, academicField, sections, proceedFromOutline]);
 
   return (
     <div className="w-full flex flex-col gap-6">

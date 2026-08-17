@@ -975,6 +975,40 @@ Label.displayName = LabelPrimitive.Root.displayName;
 export { Label };
 </file>
 
+<file path="src/components/ui/popover.tsx">
+"use client";
+
+import * as React from "react";
+import * as PopoverPrimitive from "@radix-ui/react-popover";
+
+import { cn } from "@/lib/utils";
+
+const Popover = PopoverPrimitive.Root;
+
+const PopoverTrigger = PopoverPrimitive.Trigger;
+
+const PopoverContent = React.forwardRef<
+  React.ElementRef<typeof PopoverPrimitive.Content>,
+  React.ComponentPropsWithoutRef<typeof PopoverPrimitive.Content>
+>(({ className, align = "center", sideOffset = 4, ...props }, ref) => (
+  <PopoverPrimitive.Portal>
+    <PopoverPrimitive.Content
+      ref={ref}
+      align={align}
+      sideOffset={sideOffset}
+      className={cn(
+        "z-50 w-72 rounded-md border bg-popover p-4 text-popover-foreground shadow-md outline-none data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2 origin-[--radix-popover-content-transform-origin]",
+        className,
+      )}
+      {...props}
+    />
+  </PopoverPrimitive.Portal>
+));
+PopoverContent.displayName = PopoverPrimitive.Content.displayName;
+
+export { Popover, PopoverTrigger, PopoverContent };
+</file>
+
 <file path="src/components/ui/sonner.tsx">
 "use client";
 
@@ -2457,392 +2491,6 @@ export default function AdvisorLoading() {
 }
 </file>
 
-<file path="src/app/(app)/citation-cards/_components/sidebar-box-list.tsx">
-"use client";
-
-import { Layers, Check } from "lucide-react";
-import { getBoxTypeBadgeConfig } from "@/lib/box-constants";
-import { cn } from "@/lib/utils";
-import type { BoxItem, CitationCardItem } from "../_lib/types";
-
-interface SidebarBoxListProps {
-  boxes: BoxItem[];
-  cards: CitationCardItem[];
-  selectedBoxId: number | null;
-  onSelectBox: (id: number | null) => void;
-  onSelectSource: (id: number | null) => void;
-}
-
-/**
- * Renders the topic boxes list of the citation sidebar with per-box card
- * counts and selection highlighting.
- *
- * @param props - Box list props.
- * @returns The box list markup.
- */
-export function SidebarBoxList({
-  boxes,
-  cards,
-  selectedBoxId,
-  onSelectBox,
-  onSelectSource,
-}: SidebarBoxListProps) {
-  return (
-    <div className="space-y-1.5 min-w-0">
-      <div className="px-1 text-[10px] font-medium text-muted-foreground uppercase tracking-wider flex items-center justify-between">
-        <span className="flex items-center gap-1.5">
-          <Layers className="h-3 w-3 text-primary" />
-          Tez Konu Kutuları
-        </span>
-        <span className="font-mono text-[10px]">({boxes.length})</span>
-      </div>
-
-      {boxes.length === 0 ? (
-        <div className="px-3 py-4 text-center text-xs text-muted-foreground italic bg-muted/20 rounded-md border border-border/40">
-          Aramaya uygun kutu bulunamadı.
-        </div>
-      ) : (
-        <div className="space-y-1">
-          {boxes.map((box) => {
-            const isSelected = selectedBoxId === box.id;
-            const boxConfig = getBoxTypeBadgeConfig(box.boxType);
-            const boxCardCount = cards.filter((c) => c.boxId === box.id).length;
-
-            return (
-              <button
-                key={box.id}
-                type="button"
-                onClick={() => {
-                  onSelectBox(isSelected ? null : box.id);
-                  onSelectSource(null);
-                }}
-                className={cn(
-                  "w-full text-left p-2 rounded-md transition-all border flex flex-col gap-1 cursor-pointer select-none",
-                  isSelected
-                    ? "bg-primary/10 border-primary/40 text-primary"
-                    : "bg-card/50 border-border/60 hover:border-border hover:bg-accent/20 text-foreground",
-                )}
-              >
-                <div className="flex items-center justify-between gap-1.5 min-w-0">
-                  <div className="flex items-center gap-1.5 min-w-0">
-                    <span
-                      className={cn(
-                        "h-2 w-2 rounded-full shrink-0",
-                        boxConfig.dotClassName,
-                      )}
-                    />
-                    <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider truncate">
-                      {boxConfig.label}
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-1 shrink-0">
-                    {isSelected && (
-                      <Check className="h-3 w-3 text-primary shrink-0" />
-                    )}
-                    <span className="inline-flex items-center rounded px-1.5 py-0.5 text-[10px] font-mono font-semibold bg-muted text-foreground border border-border/40 shrink-0">
-                      {boxCardCount}
-                    </span>
-                  </div>
-                </div>
-                <div
-                  className={cn(
-                    "text-xs font-medium truncate min-w-0",
-                    isSelected
-                      ? "text-primary font-semibold"
-                      : "text-foreground",
-                  )}
-                  title={box.title}
-                >
-                  {box.title}
-                </div>
-              </button>
-            );
-          })}
-        </div>
-      )}
-    </div>
-  );
-}
-</file>
-
-<file path="src/app/(app)/citation-cards/_components/sidebar-source-list.tsx">
-"use client";
-
-import { BookOpen, Check } from "lucide-react";
-import { cn } from "@/lib/utils";
-import type { SourceItem, CitationCardItem } from "../_lib/types";
-
-interface SidebarSourceListProps {
-  sources: SourceItem[];
-  cards: CitationCardItem[];
-  selectedBoxId: number | null;
-  selectedSourceId: number | null;
-  onSelectSource: (id: number | null) => void;
-}
-
-/**
- * Renders the linked sources list of the citation sidebar with per-source card
- * counts and selection highlighting.
- *
- * @param props - Source list props.
- * @returns The source list markup.
- */
-export function SidebarSourceList({
-  sources,
-  cards,
-  selectedBoxId,
-  selectedSourceId,
-  onSelectSource,
-}: SidebarSourceListProps) {
-  return (
-    <div className="space-y-1.5 min-w-0 pb-2">
-      <div className="px-1 text-[10px] font-medium text-muted-foreground uppercase tracking-wider flex items-center justify-between">
-        <span className="flex items-center gap-1.5">
-          <BookOpen className="h-3 w-3 text-info" />
-          Kaynaklar
-        </span>
-        {selectedBoxId ? (
-          <span className="text-[10px] text-primary font-medium">
-            (Kutuya Bağlı: {sources.length})
-          </span>
-        ) : (
-          <span className="font-mono text-[10px]">({sources.length})</span>
-        )}
-      </div>
-
-      {sources.length === 0 ? (
-        <div className="px-3 py-4 text-center text-xs text-muted-foreground italic bg-muted/20 rounded-md border border-border/40">
-          Kaynak bulunamadı.
-        </div>
-      ) : (
-        <div className="space-y-1">
-          {sources.map((source) => {
-            const isSourceSelected = selectedSourceId === source.id;
-            const sourceCardCount = cards.filter(
-              (c) => c.sourceId === source.id,
-            ).length;
-
-            return (
-              <button
-                key={source.id}
-                type="button"
-                onClick={() =>
-                  onSelectSource(isSourceSelected ? null : source.id)
-                }
-                className={cn(
-                  "w-full text-left p-2 rounded-md transition-all border flex items-center justify-between gap-2 cursor-pointer select-none",
-                  isSourceSelected
-                    ? "bg-primary/10 border-primary/40 text-primary"
-                    : "bg-card/50 border-border/60 text-muted-foreground hover:text-foreground hover:bg-accent/20 hover:border-border",
-                )}
-              >
-                <div className="flex flex-col min-w-0 flex-1">
-                  <span
-                    className={cn(
-                      "text-xs truncate block font-medium",
-                      isSourceSelected
-                        ? "text-primary font-semibold"
-                        : "text-foreground",
-                    )}
-                    title={source.title}
-                  >
-                    {source.title}
-                  </span>
-                  <span className="text-[10px] text-muted-foreground truncate">
-                    {source.authors[0] ?? "Bilinmeyen Yazar"} (
-                    {source.publicationYear})
-                  </span>
-                </div>
-                <div className="flex items-center gap-1 shrink-0">
-                  {isSourceSelected && (
-                    <Check className="h-3 w-3 text-primary shrink-0" />
-                  )}
-                  <span className="inline-flex items-center rounded px-1.5 py-0.5 text-[10px] font-mono font-semibold bg-muted text-foreground border border-border/40 shrink-0">
-                    {sourceCardCount}
-                  </span>
-                </div>
-              </button>
-            );
-          })}
-        </div>
-      )}
-    </div>
-  );
-}
-</file>
-
-<file path="src/app/(app)/citation-cards/_hooks/use-citation-card-form.ts">
-"use client";
-
-import { useState } from "react";
-import { toast } from "sonner";
-import { cleanPageNumberInput, formatPageNumber } from "@/lib/academic/utils";
-import { normalizePastedText } from "@/lib/text-utils";
-import type {
-  CitationCardItem,
-  CitationNoteType,
-  BoxItem,
-  SourceItem,
-} from "../_lib/types";
-
-/** Props for the citation card form component. */
-export interface CitationCardFormProps {
-  cardToEdit?: CitationCardItem | null;
-  sources: SourceItem[];
-  boxes: BoxItem[];
-  onSave: (
-    card: Omit<CitationCardItem, "id" | "createdAt" | "updatedAt"> & {
-      id?: number;
-    },
-  ) => void;
-  onClose: () => void;
-}
-
-/** The editable fields of the citation card form. */
-export interface CitationCardFormFields {
-  selectedSourceId: string;
-  selectedBoxId: string;
-  noteType: CitationNoteType;
-  pageNumber: string;
-  content: string;
-  comment: string;
-}
-
-export interface UseCitationCardFormResult {
-  formFields: CitationCardFormFields;
-  setField: <K extends keyof CitationCardFormFields>(
-    key: K,
-    value: CitationCardFormFields[K],
-  ) => void;
-  selectedSourceObj?: SourceItem;
-  selectedBoxObj?: BoxItem;
-  handleSubmit: (e: React.FormEvent) => void;
-  handleContentPaste: (e: React.ClipboardEvent<HTMLTextAreaElement>) => void;
-  isEditing: boolean;
-}
-
-/**
- * Manages the citation card form state, validation and submit flow for both
- * create and edit modes.
- *
- * @param props - Form props.
- * @returns Form state, setters and handlers.
- */
-export function useCitationCardForm(
-  props: CitationCardFormProps,
-): UseCitationCardFormResult {
-  const { cardToEdit, sources, boxes, onSave, onClose } = props;
-  const isEditing = Boolean(cardToEdit);
-
-  const [formFields, setFormFields] = useState<CitationCardFormFields>({
-    selectedSourceId: cardToEdit
-      ? String(cardToEdit.sourceId)
-      : sources[0]
-        ? String(sources[0].id)
-        : "",
-    selectedBoxId: cardToEdit
-      ? String(cardToEdit.boxId)
-      : boxes[0]
-        ? String(boxes[0].id)
-        : "",
-    noteType: (cardToEdit
-      ? cardToEdit.noteType
-      : "DIRECT_QUOTE") as CitationNoteType,
-    pageNumber: cardToEdit ? cleanPageNumberInput(cardToEdit.pageNumber) : "1",
-    content: cardToEdit ? cardToEdit.content : "",
-    comment: cardToEdit ? (cardToEdit.comment ?? "") : "",
-  });
-
-  const setField = <K extends keyof CitationCardFormFields>(
-    key: K,
-    value: CitationCardFormFields[K],
-  ) => {
-    setFormFields((prev) => ({ ...prev, [key]: value }));
-  };
-
-  const selectedSourceObj = sources.find(
-    (s) => s.id === Number(formFields.selectedSourceId),
-  );
-  const selectedBoxObj = boxes.find(
-    (b) => b.id === Number(formFields.selectedBoxId),
-  );
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-
-    if (!formFields.content.trim()) {
-      toast.error("Fiş içeriği boş olamaz.");
-      return;
-    }
-
-    if (!formFields.selectedSourceId) {
-      toast.error("Lütfen bağlı akademik kaynağı seçin.");
-      return;
-    }
-
-    if (!formFields.selectedBoxId) {
-      toast.error("Lütfen bağlı konu kutusunu seçin.");
-      return;
-    }
-
-    const formattedPage = formatPageNumber(formFields.pageNumber);
-
-    onSave({
-      id: cardToEdit?.id,
-      sourceId: Number(formFields.selectedSourceId),
-      sourceTitle: selectedSourceObj?.title ?? "",
-      sourceAuthors: selectedSourceObj?.authors ?? [],
-      sourceYear: selectedSourceObj?.publicationYear ?? 0,
-      boxId: Number(formFields.selectedBoxId),
-      boxType:
-        selectedBoxObj?.boxType ?? boxes[0]?.boxType ?? "SUBJECT_PROBLEM",
-      boxTitle: selectedBoxObj?.title ?? "",
-      pageNumber: formattedPage,
-      noteType: formFields.noteType,
-      content: formFields.content.trim(),
-      comment: formFields.comment.trim() || undefined,
-      sentToCitationCards: true,
-    });
-
-    toast.success(
-      isEditing
-        ? "Alıntı fişi başarıyla güncellendi."
-        : "Yeni alıntı fişi başarıyla eklendi.",
-    );
-    onClose();
-  };
-
-  const handleContentPaste = (e: React.ClipboardEvent<HTMLTextAreaElement>) => {
-    const raw = e.clipboardData.getData("text/plain");
-    if (!raw) return;
-
-    const cleaned = normalizePastedText(raw);
-    if (cleaned === raw) return;
-
-    e.preventDefault();
-    const el = e.currentTarget;
-    const start = el.selectionStart;
-    const end = el.selectionEnd;
-    const next = el.value.slice(0, start) + cleaned + el.value.slice(end);
-
-    setField("content", next);
-    requestAnimationFrame(() => {
-      el.selectionStart = el.selectionEnd = start + cleaned.length;
-    });
-  };
-
-  return {
-    formFields,
-    setField,
-    selectedSourceObj,
-    selectedBoxObj,
-    handleSubmit,
-    handleContentPaste,
-    isEditing,
-  };
-}
-</file>
-
 <file path="src/app/(app)/citation-cards/_hooks/use-citation-cards-filter.ts">
 "use client";
 
@@ -2998,93 +2646,6 @@ export function useCitationCardsFilter(cards: CitationCardItem[]) {
     counts,
   };
 }
-</file>
-
-<file path="src/app/(app)/citation-cards/_hooks/use-citation-sidebar-filters.ts">
-"use client";
-
-import { useCallback, useMemo, useState } from "react";
-import { compareBoxTypes, type ThesisBoxType } from "@/lib/box-constants";
-import type { BoxItem, SourceItem } from "../_lib/types";
-
-/** Active box-type tab: either a concrete type or "ALL". */
-export type BoxTypeTab = ThesisBoxType | "ALL";
-
-/** Default sidebar tab selection. */
-export const DEFAULT_BOX_TYPE_TAB: BoxTypeTab = "ALL";
-
-/**
- * Manages the citation sidebar search, box-type tab and derived filtered
- * box/source lists. Both derived lists stay memoized on their inputs so they
- * refresh whenever the boxes, sources or active selection changes.
- *
- * @param boxes - All topic boxes of the thesis.
- * @param sources - All library sources of the thesis.
- * @param selectedBoxId - The currently selected box id or null.
- * @returns Filter state, setters and derived filtered lists.
- */
-export function useCitationSidebarFilters(
-  boxes: BoxItem[],
-  sources: SourceItem[],
-  selectedBoxId: number | null,
-) {
-  const [searchQuery, setSearchQuery] = useState("");
-  const [activeTab, setActiveTab] = useState<BoxTypeTab>(DEFAULT_BOX_TYPE_TAB);
-
-  const filteredBoxes = useMemo(() => {
-    return boxes
-      .filter((box) => {
-        const matchesTab = activeTab === "ALL" || box.boxType === activeTab;
-        const matchesQuery =
-          searchQuery.trim() === "" ||
-          box.title.toLowerCase().includes(searchQuery.toLowerCase());
-        return matchesTab && matchesQuery;
-      })
-      .sort((a, b) => compareBoxTypes(a.boxType, b.boxType));
-  }, [boxes, activeTab, searchQuery]);
-
-  const filteredSources = useMemo(() => {
-    const scopeSources = selectedBoxId
-      ? sources.filter((s) => s.boxId === selectedBoxId)
-      : sources;
-
-    if (!searchQuery.trim()) return scopeSources;
-
-    return scopeSources.filter(
-      (s) =>
-        s.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        s.authors.some((a) =>
-          a.toLowerCase().includes(searchQuery.toLowerCase()),
-        ),
-    );
-  }, [sources, selectedBoxId, searchQuery]);
-
-  const resetSidebarFilters = useCallback(() => {
-    setActiveTab(DEFAULT_BOX_TYPE_TAB);
-    setSearchQuery("");
-  }, []);
-
-  return {
-    searchQuery,
-    setSearchQuery,
-    activeTab,
-    setActiveTab,
-    filteredBoxes,
-    filteredSources,
-    resetSidebarFilters,
-  };
-}
-</file>
-
-<file path="src/app/(app)/citation-cards/_lib/note-type-labels.ts">
-import type { CitationNoteType } from "./types";
-
-/** Turkish labels dictionary for note types. */
-export const NOTE_TYPE_DISPLAY_LABELS: Record<CitationNoteType, string> = {
-  DIRECT_QUOTE: "Doğrudan Alıntı",
-  PARAPHRASE: "Dolaylı Alıntı",
-  PERSONAL_NOTE: "Kişisel Not",
-};
 </file>
 
 <file path="src/app/(app)/citation-cards/loading.tsx">
@@ -6041,459 +5602,6 @@ export default function MatrixLoading() {
 }
 </file>
 
-<file path="src/app/(onboarding)/onboarding/outline/_components/sub-section-tree-list.tsx">
-"use client";
-
-import { Plus, Pencil, Trash2, Check, X, GripVertical } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-import type {
-  OutlineSubSectionData,
-  OutlineCardState,
-} from "../_hooks/use-outline-section-card";
-
-interface SubSectionTreeListProps {
-  subSections: OutlineSubSectionData[];
-  sectionNumber: number;
-  isSpecialSection: boolean;
-  hasSubSections: boolean;
-  isExpanded: boolean;
-  editingSubIndex: number | null;
-  draggedSubIdx: number | null;
-  dragOverSubIdx: number | null;
-  subEditTitle: string;
-  subEditDescription: string;
-  onAddSubSection: () => void;
-  onStartSubEdit: (idx: number) => void;
-  onSaveSubEdit: (idx: number) => void;
-  onDeleteSubSection: (idx: number) => void;
-  onSubDrop: (targetIdx: number) => void;
-  onUpdateCardState: (patch: Partial<OutlineCardState>) => void;
-}
-
-/**
- * Renders the collapsible subsection list of a section card with inline
- * editing and drag-and-drop reordering.
- *
- * @param props - The subsection tree list props.
- * @returns The subsection list markup or null when collapsed.
- */
-export function SubSectionTreeList({
-  subSections,
-  sectionNumber,
-  isSpecialSection,
-  hasSubSections,
-  isExpanded,
-  editingSubIndex,
-  draggedSubIdx,
-  dragOverSubIdx,
-  subEditTitle,
-  subEditDescription,
-  onAddSubSection,
-  onStartSubEdit,
-  onSaveSubEdit,
-  onDeleteSubSection,
-  onSubDrop,
-  onUpdateCardState,
-}: SubSectionTreeListProps) {
-  if (!isExpanded || (isSpecialSection && !hasSubSections)) return null;
-
-  return (
-    <div className="mt-3 space-y-2">
-      {subSections.length === 0 ? (
-        <div className="flex items-center justify-between py-2 text-xs text-muted-foreground bg-muted/20 px-3 rounded-md border border-dashed border-border/50">
-          <span>Bu bölüm için henüz alt bölüm eklenmedi.</span>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={onAddSubSection}
-            className="text-xs h-7 gap-1 text-primary hover:bg-primary/10 shrink-0"
-          >
-            <Plus className="size-3" /> Alt Bölüm Ekle
-          </Button>
-        </div>
-      ) : (
-        subSections.map((sub, subIdx) => {
-          const isSubEditing = editingSubIndex === subIdx;
-          const isSubDragging = draggedSubIdx === subIdx;
-          const isSubDragOver = dragOverSubIdx === subIdx;
-
-          return (
-            <div
-              key={`${sub.title}-${subIdx}`}
-              draggable={!isSubEditing}
-              onDragStart={(e) => {
-                e.stopPropagation();
-                onUpdateCardState({ draggedSubIdx: subIdx });
-              }}
-              onDragOver={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                onUpdateCardState({ dragOverSubIdx: subIdx });
-              }}
-              onDrop={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                onSubDrop(subIdx);
-              }}
-              onDragEnd={(e) => {
-                e.stopPropagation();
-                onUpdateCardState({
-                  draggedSubIdx: null,
-                  dragOverSubIdx: null,
-                });
-              }}
-              className={`group/sub relative rounded-md border bg-muted/40 p-3 transition-colors ${
-                isSubDragging ? "opacity-40 border-primary" : "border-border/40"
-              } ${
-                isSubDragOver
-                  ? "border-primary ring-1 ring-primary/20"
-                  : "hover:border-primary/20"
-              }`}
-            >
-              {isSubEditing ? (
-                <div className="space-y-2">
-                  <Input
-                    value={subEditTitle}
-                    onChange={(e) =>
-                      onUpdateCardState({ subEditTitle: e.target.value })
-                    }
-                    placeholder="Alt bölüm başlığı..."
-                    className="text-xs font-semibold"
-                  />
-                  <Textarea
-                    value={subEditDescription}
-                    onChange={(e) =>
-                      onUpdateCardState({
-                        subEditDescription: e.target.value,
-                      })
-                    }
-                    placeholder="Alt bölüm açıklaması..."
-                    rows={2}
-                    className="textarea-academic text-xs"
-                  />
-                  <div className="flex items-center gap-2 pt-1">
-                    <Button
-                      variant="default"
-                      size="sm"
-                      onClick={() => onSaveSubEdit(subIdx)}
-                      className="text-xs h-6 px-2 gap-1"
-                    >
-                      <Check className="size-3" /> Kaydet
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() =>
-                        onUpdateCardState({ editingSubIndex: null })
-                      }
-                      className="text-xs h-6 px-2 gap-1"
-                    >
-                      <X className="size-3" /> İptal
-                    </Button>
-                  </div>
-                </div>
-              ) : (
-                <div className="flex items-center justify-between gap-2">
-                  <div className="flex items-center gap-3 flex-1 min-w-0">
-                    <div className="flex items-center gap-2 shrink-0">
-                      <span
-                        className="cursor-grab active:cursor-grabbing text-muted-foreground hover:text-foreground p-1"
-                        title="Sürükleyip Sırasını Değiştirin"
-                      >
-                        <GripVertical className="size-3.5" />
-                      </span>
-                      <span className="font-mono text-xs text-muted-foreground bg-muted px-2 py-1 rounded font-semibold shrink-0">
-                        {sectionNumber}.{subIdx + 1}
-                      </span>
-                    </div>
-
-                    <div className="flex-1 min-w-0 space-y-1">
-                      <h4 className="font-sans text-sm font-medium text-foreground leading-snug">
-                        {sub.title}
-                      </h4>
-                      {sub.description && (
-                        <p className="text-xs text-muted-foreground leading-relaxed">
-                          {sub.description}
-                        </p>
-                      )}
-                    </div>
-                  </div>
-
-                  <div className="flex items-center gap-1 opacity-80 group-hover/sub:opacity-100 shrink-0">
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => onStartSubEdit(subIdx)}
-                      className="size-6 text-muted-foreground hover:text-foreground"
-                      title="Düzenle"
-                    >
-                      <Pencil className="size-3" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => onDeleteSubSection(subIdx)}
-                      className="size-6 text-destructive hover:bg-destructive/10"
-                      title="Sil"
-                    >
-                      <Trash2 className="size-3" />
-                    </Button>
-                  </div>
-                </div>
-              )}
-            </div>
-          );
-        })
-      )}
-    </div>
-  );
-}
-</file>
-
-<file path="src/app/(onboarding)/onboarding/outline/_hooks/use-outline-section-card.ts">
-"use client";
-
-import { useCallback, useMemo, useState } from "react";
-
-export interface OutlineSubSectionData {
-  title: string;
-  description: string;
-  sortOrder: number;
-}
-
-export interface OutlineSectionData {
-  title: string;
-  description: string;
-  sortOrder: number;
-  subSections?: OutlineSubSectionData[];
-}
-
-export interface OutlineSectionCardProps {
-  section: OutlineSectionData;
-  sectionIndex: number;
-  isExpanded: boolean;
-  onToggleExpand: () => void;
-  onUpdateSection: (updated: OutlineSectionData) => void;
-  onDeleteSection: () => void;
-  // Drag & drop props for main sections
-  onDragStartSection: (index: number) => void;
-  onDragOverSection: (index: number) => void;
-  onDropSection: (targetIndex: number) => void;
-  onDragEndSection: () => void;
-  isDraggingSection?: boolean;
-  isDragOverSection?: boolean;
-}
-
-export interface OutlineCardState {
-  isEditingSection: boolean;
-  editTitle: string;
-  editDescription: string;
-  editingSubIndex: number | null;
-  subEditTitle: string;
-  subEditDescription: string;
-  draggedSubIdx: number | null;
-  dragOverSubIdx: number | null;
-}
-
-export interface UseOutlineSectionCardResult {
-  cardState: OutlineCardState;
-  updateCardState: (patch: Partial<OutlineCardState>) => void;
-  sectionNumber: number;
-  subSections: OutlineSubSectionData[];
-  hasSubSections: boolean;
-  isSpecialSection: boolean;
-  handleSaveSectionEdit: () => void;
-  handleCancelSectionEdit: () => void;
-  handleAddSubSection: () => void;
-  handleDeleteSubSection: (subIdx: number) => void;
-  handleSubDrop: (targetIdx: number) => void;
-  handleStartSubEdit: (subIdx: number) => void;
-  handleSaveSubEdit: (subIdx: number) => void;
-}
-
-/**
- * Holds the interactive editing, drag-and-drop and subsection management logic
- * for a single outline section card.
- *
- * @param props - The section card props.
- * @returns The card state, derived values and event handlers.
- */
-export function useOutlineSectionCard(
-  props: OutlineSectionCardProps,
-): UseOutlineSectionCardResult {
-  const { section, sectionIndex, isExpanded, onToggleExpand, onUpdateSection } =
-    props;
-
-  const [cardState, setCardState] = useState<OutlineCardState>({
-    isEditingSection: false,
-    editTitle: section.title,
-    editDescription: section.description,
-    editingSubIndex: null,
-    subEditTitle: "",
-    subEditDescription: "",
-    draggedSubIdx: null,
-    dragOverSubIdx: null,
-  });
-
-  const updateCardState = useCallback((patch: Partial<OutlineCardState>) => {
-    setCardState((prev) => ({ ...prev, ...patch }));
-  }, []);
-
-  const sectionNumber = sectionIndex + 1;
-  const subSections = useMemo(
-    () => section.subSections ?? [],
-    [section.subSections],
-  );
-  const hasSubSections = subSections.length > 0;
-
-  const isSpecialSection = useMemo(() => {
-    const titleUpper = section.title.toLocaleUpperCase("tr-TR");
-    return (
-      titleUpper.includes("GİRİŞ") ||
-      titleUpper.includes("GIRIS") ||
-      titleUpper.includes("SONUÇ") ||
-      titleUpper.includes("SONUC")
-    );
-  }, [section.title]);
-
-  const handleSaveSectionEdit = useCallback(() => {
-    if (!cardState.editTitle.trim()) return;
-    onUpdateSection({
-      ...section,
-      title: cardState.editTitle.trim(),
-      description: cardState.editDescription.trim(),
-    });
-    updateCardState({ isEditingSection: false });
-  }, [
-    cardState.editTitle,
-    cardState.editDescription,
-    section,
-    onUpdateSection,
-    updateCardState,
-  ]);
-
-  const handleCancelSectionEdit = useCallback(() => {
-    updateCardState({
-      editTitle: section.title,
-      editDescription: section.description,
-      isEditingSection: false,
-    });
-  }, [section, updateCardState]);
-
-  const handleAddSubSection = useCallback(() => {
-    if (isSpecialSection) return;
-    const newSub: OutlineSubSectionData = {
-      title: `Yeni Alt Bölüm ${subSections.length + 1}`,
-      description: "Alt bölüm kapsamı ve açıklaması...",
-      sortOrder: subSections.length + 1,
-    };
-    const updatedSubs = [...subSections, newSub];
-    onUpdateSection({
-      ...section,
-      subSections: updatedSubs,
-    });
-    if (!isExpanded) {
-      onToggleExpand();
-    }
-  }, [
-    isSpecialSection,
-    subSections,
-    section,
-    onUpdateSection,
-    isExpanded,
-    onToggleExpand,
-  ]);
-
-  const handleDeleteSubSection = useCallback(
-    (subIdx: number) => {
-      const updatedSubs = subSections
-        .filter((_, i) => i !== subIdx)
-        .map((sub, i) => ({ ...sub, sortOrder: i + 1 }));
-      onUpdateSection({
-        ...section,
-        subSections: updatedSubs,
-      });
-    },
-    [subSections, section, onUpdateSection],
-  );
-
-  const handleSubDrop = useCallback(
-    (targetIdx: number) => {
-      if (
-        cardState.draggedSubIdx === null ||
-        cardState.draggedSubIdx === targetIdx
-      ) {
-        updateCardState({ draggedSubIdx: null, dragOverSubIdx: null });
-        return;
-      }
-
-      const newSubs = [...subSections];
-      const [movedItem] = newSubs.splice(cardState.draggedSubIdx, 1);
-      newSubs.splice(targetIdx, 0, movedItem);
-
-      const reordered = newSubs.map((s, i) => ({ ...s, sortOrder: i + 1 }));
-      onUpdateSection({
-        ...section,
-        subSections: reordered,
-      });
-
-      updateCardState({ draggedSubIdx: null, dragOverSubIdx: null });
-    },
-    [
-      cardState.draggedSubIdx,
-      subSections,
-      section,
-      onUpdateSection,
-      updateCardState,
-    ],
-  );
-
-  const handleStartSubEdit = (subIdx: number) => {
-    updateCardState({
-      editingSubIndex: subIdx,
-      subEditTitle: subSections[subIdx].title,
-      subEditDescription: subSections[subIdx].description,
-    });
-  };
-
-  const handleSaveSubEdit = (subIdx: number) => {
-    if (!cardState.subEditTitle.trim()) return;
-    const updatedSubs = subSections.map((sub, i) =>
-      i === subIdx
-        ? {
-            ...sub,
-            title: cardState.subEditTitle.trim(),
-            description: cardState.subEditDescription.trim(),
-          }
-        : sub,
-    );
-    onUpdateSection({
-      ...section,
-      subSections: updatedSubs,
-    });
-    updateCardState({ editingSubIndex: null });
-  };
-
-  return {
-    cardState,
-    updateCardState,
-    sectionNumber,
-    subSections,
-    hasSubSections,
-    isSpecialSection,
-    handleSaveSectionEdit,
-    handleCancelSectionEdit,
-    handleAddSubSection,
-    handleDeleteSubSection,
-    handleSubDrop,
-    handleStartSubEdit,
-    handleSaveSubEdit,
-  };
-}
-</file>
-
 <file path="src/app/(onboarding)/onboarding/outline/_prompts/outline-generation.prompt.ts">
 import {
   buildPromptPayload,
@@ -7482,38 +6590,129 @@ export {
 };
 </file>
 
-<file path="src/components/ui/popover.tsx">
+<file path="src/components/ui/dialog.tsx">
 "use client";
 
 import * as React from "react";
-import * as PopoverPrimitive from "@radix-ui/react-popover";
+import * as DialogPrimitive from "@radix-ui/react-dialog";
+import { X } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 
-const Popover = PopoverPrimitive.Root;
+const Dialog = DialogPrimitive.Root;
 
-const PopoverTrigger = PopoverPrimitive.Trigger;
+const DialogTrigger = DialogPrimitive.Trigger;
 
-const PopoverContent = React.forwardRef<
-  React.ElementRef<typeof PopoverPrimitive.Content>,
-  React.ComponentPropsWithoutRef<typeof PopoverPrimitive.Content>
->(({ className, align = "center", sideOffset = 4, ...props }, ref) => (
-  <PopoverPrimitive.Portal>
-    <PopoverPrimitive.Content
+const DialogPortal = DialogPrimitive.Portal;
+
+const DialogClose = DialogPrimitive.Close;
+
+const DialogOverlay = React.forwardRef<
+  React.ElementRef<typeof DialogPrimitive.Overlay>,
+  React.ComponentPropsWithoutRef<typeof DialogPrimitive.Overlay>
+>(({ className, ...props }, ref) => (
+  <DialogPrimitive.Overlay
+    ref={ref}
+    className={cn(
+      "fixed inset-0 z-50 bg-black/80 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",
+      className,
+    )}
+    {...props}
+  />
+));
+DialogOverlay.displayName = DialogPrimitive.Overlay.displayName;
+
+const DialogContent = React.forwardRef<
+  React.ElementRef<typeof DialogPrimitive.Content>,
+  React.ComponentPropsWithoutRef<typeof DialogPrimitive.Content>
+>(({ className, children, ...props }, ref) => (
+  <DialogPortal>
+    <DialogOverlay />
+    <DialogPrimitive.Content
       ref={ref}
-      align={align}
-      sideOffset={sideOffset}
       className={cn(
-        "z-50 w-72 rounded-md border bg-popover p-4 text-popover-foreground shadow-md outline-none data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2 origin-[--radix-popover-content-transform-origin]",
+        "fixed left-[50%] top-[50%] z-50 grid w-full max-w-lg translate-x-[-50%] translate-y-[-50%] gap-4 border bg-background p-6 shadow-lg duration-200 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[state=closed]:slide-out-to-left-1/2 data-[state=closed]:slide-out-to-top-[48%] data-[state=open]:slide-in-from-left-1/2 data-[state=open]:slide-in-from-top-[48%] sm:rounded-lg",
         className,
       )}
       {...props}
-    />
-  </PopoverPrimitive.Portal>
+    >
+      {children}
+      <DialogPrimitive.Close className="absolute right-4 top-4 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none data-[state=open]:bg-accent data-[state=open]:text-muted-foreground">
+        <X className="h-4 w-4" />
+        <span className="sr-only">Close</span>
+      </DialogPrimitive.Close>
+    </DialogPrimitive.Content>
+  </DialogPortal>
 ));
-PopoverContent.displayName = PopoverPrimitive.Content.displayName;
+DialogContent.displayName = DialogPrimitive.Content.displayName;
 
-export { Popover, PopoverTrigger, PopoverContent };
+const DialogHeader = ({
+  className,
+  ...props
+}: React.HTMLAttributes<HTMLDivElement>) => (
+  <div
+    className={cn(
+      "flex flex-col space-y-2 text-center sm:text-left",
+      className,
+    )}
+    {...props}
+  />
+);
+DialogHeader.displayName = "DialogHeader";
+
+const DialogFooter = ({
+  className,
+  ...props
+}: React.HTMLAttributes<HTMLDivElement>) => (
+  <div
+    className={cn(
+      "flex flex-col-reverse sm:flex-row sm:justify-end sm:space-x-2",
+      className,
+    )}
+    {...props}
+  />
+);
+DialogFooter.displayName = "DialogFooter";
+
+const DialogTitle = React.forwardRef<
+  React.ElementRef<typeof DialogPrimitive.Title>,
+  React.ComponentPropsWithoutRef<typeof DialogPrimitive.Title>
+>(({ className, ...props }, ref) => (
+  <DialogPrimitive.Title
+    ref={ref}
+    className={cn(
+      "text-lg font-semibold leading-none tracking-tight",
+      className,
+    )}
+    {...props}
+  />
+));
+DialogTitle.displayName = DialogPrimitive.Title.displayName;
+
+const DialogDescription = React.forwardRef<
+  React.ElementRef<typeof DialogPrimitive.Description>,
+  React.ComponentPropsWithoutRef<typeof DialogPrimitive.Description>
+>(({ className, ...props }, ref) => (
+  <DialogPrimitive.Description
+    ref={ref}
+    className={cn("text-sm text-muted-foreground", className)}
+    {...props}
+  />
+));
+DialogDescription.displayName = DialogPrimitive.Description.displayName;
+
+export {
+  Dialog,
+  DialogPortal,
+  DialogOverlay,
+  DialogClose,
+  DialogTrigger,
+  DialogContent,
+  DialogHeader,
+  DialogFooter,
+  DialogTitle,
+  DialogDescription,
+};
 </file>
 
 <file path="src/components/ui/scroll-area.tsx">
@@ -14438,23 +13637,6 @@ export const boxMutations: Record<string, MutationToolHandler> = {
 };
 </file>
 
-<file path="src/app/(app)/advisor/_tools/index.ts">
-import type { FunctionDeclaration } from "@google/genai";
-import { READ_TOOL_DECLARATIONS } from "./read-declarations";
-import { MUTATION_TOOL_DECLARATIONS } from "./mutation-declarations";
-
-export { READ_TOOL_DECLARATIONS, MUTATION_TOOL_DECLARATIONS };
-export * from "./read-tools";
-export * from "./mutation-tools";
-export * from "./undo-tools";
-
-/** List of all Gemini Function Declarations for the Thesis Advisor Chat. */
-export const ADVISOR_TOOL_DECLARATIONS: FunctionDeclaration[] = [
-  ...READ_TOOL_DECLARATIONS,
-  ...MUTATION_TOOL_DECLARATIONS,
-];
-</file>
-
 <file path="src/app/(app)/advisor/_tools/matrix-mutations.ts">
 import { db } from "@/core/db";
 import { matrices, type Matrix } from "@/core/db/schema";
@@ -15824,6 +15006,468 @@ export async function generateChatTitleAction(
 }
 </file>
 
+<file path="src/app/(app)/citation-cards/_components/sidebar-box-list.tsx">
+"use client";
+
+import { Layers, Check } from "lucide-react";
+import { getBoxTypeBadgeConfig } from "@/lib/box-constants";
+import { cn } from "@/lib/utils";
+import type { BoxItem, CitationCardItem } from "../_lib/types";
+
+interface SidebarBoxListProps {
+  boxes: BoxItem[];
+  cards: CitationCardItem[];
+  selectedBoxId: number | null;
+  onSelectBox: (id: number | null) => void;
+  onSelectSource: (id: number | null) => void;
+}
+
+/**
+ * Renders the topic boxes list of the citation sidebar with per-box card
+ * counts and selection highlighting.
+ *
+ * @param props - Box list props.
+ * @returns The box list markup.
+ */
+export function SidebarBoxList({
+  boxes,
+  cards,
+  selectedBoxId,
+  onSelectBox,
+  onSelectSource,
+}: SidebarBoxListProps) {
+  return (
+    <div className="space-y-1.5 min-w-0">
+      <div className="px-1 text-[10px] font-medium text-muted-foreground uppercase tracking-wider flex items-center justify-between">
+        <span className="flex items-center gap-1.5">
+          <Layers className="h-3 w-3 text-primary" />
+          Tez Konu Kutuları
+        </span>
+        <span className="font-mono text-[10px]">({boxes.length})</span>
+      </div>
+
+      {boxes.length === 0 ? (
+        <div className="px-3 py-4 text-center text-xs text-muted-foreground italic bg-muted/20 rounded-md border border-border/40">
+          Aramaya uygun kutu bulunamadı.
+        </div>
+      ) : (
+        <div className="space-y-1">
+          {boxes.map((box) => {
+            const isSelected = selectedBoxId === box.id;
+            const boxConfig = getBoxTypeBadgeConfig(box.boxType);
+            const boxCardCount = cards.filter((c) => c.boxId === box.id).length;
+
+            return (
+              <button
+                key={box.id}
+                type="button"
+                onClick={() => {
+                  onSelectBox(isSelected ? null : box.id);
+                  onSelectSource(null);
+                }}
+                className={cn(
+                  "w-full text-left p-2 rounded-md transition-all border flex flex-col gap-1 cursor-pointer select-none",
+                  isSelected
+                    ? "bg-primary/10 border-primary/40 text-primary"
+                    : "bg-card/50 border-border/60 hover:border-border hover:bg-accent/20 text-foreground",
+                )}
+              >
+                <div className="flex items-center justify-between gap-1.5 min-w-0">
+                  <div className="flex items-center gap-1.5 min-w-0">
+                    <span
+                      className={cn(
+                        "h-2 w-2 rounded-full shrink-0",
+                        boxConfig.dotClassName,
+                      )}
+                    />
+                    <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider truncate">
+                      {boxConfig.label}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-1 shrink-0">
+                    {isSelected && (
+                      <Check className="h-3 w-3 text-primary shrink-0" />
+                    )}
+                    <span className="inline-flex items-center rounded px-1.5 py-0.5 text-[10px] font-mono font-semibold bg-muted text-foreground border border-border/40 shrink-0">
+                      {boxCardCount}
+                    </span>
+                  </div>
+                </div>
+                <div
+                  className={cn(
+                    "text-xs font-medium truncate min-w-0",
+                    isSelected
+                      ? "text-primary font-semibold"
+                      : "text-foreground",
+                  )}
+                  title={box.title}
+                >
+                  {box.title}
+                </div>
+              </button>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+</file>
+
+<file path="src/app/(app)/citation-cards/_components/sidebar-source-list.tsx">
+"use client";
+
+import { BookOpen, Check } from "lucide-react";
+import { cn } from "@/lib/utils";
+import type { SourceItem, CitationCardItem } from "../_lib/types";
+
+interface SidebarSourceListProps {
+  sources: SourceItem[];
+  cards: CitationCardItem[];
+  selectedBoxId: number | null;
+  selectedSourceId: number | null;
+  onSelectSource: (id: number | null) => void;
+}
+
+/**
+ * Renders the linked sources list of the citation sidebar with per-source card
+ * counts and selection highlighting.
+ *
+ * @param props - Source list props.
+ * @returns The source list markup.
+ */
+export function SidebarSourceList({
+  sources,
+  cards,
+  selectedBoxId,
+  selectedSourceId,
+  onSelectSource,
+}: SidebarSourceListProps) {
+  return (
+    <div className="space-y-1.5 min-w-0 pb-2">
+      <div className="px-1 text-[10px] font-medium text-muted-foreground uppercase tracking-wider flex items-center justify-between">
+        <span className="flex items-center gap-1.5">
+          <BookOpen className="h-3 w-3 text-info" />
+          Kaynaklar
+        </span>
+        {selectedBoxId ? (
+          <span className="text-[10px] text-primary font-medium">
+            (Kutuya Bağlı: {sources.length})
+          </span>
+        ) : (
+          <span className="font-mono text-[10px]">({sources.length})</span>
+        )}
+      </div>
+
+      {sources.length === 0 ? (
+        <div className="px-3 py-4 text-center text-xs text-muted-foreground italic bg-muted/20 rounded-md border border-border/40">
+          Kaynak bulunamadı.
+        </div>
+      ) : (
+        <div className="space-y-1">
+          {sources.map((source) => {
+            const isSourceSelected = selectedSourceId === source.id;
+            const sourceCardCount = cards.filter(
+              (c) => c.sourceId === source.id,
+            ).length;
+
+            return (
+              <button
+                key={source.id}
+                type="button"
+                onClick={() =>
+                  onSelectSource(isSourceSelected ? null : source.id)
+                }
+                className={cn(
+                  "w-full text-left p-2 rounded-md transition-all border flex items-center justify-between gap-2 cursor-pointer select-none",
+                  isSourceSelected
+                    ? "bg-primary/10 border-primary/40 text-primary"
+                    : "bg-card/50 border-border/60 text-muted-foreground hover:text-foreground hover:bg-accent/20 hover:border-border",
+                )}
+              >
+                <div className="flex flex-col min-w-0 flex-1">
+                  <span
+                    className={cn(
+                      "text-xs truncate block font-medium",
+                      isSourceSelected
+                        ? "text-primary font-semibold"
+                        : "text-foreground",
+                    )}
+                    title={source.title}
+                  >
+                    {source.title}
+                  </span>
+                  <span className="text-[10px] text-muted-foreground truncate">
+                    {source.authors[0] ?? "Bilinmeyen Yazar"} (
+                    {source.publicationYear})
+                  </span>
+                </div>
+                <div className="flex items-center gap-1 shrink-0">
+                  {isSourceSelected && (
+                    <Check className="h-3 w-3 text-primary shrink-0" />
+                  )}
+                  <span className="inline-flex items-center rounded px-1.5 py-0.5 text-[10px] font-mono font-semibold bg-muted text-foreground border border-border/40 shrink-0">
+                    {sourceCardCount}
+                  </span>
+                </div>
+              </button>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+</file>
+
+<file path="src/app/(app)/citation-cards/_hooks/use-citation-card-form.ts">
+"use client";
+
+import { useState } from "react";
+import { toast } from "sonner";
+import { cleanPageNumberInput, formatPageNumber } from "@/lib/academic/utils";
+import { normalizePastedText } from "@/lib/text-utils";
+import type {
+  CitationCardItem,
+  CitationNoteType,
+  BoxItem,
+  SourceItem,
+} from "../_lib/types";
+
+/** Props for the citation card form component. */
+export interface CitationCardFormProps {
+  cardToEdit?: CitationCardItem | null;
+  sources: SourceItem[];
+  boxes: BoxItem[];
+  onSave: (
+    card: Omit<CitationCardItem, "id" | "createdAt" | "updatedAt"> & {
+      id?: number;
+    },
+  ) => void;
+  onClose: () => void;
+}
+
+/** The editable fields of the citation card form. */
+export interface CitationCardFormFields {
+  selectedSourceId: string;
+  selectedBoxId: string;
+  noteType: CitationNoteType;
+  pageNumber: string;
+  content: string;
+  comment: string;
+}
+
+export interface UseCitationCardFormResult {
+  formFields: CitationCardFormFields;
+  setField: <K extends keyof CitationCardFormFields>(
+    key: K,
+    value: CitationCardFormFields[K],
+  ) => void;
+  selectedSourceObj?: SourceItem;
+  selectedBoxObj?: BoxItem;
+  handleSubmit: (e: React.FormEvent) => void;
+  handleContentPaste: (e: React.ClipboardEvent<HTMLTextAreaElement>) => void;
+  isEditing: boolean;
+}
+
+/**
+ * Manages the citation card form state, validation and submit flow for both
+ * create and edit modes.
+ *
+ * @param props - Form props.
+ * @returns Form state, setters and handlers.
+ */
+export function useCitationCardForm(
+  props: CitationCardFormProps,
+): UseCitationCardFormResult {
+  const { cardToEdit, sources, boxes, onSave, onClose } = props;
+  const isEditing = Boolean(cardToEdit);
+
+  const [formFields, setFormFields] = useState<CitationCardFormFields>({
+    selectedSourceId: cardToEdit
+      ? String(cardToEdit.sourceId)
+      : sources[0]
+        ? String(sources[0].id)
+        : "",
+    selectedBoxId: cardToEdit
+      ? String(cardToEdit.boxId)
+      : boxes[0]
+        ? String(boxes[0].id)
+        : "",
+    noteType: (cardToEdit
+      ? cardToEdit.noteType
+      : "DIRECT_QUOTE") as CitationNoteType,
+    pageNumber: cardToEdit ? cleanPageNumberInput(cardToEdit.pageNumber) : "1",
+    content: cardToEdit ? cardToEdit.content : "",
+    comment: cardToEdit ? (cardToEdit.comment ?? "") : "",
+  });
+
+  const setField = <K extends keyof CitationCardFormFields>(
+    key: K,
+    value: CitationCardFormFields[K],
+  ) => {
+    setFormFields((prev) => ({ ...prev, [key]: value }));
+  };
+
+  const selectedSourceObj = sources.find(
+    (s) => s.id === Number(formFields.selectedSourceId),
+  );
+  const selectedBoxObj = boxes.find(
+    (b) => b.id === Number(formFields.selectedBoxId),
+  );
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+
+    if (!formFields.content.trim()) {
+      toast.error("Fiş içeriği boş olamaz.");
+      return;
+    }
+
+    if (!formFields.selectedSourceId) {
+      toast.error("Lütfen bağlı akademik kaynağı seçin.");
+      return;
+    }
+
+    if (!formFields.selectedBoxId) {
+      toast.error("Lütfen bağlı konu kutusunu seçin.");
+      return;
+    }
+
+    const formattedPage = formatPageNumber(formFields.pageNumber);
+
+    onSave({
+      id: cardToEdit?.id,
+      sourceId: Number(formFields.selectedSourceId),
+      sourceTitle: selectedSourceObj?.title ?? "",
+      sourceAuthors: selectedSourceObj?.authors ?? [],
+      sourceYear: selectedSourceObj?.publicationYear ?? 0,
+      boxId: Number(formFields.selectedBoxId),
+      boxType:
+        selectedBoxObj?.boxType ?? boxes[0]?.boxType ?? "SUBJECT_PROBLEM",
+      boxTitle: selectedBoxObj?.title ?? "",
+      pageNumber: formattedPage,
+      noteType: formFields.noteType,
+      content: formFields.content.trim(),
+      comment: formFields.comment.trim() || undefined,
+      sentToCitationCards: true,
+    });
+
+    toast.success(
+      isEditing
+        ? "Alıntı fişi başarıyla güncellendi."
+        : "Yeni alıntı fişi başarıyla eklendi.",
+    );
+    onClose();
+  };
+
+  const handleContentPaste = (e: React.ClipboardEvent<HTMLTextAreaElement>) => {
+    const raw = e.clipboardData.getData("text/plain");
+    if (!raw) return;
+
+    const cleaned = normalizePastedText(raw);
+    if (cleaned === raw) return;
+
+    e.preventDefault();
+    const el = e.currentTarget;
+    const start = el.selectionStart;
+    const end = el.selectionEnd;
+    const next = el.value.slice(0, start) + cleaned + el.value.slice(end);
+
+    setField("content", next);
+    requestAnimationFrame(() => {
+      el.selectionStart = el.selectionEnd = start + cleaned.length;
+    });
+  };
+
+  return {
+    formFields,
+    setField,
+    selectedSourceObj,
+    selectedBoxObj,
+    handleSubmit,
+    handleContentPaste,
+    isEditing,
+  };
+}
+</file>
+
+<file path="src/app/(app)/citation-cards/_hooks/use-citation-sidebar-filters.ts">
+"use client";
+
+import { useCallback, useMemo, useState } from "react";
+import { compareBoxTypes, type ThesisBoxType } from "@/lib/box-constants";
+import type { BoxItem, SourceItem } from "../_lib/types";
+
+/** Active box-type tab: either a concrete type or "ALL". */
+export type BoxTypeTab = ThesisBoxType | "ALL";
+
+/** Default sidebar tab selection. */
+export const DEFAULT_BOX_TYPE_TAB: BoxTypeTab = "ALL";
+
+/**
+ * Manages the citation sidebar search, box-type tab and derived filtered
+ * box/source lists. Both derived lists stay memoized on their inputs so they
+ * refresh whenever the boxes, sources or active selection changes.
+ *
+ * @param boxes - All topic boxes of the thesis.
+ * @param sources - All library sources of the thesis.
+ * @param selectedBoxId - The currently selected box id or null.
+ * @returns Filter state, setters and derived filtered lists.
+ */
+export function useCitationSidebarFilters(
+  boxes: BoxItem[],
+  sources: SourceItem[],
+  selectedBoxId: number | null,
+) {
+  const [searchQuery, setSearchQuery] = useState("");
+  const [activeTab, setActiveTab] = useState<BoxTypeTab>(DEFAULT_BOX_TYPE_TAB);
+
+  const filteredBoxes = useMemo(() => {
+    return boxes
+      .filter((box) => {
+        const matchesTab = activeTab === "ALL" || box.boxType === activeTab;
+        const matchesQuery =
+          searchQuery.trim() === "" ||
+          box.title.toLowerCase().includes(searchQuery.toLowerCase());
+        return matchesTab && matchesQuery;
+      })
+      .sort((a, b) => compareBoxTypes(a.boxType, b.boxType));
+  }, [boxes, activeTab, searchQuery]);
+
+  const filteredSources = useMemo(() => {
+    const scopeSources = selectedBoxId
+      ? sources.filter((s) => s.boxId === selectedBoxId)
+      : sources;
+
+    if (!searchQuery.trim()) return scopeSources;
+
+    return scopeSources.filter(
+      (s) =>
+        s.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        s.authors.some((a) =>
+          a.toLowerCase().includes(searchQuery.toLowerCase()),
+        ),
+    );
+  }, [sources, selectedBoxId, searchQuery]);
+
+  const resetSidebarFilters = useCallback(() => {
+    setActiveTab(DEFAULT_BOX_TYPE_TAB);
+    setSearchQuery("");
+  }, []);
+
+  return {
+    searchQuery,
+    setSearchQuery,
+    activeTab,
+    setActiveTab,
+    filteredBoxes,
+    filteredSources,
+    resetSidebarFilters,
+  };
+}
+</file>
+
 <file path="src/app/(app)/citation-cards/_lib/citation-card-mapper.ts">
 import type { Annotation, Box, Source } from "@/core/db/schema";
 import { type ThesisBoxType } from "@/lib/box-constants";
@@ -15868,6 +15512,17 @@ export function mapAnnotationToCard(
     updatedAt: annotation.updatedAt.toISOString(),
   };
 }
+</file>
+
+<file path="src/app/(app)/citation-cards/_lib/note-type-labels.ts">
+import type { CitationNoteType } from "./types";
+
+/** Turkish labels dictionary for note types. */
+export const NOTE_TYPE_DISPLAY_LABELS: Record<CitationNoteType, string> = {
+  DIRECT_QUOTE: "Doğrudan Alıntı",
+  PARAPHRASE: "Dolaylı Alıntı",
+  PERSONAL_NOTE: "Kişisel Not",
+};
 </file>
 
 <file path="src/app/(app)/citation-cards/_services/citation-cards-mutations.ts">
@@ -22969,6 +22624,459 @@ export async function finalizeOnboardingAction(): Promise<OnboardingActionResult
 }
 </file>
 
+<file path="src/app/(onboarding)/onboarding/outline/_components/sub-section-tree-list.tsx">
+"use client";
+
+import { Plus, Pencil, Trash2, Check, X, GripVertical } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import type {
+  OutlineSubSectionData,
+  OutlineCardState,
+} from "../_hooks/use-outline-section-card";
+
+interface SubSectionTreeListProps {
+  subSections: OutlineSubSectionData[];
+  sectionNumber: number;
+  isSpecialSection: boolean;
+  hasSubSections: boolean;
+  isExpanded: boolean;
+  editingSubIndex: number | null;
+  draggedSubIdx: number | null;
+  dragOverSubIdx: number | null;
+  subEditTitle: string;
+  subEditDescription: string;
+  onAddSubSection: () => void;
+  onStartSubEdit: (idx: number) => void;
+  onSaveSubEdit: (idx: number) => void;
+  onDeleteSubSection: (idx: number) => void;
+  onSubDrop: (targetIdx: number) => void;
+  onUpdateCardState: (patch: Partial<OutlineCardState>) => void;
+}
+
+/**
+ * Renders the collapsible subsection list of a section card with inline
+ * editing and drag-and-drop reordering.
+ *
+ * @param props - The subsection tree list props.
+ * @returns The subsection list markup or null when collapsed.
+ */
+export function SubSectionTreeList({
+  subSections,
+  sectionNumber,
+  isSpecialSection,
+  hasSubSections,
+  isExpanded,
+  editingSubIndex,
+  draggedSubIdx,
+  dragOverSubIdx,
+  subEditTitle,
+  subEditDescription,
+  onAddSubSection,
+  onStartSubEdit,
+  onSaveSubEdit,
+  onDeleteSubSection,
+  onSubDrop,
+  onUpdateCardState,
+}: SubSectionTreeListProps) {
+  if (!isExpanded || (isSpecialSection && !hasSubSections)) return null;
+
+  return (
+    <div className="mt-3 space-y-2">
+      {subSections.length === 0 ? (
+        <div className="flex items-center justify-between py-2 text-xs text-muted-foreground bg-muted/20 px-3 rounded-md border border-dashed border-border/50">
+          <span>Bu bölüm için henüz alt bölüm eklenmedi.</span>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={onAddSubSection}
+            className="text-xs h-7 gap-1 text-primary hover:bg-primary/10 shrink-0"
+          >
+            <Plus className="size-3" /> Alt Bölüm Ekle
+          </Button>
+        </div>
+      ) : (
+        subSections.map((sub, subIdx) => {
+          const isSubEditing = editingSubIndex === subIdx;
+          const isSubDragging = draggedSubIdx === subIdx;
+          const isSubDragOver = dragOverSubIdx === subIdx;
+
+          return (
+            <div
+              key={`${sub.title}-${subIdx}`}
+              draggable={!isSubEditing}
+              onDragStart={(e) => {
+                e.stopPropagation();
+                onUpdateCardState({ draggedSubIdx: subIdx });
+              }}
+              onDragOver={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                onUpdateCardState({ dragOverSubIdx: subIdx });
+              }}
+              onDrop={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                onSubDrop(subIdx);
+              }}
+              onDragEnd={(e) => {
+                e.stopPropagation();
+                onUpdateCardState({
+                  draggedSubIdx: null,
+                  dragOverSubIdx: null,
+                });
+              }}
+              className={`group/sub relative rounded-md border bg-muted/40 p-3 transition-colors ${
+                isSubDragging ? "opacity-40 border-primary" : "border-border/40"
+              } ${
+                isSubDragOver
+                  ? "border-primary ring-1 ring-primary/20"
+                  : "hover:border-primary/20"
+              }`}
+            >
+              {isSubEditing ? (
+                <div className="space-y-2">
+                  <Input
+                    value={subEditTitle}
+                    onChange={(e) =>
+                      onUpdateCardState({ subEditTitle: e.target.value })
+                    }
+                    placeholder="Alt bölüm başlığı..."
+                    className="text-xs font-semibold"
+                  />
+                  <Textarea
+                    value={subEditDescription}
+                    onChange={(e) =>
+                      onUpdateCardState({
+                        subEditDescription: e.target.value,
+                      })
+                    }
+                    placeholder="Alt bölüm açıklaması..."
+                    rows={2}
+                    className="textarea-academic text-xs"
+                  />
+                  <div className="flex items-center gap-2 pt-1">
+                    <Button
+                      variant="default"
+                      size="sm"
+                      onClick={() => onSaveSubEdit(subIdx)}
+                      className="text-xs h-6 px-2 gap-1"
+                    >
+                      <Check className="size-3" /> Kaydet
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() =>
+                        onUpdateCardState({ editingSubIndex: null })
+                      }
+                      className="text-xs h-6 px-2 gap-1"
+                    >
+                      <X className="size-3" /> İptal
+                    </Button>
+                  </div>
+                </div>
+              ) : (
+                <div className="flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-3 flex-1 min-w-0">
+                    <div className="flex items-center gap-2 shrink-0">
+                      <span
+                        className="cursor-grab active:cursor-grabbing text-muted-foreground hover:text-foreground p-1"
+                        title="Sürükleyip Sırasını Değiştirin"
+                      >
+                        <GripVertical className="size-3.5" />
+                      </span>
+                      <span className="font-mono text-xs text-muted-foreground bg-muted px-2 py-1 rounded font-semibold shrink-0">
+                        {sectionNumber}.{subIdx + 1}
+                      </span>
+                    </div>
+
+                    <div className="flex-1 min-w-0 space-y-1">
+                      <h4 className="font-sans text-sm font-medium text-foreground leading-snug">
+                        {sub.title}
+                      </h4>
+                      {sub.description && (
+                        <p className="text-xs text-muted-foreground leading-relaxed">
+                          {sub.description}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-1 opacity-80 group-hover/sub:opacity-100 shrink-0">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => onStartSubEdit(subIdx)}
+                      className="size-6 text-muted-foreground hover:text-foreground"
+                      title="Düzenle"
+                    >
+                      <Pencil className="size-3" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => onDeleteSubSection(subIdx)}
+                      className="size-6 text-destructive hover:bg-destructive/10"
+                      title="Sil"
+                    >
+                      <Trash2 className="size-3" />
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </div>
+          );
+        })
+      )}
+    </div>
+  );
+}
+</file>
+
+<file path="src/app/(onboarding)/onboarding/outline/_hooks/use-outline-section-card.ts">
+"use client";
+
+import { useCallback, useMemo, useState } from "react";
+
+export interface OutlineSubSectionData {
+  title: string;
+  description: string;
+  sortOrder: number;
+}
+
+export interface OutlineSectionData {
+  title: string;
+  description: string;
+  sortOrder: number;
+  subSections?: OutlineSubSectionData[];
+}
+
+export interface OutlineSectionCardProps {
+  section: OutlineSectionData;
+  sectionIndex: number;
+  isExpanded: boolean;
+  onToggleExpand: () => void;
+  onUpdateSection: (updated: OutlineSectionData) => void;
+  onDeleteSection: () => void;
+  // Drag & drop props for main sections
+  onDragStartSection: (index: number) => void;
+  onDragOverSection: (index: number) => void;
+  onDropSection: (targetIndex: number) => void;
+  onDragEndSection: () => void;
+  isDraggingSection?: boolean;
+  isDragOverSection?: boolean;
+}
+
+export interface OutlineCardState {
+  isEditingSection: boolean;
+  editTitle: string;
+  editDescription: string;
+  editingSubIndex: number | null;
+  subEditTitle: string;
+  subEditDescription: string;
+  draggedSubIdx: number | null;
+  dragOverSubIdx: number | null;
+}
+
+export interface UseOutlineSectionCardResult {
+  cardState: OutlineCardState;
+  updateCardState: (patch: Partial<OutlineCardState>) => void;
+  sectionNumber: number;
+  subSections: OutlineSubSectionData[];
+  hasSubSections: boolean;
+  isSpecialSection: boolean;
+  handleSaveSectionEdit: () => void;
+  handleCancelSectionEdit: () => void;
+  handleAddSubSection: () => void;
+  handleDeleteSubSection: (subIdx: number) => void;
+  handleSubDrop: (targetIdx: number) => void;
+  handleStartSubEdit: (subIdx: number) => void;
+  handleSaveSubEdit: (subIdx: number) => void;
+}
+
+/**
+ * Holds the interactive editing, drag-and-drop and subsection management logic
+ * for a single outline section card.
+ *
+ * @param props - The section card props.
+ * @returns The card state, derived values and event handlers.
+ */
+export function useOutlineSectionCard(
+  props: OutlineSectionCardProps,
+): UseOutlineSectionCardResult {
+  const { section, sectionIndex, isExpanded, onToggleExpand, onUpdateSection } =
+    props;
+
+  const [cardState, setCardState] = useState<OutlineCardState>({
+    isEditingSection: false,
+    editTitle: section.title,
+    editDescription: section.description,
+    editingSubIndex: null,
+    subEditTitle: "",
+    subEditDescription: "",
+    draggedSubIdx: null,
+    dragOverSubIdx: null,
+  });
+
+  const updateCardState = useCallback((patch: Partial<OutlineCardState>) => {
+    setCardState((prev) => ({ ...prev, ...patch }));
+  }, []);
+
+  const sectionNumber = sectionIndex + 1;
+  const subSections = useMemo(
+    () => section.subSections ?? [],
+    [section.subSections],
+  );
+  const hasSubSections = subSections.length > 0;
+
+  const isSpecialSection = useMemo(() => {
+    const titleUpper = section.title.toLocaleUpperCase("tr-TR");
+    return (
+      titleUpper.includes("GİRİŞ") ||
+      titleUpper.includes("GIRIS") ||
+      titleUpper.includes("SONUÇ") ||
+      titleUpper.includes("SONUC")
+    );
+  }, [section.title]);
+
+  const handleSaveSectionEdit = useCallback(() => {
+    if (!cardState.editTitle.trim()) return;
+    onUpdateSection({
+      ...section,
+      title: cardState.editTitle.trim(),
+      description: cardState.editDescription.trim(),
+    });
+    updateCardState({ isEditingSection: false });
+  }, [
+    cardState.editTitle,
+    cardState.editDescription,
+    section,
+    onUpdateSection,
+    updateCardState,
+  ]);
+
+  const handleCancelSectionEdit = useCallback(() => {
+    updateCardState({
+      editTitle: section.title,
+      editDescription: section.description,
+      isEditingSection: false,
+    });
+  }, [section, updateCardState]);
+
+  const handleAddSubSection = useCallback(() => {
+    if (isSpecialSection) return;
+    const newSub: OutlineSubSectionData = {
+      title: `Yeni Alt Bölüm ${subSections.length + 1}`,
+      description: "Alt bölüm kapsamı ve açıklaması...",
+      sortOrder: subSections.length + 1,
+    };
+    const updatedSubs = [...subSections, newSub];
+    onUpdateSection({
+      ...section,
+      subSections: updatedSubs,
+    });
+    if (!isExpanded) {
+      onToggleExpand();
+    }
+  }, [
+    isSpecialSection,
+    subSections,
+    section,
+    onUpdateSection,
+    isExpanded,
+    onToggleExpand,
+  ]);
+
+  const handleDeleteSubSection = useCallback(
+    (subIdx: number) => {
+      const updatedSubs = subSections
+        .filter((_, i) => i !== subIdx)
+        .map((sub, i) => ({ ...sub, sortOrder: i + 1 }));
+      onUpdateSection({
+        ...section,
+        subSections: updatedSubs,
+      });
+    },
+    [subSections, section, onUpdateSection],
+  );
+
+  const handleSubDrop = useCallback(
+    (targetIdx: number) => {
+      if (
+        cardState.draggedSubIdx === null ||
+        cardState.draggedSubIdx === targetIdx
+      ) {
+        updateCardState({ draggedSubIdx: null, dragOverSubIdx: null });
+        return;
+      }
+
+      const newSubs = [...subSections];
+      const [movedItem] = newSubs.splice(cardState.draggedSubIdx, 1);
+      newSubs.splice(targetIdx, 0, movedItem);
+
+      const reordered = newSubs.map((s, i) => ({ ...s, sortOrder: i + 1 }));
+      onUpdateSection({
+        ...section,
+        subSections: reordered,
+      });
+
+      updateCardState({ draggedSubIdx: null, dragOverSubIdx: null });
+    },
+    [
+      cardState.draggedSubIdx,
+      subSections,
+      section,
+      onUpdateSection,
+      updateCardState,
+    ],
+  );
+
+  const handleStartSubEdit = (subIdx: number) => {
+    updateCardState({
+      editingSubIndex: subIdx,
+      subEditTitle: subSections[subIdx].title,
+      subEditDescription: subSections[subIdx].description,
+    });
+  };
+
+  const handleSaveSubEdit = (subIdx: number) => {
+    if (!cardState.subEditTitle.trim()) return;
+    const updatedSubs = subSections.map((sub, i) =>
+      i === subIdx
+        ? {
+            ...sub,
+            title: cardState.subEditTitle.trim(),
+            description: cardState.subEditDescription.trim(),
+          }
+        : sub,
+    );
+    onUpdateSection({
+      ...section,
+      subSections: updatedSubs,
+    });
+    updateCardState({ editingSubIndex: null });
+  };
+
+  return {
+    cardState,
+    updateCardState,
+    sectionNumber,
+    subSections,
+    hasSubSections,
+    isSpecialSection,
+    handleSaveSectionEdit,
+    handleCancelSectionEdit,
+    handleAddSubSection,
+    handleDeleteSubSection,
+    handleSubDrop,
+    handleStartSubEdit,
+    handleSaveSubEdit,
+  };
+}
+</file>
+
 <file path="src/app/(onboarding)/onboarding/outline/_services/generator.ts">
 "use server";
 
@@ -23505,38 +23613,41 @@ Tür: ${thesis.thesisType || "N/A"} | Dil: ${thesis.language || "N/A"}
 
   return buildPromptPayload({
     roleAndExpertise:
-      "Akademik Tez Değerlendirme Kurulu Kıdemli Raportörüsünüz. Göreviniz aday tezlerin ampirik araştırma nesnesini, kullanıcının araştırma problemiyle tarafsız, titiz ve ilkeli bir biçimde karşılaştırarak stratejik ön eleme yapmaktır.",
+      "Akademik Tez Değerlendirme Kurulu Kıdemli Jüri Raportörüsünüz. Göreviniz, aday tezleri yüzeysel anahtar kelime eşleşmelerine veya zayıf teğetsel bağlara asla geçit vermeden; son derece titiz, yargılayıcı, analitik ve tavizsiz bir akademik elemeden geçirmektir.",
 
     primaryTask:
-      "Sana sunulan kullanıcının Araştırma Problemi (subjectProblem) ile aday tezleri (1 veya daha fazla) bağımsız olarak karşılaştırarak; her bir tezin ampirik uygunluğunu (isRelevant), gerekçesini (relevanceReasoning), birebir çakışma durumunu (isDirectOverlap) ve eğer uygunsa tezin literatürdeki stratejik rolünü (strategicRole, literaturePosition, strategicUtility) belirleyip 'evaluations' dizisi altında döndürmektir.",
+      "Sana sunulan kullanıcının Araştırma Problemi (subjectProblem) ile aday tezleri (1 veya daha fazla) bağımsız olarak karşılaştırarak; yüzeysel kelime benzerliklerini eleyip yalnızca kullanıcının araştırma nesnesine, yöntemine, birincil verisine veya doğrudan kurumsal/tarihsel sahasına GERÇEK ve AYRIŞTIRICI katkı sunan tezleri belirlemektir. Her bir tezin ampirik uygunluğunu (isRelevant), somut gerekçesini (relevanceReasoning), birebir çakışma durumunu (isDirectOverlap) ve eğer uygunsa tezin literatürdeki stratejik rolünü (strategicRole, literaturePosition, strategicUtility) belirleyip 'evaluations' dizisi altında döndür.",
 
-    rulesAndConstraints: `1. **Parçalı Stratejik Rol İlkesi (MUTLAK KURAL):**
-   - Literatürdeki yardımcı tezlerin kullanıcının tüm araştırma boyutlarını tek başına kapsamasını beklemek metodolojik bir hatadır (zaten tüm boyutları birebir kapsarsa özgünlük riski / çakışma oluşur).
-   - Aday tez; kullanıcının araştırma probleminin, sahasının veya odaklandığı nesnenin **EN AZ BİR SOMUT BOYUTUNU** (belirli bir aktör grubunu, birincil veri kaynağını, kurumsal yapısını veya tarihsel dönemini) ampirik olarak inceliyorsa \`isRelevant: true\` verilir:
-     * Konuyu daha geniş bir tarihsel/makro çerçevede ele alan çalışmalar -> \`BROAD_CONTEXT\`
-     * Araştırmanın tek bir boyutuna, aktörüne veya birincil kaynağına odaklanan çalışmalar -> \`SPECIFIC_FOCUS\`
-     * Konunun önceki evrelerini, tarihsel köklerini veya zeminini inceleyen çalışmalar -> \`FOUNDATIONAL_WORK\`
-     * Benzer bir ampirik veri toplama veya analiz modeli uygulayan çalışmalar -> \`METHODOLOGICAL_BENCHMARK\`
-     * Karşıt veya farklı bir açıklama modeli sunan çalışmalar -> \`ALTERNATIVE_PERSPECTIVE\`
+    rulesAndConstraints: `1. **Tavizsiz ve Sert Eleme İlkeleri (MUTLAK RED KURALLARI - \`isRelevant: false\`):**
+   - **Yüzeysel Kelime Eşleşmesi Tuzağı:** Aday tezler vektör aramasından geldiği için ortak isimler, aktörler veya kavramlar içerecektir. Yalnızca metinde aynı kelimelerin geçmesi ASLA bir uygunluk sebebi değildir; tezin ampirik araştırma sorusu kullanıcının araştırma sorusuyla doğrudan kesişmiyorsa tereddütsüz \`isRelevant: false\` veriniz.
+   - **Epistemolojik ve Metodolojik Uyuşmazlık:** Kullanıcının araştırması içsel nitel/söylemsel veya kuramsal bir çözümleme yapıyorsa; konuyu yalnızca dışsal bürokrasi/güvenlik raporu diliyle, genel istihbarat özetleriyle veya üçüncü taraf algı/medya temsilleriyle yüzeysel işleyen tezleri derhal eleyiniz (\`isRelevant: false\`).
+   - **Kavramsal, Dönemsel ve Olgusal Anakronizm:** Kullanıcının odaklandığı dönemin çok öncesini/sonrasını, alakasız liderlik psikolojisini, farklı coğrafi sahaları veya üçüncü ülkeleri ele alan çalışmaları eleyiniz (\`isRelevant: false\`).
+   - **Jenerik Derlemeler ve Klon Tezler:** Özgün bir birincil veri seti veya yöntemsel model sunmayan, genel lisansüstü derleme niteliğindeki ("X'in siyasallaşması", "Y'nin genel tarihi" gibi) birbirini tekrar eden klon tezlere geçit vermeyiniz (\`isRelevant: false\`).
 
-2. **Kesin Eleme Sebepleri (\`isRelevant: false\`):**
-   - Araştırılan hareketin/konunun iç dinamikleri yerine; tamamen dışsal bağlamları (üçüncü ülkelerin dış politikasını, doğrudan bağı olmayan dış yapıları veya sadece medyanın dışsal temsillerini) inceleyen tezler.
-   - Somut birincil/ampirik veriye dayanmayan, yalnızca genel/ikincil kaynaklar üzerinden soyut kavramları tartışan genel literatür derlemeleri.
-   - Kullanıcının araştırma problemiyle hiçbir ampirik, kurumsal veya olgusal kesişimi bulunmayan farklı konular.
+2. **Kabul Şartları ve Stratejik Rol Tanımları (\`isRelevant: true\`):**
+   - Bir tez ancak ve ancak kullanıcının araştırma probleminin, temel yönteminin, birincil veri havuzunun veya doğrudan odaklandığı kurumsal/tarihsel sahanın **ÖZGÜN VE AYRIŞTIRICI BİR BOYUTUNA** doğrudan katkı sunuyorsa \`isRelevant: true\` verilebilir:
+     * \`BROAD_CONTEXT\`: Yalnızca araştırmanın yapıldığı kurumsal ve tarihsel sahanın omurgasını doğrudan temellendiren kilit arka plan çalışmaları.
+     * \`SPECIFIC_FOCUS\`: Kullanıcının araştırma sahasındaki spesifik bir alt aktöre, yayın organına veya birincil metin havuzuna doğrudan odaklanan derinlemesine çalışmalar.
+     * \`FOUNDATIONAL_WORK\`: Araştırma sorusunun kuramsal zeminini veya hemen önceki kuluçka/hazırlık evresini inceleyen öncül çalışmalar.
+     * \`METHODOLOGICAL_BENCHMARK\`: Kullanıcının uyguladığı analiz modelini veya yöntem tipolojisini benzer bir sahada başarıyla işletmiş yöntemsel kılavuz çalışmalar.
+     * \`ALTERNATIVE_PERSPECTIVE\`: Kullanıcının temel savına/hipotezine doğrudan karşıt veya eleştirel bir açıklama modeli getiren kilit tartışma çalışmaları.
 
-3. **Gerekçelendirme ve Eylem Odaklı Rehberlik Dili:**
-   - \`relevanceReasoning\`: Tezin neden ilgili veya ilgisiz olduğuna dair somut ampirik kanıt ve mantıksal gerekçe (1-2 net cümle).
-   - \`literaturePosition\`: Tezin başlık ve özetine dayanarak neyi, hangi veriyle incelediğini özetleyin (1 cümle).
-   - \`strategicUtility\`: Araştırmacıya doğrudan tez yazımında yol gösteren eylem dili kullanın: "Bu tezi Giriş / Literatür bölümünde [X] için referans verebilir; tezinizin farkını ise [Y] noktasında vurgulayabilirsiniz."
+3. **Gerekçelendirme, Öz Çıktı ve Eylem Odaklı Rehberlik Dili:**
+   - **Öz ve Yoğun Anlatım İlkesi (MUTLAK KURAL):** Çıktıyı kesinlikle uzatmayınız; gereksiz dolgu ifadelerden, tekrarlardan ve laf kalabalığından kaçınınız. Tüm açıklamalar en fazla 1-2 konsantre ve vurucu cümleden oluşmalıdır.
+   - \`relevanceReasoning\`: Tezin neden ilgili veya neden yetersiz/ilgisiz olduğuna dair net, analitik ve doğrudan ampirik kanıta dayalı somut gerekçe (en fazla 1-2 öz cümle).
+   - \`literaturePosition\`: Tezin neyi, hangi veriyle incelediğini özetleyin (tam 1 net cümle). İlgisiz tezlerde boş bırakınız.
+   - \`strategicUtility\`: Araştırmacıya doğrudan tez yazımında yol gösteren eylem dili: "Bu tezi Giriş / Literatür bölümünde [X] için referans verebilir; tezinizin farkını ise [Y] noktasında vurgulayabilirsiniz." (en fazla 1-2 net cümle). İlgisiz tezlerde boş bırakınız.
+   - \`contributionAreas\`: Tezin katkı sunduğu spesifik odak alanları (yalnızca 1-3 adet kısa ve öz etiket). İlgisiz tezlerde [].
 
 4. **Bağımsız Değerlendirme ve Bütünlük:**
    - Listedeki her tezi diğerlerinden bağımsız olarak değerlendir.
    - Girdi bağlamında verilen tüm tezlerin ID'lerini 'externalThesisId' alanında eksiksiz ve birebir aynı değerle 'evaluations' dizisine dahil et.`,
 
-    workflowSteps: `1. Her bir aday tezin somut ampirik araştırma nesnesini kullanıcının araştırma problemiyle bağımsız olarak karşılaştır.
-2. Tez kullanıcının araştırma sahasının en az bir boyutuna doğrudan ampirik katkı sunuyor mu?
-3. Uygunsa \`isRelevant: true\` ver ve 5 stratejik rolden birini ata. Tamamen dışsal veya alakasız ise \`isRelevant: false\` ver.
-4. Girdideki tüm tezlerin değerlendirmelerini 'evaluations' dizisinde toplayıp döndür.`,
+    workflowSteps: `1. Her bir aday tezin ampirik özetini kullanıcının araştırma problemiyle bağımsız olarak tavizsiz bir akademik süzgeçten geçir.
+2. Tez kullanıcının özgün araştırma sorusuna, yöntemine veya birincil veri kaynağına GERÇEKTEN somut ve ayrıştırıcı bir katkı sunuyor mu?
+3. Sadece yüzeysel kelime benzerliği varsa, dışsal/güvenlik raporu diliyle yazılmışsa veya ampirik katma değeri yoksa tereddütsüz \`isRelevant: false\` ver.
+4. Yalnızca gerçek bir akademik katkısı olanlara \`isRelevant: true\` ver ve 5 stratejik rolden en uygununu ata.
+5. Girdideki tüm tezlerin değerlendirmelerini 'evaluations' dizisinde toplayıp döndür.`,
 
     outputFormat:
       "Çıktı, 'evaluations' dizisi içeren belirtilen JSON şemasına harfiyen uyan saf JSON nesnesidir.",
@@ -23983,131 +24094,6 @@ export function AIBanner({
     </div>
   );
 }
-</file>
-
-<file path="src/components/ui/dialog.tsx">
-"use client";
-
-import * as React from "react";
-import * as DialogPrimitive from "@radix-ui/react-dialog";
-import { X } from "lucide-react";
-
-import { cn } from "@/lib/utils";
-
-const Dialog = DialogPrimitive.Root;
-
-const DialogTrigger = DialogPrimitive.Trigger;
-
-const DialogPortal = DialogPrimitive.Portal;
-
-const DialogClose = DialogPrimitive.Close;
-
-const DialogOverlay = React.forwardRef<
-  React.ElementRef<typeof DialogPrimitive.Overlay>,
-  React.ComponentPropsWithoutRef<typeof DialogPrimitive.Overlay>
->(({ className, ...props }, ref) => (
-  <DialogPrimitive.Overlay
-    ref={ref}
-    className={cn(
-      "fixed inset-0 z-50 bg-black/80 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",
-      className,
-    )}
-    {...props}
-  />
-));
-DialogOverlay.displayName = DialogPrimitive.Overlay.displayName;
-
-const DialogContent = React.forwardRef<
-  React.ElementRef<typeof DialogPrimitive.Content>,
-  React.ComponentPropsWithoutRef<typeof DialogPrimitive.Content>
->(({ className, children, ...props }, ref) => (
-  <DialogPortal>
-    <DialogOverlay />
-    <DialogPrimitive.Content
-      ref={ref}
-      className={cn(
-        "fixed left-[50%] top-[50%] z-50 grid w-full max-w-lg translate-x-[-50%] translate-y-[-50%] gap-4 border bg-background p-6 shadow-lg duration-200 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[state=closed]:slide-out-to-left-1/2 data-[state=closed]:slide-out-to-top-[48%] data-[state=open]:slide-in-from-left-1/2 data-[state=open]:slide-in-from-top-[48%] sm:rounded-lg",
-        className,
-      )}
-      {...props}
-    >
-      {children}
-      <DialogPrimitive.Close className="absolute right-4 top-4 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none data-[state=open]:bg-accent data-[state=open]:text-muted-foreground">
-        <X className="h-4 w-4" />
-        <span className="sr-only">Close</span>
-      </DialogPrimitive.Close>
-    </DialogPrimitive.Content>
-  </DialogPortal>
-));
-DialogContent.displayName = DialogPrimitive.Content.displayName;
-
-const DialogHeader = ({
-  className,
-  ...props
-}: React.HTMLAttributes<HTMLDivElement>) => (
-  <div
-    className={cn(
-      "flex flex-col space-y-2 text-center sm:text-left",
-      className,
-    )}
-    {...props}
-  />
-);
-DialogHeader.displayName = "DialogHeader";
-
-const DialogFooter = ({
-  className,
-  ...props
-}: React.HTMLAttributes<HTMLDivElement>) => (
-  <div
-    className={cn(
-      "flex flex-col-reverse sm:flex-row sm:justify-end sm:space-x-2",
-      className,
-    )}
-    {...props}
-  />
-);
-DialogFooter.displayName = "DialogFooter";
-
-const DialogTitle = React.forwardRef<
-  React.ElementRef<typeof DialogPrimitive.Title>,
-  React.ComponentPropsWithoutRef<typeof DialogPrimitive.Title>
->(({ className, ...props }, ref) => (
-  <DialogPrimitive.Title
-    ref={ref}
-    className={cn(
-      "text-lg font-semibold leading-none tracking-tight",
-      className,
-    )}
-    {...props}
-  />
-));
-DialogTitle.displayName = DialogPrimitive.Title.displayName;
-
-const DialogDescription = React.forwardRef<
-  React.ElementRef<typeof DialogPrimitive.Description>,
-  React.ComponentPropsWithoutRef<typeof DialogPrimitive.Description>
->(({ className, ...props }, ref) => (
-  <DialogPrimitive.Description
-    ref={ref}
-    className={cn("text-sm text-muted-foreground", className)}
-    {...props}
-  />
-));
-DialogDescription.displayName = DialogPrimitive.Description.displayName;
-
-export {
-  Dialog,
-  DialogPortal,
-  DialogOverlay,
-  DialogClose,
-  DialogTrigger,
-  DialogContent,
-  DialogHeader,
-  DialogFooter,
-  DialogTitle,
-  DialogDescription,
-};
 </file>
 
 <file path="src/components/ui/input.tsx">
@@ -25773,141 +25759,6 @@ export async function performHybridRagSearch(
 }
 </file>
 
-<file path="src/core/services/tezara/hf-embedding.ts">
-import type { Logger } from "@/lib/logger";
-import {
-  DEFAULT_MAX_DELAY,
-  HttpError,
-  withRetry,
-} from "@/core/services/ai/llm-retry";
-
-const HF_API_KEY = process.env.HUGGINGFACE_API_KEY ?? "";
-const HF_EMBEDDING_ENDPOINT =
-  "https://router.huggingface.co/hf-inference/models/intfloat/multilingual-e5-base/pipeline/feature-extraction";
-
-const MAX_RETRIES = 3;
-
-/**
- * Generates a 768-dimensional embedding vector for a query using
- * `intfloat/multilingual-e5-base` via Hugging Face Serverless Inference API.
- *
- * @param query - Raw query text.
- * @param logger - Optional logger for observability.
- * @param silent - When true, suppresses the start/success log pair for flat pipelines.
- * @returns 768-dimensional dense vector array.
- */
-export async function getE5QueryEmbedding(
-  query: string,
-  logger?: Logger,
-  silent = false,
-): Promise<number[]> {
-  if (!HF_API_KEY) {
-    throw new Error("HUGGINGFACE_API_KEY environment variable is not defined.");
-  }
-
-  const trimmed = query.trim();
-  const inputWithPrefix = trimmed.startsWith("query: ")
-    ? trimmed
-    : `query: ${trimmed}`;
-
-  const startTime = performance.now();
-
-  try {
-    const vector = await withRetry(
-      async (): Promise<number[]> => {
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 20_000);
-
-        try {
-          const res = await fetch(HF_EMBEDDING_ENDPOINT, {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              Authorization: `Bearer ${HF_API_KEY}`,
-            },
-            body: JSON.stringify({ inputs: [inputWithPrefix] }),
-            signal: controller.signal,
-          });
-
-          if (!res.ok) {
-            const errText = await res.text().catch(() => "");
-            throw new HttpError(res.status, errText, null);
-          }
-
-          const data = (await res.json()) as unknown;
-
-          if (Array.isArray(data) && Array.isArray(data[0])) {
-            return data[0] as number[];
-          }
-
-          if (Array.isArray(data) && typeof data[0] === "number") {
-            return data as number[];
-          }
-
-          throw new Error(
-            "Unexpected embedding response structure from Hugging Face.",
-          );
-        } finally {
-          clearTimeout(timeoutId);
-        }
-      },
-      {
-        maxRetries: MAX_RETRIES,
-        baseDelay: 500,
-        maxDelay: DEFAULT_MAX_DELAY,
-        isRetryable: (error) => {
-          if (error instanceof HttpError) {
-            return (
-              error.status === 429 ||
-              error.status >= 500 ||
-              error.status === 503
-            );
-          }
-          return true;
-        },
-        onRetry: (attempt, delayMs, error) => {
-          logger?.info("hf_embedding_retry", {
-            service: "tezara",
-            filePath: "src/features/tezara/index.ts",
-            step: "get_query_embedding",
-            data: {
-              attempt,
-              delayMs: Math.round(delayMs),
-              errorMessage:
-                error instanceof Error ? error.message : String(error),
-            },
-          });
-        },
-      },
-    );
-
-    const durationMs = performance.now() - startTime;
-    if (!silent) {
-      logger?.info("hf_embedding_success", {
-        service: "tezara",
-        filePath: "src/features/tezara/index.ts",
-        step: "get_query_embedding",
-        durationMs,
-        data: { query: trimmed, dimensions: vector.length },
-      });
-    }
-
-    return vector;
-  } catch (err) {
-    const durationMs = performance.now() - startTime;
-    logger?.error("hf_embedding_failed", {
-      service: "tezara",
-      filePath: "src/features/tezara/index.ts",
-      step: "get_query_embedding",
-      durationMs,
-      data: { query: trimmed },
-      error: err,
-    });
-    throw err;
-  }
-}
-</file>
-
 <file path="src/lib/errors/app-error.ts">
 export type ErrorCode =
   | "VALIDATION_ERROR"
@@ -26832,6 +26683,23 @@ export function useAdvisorToolHandler({
 
   return { handleApproveToolCall, handleUndoToolCall, handleRejectToolCall };
 }
+</file>
+
+<file path="src/app/(app)/advisor/_tools/index.ts">
+import type { FunctionDeclaration } from "@google/genai";
+import { READ_TOOL_DECLARATIONS } from "./read-declarations";
+import { MUTATION_TOOL_DECLARATIONS } from "./mutation-declarations";
+
+export { READ_TOOL_DECLARATIONS, MUTATION_TOOL_DECLARATIONS };
+export * from "./read-tools";
+export * from "./mutation-tools";
+export * from "./undo-tools";
+
+/** List of all Gemini Function Declarations for the Thesis Advisor Chat. */
+export const ADVISOR_TOOL_DECLARATIONS: FunctionDeclaration[] = [
+  ...READ_TOOL_DECLARATIONS,
+  ...MUTATION_TOOL_DECLARATIONS,
+];
 </file>
 
 <file path="src/app/(app)/citation-cards/_lib/schemas.ts">
@@ -34780,385 +34648,6 @@ export function cleanHtmlTags(text: string): string {
 }
 </file>
 
-<file path="src/core/services/ai/cloudflare-ai.ts">
-import { Logger } from "@/lib/logger";
-import {
-  withRetry,
-  HttpError,
-  DEFAULT_MAX_DELAY,
-} from "@/core/services/ai/llm-retry";
-import { createRateLimiter } from "@/lib/rate-limiter";
-import { CLOUDFLARE_EMBEDDINGS_LIMITS } from "@/core/config/rate-limits";
-import { toAiProviderError } from "./llm-errors";
-
-const BGE_M3_MODEL = "@cf/baai/bge-m3";
-const MAX_EMBEDDING_RETRIES = 3;
-const RETRY_BASE_DELAY_MS = 500;
-
-/**
- * Global embedding limiter (3000 req/min task ceiling) shared across every
- * caller, so concurrent pipeline stages cannot overflow the service rate.
- */
-const embeddingQueue = createRateLimiter(CLOUDFLARE_EMBEDDINGS_LIMITS);
-
-/**
- * Parses the `Retry-After` header from a Cloudflare API response into milliseconds.
- *
- * @param response - The HTTP response to inspect.
- * @returns The retry delay in milliseconds, or null when absent or unparseable.
- */
-function parseRetryAfterHeader(response: Response): number | null {
-  const header = response.headers.get("Retry-After");
-  if (!header) return null;
-
-  const seconds = parseInt(header, 10);
-  if (!isNaN(seconds) && seconds > 0) {
-    return seconds * 1000;
-  }
-
-  return null;
-}
-
-/**
- * Generates 1024-d embeddings via Cloudflare Workers AI (`@cf/baai/bge-m3`), batching with
- * global rate limiting and exponential backoff retry.
- *
- * @param texts - The texts to embed.
- * @param logger - Optional logger for embedding events.
- * @returns A 1024-dimensional embedding vector per input text.
- */
-export async function generateCloudflareEmbeddings(
-  texts: string[],
-  logger?: Logger,
-): Promise<number[][]> {
-  if (texts.length === 0) return [];
-
-  const accountId = process.env.CLOUDFLARE_ACCOUNT_ID;
-  const apiToken = process.env.CLOUDFLARE_API_TOKEN;
-
-  if (!accountId || !apiToken) {
-    logger?.error("cloudflare_embed_key_missing", {
-      service: "cloudflare",
-      data: {
-        message: "CLOUDFLARE_ACCOUNT_ID or CLOUDFLARE_API_TOKEN missing.",
-      },
-    });
-    throw new Error(
-      "CLOUDFLARE_ACCOUNT_ID or CLOUDFLARE_API_TOKEN environment variables are not defined.",
-    );
-  }
-
-  const url = `https://api.cloudflare.com/client/v4/accounts/${accountId}/ai/run/${BGE_M3_MODEL}`;
-  const MAX_BATCH_TOKENS = 15000;
-  const MAX_BATCH_TEXT_COUNT = 50;
-  const batches: string[][] = [];
-  let currentBatch: string[] = [];
-  let currentBatchTokens = 0;
-
-  for (const text of texts) {
-    const estimatedTokens = Math.ceil(text.length / 4);
-    if (
-      currentBatch.length > 0 &&
-      (currentBatchTokens + estimatedTokens > MAX_BATCH_TOKENS ||
-        currentBatch.length >= MAX_BATCH_TEXT_COUNT)
-    ) {
-      batches.push(currentBatch);
-      currentBatch = [];
-      currentBatchTokens = 0;
-    }
-    currentBatch.push(text);
-    currentBatchTokens += estimatedTokens;
-  }
-
-  if (currentBatch.length > 0) {
-    batches.push(currentBatch);
-  }
-
-  const batchResults: number[][][] = [];
-
-  const queuedBatches = batches.map((batchTexts, batchIndex) =>
-    embeddingQueue.exec(() =>
-      withRetry(
-        async () => {
-          const response = await fetch(url, {
-            method: "POST",
-            headers: {
-              Authorization: `Bearer ${apiToken}`,
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-              text: batchTexts,
-            }),
-          });
-
-          if (!response.ok) {
-            const errText = await response.text().catch(() => "");
-            throw new HttpError(
-              response.status,
-              errText,
-              parseRetryAfterHeader(response),
-            );
-          }
-
-          const data = (await response.json()) as {
-            result?: { data?: number[][] };
-            success?: boolean;
-          };
-
-          if (!data.success || !data.result?.data) {
-            throw new Error(
-              `Cloudflare AI response invalid: ${JSON.stringify(data)}`,
-            );
-          }
-
-          return data.result.data;
-        },
-        {
-          maxRetries: MAX_EMBEDDING_RETRIES,
-          baseDelay: RETRY_BASE_DELAY_MS,
-          maxDelay: DEFAULT_MAX_DELAY,
-          isRetryable: (error) => {
-            if (error instanceof HttpError) {
-              return error.status === 429 || error.status >= 500;
-            }
-            return true;
-          },
-          getRetryAfter: (error) =>
-            error instanceof HttpError ? error.retryAfter : null,
-          onRetry: (attempt, delayMs, error) => {
-            const status =
-              error instanceof HttpError ? error.status : undefined;
-            logger?.info("cloudflare_embed_retry", {
-              service: "cloudflare",
-              data: {
-                batchIndex,
-                attempt,
-                delayMs: Math.round(delayMs),
-                status,
-                message: error instanceof Error ? error.message : String(error),
-              },
-            });
-          },
-        },
-      ),
-    ),
-  );
-
-  try {
-    batchResults.push(...(await Promise.all(queuedBatches)));
-  } catch (error) {
-    throw toAiProviderError(error, "cloudflare");
-  }
-
-  return batchResults.flat();
-}
-
-/**
- * Single-source 1024-d embedding engine backed by Cloudflare Workers AI.
- *
- * @param texts - The texts to embed.
- * @param logger - Optional logger for embedding events.
- * @returns A 1024-dimensional embedding vector per input text.
- */
-export async function generateVectorEmbeddings(
-  texts: string[],
-  logger?: Logger,
-): Promise<number[][]> {
-  if (texts.length === 0) return [];
-  return generateCloudflareEmbeddings(texts, logger);
-}
-</file>
-
-<file path="src/core/services/ai/cohere.ts">
-import { Logger } from "@/lib/logger";
-import {
-  HttpError,
-  withRetry,
-  DEFAULT_MAX_DELAY,
-} from "@/core/services/ai/llm-retry";
-import { createRateLimiter } from "@/lib/rate-limiter";
-import { COHERE_LIMITS } from "@/core/config/rate-limits";
-import { toAiProviderError } from "./llm-errors";
-
-/** Multilingual (incl. Turkish) Cohere Rerank model ID — 32,768-token context. */
-export const COHERE_RERANK_MODEL = "rerank-v4.0-pro";
-/** Maximum duration to wait for a Cohere Rerank response before aborting. */
-const COHERE_TIMEOUT_MS = 30000;
-/** Maximum retry attempts for transient Cohere failures (429/5xx). */
-const COHERE_MAX_RETRIES = 3;
-
-const COHERE_RERANK_URL = "https://api.cohere.com/v2/rerank";
-
-/**
- * Global Cohere Rerank limiter (trial key: 10 req/min). All parallel pipeline
- * consumers (RAG search, positioning sifting, literature expansion) queue on the
- * same limiter so combined traffic never exceeds the trial-rate ceiling.
- */
-const cohereRequestQueue = createRateLimiter(COHERE_LIMITS);
-
-/**
- * Parses the `Retry-After` header from a Cohere API response into milliseconds.
- *
- * @param response - The HTTP response to inspect.
- * @returns The retry delay in milliseconds, or null when absent or unparseable.
- */
-function parseRetryAfterHeader(response: Response): number | null {
-  const header = response.headers.get("Retry-After");
-  if (!header) return null;
-
-  const seconds = parseInt(header, 10);
-  if (!isNaN(seconds) && seconds > 0) {
-    return seconds * 1000;
-  }
-
-  return null;
-}
-
-/** Individual rerank result returned from Cohere Rerank. */
-export interface RerankResult {
-  index: number;
-  relevanceScore: number;
-}
-
-/** Parameters required for executing a Rerank request. */
-export interface RerankParams {
-  query: string;
-  documents: string[];
-  topN?: number;
-  logger?: Logger;
-}
-
-/**
- * Reranks all documents against a query via Cohere rerank-v4.0-pro, returning the full
- * score list so the caller applies its own deterministic cutoff. No fallback models or
- * synthetic scores are used; any failure aborts the pipeline with a thrown error.
- *
- * @param params - Object containing the query, documents, optional topN limit, and optional logger.
- * @returns The reranked results sorted by descending relevance score.
- */
-export async function rerankWithCohere(
-  params: RerankParams,
-): Promise<RerankResult[]> {
-  const { query, documents, logger } = params;
-
-  if (documents.length === 0) return [];
-
-  const apiKey = process.env.COHERE_API_KEY;
-
-  if (!apiKey) {
-    const error = new Error("COHERE_API_KEY is not defined; cannot rerank.");
-    logger?.error("cohere_rerank_key_missing", {
-      service: "cohere",
-      error,
-    });
-    throw error;
-  }
-
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), COHERE_TIMEOUT_MS);
-
-  try {
-    const response = await cohereRequestQueue.exec(() =>
-      withRetry(
-        async (): Promise<Response> => {
-          const res = await fetch(COHERE_RERANK_URL, {
-            method: "POST",
-            headers: {
-              Authorization: `Bearer ${apiKey}`,
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-              model: COHERE_RERANK_MODEL,
-              query,
-              documents,
-              top_n: documents.length,
-            }),
-            signal: controller.signal,
-          });
-
-          if (!res.ok) {
-            const errText = await res.text().catch(() => "");
-            throw new HttpError(
-              res.status,
-              errText,
-              parseRetryAfterHeader(res),
-            );
-          }
-
-          return res;
-        },
-        {
-          maxRetries: COHERE_MAX_RETRIES,
-          baseDelay: 1000,
-          maxDelay: DEFAULT_MAX_DELAY,
-          isRetryable: (error) => {
-            if (error instanceof HttpError) {
-              return error.status === 429 || error.status >= 500;
-            }
-            return false;
-          },
-          getRetryAfter: (error) =>
-            error instanceof HttpError ? error.retryAfter : null,
-          onRetry: (attempt, delayMs, error) => {
-            const status =
-              error instanceof HttpError ? error.status : undefined;
-            logger?.info("cohere_rerank_retry", {
-              service: "cohere",
-              data: {
-                attempt,
-                maxRetries: COHERE_MAX_RETRIES,
-                delayMs: Math.round(delayMs),
-                status,
-                errorMessage:
-                  error instanceof Error ? error.message : String(error),
-              },
-            });
-          },
-        },
-      ),
-    );
-
-    const data = (await response.json()) as {
-      results?: Array<{ index: number; relevance_score?: number }>;
-      message?: string;
-    };
-
-    if (!data.results || data.results.length === 0) {
-      throw new Error(
-        `Cohere Rerank response missing results: ${data.message || JSON.stringify(data)}`,
-      );
-    }
-
-    const results = data.results
-      .map((item) => ({
-        index: item.index,
-        relevanceScore: item.relevance_score ?? 0,
-      }))
-      .sort((a, b) => b.relevanceScore - a.relevanceScore);
-
-    if (results.length !== documents.length) {
-      logger?.info("cohere_rerank_partial_scores", {
-        service: "cohere",
-        data: {
-          returned: results.length,
-          expected: documents.length,
-        },
-      });
-    }
-
-    return results;
-  } catch (error) {
-    logger?.error("cohere_rerank_failed", {
-      service: "cohere",
-      error,
-    });
-    throw toAiProviderError(error, "cohere");
-  } finally {
-    clearTimeout(timer);
-  }
-}
-</file>
-
 <file path="src/core/services/pdf/mistral-driver.ts">
 import type { Logger } from "@/lib/logger";
 import { generatePresignedReadUrl } from "@/core/services/storage/r2";
@@ -35337,6 +34826,141 @@ export async function runMistralOcr(
   });
 
   throw lastError;
+}
+</file>
+
+<file path="src/core/services/tezara/hf-embedding.ts">
+import type { Logger } from "@/lib/logger";
+import {
+  DEFAULT_MAX_DELAY,
+  HttpError,
+  withRetry,
+} from "@/core/services/ai/llm-retry";
+
+const HF_API_KEY = process.env.HUGGINGFACE_API_KEY ?? "";
+const HF_EMBEDDING_ENDPOINT =
+  "https://router.huggingface.co/hf-inference/models/intfloat/multilingual-e5-base/pipeline/feature-extraction";
+
+const MAX_RETRIES = 3;
+
+/**
+ * Generates a 768-dimensional embedding vector for a query using
+ * `intfloat/multilingual-e5-base` via Hugging Face Serverless Inference API.
+ *
+ * @param query - Raw query text.
+ * @param logger - Optional logger for observability.
+ * @param silent - When true, suppresses the start/success log pair for flat pipelines.
+ * @returns 768-dimensional dense vector array.
+ */
+export async function getE5QueryEmbedding(
+  query: string,
+  logger?: Logger,
+  silent = false,
+): Promise<number[]> {
+  if (!HF_API_KEY) {
+    throw new Error("HUGGINGFACE_API_KEY environment variable is not defined.");
+  }
+
+  const trimmed = query.trim();
+  const inputWithPrefix = trimmed.startsWith("query: ")
+    ? trimmed
+    : `query: ${trimmed}`;
+
+  const startTime = performance.now();
+
+  try {
+    const vector = await withRetry(
+      async (): Promise<number[]> => {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 20_000);
+
+        try {
+          const res = await fetch(HF_EMBEDDING_ENDPOINT, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${HF_API_KEY}`,
+            },
+            body: JSON.stringify({ inputs: [inputWithPrefix] }),
+            signal: controller.signal,
+          });
+
+          if (!res.ok) {
+            const errText = await res.text().catch(() => "");
+            throw new HttpError(res.status, errText, null);
+          }
+
+          const data = (await res.json()) as unknown;
+
+          if (Array.isArray(data) && Array.isArray(data[0])) {
+            return data[0] as number[];
+          }
+
+          if (Array.isArray(data) && typeof data[0] === "number") {
+            return data as number[];
+          }
+
+          throw new Error(
+            "Unexpected embedding response structure from Hugging Face.",
+          );
+        } finally {
+          clearTimeout(timeoutId);
+        }
+      },
+      {
+        maxRetries: MAX_RETRIES,
+        baseDelay: 500,
+        maxDelay: DEFAULT_MAX_DELAY,
+        isRetryable: (error) => {
+          if (error instanceof HttpError) {
+            return (
+              error.status === 429 ||
+              error.status >= 500 ||
+              error.status === 503
+            );
+          }
+          return true;
+        },
+        onRetry: (attempt, delayMs, error) => {
+          logger?.info("hf_embedding_retry", {
+            service: "tezara",
+            filePath: "src/features/tezara/index.ts",
+            step: "get_query_embedding",
+            data: {
+              attempt,
+              delayMs: Math.round(delayMs),
+              errorMessage:
+                error instanceof Error ? error.message : String(error),
+            },
+          });
+        },
+      },
+    );
+
+    const durationMs = performance.now() - startTime;
+    if (!silent) {
+      logger?.info("hf_embedding_success", {
+        service: "tezara",
+        filePath: "src/features/tezara/index.ts",
+        step: "get_query_embedding",
+        durationMs,
+        data: { query: trimmed, dimensions: vector.length },
+      });
+    }
+
+    return vector;
+  } catch (err) {
+    const durationMs = performance.now() - startTime;
+    logger?.error("hf_embedding_failed", {
+      service: "tezara",
+      filePath: "src/features/tezara/index.ts",
+      step: "get_query_embedding",
+      durationMs,
+      data: { query: trimmed },
+      error: err,
+    });
+    throw err;
+  }
 }
 </file>
 
@@ -40436,6 +40060,385 @@ export const SelectItem = React.forwardRef<HTMLDivElement, SelectItemProps>(
 SelectItem.displayName = "SelectItem";
 </file>
 
+<file path="src/core/services/ai/cloudflare-ai.ts">
+import { Logger } from "@/lib/logger";
+import {
+  withRetry,
+  HttpError,
+  DEFAULT_MAX_DELAY,
+} from "@/core/services/ai/llm-retry";
+import { createRateLimiter } from "@/lib/rate-limiter";
+import { CLOUDFLARE_EMBEDDINGS_LIMITS } from "@/core/config/rate-limits";
+import { toAiProviderError } from "./llm-errors";
+
+const BGE_M3_MODEL = "@cf/baai/bge-m3";
+const MAX_EMBEDDING_RETRIES = 3;
+const RETRY_BASE_DELAY_MS = 500;
+
+/**
+ * Global embedding limiter (3000 req/min task ceiling) shared across every
+ * caller, so concurrent pipeline stages cannot overflow the service rate.
+ */
+const embeddingQueue = createRateLimiter(CLOUDFLARE_EMBEDDINGS_LIMITS);
+
+/**
+ * Parses the `Retry-After` header from a Cloudflare API response into milliseconds.
+ *
+ * @param response - The HTTP response to inspect.
+ * @returns The retry delay in milliseconds, or null when absent or unparseable.
+ */
+function parseRetryAfterHeader(response: Response): number | null {
+  const header = response.headers.get("Retry-After");
+  if (!header) return null;
+
+  const seconds = parseInt(header, 10);
+  if (!isNaN(seconds) && seconds > 0) {
+    return seconds * 1000;
+  }
+
+  return null;
+}
+
+/**
+ * Generates 1024-d embeddings via Cloudflare Workers AI (`@cf/baai/bge-m3`), batching with
+ * global rate limiting and exponential backoff retry.
+ *
+ * @param texts - The texts to embed.
+ * @param logger - Optional logger for embedding events.
+ * @returns A 1024-dimensional embedding vector per input text.
+ */
+export async function generateCloudflareEmbeddings(
+  texts: string[],
+  logger?: Logger,
+): Promise<number[][]> {
+  if (texts.length === 0) return [];
+
+  const accountId = process.env.CLOUDFLARE_ACCOUNT_ID;
+  const apiToken = process.env.CLOUDFLARE_API_TOKEN;
+
+  if (!accountId || !apiToken) {
+    logger?.error("cloudflare_embed_key_missing", {
+      service: "cloudflare",
+      data: {
+        message: "CLOUDFLARE_ACCOUNT_ID or CLOUDFLARE_API_TOKEN missing.",
+      },
+    });
+    throw new Error(
+      "CLOUDFLARE_ACCOUNT_ID or CLOUDFLARE_API_TOKEN environment variables are not defined.",
+    );
+  }
+
+  const url = `https://api.cloudflare.com/client/v4/accounts/${accountId}/ai/run/${BGE_M3_MODEL}`;
+  const MAX_BATCH_TOKENS = 15000;
+  const MAX_BATCH_TEXT_COUNT = 50;
+  const batches: string[][] = [];
+  let currentBatch: string[] = [];
+  let currentBatchTokens = 0;
+
+  for (const text of texts) {
+    const estimatedTokens = Math.ceil(text.length / 4);
+    if (
+      currentBatch.length > 0 &&
+      (currentBatchTokens + estimatedTokens > MAX_BATCH_TOKENS ||
+        currentBatch.length >= MAX_BATCH_TEXT_COUNT)
+    ) {
+      batches.push(currentBatch);
+      currentBatch = [];
+      currentBatchTokens = 0;
+    }
+    currentBatch.push(text);
+    currentBatchTokens += estimatedTokens;
+  }
+
+  if (currentBatch.length > 0) {
+    batches.push(currentBatch);
+  }
+
+  const batchResults: number[][][] = [];
+
+  const queuedBatches = batches.map((batchTexts, batchIndex) =>
+    embeddingQueue.exec(() =>
+      withRetry(
+        async () => {
+          const response = await fetch(url, {
+            method: "POST",
+            headers: {
+              Authorization: `Bearer ${apiToken}`,
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              text: batchTexts,
+            }),
+          });
+
+          if (!response.ok) {
+            const errText = await response.text().catch(() => "");
+            throw new HttpError(
+              response.status,
+              errText,
+              parseRetryAfterHeader(response),
+            );
+          }
+
+          const data = (await response.json()) as {
+            result?: { data?: number[][] };
+            success?: boolean;
+          };
+
+          if (!data.success || !data.result?.data) {
+            throw new Error(
+              `Cloudflare AI response invalid: ${JSON.stringify(data)}`,
+            );
+          }
+
+          return data.result.data;
+        },
+        {
+          maxRetries: MAX_EMBEDDING_RETRIES,
+          baseDelay: RETRY_BASE_DELAY_MS,
+          maxDelay: DEFAULT_MAX_DELAY,
+          isRetryable: (error) => {
+            if (error instanceof HttpError) {
+              return error.status === 429 || error.status >= 500;
+            }
+            return true;
+          },
+          getRetryAfter: (error) =>
+            error instanceof HttpError ? error.retryAfter : null,
+          onRetry: (attempt, delayMs, error) => {
+            const status =
+              error instanceof HttpError ? error.status : undefined;
+            logger?.info("cloudflare_embed_retry", {
+              service: "cloudflare",
+              data: {
+                batchIndex,
+                attempt,
+                delayMs: Math.round(delayMs),
+                status,
+                message: error instanceof Error ? error.message : String(error),
+              },
+            });
+          },
+        },
+      ),
+    ),
+  );
+
+  try {
+    batchResults.push(...(await Promise.all(queuedBatches)));
+  } catch (error) {
+    throw toAiProviderError(error, "cloudflare");
+  }
+
+  return batchResults.flat();
+}
+
+/**
+ * Single-source 1024-d embedding engine backed by Cloudflare Workers AI.
+ *
+ * @param texts - The texts to embed.
+ * @param logger - Optional logger for embedding events.
+ * @returns A 1024-dimensional embedding vector per input text.
+ */
+export async function generateVectorEmbeddings(
+  texts: string[],
+  logger?: Logger,
+): Promise<number[][]> {
+  if (texts.length === 0) return [];
+  return generateCloudflareEmbeddings(texts, logger);
+}
+</file>
+
+<file path="src/core/services/ai/cohere.ts">
+import { Logger } from "@/lib/logger";
+import {
+  HttpError,
+  withRetry,
+  DEFAULT_MAX_DELAY,
+} from "@/core/services/ai/llm-retry";
+import { createRateLimiter } from "@/lib/rate-limiter";
+import { COHERE_LIMITS } from "@/core/config/rate-limits";
+import { toAiProviderError } from "./llm-errors";
+
+/** Multilingual (incl. Turkish) Cohere Rerank model ID — 32,768-token context. */
+export const COHERE_RERANK_MODEL = "rerank-v4.0-pro";
+/** Maximum duration to wait for a Cohere Rerank response before aborting. */
+const COHERE_TIMEOUT_MS = 30000;
+/** Maximum retry attempts for transient Cohere failures (429/5xx). */
+const COHERE_MAX_RETRIES = 3;
+
+const COHERE_RERANK_URL = "https://api.cohere.com/v2/rerank";
+
+/**
+ * Global Cohere Rerank limiter (trial key: 10 req/min). All parallel pipeline
+ * consumers (RAG search, positioning sifting, literature expansion) queue on the
+ * same limiter so combined traffic never exceeds the trial-rate ceiling.
+ */
+const cohereRequestQueue = createRateLimiter(COHERE_LIMITS);
+
+/**
+ * Parses the `Retry-After` header from a Cohere API response into milliseconds.
+ *
+ * @param response - The HTTP response to inspect.
+ * @returns The retry delay in milliseconds, or null when absent or unparseable.
+ */
+function parseRetryAfterHeader(response: Response): number | null {
+  const header = response.headers.get("Retry-After");
+  if (!header) return null;
+
+  const seconds = parseInt(header, 10);
+  if (!isNaN(seconds) && seconds > 0) {
+    return seconds * 1000;
+  }
+
+  return null;
+}
+
+/** Individual rerank result returned from Cohere Rerank. */
+export interface RerankResult {
+  index: number;
+  relevanceScore: number;
+}
+
+/** Parameters required for executing a Rerank request. */
+export interface RerankParams {
+  query: string;
+  documents: string[];
+  topN?: number;
+  logger?: Logger;
+}
+
+/**
+ * Reranks all documents against a query via Cohere rerank-v4.0-pro, returning the full
+ * score list so the caller applies its own deterministic cutoff. No fallback models or
+ * synthetic scores are used; any failure aborts the pipeline with a thrown error.
+ *
+ * @param params - Object containing the query, documents, optional topN limit, and optional logger.
+ * @returns The reranked results sorted by descending relevance score.
+ */
+export async function rerankWithCohere(
+  params: RerankParams,
+): Promise<RerankResult[]> {
+  const { query, documents, logger } = params;
+
+  if (documents.length === 0) return [];
+
+  const apiKey = process.env.COHERE_API_KEY;
+
+  if (!apiKey) {
+    const error = new Error("COHERE_API_KEY is not defined; cannot rerank.");
+    logger?.error("cohere_rerank_key_missing", {
+      service: "cohere",
+      error,
+    });
+    throw error;
+  }
+
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), COHERE_TIMEOUT_MS);
+
+  try {
+    const response = await cohereRequestQueue.exec(() =>
+      withRetry(
+        async (): Promise<Response> => {
+          const res = await fetch(COHERE_RERANK_URL, {
+            method: "POST",
+            headers: {
+              Authorization: `Bearer ${apiKey}`,
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              model: COHERE_RERANK_MODEL,
+              query,
+              documents,
+              top_n: documents.length,
+            }),
+            signal: controller.signal,
+          });
+
+          if (!res.ok) {
+            const errText = await res.text().catch(() => "");
+            throw new HttpError(
+              res.status,
+              errText,
+              parseRetryAfterHeader(res),
+            );
+          }
+
+          return res;
+        },
+        {
+          maxRetries: COHERE_MAX_RETRIES,
+          baseDelay: 1000,
+          maxDelay: DEFAULT_MAX_DELAY,
+          isRetryable: (error) => {
+            if (error instanceof HttpError) {
+              return error.status === 429 || error.status >= 500;
+            }
+            return false;
+          },
+          getRetryAfter: (error) =>
+            error instanceof HttpError ? error.retryAfter : null,
+          onRetry: (attempt, delayMs, error) => {
+            const status =
+              error instanceof HttpError ? error.status : undefined;
+            logger?.info("cohere_rerank_retry", {
+              service: "cohere",
+              data: {
+                attempt,
+                maxRetries: COHERE_MAX_RETRIES,
+                delayMs: Math.round(delayMs),
+                status,
+                errorMessage:
+                  error instanceof Error ? error.message : String(error),
+              },
+            });
+          },
+        },
+      ),
+    );
+
+    const data = (await response.json()) as {
+      results?: Array<{ index: number; relevance_score?: number }>;
+      message?: string;
+    };
+
+    if (!data.results || data.results.length === 0) {
+      throw new Error(
+        `Cohere Rerank response missing results: ${data.message || JSON.stringify(data)}`,
+      );
+    }
+
+    const results = data.results
+      .map((item) => ({
+        index: item.index,
+        relevanceScore: item.relevance_score ?? 0,
+      }))
+      .sort((a, b) => b.relevanceScore - a.relevanceScore);
+
+    if (results.length !== documents.length) {
+      logger?.info("cohere_rerank_partial_scores", {
+        service: "cohere",
+        data: {
+          returned: results.length,
+          expected: documents.length,
+        },
+      });
+    }
+
+    return results;
+  } catch (error) {
+    logger?.error("cohere_rerank_failed", {
+      service: "cohere",
+      error,
+    });
+    throw toAiProviderError(error, "cohere");
+  } finally {
+    clearTimeout(timer);
+  }
+}
+</file>
+
 <file path="src/lib/ai/prompt-builder.ts">
 /**
  * Standardized Prompt Builder for Fabricca LLM System.
@@ -44237,7 +44240,7 @@ export async function evaluateBatchTheses(
         zodSchema: batchThesisEvaluationSchema,
         payloadStage: "positioning_per_thesis_evaluation",
         seed: GEMINI_SEED,
-        thinkingConfig: { thinkingLevel: ThinkingLevel.LOW },
+        thinkingConfig: { thinkingLevel: ThinkingLevel.HIGH },
         thesisMatrix: input,
         quiet: true,
       },
@@ -46903,260 +46906,6 @@ export interface AdvisorChatProps {
 }
 </file>
 
-<file path="src/app/(app)/citation-cards/_components/citation-card-form.tsx">
-"use client";
-
-import { MessageSquareQuote, BookOpen, FolderOpen } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { DialogFooter } from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { Textarea } from "@/components/ui/textarea";
-import { BOX_TYPE_LABELS, getBoxTypeBadgeConfig } from "@/lib/box-constants";
-import { cn } from "@/lib/utils";
-import { NOTE_TYPE_DISPLAY_LABELS } from "../_lib/note-type-labels";
-import {
-  useCitationCardForm,
-  type CitationCardFormProps,
-} from "../_hooks/use-citation-card-form";
-import type { CitationNoteType } from "../_lib/types";
-
-export type { CitationCardFormProps } from "../_hooks/use-citation-card-form";
-export { NOTE_TYPE_DISPLAY_LABELS } from "../_lib/note-type-labels";
-
-/**
- * Form handling inputs and state for card creation/editing.
- *
- * @param props - Form props.
- * @returns Form markup.
- */
-export function CitationCardForm(props: CitationCardFormProps) {
-  const { sources, boxes, onClose } = props;
-  const {
-    formFields,
-    setField,
-    selectedSourceObj,
-    selectedBoxObj,
-    handleSubmit,
-    handleContentPaste,
-    isEditing,
-  } = useCitationCardForm(props);
-
-  return (
-    <form onSubmit={handleSubmit} className="space-y-4 py-2">
-      {/* Kaynak & Konu Kutusu Seçimi */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <div className="space-y-1.5">
-          <Label
-            htmlFor="source-select"
-            className="text-xs font-semibold text-foreground flex items-center gap-1.5"
-          >
-            <BookOpen className="h-3.5 w-3.5 text-primary" />
-            Akademik Kaynak
-          </Label>
-          <Select
-            value={formFields.selectedSourceId}
-            onValueChange={(v) => setField("selectedSourceId", v)}
-          >
-            <SelectTrigger
-              id="source-select"
-              className="h-9 text-xs bg-background border-border"
-            >
-              <SelectValue placeholder="Kaynak Seçin">
-                {selectedSourceObj
-                  ? `${selectedSourceObj.title} (${selectedSourceObj.authors[0] ?? "Yazar"}, ${selectedSourceObj.publicationYear})`
-                  : "Kaynak Seçin"}
-              </SelectValue>
-            </SelectTrigger>
-            <SelectContent className="max-h-60">
-              {sources.map((src) => (
-                <SelectItem
-                  key={src.id}
-                  value={String(src.id)}
-                  className="text-xs py-2"
-                >
-                  <span className="font-medium">{src.title}</span> (
-                  {src.authors[0] ?? "Yazar"}, {src.publicationYear})
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-
-        {/* Bağlı Konu Kutusu */}
-        <div className="space-y-1.5">
-          <Label
-            htmlFor="box-select"
-            className="text-xs font-semibold text-foreground flex items-center gap-1.5"
-          >
-            <FolderOpen className="h-3.5 w-3.5 text-primary" />
-            Bağlı Konu Kutusu
-          </Label>
-          <Select
-            value={formFields.selectedBoxId}
-            onValueChange={(v) => setField("selectedBoxId", v)}
-          >
-            <SelectTrigger
-              id="box-select"
-              className="h-9 text-xs bg-background border-border"
-            >
-              <SelectValue placeholder="Kutu Seçin">
-                {selectedBoxObj
-                  ? `[${BOX_TYPE_LABELS[selectedBoxObj.boxType]}] ${selectedBoxObj.title}`
-                  : "Kutu Seçin"}
-              </SelectValue>
-            </SelectTrigger>
-            <SelectContent className="max-h-60">
-              {boxes.map((box) => {
-                const boxConfig = getBoxTypeBadgeConfig(box.boxType);
-                return (
-                  <SelectItem
-                    key={box.id}
-                    value={String(box.id)}
-                    className="text-xs py-2"
-                  >
-                    <div className="flex items-center gap-2">
-                      <span
-                        className={cn(
-                          "h-2 w-2 rounded-full shrink-0",
-                          boxConfig.dotClassName,
-                        )}
-                      />
-                      <span>
-                        [{BOX_TYPE_LABELS[box.boxType]}] {box.title}
-                      </span>
-                    </div>
-                  </SelectItem>
-                );
-              })}
-            </SelectContent>
-          </Select>
-        </div>
-      </div>
-
-      {/* Not Türü & Sayfa Numarası */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <div className="space-y-1.5">
-          <Label
-            htmlFor="note-type-select"
-            className="text-xs font-semibold text-foreground"
-          >
-            Not Türü
-          </Label>
-          <Select
-            value={formFields.noteType}
-            onValueChange={(val: string) =>
-              setField("noteType", val as CitationNoteType)
-            }
-          >
-            <SelectTrigger
-              id="note-type-select"
-              className="h-9 text-xs bg-background border-border"
-            >
-              <SelectValue>
-                {NOTE_TYPE_DISPLAY_LABELS[formFields.noteType]}
-              </SelectValue>
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="DIRECT_QUOTE" className="text-xs">
-                Doğrudan Alıntı
-              </SelectItem>
-              <SelectItem value="PARAPHRASE" className="text-xs">
-                Dolaylı Alıntı
-              </SelectItem>
-              <SelectItem value="PERSONAL_NOTE" className="text-xs">
-                Kişisel Not
-              </SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-
-        <div className="space-y-1.5">
-          <Label
-            htmlFor="page-number-input"
-            className="text-xs font-semibold text-foreground"
-          >
-            Sayfa Numarası
-          </Label>
-          <Input
-            id="page-number-input"
-            placeholder="Örn: 15 veya 15-17"
-            value={formFields.pageNumber}
-            onChange={(e) => setField("pageNumber", e.target.value)}
-            className="h-9 text-xs font-mono bg-background border-border"
-          />
-        </div>
-      </div>
-
-      {/* Fiş İçeriği (Metin) */}
-      <div className="space-y-1.5">
-        <Label
-          htmlFor="content-textarea"
-          className="text-xs font-semibold text-foreground"
-        >
-          Fiş İçeriği (Metin)
-        </Label>
-        <Textarea
-          id="content-textarea"
-          rows={5}
-          placeholder="Alıntılanan metni, kendi cümlenizle açımlamayı veya tez notunuzu buraya yazın..."
-          value={formFields.content}
-          onChange={(e) => setField("content", e.target.value)}
-          onPaste={handleContentPaste}
-          className="font-sans leading-relaxed resize-none overflow-y-auto text-xs bg-background border-border"
-        />
-      </div>
-
-      {/* Kişisel Yorum / Şerh (Opsiyonel) */}
-      <div className="space-y-1.5">
-        <div className="flex items-center gap-1.5">
-          <MessageSquareQuote className="h-3.5 w-3.5 text-primary" />
-          <Label
-            htmlFor="comment-textarea"
-            className="text-xs font-semibold text-foreground"
-          >
-            Düşünce / Şerh
-          </Label>
-          <span className="text-[10px] text-muted-foreground font-normal">
-            (Opsiyonel)
-          </span>
-        </div>
-        <Textarea
-          id="comment-textarea"
-          rows={3}
-          placeholder="Bu fişi tez çalışmanızda nasıl değerlendireceğinize dair kendi şerh veya yorumunuzu ekleyin..."
-          value={formFields.comment}
-          onChange={(e) => setField("comment", e.target.value)}
-          className="text-xs leading-relaxed resize-none overflow-y-auto bg-background border-border"
-        />
-      </div>
-
-      <DialogFooter className="pt-3 border-t border-border flex items-center justify-end gap-2">
-        <Button
-          type="button"
-          variant="outline"
-          size="sm"
-          onClick={onClose}
-          className="h-8 px-4 text-xs"
-        >
-          İptal
-        </Button>
-        <Button type="submit" size="sm" className="h-8 px-4 text-xs">
-          {isEditing ? "Değişiklikleri Kaydet" : "Fiş Oluştur"}
-        </Button>
-      </DialogFooter>
-    </form>
-  );
-}
-</file>
-
 <file path="src/app/(app)/citation-cards/_components/citation-card.tsx">
 "use client";
 
@@ -48457,7 +48206,7 @@ function OutlineEditor({
     setSections(nextSections);
     setExpandedIndices((prev) => new Set([...prev, insertIndex]));
     toast.success("Yeni gövde bölümü eklendi.");
-  }, [sections]);
+  }, [sections, setSections]);
 
   const handleUpdateSection = useCallback(
     (index: number, updated: OutlineSectionData) => {
@@ -48467,7 +48216,7 @@ function OutlineEditor({
         return next;
       });
     },
-    [],
+    [setSections],
   );
 
   const handleDeleteSection = useCallback(
@@ -48492,17 +48241,23 @@ function OutlineEditor({
       });
       toast.info("Bölüm silindi.");
     },
-    [sections.length],
+    [sections.length, setSections],
   );
 
   // Main Section Drag & Drop Handlers
-  const handleDragStartSection = useCallback((index: number) => {
-    setDraggedSectionIndex(index);
-  }, []);
+  const handleDragStartSection = useCallback(
+    (index: number) => {
+      setDraggedSectionIndex(index);
+    },
+    [setDraggedSectionIndex],
+  );
 
-  const handleDragOverSection = useCallback((index: number) => {
-    setDragOverSectionIndex(index);
-  }, []);
+  const handleDragOverSection = useCallback(
+    (index: number) => {
+      setDragOverSectionIndex(index);
+    },
+    [setDragOverSectionIndex],
+  );
 
   const handleDropSection = useCallback(
     (targetIndex: number) => {
@@ -48522,13 +48277,18 @@ function OutlineEditor({
       setDraggedSectionIndex(null);
       setDragOverSectionIndex(null);
     },
-    [draggedSectionIndex],
+    [
+      draggedSectionIndex,
+      setDraggedSectionIndex,
+      setDragOverSectionIndex,
+      setSections,
+    ],
   );
 
   const handleDragEndSection = useCallback(() => {
     setDraggedSectionIndex(null);
     setDragOverSectionIndex(null);
-  }, []);
+  }, [setDraggedSectionIndex, setDragOverSectionIndex]);
 
   const handleRegenerate = useCallback(async () => {
     if (isRegenerating) return;
@@ -48546,7 +48306,7 @@ function OutlineEditor({
     } finally {
       setIsRegenerating(false);
     }
-  }, [isRegenerating]);
+  }, [isRegenerating, setIsRegenerating, setAcademicField, setSections]);
 
   const handleConfirm = useCallback(async () => {
     if (confirming) return;
@@ -48579,7 +48339,7 @@ function OutlineEditor({
     } finally {
       setConfirming(false);
     }
-  }, [confirming, academicField, sections, proceedFromOutline]);
+  }, [confirming, setConfirming, academicField, sections, proceedFromOutline]);
 
   return (
     <div className="w-full flex flex-col gap-6">
@@ -49341,6 +49101,260 @@ function DialogBody(props: DialogBodyProps) {
 }
 </file>
 
+<file path="src/app/(app)/citation-cards/_components/citation-card-form.tsx">
+"use client";
+
+import { MessageSquareQuote, BookOpen, FolderOpen } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { DialogFooter } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
+import { BOX_TYPE_LABELS, getBoxTypeBadgeConfig } from "@/lib/box-constants";
+import { cn } from "@/lib/utils";
+import { NOTE_TYPE_DISPLAY_LABELS } from "../_lib/note-type-labels";
+import {
+  useCitationCardForm,
+  type CitationCardFormProps,
+} from "../_hooks/use-citation-card-form";
+import type { CitationNoteType } from "../_lib/types";
+
+export type { CitationCardFormProps } from "../_hooks/use-citation-card-form";
+export { NOTE_TYPE_DISPLAY_LABELS } from "../_lib/note-type-labels";
+
+/**
+ * Form handling inputs and state for card creation/editing.
+ *
+ * @param props - Form props.
+ * @returns Form markup.
+ */
+export function CitationCardForm(props: CitationCardFormProps) {
+  const { sources, boxes, onClose } = props;
+  const {
+    formFields,
+    setField,
+    selectedSourceObj,
+    selectedBoxObj,
+    handleSubmit,
+    handleContentPaste,
+    isEditing,
+  } = useCitationCardForm(props);
+
+  return (
+    <form onSubmit={handleSubmit} className="space-y-4 py-2">
+      {/* Kaynak & Konu Kutusu Seçimi */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div className="space-y-1.5">
+          <Label
+            htmlFor="source-select"
+            className="text-xs font-semibold text-foreground flex items-center gap-1.5"
+          >
+            <BookOpen className="h-3.5 w-3.5 text-primary" />
+            Akademik Kaynak
+          </Label>
+          <Select
+            value={formFields.selectedSourceId}
+            onValueChange={(v) => setField("selectedSourceId", v)}
+          >
+            <SelectTrigger
+              id="source-select"
+              className="h-9 text-xs bg-background border-border"
+            >
+              <SelectValue placeholder="Kaynak Seçin">
+                {selectedSourceObj
+                  ? `${selectedSourceObj.title} (${selectedSourceObj.authors[0] ?? "Yazar"}, ${selectedSourceObj.publicationYear})`
+                  : "Kaynak Seçin"}
+              </SelectValue>
+            </SelectTrigger>
+            <SelectContent className="max-h-60">
+              {sources.map((src) => (
+                <SelectItem
+                  key={src.id}
+                  value={String(src.id)}
+                  className="text-xs py-2"
+                >
+                  <span className="font-medium">{src.title}</span> (
+                  {src.authors[0] ?? "Yazar"}, {src.publicationYear})
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+
+        {/* Bağlı Konu Kutusu */}
+        <div className="space-y-1.5">
+          <Label
+            htmlFor="box-select"
+            className="text-xs font-semibold text-foreground flex items-center gap-1.5"
+          >
+            <FolderOpen className="h-3.5 w-3.5 text-primary" />
+            Bağlı Konu Kutusu
+          </Label>
+          <Select
+            value={formFields.selectedBoxId}
+            onValueChange={(v) => setField("selectedBoxId", v)}
+          >
+            <SelectTrigger
+              id="box-select"
+              className="h-9 text-xs bg-background border-border"
+            >
+              <SelectValue placeholder="Kutu Seçin">
+                {selectedBoxObj
+                  ? `[${BOX_TYPE_LABELS[selectedBoxObj.boxType]}] ${selectedBoxObj.title}`
+                  : "Kutu Seçin"}
+              </SelectValue>
+            </SelectTrigger>
+            <SelectContent className="max-h-60">
+              {boxes.map((box) => {
+                const boxConfig = getBoxTypeBadgeConfig(box.boxType);
+                return (
+                  <SelectItem
+                    key={box.id}
+                    value={String(box.id)}
+                    className="text-xs py-2"
+                  >
+                    <div className="flex items-center gap-2">
+                      <span
+                        className={cn(
+                          "h-2 w-2 rounded-full shrink-0",
+                          boxConfig.dotClassName,
+                        )}
+                      />
+                      <span>
+                        [{BOX_TYPE_LABELS[box.boxType]}] {box.title}
+                      </span>
+                    </div>
+                  </SelectItem>
+                );
+              })}
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
+
+      {/* Not Türü & Sayfa Numarası */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div className="space-y-1.5">
+          <Label
+            htmlFor="note-type-select"
+            className="text-xs font-semibold text-foreground"
+          >
+            Not Türü
+          </Label>
+          <Select
+            value={formFields.noteType}
+            onValueChange={(val: string) =>
+              setField("noteType", val as CitationNoteType)
+            }
+          >
+            <SelectTrigger
+              id="note-type-select"
+              className="h-9 text-xs bg-background border-border"
+            >
+              <SelectValue>
+                {NOTE_TYPE_DISPLAY_LABELS[formFields.noteType]}
+              </SelectValue>
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="DIRECT_QUOTE" className="text-xs">
+                Doğrudan Alıntı
+              </SelectItem>
+              <SelectItem value="PARAPHRASE" className="text-xs">
+                Dolaylı Alıntı
+              </SelectItem>
+              <SelectItem value="PERSONAL_NOTE" className="text-xs">
+                Kişisel Not
+              </SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+
+        <div className="space-y-1.5">
+          <Label
+            htmlFor="page-number-input"
+            className="text-xs font-semibold text-foreground"
+          >
+            Sayfa Numarası
+          </Label>
+          <Input
+            id="page-number-input"
+            placeholder="Örn: 15 veya 15-17"
+            value={formFields.pageNumber}
+            onChange={(e) => setField("pageNumber", e.target.value)}
+            className="h-9 text-xs font-mono bg-background border-border"
+          />
+        </div>
+      </div>
+
+      {/* Fiş İçeriği (Metin) */}
+      <div className="space-y-1.5">
+        <Label
+          htmlFor="content-textarea"
+          className="text-xs font-semibold text-foreground"
+        >
+          Fiş İçeriği (Metin)
+        </Label>
+        <Textarea
+          id="content-textarea"
+          rows={5}
+          placeholder="Alıntılanan metni, kendi cümlenizle açımlamayı veya tez notunuzu buraya yazın..."
+          value={formFields.content}
+          onChange={(e) => setField("content", e.target.value)}
+          onPaste={handleContentPaste}
+          className="font-sans leading-relaxed resize-none overflow-y-auto text-xs bg-background border-border"
+        />
+      </div>
+
+      {/* Kişisel Yorum / Şerh (Opsiyonel) */}
+      <div className="space-y-1.5">
+        <div className="flex items-center gap-1.5">
+          <MessageSquareQuote className="h-3.5 w-3.5 text-primary" />
+          <Label
+            htmlFor="comment-textarea"
+            className="text-xs font-semibold text-foreground"
+          >
+            Düşünce / Şerh
+          </Label>
+          <span className="text-[10px] text-muted-foreground font-normal">
+            (Opsiyonel)
+          </span>
+        </div>
+        <Textarea
+          id="comment-textarea"
+          rows={3}
+          placeholder="Bu fişi tez çalışmanızda nasıl değerlendireceğinize dair kendi şerh veya yorumunuzu ekleyin..."
+          value={formFields.comment}
+          onChange={(e) => setField("comment", e.target.value)}
+          className="text-xs leading-relaxed resize-none overflow-y-auto bg-background border-border"
+        />
+      </div>
+
+      <DialogFooter className="pt-3 border-t border-border flex items-center justify-end gap-2">
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          onClick={onClose}
+          className="h-8 px-4 text-xs"
+        >
+          İptal
+        </Button>
+        <Button type="submit" size="sm" className="h-8 px-4 text-xs">
+          {isEditing ? "Değişiklikleri Kaydet" : "Fiş Oluştur"}
+        </Button>
+      </DialogFooter>
+    </form>
+  );
+}
+</file>
+
 <file path="src/app/(app)/library/_components/resource-detail.tsx">
 "use client";
 
@@ -49821,6 +49835,226 @@ export async function finalizeOnboardingAction(
 }
 </file>
 
+<file path="src/app/(app)/advisor/_components/markdown-renderer.tsx">
+"use client";
+
+import { useCallback, type MouseEvent } from "react";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
+import rehypeRaw from "rehype-raw";
+import type { Components } from "react-markdown";
+import type { RagSearchResultItem } from "@/core/services/search/rag-search";
+import { CITATION_ATTR, formatContent } from "../_lib/citation-matching";
+
+const components: Components = {
+  h1: ({ children, ...props }) => (
+    <h1
+      className="font-serif text-2xl font-bold tracking-tight text-foreground mt-4 mb-2"
+      {...props}
+    >
+      {children}
+    </h1>
+  ),
+  h2: ({ children, ...props }) => (
+    <h2
+      className="font-serif text-xl font-semibold tracking-tight text-foreground mt-4 mb-2"
+      {...props}
+    >
+      {children}
+    </h2>
+  ),
+  h3: ({ children, ...props }) => (
+    <h3
+      className="font-serif text-[15px] font-medium text-foreground mt-3 mb-1.5"
+      {...props}
+    >
+      {children}
+    </h3>
+  ),
+  p: ({ children, ...props }) => (
+    <p
+      className="text-[15px] leading-relaxed text-card-foreground font-light mb-3"
+      {...props}
+    >
+      {children}
+    </p>
+  ),
+  ul: ({ children, ...props }) => (
+    <ul
+      className="list-disc list-outside pl-5 space-y-2 text-[15px] text-card-foreground font-light mb-3"
+      {...props}
+    >
+      {children}
+    </ul>
+  ),
+  ol: ({ children, ...props }) => (
+    <ol
+      className="list-decimal list-outside pl-5 space-y-2 text-[15px] text-card-foreground font-light mb-3"
+      {...props}
+    >
+      {children}
+    </ol>
+  ),
+  li: ({ children, ...props }) => (
+    <li
+      className="text-[15px] leading-relaxed text-card-foreground font-light [&>p]:inline [&>p]:mb-0"
+      {...props}
+    >
+      {children}
+    </li>
+  ),
+  strong: ({ children, ...props }) => (
+    <strong className="font-medium text-foreground" {...props}>
+      {children}
+    </strong>
+  ),
+  em: ({ children, ...props }) => (
+    <em className="italic text-muted-foreground" {...props}>
+      {children}
+    </em>
+  ),
+  del: ({ children, ...props }) => (
+    <del className="line-through text-muted-foreground" {...props}>
+      {children}
+    </del>
+  ),
+  code: ({ className, children, ...props }) => {
+    const isBlock = className?.includes("language-");
+    if (isBlock) {
+      return (
+        <pre className="bg-muted/20 border border-border/40 rounded-lg p-3 text-xs font-mono overflow-x-auto whitespace-pre my-2">
+          <code className={className} {...props}>
+            {children}
+          </code>
+        </pre>
+      );
+    }
+    return (
+      <code
+        className="bg-muted px-2 py-1 rounded text-xs font-mono text-primary"
+        {...props}
+      >
+        {children}
+      </code>
+    );
+  },
+  a: ({ href, children, ...props }) => (
+    <a
+      href={href}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="text-primary underline underline-offset-2 transition-colors"
+      {...props}
+    >
+      {children}
+    </a>
+  ),
+  blockquote: ({ children, ...props }) => (
+    <blockquote
+      className="border-l-2 border-primary/20 pl-3 italic text-muted-foreground my-3"
+      {...props}
+    >
+      {children}
+    </blockquote>
+  ),
+  table: ({ children, ...props }) => (
+    <div className="overflow-x-auto my-3">
+      <table className="w-full text-xs border-collapse" {...props}>
+        {children}
+      </table>
+    </div>
+  ),
+  thead: ({ children, ...props }) => (
+    <thead className="bg-muted/20" {...props}>
+      {children}
+    </thead>
+  ),
+  th: ({ children, ...props }) => (
+    <th className="font-medium text-left p-2 border border-border" {...props}>
+      {children}
+    </th>
+  ),
+  td: ({ children, ...props }) => (
+    <td className="p-2 border border-border" {...props}>
+      {children}
+    </td>
+  ),
+  hr: (props) => <hr className="my-3 border-border/40" {...props} />,
+  input: (props) => (
+    <input
+      type="checkbox"
+      checked={props.checked}
+      readOnly
+      aria-label="İşaretli onay kutusu"
+      className="mr-1 accent-primary"
+    />
+  ),
+};
+
+interface MarkdownRendererProps {
+  content: string;
+  sources?: RagSearchResultItem[];
+  onCitationClick?: (sourceIndex: number) => void;
+}
+
+/**
+ * Renders markdown content as styled React elements with clickable citation badges.
+ *
+ * @param root0 - Component props.
+ * @param root0.content - Markdown string to render.
+ * @param root0.sources - RAG source items for citation matching.
+ * @param root0.onCitationClick - Callback when a citation badge is clicked.
+ * @returns The rendered markdown output.
+ */
+export function MarkdownRenderer({
+  content,
+  sources = [],
+  onCitationClick,
+}: MarkdownRendererProps) {
+  const handleClick = useCallback(
+    (e: MouseEvent<HTMLDivElement>) => {
+      const target = e.target as HTMLElement;
+      const badge = target.closest(`[${CITATION_ATTR}]`);
+      if (badge) {
+        const idx = parseInt(badge.getAttribute(CITATION_ATTR) ?? "-1", 10);
+        if (idx >= 0 && onCitationClick) {
+          onCitationClick(idx);
+        }
+      }
+    },
+    [onCitationClick],
+  );
+
+  const handleKeyDown = useCallback(
+    (e: React.KeyboardEvent<HTMLDivElement>) => {
+      if (e.key !== "Enter" && e.key !== " ") return;
+      const target = e.target as HTMLElement;
+      const badge = target.closest(`[${CITATION_ATTR}]`);
+      if (badge) {
+        e.preventDefault();
+        const idx = parseInt(badge.getAttribute(CITATION_ATTR) ?? "-1", 10);
+        if (idx >= 0 && onCitationClick) {
+          onCitationClick(idx);
+        }
+      }
+    },
+    [onCitationClick],
+  );
+
+  return (
+    <div role="presentation" onClick={handleClick} onKeyDown={handleKeyDown}>
+      <ReactMarkdown
+        remarkPlugins={[remarkGfm]}
+        rehypePlugins={[rehypeRaw]}
+        components={components}
+      >
+        {formatContent(content, sources)}
+      </ReactMarkdown>
+    </div>
+  );
+}
+</file>
+
 <file path="src/app/(app)/advisor/_components/tool-confirmation-card.tsx">
 "use client";
 
@@ -50078,6 +50312,67 @@ export function ToolConfirmationCard({
       )}
     </Card>
   );
+}
+</file>
+
+<file path="src/app/(app)/advisor/actions.ts">
+"use server";
+
+import {
+  getChatSessions as _getChatSessions,
+  createChatSession as _createChatSession,
+  renameChatSession as _renameChatSession,
+  deleteChatSession as _deleteChatSession,
+} from "./session-actions";
+import {
+  getChatMessages as _getChatMessages,
+  saveChatMessage as _saveChatMessage,
+  updateChatMessageToolCalls as _updateChatMessageToolCalls,
+} from "./message-actions";
+import { generateChatTitleAction as _generateChatTitleAction } from "./title-actions";
+
+export type {
+  ChatSessionListItem,
+  ChatSessionsResult,
+} from "./session-actions";
+
+export async function getChatSessions() {
+  return _getChatSessions();
+}
+
+export async function createChatSession(title: string) {
+  return _createChatSession(title);
+}
+
+export async function renameChatSession(sessionId: number, newTitle: string) {
+  return _renameChatSession(sessionId, newTitle);
+}
+
+export async function deleteChatSession(sessionId: number) {
+  return _deleteChatSession(sessionId);
+}
+
+export async function getChatMessages(sessionId: number) {
+  return _getChatMessages(sessionId);
+}
+
+export async function saveChatMessage(
+  ...args: Parameters<typeof _saveChatMessage>
+) {
+  return _saveChatMessage(...args);
+}
+
+export async function updateChatMessageToolCalls(
+  ...args: Parameters<typeof _updateChatMessageToolCalls>
+) {
+  return _updateChatMessageToolCalls(...args);
+}
+
+export async function generateChatTitleAction(
+  sessionId: number,
+  firstUserMessage: string,
+) {
+  return _generateChatTitleAction(sessionId, firstUserMessage);
 }
 </file>
 
@@ -51184,287 +51479,6 @@ export class Logger implements LoggerInstance {
 }
 </file>
 
-<file path="src/app/(app)/advisor/_components/markdown-renderer.tsx">
-"use client";
-
-import { useCallback, type MouseEvent } from "react";
-import ReactMarkdown from "react-markdown";
-import remarkGfm from "remark-gfm";
-import rehypeRaw from "rehype-raw";
-import type { Components } from "react-markdown";
-import type { RagSearchResultItem } from "@/core/services/search/rag-search";
-import { CITATION_ATTR, formatContent } from "../_lib/citation-matching";
-
-const components: Components = {
-  h1: ({ children, ...props }) => (
-    <h1
-      className="font-serif text-2xl font-bold tracking-tight text-foreground mt-4 mb-2"
-      {...props}
-    >
-      {children}
-    </h1>
-  ),
-  h2: ({ children, ...props }) => (
-    <h2
-      className="font-serif text-xl font-semibold tracking-tight text-foreground mt-4 mb-2"
-      {...props}
-    >
-      {children}
-    </h2>
-  ),
-  h3: ({ children, ...props }) => (
-    <h3
-      className="font-serif text-[15px] font-medium text-foreground mt-3 mb-1.5"
-      {...props}
-    >
-      {children}
-    </h3>
-  ),
-  p: ({ children, ...props }) => (
-    <p
-      className="text-[15px] leading-relaxed text-card-foreground font-light mb-3"
-      {...props}
-    >
-      {children}
-    </p>
-  ),
-  ul: ({ children, ...props }) => (
-    <ul
-      className="list-disc list-outside pl-5 space-y-2 text-[15px] text-card-foreground font-light mb-3"
-      {...props}
-    >
-      {children}
-    </ul>
-  ),
-  ol: ({ children, ...props }) => (
-    <ol
-      className="list-decimal list-outside pl-5 space-y-2 text-[15px] text-card-foreground font-light mb-3"
-      {...props}
-    >
-      {children}
-    </ol>
-  ),
-  li: ({ children, ...props }) => (
-    <li
-      className="text-[15px] leading-relaxed text-card-foreground font-light [&>p]:inline [&>p]:mb-0"
-      {...props}
-    >
-      {children}
-    </li>
-  ),
-  strong: ({ children, ...props }) => (
-    <strong className="font-medium text-foreground" {...props}>
-      {children}
-    </strong>
-  ),
-  em: ({ children, ...props }) => (
-    <em className="italic text-muted-foreground" {...props}>
-      {children}
-    </em>
-  ),
-  del: ({ children, ...props }) => (
-    <del className="line-through text-muted-foreground" {...props}>
-      {children}
-    </del>
-  ),
-  code: ({ className, children, ...props }) => {
-    const isBlock = className?.includes("language-");
-    if (isBlock) {
-      return (
-        <pre className="bg-muted/20 border border-border/40 rounded-lg p-3 text-xs font-mono overflow-x-auto whitespace-pre my-2">
-          <code className={className} {...props}>
-            {children}
-          </code>
-        </pre>
-      );
-    }
-    return (
-      <code
-        className="bg-muted px-2 py-1 rounded text-xs font-mono text-primary"
-        {...props}
-      >
-        {children}
-      </code>
-    );
-  },
-  a: ({ href, children, ...props }) => (
-    <a
-      href={href}
-      target="_blank"
-      rel="noopener noreferrer"
-      className="text-primary underline underline-offset-2 transition-colors"
-      {...props}
-    >
-      {children}
-    </a>
-  ),
-  blockquote: ({ children, ...props }) => (
-    <blockquote
-      className="border-l-2 border-primary/20 pl-3 italic text-muted-foreground my-3"
-      {...props}
-    >
-      {children}
-    </blockquote>
-  ),
-  table: ({ children, ...props }) => (
-    <div className="overflow-x-auto my-3">
-      <table className="w-full text-xs border-collapse" {...props}>
-        {children}
-      </table>
-    </div>
-  ),
-  thead: ({ children, ...props }) => (
-    <thead className="bg-muted/20" {...props}>
-      {children}
-    </thead>
-  ),
-  th: ({ children, ...props }) => (
-    <th className="font-medium text-left p-2 border border-border" {...props}>
-      {children}
-    </th>
-  ),
-  td: ({ children, ...props }) => (
-    <td className="p-2 border border-border" {...props}>
-      {children}
-    </td>
-  ),
-  hr: (props) => <hr className="my-3 border-border/40" {...props} />,
-  input: (props) => (
-    <input
-      type="checkbox"
-      checked={props.checked}
-      readOnly
-      aria-label="İşaretli onay kutusu"
-      className="mr-1 accent-primary"
-    />
-  ),
-};
-
-interface MarkdownRendererProps {
-  content: string;
-  sources?: RagSearchResultItem[];
-  onCitationClick?: (sourceIndex: number) => void;
-}
-
-/**
- * Renders markdown content as styled React elements with clickable citation badges.
- *
- * @param root0 - Component props.
- * @param root0.content - Markdown string to render.
- * @param root0.sources - RAG source items for citation matching.
- * @param root0.onCitationClick - Callback when a citation badge is clicked.
- * @returns The rendered markdown output.
- */
-export function MarkdownRenderer({
-  content,
-  sources = [],
-  onCitationClick,
-}: MarkdownRendererProps) {
-  const handleClick = useCallback(
-    (e: MouseEvent<HTMLDivElement>) => {
-      const target = e.target as HTMLElement;
-      const badge = target.closest(`[${CITATION_ATTR}]`);
-      if (badge) {
-        const idx = parseInt(badge.getAttribute(CITATION_ATTR) ?? "-1", 10);
-        if (idx >= 0 && onCitationClick) {
-          onCitationClick(idx);
-        }
-      }
-    },
-    [onCitationClick],
-  );
-
-  const handleKeyDown = useCallback(
-    (e: React.KeyboardEvent<HTMLDivElement>) => {
-      if (e.key !== "Enter" && e.key !== " ") return;
-      const target = e.target as HTMLElement;
-      const badge = target.closest(`[${CITATION_ATTR}]`);
-      if (badge) {
-        e.preventDefault();
-        const idx = parseInt(badge.getAttribute(CITATION_ATTR) ?? "-1", 10);
-        if (idx >= 0 && onCitationClick) {
-          onCitationClick(idx);
-        }
-      }
-    },
-    [onCitationClick],
-  );
-
-  return (
-    <div role="presentation" onClick={handleClick} onKeyDown={handleKeyDown}>
-      <ReactMarkdown
-        remarkPlugins={[remarkGfm]}
-        rehypePlugins={[rehypeRaw]}
-        components={components}
-      >
-        {formatContent(content, sources)}
-      </ReactMarkdown>
-    </div>
-  );
-}
-</file>
-
-<file path="src/app/(app)/advisor/actions.ts">
-"use server";
-
-import {
-  getChatSessions as _getChatSessions,
-  createChatSession as _createChatSession,
-  renameChatSession as _renameChatSession,
-  deleteChatSession as _deleteChatSession,
-} from "./session-actions";
-import {
-  getChatMessages as _getChatMessages,
-  saveChatMessage as _saveChatMessage,
-  updateChatMessageToolCalls as _updateChatMessageToolCalls,
-} from "./message-actions";
-import { generateChatTitleAction as _generateChatTitleAction } from "./title-actions";
-
-export type {
-  ChatSessionListItem,
-  ChatSessionsResult,
-} from "./session-actions";
-
-export async function getChatSessions() {
-  return _getChatSessions();
-}
-
-export async function createChatSession(title: string) {
-  return _createChatSession(title);
-}
-
-export async function renameChatSession(sessionId: number, newTitle: string) {
-  return _renameChatSession(sessionId, newTitle);
-}
-
-export async function deleteChatSession(sessionId: number) {
-  return _deleteChatSession(sessionId);
-}
-
-export async function getChatMessages(sessionId: number) {
-  return _getChatMessages(sessionId);
-}
-
-export async function saveChatMessage(
-  ...args: Parameters<typeof _saveChatMessage>
-) {
-  return _saveChatMessage(...args);
-}
-
-export async function updateChatMessageToolCalls(
-  ...args: Parameters<typeof _updateChatMessageToolCalls>
-) {
-  return _updateChatMessageToolCalls(...args);
-}
-
-export async function generateChatTitleAction(
-  sessionId: number,
-  firstUserMessage: string,
-) {
-  return _generateChatTitleAction(sessionId, firstUserMessage);
-}
-</file>
-
 <file path="src/app/(onboarding)/onboarding/boxes/_components/boxes-container.tsx">
 "use client";
 
@@ -51870,199 +51884,76 @@ export async function clearDownstreamDbAction(
 }
 </file>
 
-<file path="src/app/(app)/citation-cards/_components/citation-sidebar.tsx">
-"use client";
-
-import { Search, X, FolderOpen } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { Separator } from "@/components/ui/separator";
-import { BOX_TYPE_SHORT_LABELS } from "@/lib/box-constants";
-import { cn } from "@/lib/utils";
-import type { CitationCardItem, BoxItem, SourceItem } from "../_lib/types";
-import {
-  useCitationSidebarFilters,
-  DEFAULT_BOX_TYPE_TAB,
-  type BoxTypeTab,
-} from "../_hooks/use-citation-sidebar-filters";
-import { SidebarBoxList } from "./sidebar-box-list";
-import { SidebarSourceList } from "./sidebar-source-list";
-
-/** Tab structure for box type filters. */
-const BOX_TYPE_TABS: { id: BoxTypeTab; label: string }[] = [
-  { id: "ALL", label: "Tümü" },
-  { id: "SUBJECT_PROBLEM", label: BOX_TYPE_SHORT_LABELS.SUBJECT_PROBLEM },
-  {
-    id: "THEORETICAL_FRAMEWORK",
-    label: BOX_TYPE_SHORT_LABELS.THEORETICAL_FRAMEWORK,
+<file path="package.json">
+{
+  "name": "fabricca",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "eslint .",
+    "typecheck": "tsc --noEmit",
+    "check:full": "npm run lint && npm run typecheck && npx prettier --write .",
+    "db:push": "drizzle-kit push --force",
+    "db:reset": "tsx src/core/db/reset.ts",
+    "db:seed": "tsx src/core/db/seed.ts"
   },
-  { id: "METHODOLOGY", label: BOX_TYPE_SHORT_LABELS.METHODOLOGY },
-  { id: "PRIMARY_MATERIAL", label: BOX_TYPE_SHORT_LABELS.PRIMARY_MATERIAL },
-  { id: "RELATED_THESES", label: BOX_TYPE_SHORT_LABELS.RELATED_THESES },
-];
-
-/** Props for CitationSidebar component. */
-export interface CitationSidebarProps {
-  boxes: BoxItem[];
-  sources: SourceItem[];
-  cards: CitationCardItem[];
-  selectedBoxId: number | null;
-  selectedSourceId: number | null;
-  onSelectBox: (boxId: number | null) => void;
-  onSelectSource: (sourceId: number | null) => void;
-}
-
-/**
- * Sidebar component displaying topic boxes and linked sources with search and
- * box-type tabs. Features sticky positioning, compact cards, and instant
- * filtering.
- *
- * @param props - Sidebar props with boxes, sources, and selection handlers.
- * @returns Sidebar markup.
- */
-export function CitationSidebar(props: CitationSidebarProps) {
-  const {
-    boxes,
-    sources,
-    cards,
-    selectedBoxId,
-    selectedSourceId,
-    onSelectBox,
-    onSelectSource,
-  } = props;
-
-  const {
-    searchQuery,
-    setSearchQuery,
-    activeTab,
-    setActiveTab,
-    filteredBoxes,
-    filteredSources,
-    resetSidebarFilters,
-  } = useCitationSidebarFilters(boxes, sources, selectedBoxId);
-
-  const totalCards = cards.length;
-  const isFilterActive =
-    selectedBoxId !== null ||
-    selectedSourceId !== null ||
-    activeTab !== DEFAULT_BOX_TYPE_TAB ||
-    searchQuery.trim() !== "";
-
-  const handleResetFilters = () => {
-    onSelectBox(null);
-    onSelectSource(null);
-    resetSidebarFilters();
-  };
-
-  return (
-    <Card className="w-full lg:w-96 shrink-0 flex flex-col rounded-md p-4 lg:sticky lg:top-[92px] lg:h-[calc(100vh-7rem)] lg:overflow-hidden min-w-0 border-border">
-      {/* Sidebar Header */}
-      <div className="flex items-center justify-between pb-3 border-b border-border shrink-0">
-        <div className="flex items-center gap-2 min-w-0">
-          <div className="h-7 w-7 rounded-md bg-primary/10 border border-primary/20 flex items-center justify-center text-primary shrink-0">
-            <FolderOpen className="h-4 w-4" />
-          </div>
-          <div>
-            <h3 className="font-serif text-sm font-semibold tracking-tight text-foreground">
-              Kutu & Kaynaklar
-            </h3>
-            <p className="text-[10px] text-muted-foreground">
-              Tez konu kutusu ve kaynak filtresi
-            </p>
-          </div>
-        </div>
-        <div className="flex items-center gap-1.5 shrink-0">
-          <Badge
-            variant="outline"
-            className="text-[10px] font-mono font-semibold text-muted-foreground border-border"
-          >
-            {totalCards} Fiş
-          </Badge>
-          {isFilterActive && (
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={handleResetFilters}
-              title="Filtreleri Temizle"
-              className="h-6 w-6 text-muted-foreground hover:text-foreground"
-            >
-              <X className="h-3.5 w-3.5" />
-            </Button>
-          )}
-        </div>
-      </div>
-
-      {/* Search Input */}
-      <div className="relative w-full shrink-0 my-3">
-        <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
-        <Input
-          type="text"
-          placeholder="Kutu veya kaynak ara..."
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          className="pl-8 pr-8 text-xs h-8 bg-background border-border"
-        />
-        {searchQuery && (
-          <button
-            type="button"
-            onClick={() => setSearchQuery("")}
-            className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-          >
-            <X className="h-3 w-3" />
-          </button>
-        )}
-      </div>
-
-      {/* Box Type Filter Tabs */}
-      <div className="grid grid-cols-6 gap-1 mb-3 shrink-0 rounded-md bg-muted/40 p-1 border border-border/40">
-        {BOX_TYPE_TABS.map((tab) => {
-          const isActive = activeTab === tab.id;
-          return (
-            <button
-              key={tab.id}
-              type="button"
-              onClick={() => setActiveTab(tab.id)}
-              className={cn(
-                "w-full text-center py-1 text-[10px] font-medium rounded transition-all truncate px-0.5 cursor-pointer select-none",
-                isActive
-                  ? "bg-primary text-primary-foreground font-semibold shadow-xs"
-                  : "text-muted-foreground hover:text-foreground hover:bg-muted/80",
-              )}
-              title={tab.label}
-            >
-              {tab.label}
-            </button>
-          );
-        })}
-      </div>
-
-      {/* Scrollable Items Area */}
-      <ScrollArea className="flex-1 min-h-0 pr-1.5 -mr-1.5">
-        <div className="space-y-4 min-w-0 pr-1">
-          <SidebarBoxList
-            boxes={filteredBoxes}
-            cards={cards}
-            selectedBoxId={selectedBoxId}
-            onSelectBox={onSelectBox}
-            onSelectSource={onSelectSource}
-          />
-
-          <Separator className="bg-border/60" />
-
-          <SidebarSourceList
-            sources={filteredSources}
-            cards={cards}
-            selectedBoxId={selectedBoxId}
-            selectedSourceId={selectedSourceId}
-            onSelectSource={onSelectSource}
-          />
-        </div>
-      </ScrollArea>
-    </Card>
-  );
+  "dependencies": {
+    "@aws-sdk/client-s3": "^3.1097.0",
+    "@aws-sdk/s3-request-presigner": "^3.1097.0",
+    "@firecrawl/pdf-inspector": "^1.12.0",
+    "@google/genai": "^2.8.0",
+    "@neondatabase/serverless": "^1.0.0",
+    "@qdrant/js-client-rest": "^1.19.0",
+    "@radix-ui/react-alert-dialog": "^1.1.16",
+    "@radix-ui/react-checkbox": "^1.3.4",
+    "@radix-ui/react-collapsible": "^1.1.17",
+    "@radix-ui/react-dialog": "^1.1.23",
+    "@radix-ui/react-label": "^2.1.9",
+    "@radix-ui/react-popover": "^1.1.23",
+    "@radix-ui/react-scroll-area": "^1.2.11",
+    "@radix-ui/react-slot": "^1.2.5",
+    "@tanstack/react-query": "^5.101.0",
+    "bcrypt-ts": "^6.0.0",
+    "class-variance-authority": "^0.7.1",
+    "clsx": "^2.1.1",
+    "drizzle-orm": "^0.45.2",
+    "lucide-react": "^0.510.0",
+    "next": "^16.3.0",
+    "next-themes": "^0.4.6",
+    "react": "^19.2.7",
+    "react-dom": "^19.2.7",
+    "react-markdown": "^10.1.0",
+    "rehype-raw": "^7.0.0",
+    "remark-gfm": "^4.0.1",
+    "sonner": "^2.0.7",
+    "tailwind-merge": "^3.2.0",
+    "tailwindcss-animate": "^1.0.7",
+    "zod": "^4.4.3"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "^4.1.6",
+    "@types/node": "^22.15.3",
+    "@types/react": "^19.2.17",
+    "@types/react-dom": "^19.2.3",
+    "dotenv": "^16.4.7",
+    "drizzle-kit": "^0.31.10",
+    "eslint": "^9.39.4",
+    "eslint-config-next": "^16.3.0",
+    "postcss": "^8.5.3",
+    "prettier": "^3.9.3",
+    "repomix": "^1.18.0",
+    "tailwindcss": "^4.1.6",
+    "tsx": "^4.22.4",
+    "typescript": "^5.8.3"
+  },
+  "overrides": {
+    "@esbuild-kit/core-utils": {
+      "esbuild": "^0.25.4"
+    }
+  }
 }
 </file>
 
@@ -52187,259 +52078,6 @@ export async function runBoxesPipelineAction(): Promise<
  */
 export async function generateBoxesStructureAction() {
   return runBoxesPipelineAction();
-}
-</file>
-
-<file path="src/app/(onboarding)/onboarding/outline/_components/outline-section-card.tsx">
-"use client";
-
-import {
-  ChevronRight,
-  ChevronUp,
-  Pencil,
-  Trash2,
-  Plus,
-  Check,
-  X,
-  GripVertical,
-} from "lucide-react";
-import { Card } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-import {
-  useOutlineSectionCard,
-  type OutlineSectionCardProps,
-  type OutlineSectionData,
-  type OutlineSubSectionData,
-} from "../_hooks/use-outline-section-card";
-import { SubSectionTreeList } from "./sub-section-tree-list";
-
-export type {
-  OutlineSectionData,
-  OutlineSubSectionData,
-} from "../_hooks/use-outline-section-card";
-
-/**
- * Renders an interactive main section card with inline editing, drag-and-drop
- * reordering for sections and subsections, and subsection management.
- *
- * @param props - Component props.
- * @returns The section card markup.
- */
-export function OutlineSectionCard(props: OutlineSectionCardProps) {
-  const {
-    section,
-    sectionIndex,
-    isExpanded,
-    onToggleExpand,
-    onDeleteSection,
-    onDragStartSection,
-    onDragOverSection,
-    onDropSection,
-    onDragEndSection,
-    isDraggingSection = false,
-    isDragOverSection = false,
-  } = props;
-
-  const {
-    cardState,
-    updateCardState,
-    sectionNumber,
-    subSections,
-    hasSubSections,
-    isSpecialSection,
-    handleSaveSectionEdit,
-    handleCancelSectionEdit,
-    handleAddSubSection,
-    handleDeleteSubSection,
-    handleSubDrop,
-    handleStartSubEdit,
-    handleSaveSubEdit,
-  } = useOutlineSectionCard(props);
-
-  const {
-    isEditingSection,
-    editTitle,
-    editDescription,
-    editingSubIndex,
-    subEditTitle,
-    subEditDescription,
-    draggedSubIdx,
-    dragOverSubIdx,
-  } = cardState;
-
-  return (
-    <Card
-      draggable={!isEditingSection && editingSubIndex === null}
-      onDragStart={() => onDragStartSection(sectionIndex)}
-      onDragOver={(e) => {
-        e.preventDefault();
-        onDragOverSection(sectionIndex);
-      }}
-      onDrop={() => onDropSection(sectionIndex)}
-      onDragEnd={onDragEndSection}
-      className={`flex flex-col w-full p-4 rounded-md border bg-card transition-all duration-200 ${
-        isDraggingSection ? "opacity-40 border-primary" : "border-border"
-      } ${isDragOverSection ? "border-primary ring-2 ring-primary/10" : "hover:border-primary/20"}`}
-    >
-      {/* Header Row */}
-      <div
-        className={`flex ${
-          isEditingSection ? "items-start" : "items-center"
-        } justify-between gap-3`}
-      >
-        <div
-          className={`flex ${
-            isEditingSection ? "items-start" : "items-center"
-          } gap-3 flex-1 min-w-0`}
-        >
-          {/* Drag Handle & Section Number */}
-          <div
-            className={`flex items-center gap-1 shrink-0 ${
-              isEditingSection ? "mt-1" : ""
-            }`}
-          >
-            <span
-              className="cursor-grab active:cursor-grabbing text-muted-foreground/40 hover:text-muted-foreground p-0.5 rounded transition-colors"
-              title="Bölümü Taşı"
-            >
-              <GripVertical className="size-4" />
-            </span>
-            <span className="flex size-7 items-center justify-center rounded-full border border-primary/20 bg-primary/10 text-xs font-bold text-primary shrink-0">
-              {sectionNumber}
-            </span>
-          </div>
-
-          {/* Section Info / Inline Edit */}
-          <div className="flex-1 min-w-0">
-            {isEditingSection ? (
-              <div className="space-y-2">
-                <Input
-                  value={editTitle}
-                  onChange={(e) =>
-                    updateCardState({ editTitle: e.target.value })
-                  }
-                  className="font-serif text-base font-semibold"
-                  placeholder="Bölüm başlığı..."
-                />
-                <Textarea
-                  value={editDescription}
-                  onChange={(e) =>
-                    updateCardState({ editDescription: e.target.value })
-                  }
-                  className="text-xs min-h-[60px]"
-                  placeholder="Bölüm açıklaması..."
-                />
-                <div className="flex items-center gap-2">
-                  <Button
-                    size="sm"
-                    onClick={handleSaveSectionEdit}
-                    className="h-7 text-xs gap-1"
-                  >
-                    <Check className="size-3" /> Kaydet
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    onClick={handleCancelSectionEdit}
-                    className="h-7 text-xs gap-1"
-                  >
-                    <X className="size-3" /> İptal
-                  </Button>
-                </div>
-              </div>
-            ) : (
-              <div>
-                <div className="flex items-center gap-2">
-                  <h3 className="font-serif text-base font-semibold tracking-tight text-foreground leading-snug">
-                    {section.title}
-                  </h3>
-                  {hasSubSections && (
-                    <span className="text-[10px] font-medium bg-muted text-muted-foreground px-2 py-1 rounded-full shrink-0">
-                      {subSections.length} alt bölüm
-                    </span>
-                  )}
-                </div>
-                {section.description && (
-                  <p className="text-xs text-muted-foreground leading-relaxed mt-1">
-                    {section.description}
-                  </p>
-                )}
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* Section Actions */}
-        {!isEditingSection && !isSpecialSection && (
-          <div className="flex items-center gap-1 shrink-0">
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => updateCardState({ isEditingSection: true })}
-              className="size-7 text-muted-foreground hover:text-foreground"
-              title="Bölümü Düzenle"
-            >
-              <Pencil className="size-3.5" />
-            </Button>
-
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={handleAddSubSection}
-              className="size-7 text-primary hover:bg-primary/10"
-              title="Alt Bölüm Ekle"
-            >
-              <Plus className="size-4" />
-            </Button>
-
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={onDeleteSection}
-              className="size-7 text-destructive hover:bg-destructive/10"
-              title="Bölümü Sil"
-            >
-              <Trash2 className="size-3.5" />
-            </Button>
-
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={onToggleExpand}
-              className="size-7 text-muted-foreground hover:text-foreground"
-            >
-              {isExpanded ? (
-                <ChevronUp className="size-4" />
-              ) : (
-                <ChevronRight className="size-4" />
-              )}
-            </Button>
-          </div>
-        )}
-      </div>
-
-      <SubSectionTreeList
-        subSections={subSections}
-        sectionNumber={sectionNumber}
-        isSpecialSection={isSpecialSection}
-        hasSubSections={hasSubSections}
-        isExpanded={isExpanded}
-        editingSubIndex={editingSubIndex}
-        draggedSubIdx={draggedSubIdx}
-        dragOverSubIdx={dragOverSubIdx}
-        subEditTitle={subEditTitle}
-        subEditDescription={subEditDescription}
-        onAddSubSection={handleAddSubSection}
-        onStartSubEdit={handleStartSubEdit}
-        onSaveSubEdit={handleSaveSubEdit}
-        onDeleteSubSection={handleDeleteSubSection}
-        onSubDrop={handleSubDrop}
-        onUpdateCardState={updateCardState}
-      />
-    </Card>
-  );
 }
 </file>
 
@@ -52841,76 +52479,450 @@ function RecommendedThesisCard({ thesis, index }: RecommendedThesisCardProps) {
 }
 </file>
 
-<file path="package.json">
-{
-  "name": "fabricca",
-  "version": "0.1.0",
-  "private": true,
-  "scripts": {
-    "dev": "next dev",
-    "build": "next build",
-    "start": "next start",
-    "lint": "eslint .",
-    "typecheck": "tsc --noEmit",
-    "check:full": "npm run lint && npm run typecheck && npx prettier --write .",
-    "db:push": "drizzle-kit push --force",
-    "db:reset": "tsx src/core/db/reset.ts",
-    "db:seed": "tsx src/core/db/seed.ts"
+<file path="src/app/(app)/citation-cards/_components/citation-sidebar.tsx">
+"use client";
+
+import { Search, X, FolderOpen } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Separator } from "@/components/ui/separator";
+import { BOX_TYPE_SHORT_LABELS } from "@/lib/box-constants";
+import { cn } from "@/lib/utils";
+import type { CitationCardItem, BoxItem, SourceItem } from "../_lib/types";
+import {
+  useCitationSidebarFilters,
+  DEFAULT_BOX_TYPE_TAB,
+  type BoxTypeTab,
+} from "../_hooks/use-citation-sidebar-filters";
+import { SidebarBoxList } from "./sidebar-box-list";
+import { SidebarSourceList } from "./sidebar-source-list";
+
+/** Tab structure for box type filters. */
+const BOX_TYPE_TABS: { id: BoxTypeTab; label: string }[] = [
+  { id: "ALL", label: "Tümü" },
+  { id: "SUBJECT_PROBLEM", label: BOX_TYPE_SHORT_LABELS.SUBJECT_PROBLEM },
+  {
+    id: "THEORETICAL_FRAMEWORK",
+    label: BOX_TYPE_SHORT_LABELS.THEORETICAL_FRAMEWORK,
   },
-  "dependencies": {
-    "@aws-sdk/client-s3": "^3.1097.0",
-    "@aws-sdk/s3-request-presigner": "^3.1097.0",
-    "@firecrawl/pdf-inspector": "^1.12.0",
-    "@google/genai": "^2.8.0",
-    "@neondatabase/serverless": "^1.0.0",
-    "@qdrant/js-client-rest": "^1.19.0",
-    "@radix-ui/react-alert-dialog": "^1.1.16",
-    "@radix-ui/react-checkbox": "^1.3.4",
-    "@radix-ui/react-collapsible": "^1.1.17",
-    "@radix-ui/react-dialog": "^1.1.23",
-    "@radix-ui/react-label": "^2.1.9",
-    "@radix-ui/react-popover": "^1.1.23",
-    "@radix-ui/react-scroll-area": "^1.2.11",
-    "@radix-ui/react-slot": "^1.2.5",
-    "@tanstack/react-query": "^5.101.0",
-    "bcrypt-ts": "^6.0.0",
-    "class-variance-authority": "^0.7.1",
-    "clsx": "^2.1.1",
-    "drizzle-orm": "^0.45.2",
-    "lucide-react": "^0.510.0",
-    "next": "^16.3.0",
-    "next-themes": "^0.4.6",
-    "react": "^19.2.7",
-    "react-dom": "^19.2.7",
-    "react-markdown": "^10.1.0",
-    "rehype-raw": "^7.0.0",
-    "remark-gfm": "^4.0.1",
-    "sonner": "^2.0.7",
-    "tailwind-merge": "^3.2.0",
-    "tailwindcss-animate": "^1.0.7",
-    "zod": "^4.4.3"
-  },
-  "devDependencies": {
-    "@tailwindcss/postcss": "^4.1.6",
-    "@types/node": "^22.15.3",
-    "@types/react": "^19.2.17",
-    "@types/react-dom": "^19.2.3",
-    "dotenv": "^16.4.7",
-    "drizzle-kit": "^0.31.10",
-    "eslint": "^9.39.4",
-    "eslint-config-next": "^16.3.0",
-    "postcss": "^8.5.3",
-    "prettier": "^3.9.3",
-    "repomix": "^1.18.0",
-    "tailwindcss": "^4.1.6",
-    "tsx": "^4.22.4",
-    "typescript": "^5.8.3"
-  },
-  "overrides": {
-    "@esbuild-kit/core-utils": {
-      "esbuild": "^0.25.4"
-    }
-  }
+  { id: "METHODOLOGY", label: BOX_TYPE_SHORT_LABELS.METHODOLOGY },
+  { id: "PRIMARY_MATERIAL", label: BOX_TYPE_SHORT_LABELS.PRIMARY_MATERIAL },
+  { id: "RELATED_THESES", label: BOX_TYPE_SHORT_LABELS.RELATED_THESES },
+];
+
+/** Props for CitationSidebar component. */
+export interface CitationSidebarProps {
+  boxes: BoxItem[];
+  sources: SourceItem[];
+  cards: CitationCardItem[];
+  selectedBoxId: number | null;
+  selectedSourceId: number | null;
+  onSelectBox: (boxId: number | null) => void;
+  onSelectSource: (sourceId: number | null) => void;
+}
+
+/**
+ * Sidebar component displaying topic boxes and linked sources with search and
+ * box-type tabs. Features sticky positioning, compact cards, and instant
+ * filtering.
+ *
+ * @param props - Sidebar props with boxes, sources, and selection handlers.
+ * @returns Sidebar markup.
+ */
+export function CitationSidebar(props: CitationSidebarProps) {
+  const {
+    boxes,
+    sources,
+    cards,
+    selectedBoxId,
+    selectedSourceId,
+    onSelectBox,
+    onSelectSource,
+  } = props;
+
+  const {
+    searchQuery,
+    setSearchQuery,
+    activeTab,
+    setActiveTab,
+    filteredBoxes,
+    filteredSources,
+    resetSidebarFilters,
+  } = useCitationSidebarFilters(boxes, sources, selectedBoxId);
+
+  const totalCards = cards.length;
+  const isFilterActive =
+    selectedBoxId !== null ||
+    selectedSourceId !== null ||
+    activeTab !== DEFAULT_BOX_TYPE_TAB ||
+    searchQuery.trim() !== "";
+
+  const handleResetFilters = () => {
+    onSelectBox(null);
+    onSelectSource(null);
+    resetSidebarFilters();
+  };
+
+  return (
+    <Card className="w-full lg:w-96 shrink-0 flex flex-col rounded-md p-4 lg:sticky lg:top-[92px] lg:h-[calc(100vh-7rem)] lg:overflow-hidden min-w-0 border-border">
+      {/* Sidebar Header */}
+      <div className="flex items-center justify-between pb-3 border-b border-border shrink-0">
+        <div className="flex items-center gap-2 min-w-0">
+          <div className="h-7 w-7 rounded-md bg-primary/10 border border-primary/20 flex items-center justify-center text-primary shrink-0">
+            <FolderOpen className="h-4 w-4" />
+          </div>
+          <div>
+            <h3 className="font-serif text-sm font-semibold tracking-tight text-foreground">
+              Kutu & Kaynaklar
+            </h3>
+            <p className="text-[10px] text-muted-foreground">
+              Tez konu kutusu ve kaynak filtresi
+            </p>
+          </div>
+        </div>
+        <div className="flex items-center gap-1.5 shrink-0">
+          <Badge
+            variant="outline"
+            className="text-[10px] font-mono font-semibold text-muted-foreground border-border"
+          >
+            {totalCards} Fiş
+          </Badge>
+          {isFilterActive && (
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={handleResetFilters}
+              title="Filtreleri Temizle"
+              className="h-6 w-6 text-muted-foreground hover:text-foreground"
+            >
+              <X className="h-3.5 w-3.5" />
+            </Button>
+          )}
+        </div>
+      </div>
+
+      {/* Search Input */}
+      <div className="relative w-full shrink-0 my-3">
+        <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+        <Input
+          type="text"
+          placeholder="Kutu veya kaynak ara..."
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          className="pl-8 pr-8 text-xs h-8 bg-background border-border"
+        />
+        {searchQuery && (
+          <button
+            type="button"
+            onClick={() => setSearchQuery("")}
+            className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+          >
+            <X className="h-3 w-3" />
+          </button>
+        )}
+      </div>
+
+      {/* Box Type Filter Tabs */}
+      <div className="grid grid-cols-6 gap-1 mb-3 shrink-0 rounded-md bg-muted/40 p-1 border border-border/40">
+        {BOX_TYPE_TABS.map((tab) => {
+          const isActive = activeTab === tab.id;
+          return (
+            <button
+              key={tab.id}
+              type="button"
+              onClick={() => setActiveTab(tab.id)}
+              className={cn(
+                "w-full text-center py-1 text-[10px] font-medium rounded transition-all truncate px-0.5 cursor-pointer select-none",
+                isActive
+                  ? "bg-primary text-primary-foreground font-semibold shadow-xs"
+                  : "text-muted-foreground hover:text-foreground hover:bg-muted/80",
+              )}
+              title={tab.label}
+            >
+              {tab.label}
+            </button>
+          );
+        })}
+      </div>
+
+      {/* Scrollable Items Area */}
+      <ScrollArea className="flex-1 min-h-0 pr-1.5 -mr-1.5">
+        <div className="space-y-4 min-w-0 pr-1">
+          <SidebarBoxList
+            boxes={filteredBoxes}
+            cards={cards}
+            selectedBoxId={selectedBoxId}
+            onSelectBox={onSelectBox}
+            onSelectSource={onSelectSource}
+          />
+
+          <Separator className="bg-border/60" />
+
+          <SidebarSourceList
+            sources={filteredSources}
+            cards={cards}
+            selectedBoxId={selectedBoxId}
+            selectedSourceId={selectedSourceId}
+            onSelectSource={onSelectSource}
+          />
+        </div>
+      </ScrollArea>
+    </Card>
+  );
+}
+</file>
+
+<file path="src/app/(onboarding)/onboarding/outline/_components/outline-section-card.tsx">
+"use client";
+
+import {
+  ChevronRight,
+  ChevronUp,
+  Pencil,
+  Trash2,
+  Plus,
+  Check,
+  X,
+  GripVertical,
+} from "lucide-react";
+import { Card } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import {
+  useOutlineSectionCard,
+  type OutlineSectionCardProps,
+} from "../_hooks/use-outline-section-card";
+import { SubSectionTreeList } from "./sub-section-tree-list";
+
+export type {
+  OutlineSectionData,
+  OutlineSubSectionData,
+} from "../_hooks/use-outline-section-card";
+
+/**
+ * Renders an interactive main section card with inline editing, drag-and-drop
+ * reordering for sections and subsections, and subsection management.
+ *
+ * @param props - Component props.
+ * @returns The section card markup.
+ */
+export function OutlineSectionCard(props: OutlineSectionCardProps) {
+  const {
+    section,
+    sectionIndex,
+    isExpanded,
+    onToggleExpand,
+    onDeleteSection,
+    onDragStartSection,
+    onDragOverSection,
+    onDropSection,
+    onDragEndSection,
+    isDraggingSection = false,
+    isDragOverSection = false,
+  } = props;
+
+  const {
+    cardState,
+    updateCardState,
+    sectionNumber,
+    subSections,
+    hasSubSections,
+    isSpecialSection,
+    handleSaveSectionEdit,
+    handleCancelSectionEdit,
+    handleAddSubSection,
+    handleDeleteSubSection,
+    handleSubDrop,
+    handleStartSubEdit,
+    handleSaveSubEdit,
+  } = useOutlineSectionCard(props);
+
+  const {
+    isEditingSection,
+    editTitle,
+    editDescription,
+    editingSubIndex,
+    subEditTitle,
+    subEditDescription,
+    draggedSubIdx,
+    dragOverSubIdx,
+  } = cardState;
+
+  return (
+    <Card
+      draggable={!isEditingSection && editingSubIndex === null}
+      onDragStart={() => onDragStartSection(sectionIndex)}
+      onDragOver={(e) => {
+        e.preventDefault();
+        onDragOverSection(sectionIndex);
+      }}
+      onDrop={() => onDropSection(sectionIndex)}
+      onDragEnd={onDragEndSection}
+      className={`flex flex-col w-full p-4 rounded-md border bg-card transition-all duration-200 ${
+        isDraggingSection ? "opacity-40 border-primary" : "border-border"
+      } ${isDragOverSection ? "border-primary ring-2 ring-primary/10" : "hover:border-primary/20"}`}
+    >
+      {/* Header Row */}
+      <div
+        className={`flex ${
+          isEditingSection ? "items-start" : "items-center"
+        } justify-between gap-3`}
+      >
+        <div
+          className={`flex ${
+            isEditingSection ? "items-start" : "items-center"
+          } gap-3 flex-1 min-w-0`}
+        >
+          {/* Drag Handle & Section Number */}
+          <div
+            className={`flex items-center gap-1 shrink-0 ${
+              isEditingSection ? "mt-1" : ""
+            }`}
+          >
+            <span
+              className="cursor-grab active:cursor-grabbing text-muted-foreground/40 hover:text-muted-foreground p-0.5 rounded transition-colors"
+              title="Bölümü Taşı"
+            >
+              <GripVertical className="size-4" />
+            </span>
+            <span className="flex size-7 items-center justify-center rounded-full border border-primary/20 bg-primary/10 text-xs font-bold text-primary shrink-0">
+              {sectionNumber}
+            </span>
+          </div>
+
+          {/* Section Info / Inline Edit */}
+          <div className="flex-1 min-w-0">
+            {isEditingSection ? (
+              <div className="space-y-2">
+                <Input
+                  value={editTitle}
+                  onChange={(e) =>
+                    updateCardState({ editTitle: e.target.value })
+                  }
+                  className="font-serif text-base font-semibold"
+                  placeholder="Bölüm başlığı..."
+                />
+                <Textarea
+                  value={editDescription}
+                  onChange={(e) =>
+                    updateCardState({ editDescription: e.target.value })
+                  }
+                  className="text-xs min-h-[60px]"
+                  placeholder="Bölüm açıklaması..."
+                />
+                <div className="flex items-center gap-2">
+                  <Button
+                    size="sm"
+                    onClick={handleSaveSectionEdit}
+                    className="h-7 text-xs gap-1"
+                  >
+                    <Check className="size-3" /> Kaydet
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={handleCancelSectionEdit}
+                    className="h-7 text-xs gap-1"
+                  >
+                    <X className="size-3" /> İptal
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              <div>
+                <div className="flex items-center gap-2">
+                  <h3 className="font-serif text-base font-semibold tracking-tight text-foreground leading-snug">
+                    {section.title}
+                  </h3>
+                  {hasSubSections && (
+                    <span className="text-[10px] font-medium bg-muted text-muted-foreground px-2 py-1 rounded-full shrink-0">
+                      {subSections.length} alt bölüm
+                    </span>
+                  )}
+                </div>
+                {section.description && (
+                  <p className="text-xs text-muted-foreground leading-relaxed mt-1">
+                    {section.description}
+                  </p>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Section Actions */}
+        {!isEditingSection && !isSpecialSection && (
+          <div className="flex items-center gap-1 shrink-0">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => updateCardState({ isEditingSection: true })}
+              className="size-7 text-muted-foreground hover:text-foreground"
+              title="Bölümü Düzenle"
+            >
+              <Pencil className="size-3.5" />
+            </Button>
+
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={handleAddSubSection}
+              className="size-7 text-primary hover:bg-primary/10"
+              title="Alt Bölüm Ekle"
+            >
+              <Plus className="size-4" />
+            </Button>
+
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={onDeleteSection}
+              className="size-7 text-destructive hover:bg-destructive/10"
+              title="Bölümü Sil"
+            >
+              <Trash2 className="size-3.5" />
+            </Button>
+
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={onToggleExpand}
+              className="size-7 text-muted-foreground hover:text-foreground"
+            >
+              {isExpanded ? (
+                <ChevronUp className="size-4" />
+              ) : (
+                <ChevronRight className="size-4" />
+              )}
+            </Button>
+          </div>
+        )}
+      </div>
+
+      <SubSectionTreeList
+        subSections={subSections}
+        sectionNumber={sectionNumber}
+        isSpecialSection={isSpecialSection}
+        hasSubSections={hasSubSections}
+        isExpanded={isExpanded}
+        editingSubIndex={editingSubIndex}
+        draggedSubIdx={draggedSubIdx}
+        dragOverSubIdx={dragOverSubIdx}
+        subEditTitle={subEditTitle}
+        subEditDescription={subEditDescription}
+        onAddSubSection={handleAddSubSection}
+        onStartSubEdit={handleStartSubEdit}
+        onSaveSubEdit={handleSaveSubEdit}
+        onDeleteSubSection={handleDeleteSubSection}
+        onSubDrop={handleSubDrop}
+        onUpdateCardState={updateCardState}
+      />
+    </Card>
+  );
 }
 </file>
 
@@ -53623,6 +53635,71 @@ export function LiteratureReviewContent() {
 }
 </file>
 
+<file path="src/app/api/advisor/route.ts">
+import { NextResponse } from "next/server";
+import { z } from "zod";
+import { getSession } from "@/lib/session";
+import { createSseStream } from "@/app/(app)/advisor/_services/stream";
+import { runTurn } from "@/app/(app)/advisor/_services/turn";
+
+const requestSchema = z.object({
+  query: z
+    .string()
+    .min(2, "Sorgu en az 2 karakter olmalıdır.")
+    .max(1000, "Sorgu çok uzun."),
+  history: z
+    .array(
+      z.object({
+        role: z.enum(["user", "model"]),
+        content: z.string(),
+      }),
+    )
+    .optional(),
+});
+
+/**
+ * Handles POST requests for streaming advisor queries via SSE with Function Calling support.
+ *
+ * Delegates all turn orchestration (classification, RAG, tool loop, pipeline flow)
+ * to {@link runTurn} wrapped in a streaming SSE response.
+ *
+ * @param request - The incoming HTTP request with query and optional history.
+ * @returns A streaming SSE response with delta, tool call, and done events.
+ */
+export async function POST(request: Request) {
+  const session = await getSession();
+  if (!session) {
+    return NextResponse.json(
+      { error: "Oturum süreniz dolmuş." },
+      { status: 401 },
+    );
+  }
+
+  const body = await request.json();
+  const parseResult = requestSchema.safeParse(body);
+  if (!parseResult.success) {
+    return NextResponse.json(
+      { error: parseResult.error.issues[0]?.message || "Geçersiz sorgu." },
+      { status: 400 },
+    );
+  }
+
+  const { query, history } = parseResult.data;
+
+  const readable = createSseStream(async ({ writer }) => {
+    await runTurn(writer, { userId: session.userId, query, history });
+  });
+
+  return new Response(readable, {
+    headers: {
+      "Content-Type": "text/event-stream",
+      "Cache-Control": "no-cache",
+      Connection: "keep-alive",
+    },
+  });
+}
+</file>
+
 <file path="src/app/(onboarding)/onboarding/positioning/actions.ts">
 "use server";
 
@@ -53896,71 +53973,6 @@ export async function getPositioningAction(): Promise<Positioning | null> {
   } catch {
     return null;
   }
-}
-</file>
-
-<file path="src/app/api/advisor/route.ts">
-import { NextResponse } from "next/server";
-import { z } from "zod";
-import { getSession } from "@/lib/session";
-import { createSseStream } from "@/app/(app)/advisor/_services/stream";
-import { runTurn } from "@/app/(app)/advisor/_services/turn";
-
-const requestSchema = z.object({
-  query: z
-    .string()
-    .min(2, "Sorgu en az 2 karakter olmalıdır.")
-    .max(1000, "Sorgu çok uzun."),
-  history: z
-    .array(
-      z.object({
-        role: z.enum(["user", "model"]),
-        content: z.string(),
-      }),
-    )
-    .optional(),
-});
-
-/**
- * Handles POST requests for streaming advisor queries via SSE with Function Calling support.
- *
- * Delegates all turn orchestration (classification, RAG, tool loop, pipeline flow)
- * to {@link runTurn} wrapped in a streaming SSE response.
- *
- * @param request - The incoming HTTP request with query and optional history.
- * @returns A streaming SSE response with delta, tool call, and done events.
- */
-export async function POST(request: Request) {
-  const session = await getSession();
-  if (!session) {
-    return NextResponse.json(
-      { error: "Oturum süreniz dolmuş." },
-      { status: 401 },
-    );
-  }
-
-  const body = await request.json();
-  const parseResult = requestSchema.safeParse(body);
-  if (!parseResult.success) {
-    return NextResponse.json(
-      { error: parseResult.error.issues[0]?.message || "Geçersiz sorgu." },
-      { status: 400 },
-    );
-  }
-
-  const { query, history } = parseResult.data;
-
-  const readable = createSseStream(async ({ writer }) => {
-    await runTurn(writer, { userId: session.userId, query, history });
-  });
-
-  return new Response(readable, {
-    headers: {
-      "Content-Type": "text/event-stream",
-      "Cache-Control": "no-cache",
-      Connection: "keep-alive",
-    },
-  });
 }
 </file>
 

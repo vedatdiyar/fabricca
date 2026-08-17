@@ -176,7 +176,7 @@ export async function evaluateBatchTheses(
         zodSchema: batchThesisEvaluationSchema,
         payloadStage: "positioning_per_thesis_evaluation",
         seed: GEMINI_SEED,
-        thinkingConfig: { thinkingLevel: ThinkingLevel.LOW },
+        thinkingConfig: { thinkingLevel: ThinkingLevel.HIGH },
         thesisMatrix: input,
         quiet: true,
       },
