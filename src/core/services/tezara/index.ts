@@ -43,6 +43,7 @@ export async function searchTezara(
     const searchRes = await client.query("theses", {
       query: embedding,
       limit,
+      score_threshold: options?.rankingScoreThreshold ?? 0.80,
       with_payload: true,
     });
 

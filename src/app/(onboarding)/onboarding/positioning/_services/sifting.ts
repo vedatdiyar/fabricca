@@ -27,13 +27,16 @@ export interface SiftedThesis extends TezaraThesisDetails {
 /** Epsilon threshold for floating point tie-breaking. */
 const SCORE_EPSILON = 1e-4;
 
+/** Minimum Cohere Rerank v4.0 relevance score to filter out irrelevant/noisy candidates. */
+export const MIN_COHERE_RELEVANCE_SCORE = 0.50;
+
 /**
  * 3-Dimensional Academic Sifting Engine:
  * 1. Generates 3 complementary queries (Problem, Theory, Method) via FLASH_LITE_35.
  * 2. Fetches candidate theses from Qdrant vector index in parallel.
  * 3. Fuses candidate pools via Reciprocal Rank Fusion (RRF).
  * 4. Filters valid candidates (abstract length, non-empty metadata).
- * 5. Applies Cohere Rerank v4.0 Pro to sort and select the top candidates.
+ * 5. Applies Cohere Rerank v4.0 Pro and strictly filters out candidates below MIN_COHERE_RELEVANCE_SCORE.
  *
  * @param matrixInput - The validated positioning matrix input.
  * @param logger - Optional structured logger.
@@ -45,8 +48,8 @@ export async function searchAndSiftTheses(
   logger?: Logger,
   options?: { topN?: number; candidateLimit?: number },
 ): Promise<SiftedThesis[]> {
-  const topN = options?.topN ?? 30;
-  const singleQueryLimit = options?.candidateLimit ?? 100;
+  const topN = options?.topN ?? 20;
+  const singleQueryLimit = options?.candidateLimit ?? 50;
 
   const queryGenStart = performance.now();
   logger?.info("sifting_query_generation_start", {
@@ -160,13 +163,21 @@ export async function searchAndSiftTheses(
     return a.id - b.id;
   });
 
-  const selected = scoredTheses.slice(0, topN);
+  const confidentTheses = scoredTheses.filter(
+    (t) => (t.relevanceScore ?? 0) >= MIN_COHERE_RELEVANCE_SCORE,
+  );
+
+  const selected = confidentTheses.slice(0, topN);
 
   logger?.info("sifting_rerank_success", {
     service: "cohere",
     filePath: "src/app/(onboarding)/onboarding/positioning/_services/sifting.ts",
     durationMs: performance.now() - rerankStart,
-    data: { topCount: selected.length },
+    data: {
+      candidateCount: filteredCandidates.length,
+      confidentCount: confidentTheses.length,
+      topCount: selected.length,
+    },
   });
 
   return selected;

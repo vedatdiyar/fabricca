@@ -1,4 +1,65 @@
 /**
+ * Intelligently splits a bilingual thesis title (e.g., "Primary Title / Secondary Translated Title")
+ * without breaking composite acronyms like "PKK/KCK" or short abbreviation slashes.
+ *
+ * @param rawTitle - Raw thesis title.
+ * @returns An object containing mainTitle and optional secondaryTitle.
+ */
+export function splitBilingualTitle(rawTitle: string | null | undefined): {
+  mainTitle: string;
+  secondaryTitle?: string;
+} {
+  if (!rawTitle) return { mainTitle: "" };
+
+  const trimmed = rawTitle.trim();
+  const regex = /\s+\/\s+/g;
+  let match: RegExpExecArray | null;
+  const splitPoints: number[] = [];
+
+  while ((match = regex.exec(trimmed)) !== null) {
+    const splitIndex = match.index;
+    const separatorLength = match[0].length;
+    const part1 = trimmed.slice(0, splitIndex).trim();
+    const part2 = trimmed.slice(splitIndex + separatorLength).trim();
+
+    const words1 = part1.split(/\s+/).filter(Boolean);
+    const words2 = part2.split(/\s+/).filter(Boolean);
+
+    if (words1.length >= 2 && words2.length >= 2 && part1.length >= 8 && part2.length >= 8) {
+      splitPoints.push(splitIndex);
+    }
+  }
+
+  if (splitPoints.length > 0) {
+    let bestSplit = splitPoints[0];
+    for (const sp of splitPoints) {
+      const p1 = trimmed.slice(0, sp).trim();
+      const matchAtSp = trimmed.slice(sp).match(/^\s+\/\s+/);
+      const sepLen = matchAtSp ? matchAtSp[0].length : 3;
+      const p2 = trimmed.slice(sp + sepLen).trim();
+      const w1 = p1.split(/\s+/).filter(Boolean).length;
+      const w2 = p2.split(/\s+/).filter(Boolean).length;
+      if (w1 >= 3 && w2 >= 3) {
+        bestSplit = sp;
+        break;
+      }
+    }
+
+    const matchAtBest = trimmed.slice(bestSplit).match(/^\s+\/\s+/);
+    const sepLen = matchAtBest ? matchAtBest[0].length : 3;
+    const mainTitle = trimmed.slice(0, bestSplit).trim();
+    const secondaryTitle = trimmed.slice(bestSplit + sepLen).trim();
+
+    return {
+      mainTitle,
+      secondaryTitle: secondaryTitle.length > 0 ? secondaryTitle : undefined,
+    };
+  }
+
+  return { mainTitle: trimmed };
+}
+
+/**
  * Strips the alternate-language portion from a bilingual thesis title (TEZARA "TR / EN" format).
  *
  * @param title - Raw thesis title in "TR / EN" format.
@@ -6,8 +67,7 @@
  */
 export function stripAltTitle(title: string | null | undefined): string {
   if (!title) return "";
-  const idx = title.indexOf(" / ");
-  return idx === -1 ? title.trim() : title.slice(0, idx).trim();
+  return splitBilingualTitle(title).mainTitle;
 }
 
 /**

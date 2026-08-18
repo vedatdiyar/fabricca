@@ -99,7 +99,7 @@ Katkı/Odak Alanları: ${e.contributionAreas.join(", ") || "Yok"}`;
     },
   );
 
-  // Map selected theses or top relevant theses into RecommendedThesisItem[]
+  // Map selected theses into RecommendedThesisItem[] strictly respecting the Jury's natural decision
   const evalByThesisId = new Map(
     evaluatedTheses.map((ev) => [String(ev.thesis.id), ev]),
   );
@@ -109,23 +109,13 @@ Katkı/Odak Alanları: ${e.contributionAreas.join(", ") || "Yok"}`;
   if (synthesis.selectedThesisIds && synthesis.selectedThesisIds.length > 0) {
     for (const id of synthesis.selectedThesisIds) {
       const found = evalByThesisId.get(String(id));
-      if (found) {
+      if (found && !selectedItems.some((s) => s.thesis.id === found.thesis.id)) {
         selectedItems.push(found);
       }
     }
   }
 
-  // If LLM selected fewer than 4 or empty, supplement with top evaluated theses
-  if (selectedItems.length < 4) {
-    for (const ev of evaluatedTheses) {
-      if (!selectedItems.some((s) => s.thesis.id === ev.thesis.id)) {
-        selectedItems.push(ev);
-      }
-      if (selectedItems.length >= 6) break;
-    }
-  }
-
-  // Cap at 8 max recommended theses
+  // Cap at 8 max recommended theses without artificial padding
   selectedItems = selectedItems.slice(0, 8);
 
   const recommendedTheses: RecommendedThesisItem[] = selectedItems.map((ev) => {

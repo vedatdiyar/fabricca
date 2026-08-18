@@ -19,10 +19,10 @@ export interface EvaluatedThesis {
 }
 
 /** Number of candidate theses evaluated in a single parallel batch call. */
-const BATCH_CHUNK_SIZE = 5;
+const BATCH_CHUNK_SIZE = 4;
 
 /**
- * Evaluates candidate theses in parallel batches of 5 using FLASH_LITE_35 with LOW thinking.
+ * Evaluates candidate theses in parallel batches of 4 using FLASH_LITE_35 with LOW thinking.
  * Each thesis is evaluated for relevance, direct overlap (novelty risk), strategic role,
  * literature position, and strategic utility.
  *
@@ -47,7 +47,7 @@ export async function evaluateThesesInParallel(
     data: { candidateCount: theses.length, chunkSize: BATCH_CHUNK_SIZE },
   });
 
-  // Divide candidate list into chunks of 5
+  // Divide candidate list into chunks of 4
   const chunks: SiftedThesis[][] = [];
   for (let i = 0; i < theses.length; i += BATCH_CHUNK_SIZE) {
     chunks.push(theses.slice(i, i + BATCH_CHUNK_SIZE));
@@ -81,7 +81,7 @@ export async function evaluateThesesInParallel(
 
       return result.evaluations;
     } catch (error) {
-      logger?.warn("per_thesis_eval_chunk_error", {
+      logger?.error("per_thesis_eval_chunk_error", {
         data: {
           chunkIdx,
           chunkCount: chunk.length,
@@ -89,18 +89,11 @@ export async function evaluateThesesInParallel(
         error,
       });
 
-      // Fallback for failed chunk: return default safe evaluations
-      return chunk.map((t) => ({
-        externalThesisId: String(t.id),
-        isRelevant: true,
-        relevanceReasoning: "Otomatik süzme ile eşleşen literatür adayı.",
-        isDirectOverlap: false,
-        strategicRole: "SPECIFIC_FOCUS" as const,
-        contributionAreas: ["Literatür İncelemesi"],
-        literaturePosition: t.title,
-        strategicUtility:
-          "Bu çalışma alanındaki genel eğilimleri ve kavramsal çerçeveyi anlamak için incelenmelidir.",
-      }));
+      throw new Error(
+        `Aday tez değerlendirme paketi (#${chunkIdx + 1}) işlenirken hata oluştu: ${
+          error instanceof Error ? error.message : String(error)
+        }`,
+      );
     }
   });
 

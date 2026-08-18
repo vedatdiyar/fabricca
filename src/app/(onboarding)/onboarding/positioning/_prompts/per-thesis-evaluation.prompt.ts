@@ -25,25 +25,26 @@ Kıdemli akademik hakem, tez izleme komitesi üyesi ve sosyal bilimler alan uzma
 
 <instructions>
 # Görev ve Temel İlke
-Verilen tez konusunu ve sorunsalını baz alarak, aday tezleri **YALNIZCA KONUSAL VE OLGUSAL İLİŞKİSİ** açısından değerlendir.
+Verilen tez konusunu ve sorunsalını baz alarak, aday tezleri **YALNIZCA SOMUT KONUSAL VE OLGUSAL İLİŞKİSİ** açısından değerlendir.
 
-# Kritik Eleme Kuralı: Yalnızca Konu Odaklı İlgililik
-- **isRelevant:** Yalnızca araştırmacının incelediği **SOMUT KONUYA, OLGUSAL ALANA, AKTÖRLERE, HAREKETLERE VEYA DÖNEMSEL TARTIŞMALARA** doğrudan temas eden tezler 'true' olarak kabul edilmelidir.
-- **Kabul Edilmeyecekler (isRelevant: false):**
-  - Konudan bağımsız saf kuramsal/felsefi tezler (örn. konudan kopuk genel Gramsci, hegemonya veya epistemoloji tezleri).
-  - Konudan bağımsız genel yöntem tezleri (örn. başka bir alandaki söylem analizi veya anket tezleri).
-  - Konuyla ilgisiz genel dış politika veya güvenlik tezleri.
-  - Sadece kelime benzerliği içeren farklı disiplinlerdeki alakasız çalışmalar.
+# KATI ELEME KURALLARI (Kesinlikle 'isRelevant: false' Yapılacaklar):
+1. **YÖNTEMSEL BENZERLİK TUZAĞI:** Aday tezin kullanıcıyla aynı yöntemi (örn. söylem analizi, anket, derinlemesine mülakat, arşiv taraması) kullanmış olması ASLA tek başına bir ilgililik gerekçesi değildir. Konu ve incelenen somut olgu farklıysa KESİNLİKLE 'isRelevant: false' verilmelidir.
+2. **GENİŞ ŞEMSİYE KAVRAM TUZAĞI:** Sırf genel disiplin veya çatı kavramlar (örn. genel "Türkiye siyaseti", "demokratikleşme", "kamu yönetimi", "devlet aklı", "sosyal medya", "modernleşme") ortak diye alakasız araştırmalar 'isRelevant: true' YAPILAMAZ.
+3. **FARKLI AKTÖR VEYA FARKLI COĞRAFYA:** Kullanıcının odaklandığı somut aktör, kurum, siyasal hareket veya olgusal bağlam dışındaki çalışmalar (örn. farklı bir ülkedeki hareket veya tamamen farklı bir kamu kurumu) 'isRelevant: false' olarak elenmelidir.
+4. **SAF KURAMSAL/FELSEFİ ÇALIŞMALAR:** Kullanıcının kuramsal çerçevesindeki düşünürü (örn. saf Gramsci felsefesi, saf Habermas) ele alan ama kullanıcının somut ampirik alanına temas etmeyen çalışmalar 'isRelevant: false' olarak elenmelidir.
+
+# YALNIZCA ŞU DURUMDA 'isRelevant: true' VERİLİR:
+Aday tez doğrudan kullanıcının araştırdığı **SOMUT AMBİRİK NESNEYİ, OLGUSAL SORUNSALI, AKTÖRLERİ VEYA DOĞRUDAN İLGİLİ DÖNEMSEL/SİYASAL GELİŞİMİ** inceliyorsa 'true' kabul edilir.
 
 # Değerlendirme Ölçütleri
-1. **isRelevant (Konusal İlgililik):** Aday tez doğrudan kullanıcının araştırdığı konuyu, aktörleri, hareketi veya dönemi mi inceliyor? (Evet ise true, aksi halde false).
+1. **isRelevant (Konusal İlgililik):** Aday tez doğrudan kullanıcının araştırdığı somut konuyu, aktörleri veya ampirik olguyu mu inceliyor? (Evet ise true, aksi halde false).
 2. **isDirectOverlap (Birebir Çakışma / Özgünlük Riski):** Aday tez kullanıcının araştırdığı soruyu aynı dönem, aynı aktörler ve aynı kapsamda birebir çözmüş ve araştırmacının tezine özgün bir boşluk bırakmamış mıdır? (Evet ise true, aksi halde false).
-3. **strategicRole (Konusal Stratejik Rol):** İlgili tezler için aşağıdaki konusal rollerden en uygun olanını seç:
-   - **SPECIFIC_FOCUS (Kısmi / Komşu Olgusal Odak):** Konunun belirli bir alt boyutunu (örn. yasal parti hattı, dil politikası, kongre kararları veya komşu bir dönemi) inceleyen çalışma.
-   - **FOUNDATIONAL_WORK (Öncül Konu Çalışması):** Konunun tarihsel kökenlerini (örn. 1980 öncesi, erken dönem örgütlenme) veya ana gelişim hattını kuran temel konu tezi.
-   - **METHODOLOGICAL_BENCHMARK (Paralel Olgusal Analiz):** Aynı konuyu benzer bir ampirik veri seti veya söylem analiziyle inceleyen konusal referans.
-   - **ALTERNATIVE_PERSPECTIVE (Karşıt / Farklı Olgusal Yaklaşım):** Aynı olguyu veya hareketi zıt/farklı bir siyasal ya da olgusal açıklamayla yorumlayan tartışma kaynağı.
-4. **contributionAreas (Katkı / Odak Alanları):** Tezin temas ettiği 1-2 adet somut konu etiketi (örn: "Yasal Kürt Siyaseti", "1990'lar Kürt Hareketi Söylemi").
+3. **strategicRole (Konusal Stratejik Rol):** İlgili tezler için aşağıdaki rollerden en uygun olanını seç:
+   - **SPECIFIC_FOCUS (Kısmi / Komşu Olgusal Odak):** Konunun belirli bir alt boyutunu (örn. yasal parti kanadı, komşu bir dönemi veya alt bir kurumu) inceleyen çalışma.
+   - **FOUNDATIONAL_WORK (Öncül Konu Çalışması):** Konunun tarihsel kökenlerini veya ana gelişim hattını kuran temel konu tezi.
+   - **METHODOLOGICAL_BENCHMARK (Paralel Olgusal Analiz):** Aynı ampirik konuyu benzer bir veri setiyle inceleyen doğrudan konusal referans.
+   - **ALTERNATIVE_PERSPECTIVE (Karşıt / Farklı Olgusal Yaklaşım):** Aynı konuyu farklı bir siyasal ya da olgusal açıklamayla yorumlayan tartışma kaynağı.
+4. **contributionAreas (Katkı / Odak Alanları):** Tezin temas ettiği 1-2 adet somut konu etiketi (örn: "Yasal Kürt Partileri", "1990'lar Söylemsel Dönüşüm").
 5. **literaturePosition (Literatürdeki Yeri):** Tezin neyi araştırdığını ve konuya ne kattığını özetleyen 1 net cümle.
 6. **strategicUtility (Stratejik Kullanım Notu):** Araştırmacının kendi tezinde bu konusal çalışmayı nasıl konumlandıracağına dair 1-2 cümlelik rehber not.
 
@@ -57,6 +58,8 @@ Verilen tez konusunu ve sorunsalını baz alarak, aday tezleri **YALNIZCA KONUSA
 <input>
 [Kullanıcı Tez Konusu]:
 Kürt Özgürlük Hareketi'nin (PKK ve HEP-DEP-HADEP hattı) 1991-1999 döneminde manevra savaşından mevzi savaşına söylemsel dönüşümü ve taleplerin niteliksel değişimi.
+[Kuramsal Çerçeve]: Gramsci manevra/mevzi savaşı, Snow ve Benford çerçeveleme teorisi.
+[Yöntem]: Nitel tarihsel söylem analizi.
 
 [Aday Tez #1]:
 ID: "101"
@@ -65,7 +68,13 @@ Yazar: Ali Can (1998)
 Özet: Bu çalışmada Gramsci'nin hapishane defterlerindeki hegemonya, mevzi savaşı ve sivil toplum kavramları felsefi olarak incelenmiştir.
 
 [Aday Tez #2]:
-ID: "202"
+ID: "102"
+Başlık: Türk Basınında Dış Politika Haberlerinin Söylem Analizi: 1995-2000 Dönemi
+Yazar: Selim Kaya (2002)
+Özet: Hürriyet ve Sabah gazetelerinde Türkiye'nin AB ile ilişkileri üzerine çıkan köşe yazıları nitel tarihsel söylem analizi yöntemiyle incelenmiştir.
+
+[Aday Tez #3]:
+ID: "203"
 Başlık: 1990-2014 Dönemi Kürt Siyasal Hareketinin Söyleminin Dönüşümü
 Yazar: Kadriye Okudan Dernek (2014)
 Özet: Bu tezde 1990 sonrası Türkiye'de yasal Kürt siyasal partilerinin (HEP, DEP, HADEP, DEHAP, DTP, BDP, HDP) program ve söylemlerindeki değişim incelenmiştir.
@@ -76,15 +85,25 @@ Yazar: Kadriye Okudan Dernek (2014)
     {
       "externalThesisId": "101",
       "isRelevant": false,
-      "relevanceReasoning": "Konu dışı saf felsefi/kuramsal çalışma; Kürt siyasal hareketi veya 1990'lar ampirik olgusuyla doğrudan ilişkisi yoktur.",
+      "relevanceReasoning": "Konu dışı saf felsefi/kuramsal çalışma; kullanıcının ampirik konusu olan Kürt hareketi ve 1990'lar siyasetiyle doğrudan ilişkisi yoktur.",
       "isDirectOverlap": false,
       "strategicRole": "FOUNDATIONAL_WORK",
       "contributionAreas": ["Siyaset Felsefesi"],
       "literaturePosition": "Gramsci'nin hegemonya kavramını felsefi olarak ele almıştır.",
-      "strategicUtility": "Genel teori tezi olduğu için konu konumlandırmasında doğrudan kullanılmamalıdır."
+      "strategicUtility": "Genel teori tezi olduğu için konu konumlandırmasında doğrudan kullanılamaz."
     },
     {
-      "externalThesisId": "202",
+      "externalThesisId": "102",
+      "isRelevant": false,
+      "relevanceReasoning": "Yöntemsel benzerlik tuzağı: Söylem analizi yöntemi kullanılmış olsa da incelenen konu AB dış politikası olup araştırmacının konusuyla tamamen alakasızdır.",
+      "isDirectOverlap": false,
+      "strategicRole": "METHODOLOGICAL_BENCHMARK",
+      "contributionAreas": ["Dış Politika"],
+      "literaturePosition": "AB ilişkileri basındaki söylem üzerinden incelenmiştir.",
+      "strategicUtility": "Konu dışı olduğu için değerlendirmeye alınmamalıdır."
+    },
+    {
+      "externalThesisId": "203",
       "isRelevant": true,
       "relevanceReasoning": "Doğrudan kullanıcının incelediği 1990'lar yasal Kürt partileri hattını ve söylemsel dönüşümünü ampirik olarak incelemektedir.",
       "isDirectOverlap": false,

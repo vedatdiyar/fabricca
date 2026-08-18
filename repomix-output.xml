@@ -1135,6 +1135,26 @@ export function cn(...inputs: ClassValue[]) {
 }
 </file>
 
+<file path="next.config.ts">
+import type { NextConfig } from "next";
+
+const nextConfig: NextConfig = {
+  serverExternalPackages: ["@firecrawl/pdf-inspector"],
+  cacheComponents: true,
+  turbopack: {
+    root: process.cwd(),
+  },
+  logging: false,
+  experimental: {
+    serverActions: {
+      bodySizeLimit: "4.5mb",
+    },
+  },
+};
+
+export default nextConfig;
+</file>
+
 <file path="postcss.config.mjs">
 const config = {
   plugins: {
@@ -5789,217 +5809,6 @@ export default function OutlineLoading() {
       <OutlineSkeleton />
     </OnboardingStepSkeleton>
   );
-}
-</file>
-
-<file path="src/app/(onboarding)/onboarding/positioning/_prompts/query-generator.prompt.ts">
-import type { PositioningMatrixInput } from "../_services/validation";
-
-/** Prompt payload structure separating system instructions from user prompt. */
-export interface QueryGenerationPromptPayload {
-  systemInstruction: string;
-  userPrompt: string;
-}
-
-/**
- * Builds the hybrid XML/Markdown prompt payload for 3-dimensional empirical topic-oriented
- * semantic query extraction, strictly focusing on the substantive research phenomenon and actors.
- *
- * @param matrix - The 3-field positioning matrix input.
- * @returns The structured prompt payload containing static systemInstruction and dynamic userPrompt.
- */
-export function buildQueryGenerationPromptPayload(
-  matrix: PositioningMatrixInput | { subjectProblem: string; theoreticalFramework?: string; methodology?: string },
-): QueryGenerationPromptPayload {
-  const systemInstruction = `<role>
-Akademik literatür tarama, konu sınıflandırma ve semantik bilgi erişim (IR) uzmanı.
-</role>
-
-<instructions>
-# Görev ve Amaç
-Kullanıcının tez matrisini analiz ederek, yalnızca araştırmanın **SOMUT KONUSUNU, OLGUSAL SORUNSALLARINI, İNCELENEN AKTÖRLERİ VE DÖNEMSEL/TEMATİK KAPSAMINI** hedefleyen 3 ayrık semantik arama sorgusu ve akademik anahtar kavramlar üret.
-
-# Kritik İlke: Yalnızca Konu ve Olgusal Odak
-- Soyut felsefe, genel teorik kuramlar (örn. saf Gramsci, saf Marksizm) veya genel araştırma yöntemleri (örn. söylem analizi, anket tekniği) adına genel sorgu ÜRETMEYİN.
-- Tüm sorgular doğrudan araştırmacının incelediği **ampirik nesneye, aktörlere, siyasal/sosyal olguya, tarihsel döneme ve somut tartışma alanına** kilitlenmelidir.
-
-# 3 Boyutlu Konusal Sorgu Yapısı
-1. **primaryEmpiricalQuery (Temel Konu ve Olgusal Sorunsal):** Araştırmanın merkezindeki temel konuyu, incelenen ana olguyu ve söylemsel/siyasal tartışmayı hedefleyen 20-25 kelimelik yoğun semantik sorgu.
-2. **actorsAndSourcesQuery (Aktörler, Kurumlar ve Odak):** Araştırmada incelenen somut siyasal/sosyal aktörleri, hareketleri, partileri, kurumları veya birincil yayın odaklarını hedefleyen 20-25 kelimelik semantik sorgu.
-3. **periodAndContextQuery (Dönemsel, Bölgesel ve Tematik Kapsam):** Araştırmanın odaklandığı tarihsel dönemi (örn. 1990'lar, 1991-1999), somut vaka bağlamını ve talep/söylem içeriğindeki spesifik temaları hedefleyen 20-25 kelimelik semantik sorgu.
-4. **substantiveKeywords (Konusal Anahtar Kavramlar):** Literatürdeki konu tezlerini yakalamak için 4-6 adet spesifik akademik olgu, aktör, parti, dönem ve somut konu kavramı.
-
-# Sınırlamalar
-- Boolean operatörleri (AND, OR, NOT), tırnak işareti veya joker karakter (*) KULLANMAYIN.
-- Sorgular akıcı, yoğun, doğal akademik Türkçe ifadeler olmalıdır.
-</instructions>
-
-<examples>
-<example>
-<input>
-[Araştırma Problemi]: Kürt Özgürlük Hareketi'nin (PKK ve HEP-DEP-HADEP hattı) 1991-1999 döneminde manevra savaşından mevzi savaşına yönelik söylemsel dönüşümü, bağımsızlık talebinden anayasal statü ve demokratik haklar söylemine geçişi.
-[Kuramsal Çerçeve]: Gramsci manevra/mevzi savaşı, Snow ve Benford çerçeveleme teorisi.
-[Yöntem ve Ampirik Bağlam]: Nitel tarihsel söylem analizi, Serxwebûn dergisi, parti programları ve meclis konuşmaları.
-</input>
-<output>
-{
-  "primaryEmpiricalQuery": "Kürt siyasal hareketi PKK söylemsel dönüşümü bağımsızlık talebinden demokratik cumhuriyet ve anayasal haklar söylemine geçiş 1990lar",
-  "actorsAndSourcesQuery": "PKK HEP DEP HADEP yasal Kürt partileri Serxwebun yayınları parti programları ve meclis konuşmaları karşılaştırması",
-  "periodAndContextQuery": "1991 1999 dönemi Kürt hareketi siyasal taleplerin dönüşümü şiddet dışı siyasal alan ve kültürel haklar arayışı",
-  "substantiveKeywords": [
-    "Kürt hareketi",
-    "PKK söylemi",
-    "HEP DEP HADEP",
-    "1990lar Kürt siyaseti",
-    "Serxwebun",
-    "demokratik haklar söylemi"
-  ]
-}
-</output>
-</example>
-</examples>`;
-
-  const userPrompt = `<context>
-[Araştırma Problemi]:
-${matrix.subjectProblem}
-
-[Kuramsal Çerçeve (Yalnızca bağlam için)]:
-${matrix.theoreticalFramework || "Belirtilmemiş"}
-
-[Yöntem ve Ampirik Bağlam (Yalnızca bağlam için)]:
-${matrix.methodology || "Belirtilmemiş"}
-</context>
-
-<task>
-Yukarıdaki <context> içeriğini inceleyerek, araştırmanın yalnızca SOMUT KONUSUNU, AKTÖRLERİNİ ve OLGUSAL ALANINI hedefleyen 3 ayrık semantik arama sorgusu ile anahtar kavramları içeren JSON çıktısını üret.
-</task>`;
-
-  return { systemInstruction, userPrompt };
-}
-</file>
-
-<file path="src/app/(onboarding)/onboarding/positioning/_services/candidate-fusion.ts">
-import type { TezaraThesisDetails } from "@/lib/types";
-
-/** Constant for Reciprocal Rank Fusion smoothing (standard: 60). */
-const RRF_K = 60;
-
-/** Minimum abstract character length for a thesis to be considered evaluable. */
-const MIN_ABSTRACT_LENGTH = 50;
-
-/**
- * Combines multiple ranked candidate lists from parallel Tezara searches
- * using Reciprocal Rank Fusion (RRF).
- *
- * @param searchLists - Array of thesis result arrays from distinct query aspects.
- * @param k - Smoothing constant.
- * @returns Deduplicated array of candidate theses sorted by descending RRF score.
- */
-export function reciprocalRankFusion(
-  searchLists: TezaraThesisDetails[][],
-  k = RRF_K,
-): TezaraThesisDetails[] {
-  const scoreMap = new Map<number, { thesis: TezaraThesisDetails; score: number }>();
-
-  for (const list of searchLists) {
-    for (let rank = 0; rank < list.length; rank++) {
-      const thesis = list[rank];
-      if (!thesis || !thesis.id) continue;
-
-      const rrfIncrement = 1 / (k + (rank + 1));
-      const existing = scoreMap.get(thesis.id);
-
-      if (existing) {
-        existing.score += rrfIncrement;
-      } else {
-        scoreMap.set(thesis.id, { thesis, score: rrfIncrement });
-      }
-    }
-  }
-
-  const fused = Array.from(scoreMap.values());
-  fused.sort((a, b) => b.score - a.score);
-
-  return fused.map((item) => item.thesis);
-}
-
-/**
- * Filters out invalid candidate theses that lack meaningful content, titles, or abstracts.
- *
- * @param candidates - The array of candidate theses to validate.
- * @returns Filtered candidates array with valid content.
- */
-export function filterValidCandidates(
-  candidates: TezaraThesisDetails[],
-): TezaraThesisDetails[] {
-  const seenIds = new Set<number>();
-  const valid: TezaraThesisDetails[] = [];
-
-  for (const thesis of candidates) {
-    if (!thesis.id || seenIds.has(thesis.id)) continue;
-    if (!thesis.title || thesis.title.trim().length === 0) continue;
-
-    const abstractText = (thesis.abstract || "").trim();
-    if (abstractText.length < MIN_ABSTRACT_LENGTH) continue;
-
-    seenIds.add(thesis.id);
-    valid.push(thesis);
-  }
-
-  return valid;
-}
-</file>
-
-<file path="src/app/(onboarding)/onboarding/positioning/_services/sifting-formatters.ts">
-import type { TezaraThesisDetails } from "@/lib/types";
-import type { PositioningQuery } from "./query-generator";
-import type { PositioningMatrixInput } from "./validation";
-
-/**
- * Sanitizes a search query string by removing quotes, wildcards, and normalizing whitespace.
- *
- * @param query - The raw query string.
- * @returns Sanitized query string.
- */
-export function sanitizeSearchQuery(query: string): string {
-  return query
-    .replace(/["'*?[\]{}()]/g, " ")
-    .replace(/\s+/g, " ")
-    .trim();
-}
-
-/**
- * Formats the thesis matrix and distilled empirical topic queries into structured YAML
- * for Cohere Rerank v4.0 Pro, strictly comparing against the substantive subject matter and actors.
- *
- * @param distilledQuery - The generated multi-aspect queries.
- * @param matrix - The original matrix.
- * @returns YAML formatted string representing the target query.
- */
-export function formatMatrixToYamlQuery(
-  distilledQuery: PositioningQuery,
-  matrix: PositioningMatrixInput,
-): string {
-  return `arastirma_konusu_ve_sorunsali: ${matrix.subjectProblem}
-temel_olgusal_odak: ${distilledQuery.primaryEmpiricalQuery}
-aktorler_ve_kurumlar: ${distilledQuery.actorsAndSourcesQuery}
-donem_ve_vaka_baglami: ${distilledQuery.periodAndContextQuery}
-konusal_anahtar_kavramlar: ${distilledQuery.substantiveKeywords.join(", ")}`;
-}
-
-/**
- * Formats a candidate thesis into structured YAML for Cohere Rerank v4.0 Pro.
- *
- * @param thesis - The candidate thesis from Tezara.
- * @returns YAML formatted string representing the candidate document.
- */
-export function formatThesisToYaml(thesis: TezaraThesisDetails): string {
-  return `baslik: ${thesis.title}
-yazar: ${thesis.author || "Bilinmiyor"} (${thesis.year || "N/A"})
-tur: ${thesis.thesisType || "N/A"}
-universite_bolum: ${thesis.university || "N/A"} - ${thesis.department || "N/A"}
-dil: ${thesis.language || "Türkçe"}
-ozet: ${thesis.abstract || ""}`;
 }
 </file>
 
@@ -10754,6 +10563,7 @@ export async function searchTezara(
     const searchRes = await client.query("theses", {
       query: embedding,
       limit,
+      score_threshold: options?.rankingScoreThreshold ?? 0.80,
       with_payload: true,
     });
 
@@ -10795,39 +10605,6 @@ export async function searchTezara(
     });
     throw err;
   }
-}
-</file>
-
-<file path="src/core/services/tezara/qdrant-client.ts">
-import { QdrantClient } from "@qdrant/js-client-rest";
-
-/** Global singleton Qdrant client instance. */
-let qdrantClient: QdrantClient | null = null;
-
-/**
- * Returns the singleton Qdrant client connected to the Qdrant Cloud cluster.
- *
- * @throws Error when QDRANT_URL is missing.
- * @returns Qdrant client instance.
- */
-export function getQdrantClient(): QdrantClient {
-  if (qdrantClient) {
-    return qdrantClient;
-  }
-
-  const qdrantUrl = process.env.QDRANT_URL ?? "";
-  const qdrantApiKey = process.env.QDRANT_API_KEY ?? "";
-
-  if (!qdrantUrl) {
-    throw new Error("QDRANT_URL environment variable is not defined.");
-  }
-
-  qdrantClient = new QdrantClient({
-    url: qdrantUrl,
-    apiKey: qdrantApiKey || undefined,
-  });
-
-  return qdrantClient;
 }
 </file>
 
@@ -11223,6 +11000,67 @@ export function sortLibraryResources<T extends SortableResource>(
 
 <file path="src/lib/academic/title-utils.ts">
 /**
+ * Intelligently splits a bilingual thesis title (e.g., "Primary Title / Secondary Translated Title")
+ * without breaking composite acronyms like "PKK/KCK" or short abbreviation slashes.
+ *
+ * @param rawTitle - Raw thesis title.
+ * @returns An object containing mainTitle and optional secondaryTitle.
+ */
+export function splitBilingualTitle(rawTitle: string | null | undefined): {
+  mainTitle: string;
+  secondaryTitle?: string;
+} {
+  if (!rawTitle) return { mainTitle: "" };
+
+  const trimmed = rawTitle.trim();
+  const regex = /\s+\/\s+/g;
+  let match: RegExpExecArray | null;
+  const splitPoints: number[] = [];
+
+  while ((match = regex.exec(trimmed)) !== null) {
+    const splitIndex = match.index;
+    const separatorLength = match[0].length;
+    const part1 = trimmed.slice(0, splitIndex).trim();
+    const part2 = trimmed.slice(splitIndex + separatorLength).trim();
+
+    const words1 = part1.split(/\s+/).filter(Boolean);
+    const words2 = part2.split(/\s+/).filter(Boolean);
+
+    if (words1.length >= 2 && words2.length >= 2 && part1.length >= 8 && part2.length >= 8) {
+      splitPoints.push(splitIndex);
+    }
+  }
+
+  if (splitPoints.length > 0) {
+    let bestSplit = splitPoints[0];
+    for (const sp of splitPoints) {
+      const p1 = trimmed.slice(0, sp).trim();
+      const matchAtSp = trimmed.slice(sp).match(/^\s+\/\s+/);
+      const sepLen = matchAtSp ? matchAtSp[0].length : 3;
+      const p2 = trimmed.slice(sp + sepLen).trim();
+      const w1 = p1.split(/\s+/).filter(Boolean).length;
+      const w2 = p2.split(/\s+/).filter(Boolean).length;
+      if (w1 >= 3 && w2 >= 3) {
+        bestSplit = sp;
+        break;
+      }
+    }
+
+    const matchAtBest = trimmed.slice(bestSplit).match(/^\s+\/\s+/);
+    const sepLen = matchAtBest ? matchAtBest[0].length : 3;
+    const mainTitle = trimmed.slice(0, bestSplit).trim();
+    const secondaryTitle = trimmed.slice(bestSplit + sepLen).trim();
+
+    return {
+      mainTitle,
+      secondaryTitle: secondaryTitle.length > 0 ? secondaryTitle : undefined,
+    };
+  }
+
+  return { mainTitle: trimmed };
+}
+
+/**
  * Strips the alternate-language portion from a bilingual thesis title (TEZARA "TR / EN" format).
  *
  * @param title - Raw thesis title in "TR / EN" format.
@@ -11230,8 +11068,7 @@ export function sortLibraryResources<T extends SortableResource>(
  */
 export function stripAltTitle(title: string | null | undefined): string {
   if (!title) return "";
-  const idx = title.indexOf(" / ");
-  return idx === -1 ? title.trim() : title.slice(0, idx).trim();
+  return splitBilingualTitle(title).mainTitle;
 }
 
 /**
@@ -11679,26 +11516,6 @@ export default defineConfig({
     url: process.env.DATABASE_URL,
   },
 });
-</file>
-
-<file path="next.config.ts">
-import type { NextConfig } from "next";
-
-const nextConfig: NextConfig = {
-  serverExternalPackages: ["@firecrawl/pdf-inspector"],
-  cacheComponents: true,
-  turbopack: {
-    root: process.cwd(),
-  },
-  logging: false,
-  experimental: {
-    serverActions: {
-      bodySizeLimit: "4.5mb",
-    },
-  },
-};
-
-export default nextConfig;
 </file>
 
 <file path="src/app/(app)/advisor/_hooks/use-advisor-chat-send.ts">
@@ -23491,51 +23308,214 @@ export const outlineGenerationJsonSchema: JsonSchema = {
 };
 </file>
 
-<file path="src/app/(onboarding)/onboarding/positioning/_components/positioning-container.tsx">
-"use client";
+<file path="src/app/(onboarding)/onboarding/positioning/_prompts/query-generator.prompt.ts">
+import type { PositioningMatrixInput } from "../_services/validation";
 
-import type { Positioning } from "@/core/db/schema";
-import type { PositioningGlobalStatus, RecommendedThesisItem, GapAnalysisStructured } from "../_services/validation";
-import type { JuryAnalysisResult } from "../_services/analysis";
-import { usePositioningContinue } from "../../_hooks/use-positioning-continue";
-import { PositioningReportView } from "./positioning-report-view";
-
-interface PositioningContainerProps {
-  initialRecord?: Positioning | null;
+/** Prompt payload structure separating system instructions from user prompt. */
+export interface QueryGenerationPromptPayload {
+  systemInstruction: string;
+  userPrompt: string;
 }
 
 /**
- * Client container that wraps and passes the pre-generated positioning gap analysis report
- * to PositioningReportView.
+ * Builds the hybrid XML/Markdown prompt payload for 3-dimensional empirical topic-oriented
+ * semantic query extraction, strictly focusing on the substantive research phenomenon and actors.
  *
- * @param props - Component props containing optional pre-generated positioning record.
- * @returns The rendered positioning report view.
+ * @param matrix - The 3-field positioning matrix input.
+ * @returns The structured prompt payload containing static systemInstruction and dynamic userPrompt.
  */
-export function PositioningContainer({
-  initialRecord,
-}: PositioningContainerProps) {
-  const { proceedFromPositioning } = usePositioningContinue();
+export function buildQueryGenerationPromptPayload(
+  matrix: PositioningMatrixInput | { subjectProblem: string; theoreticalFramework?: string; methodology?: string },
+): QueryGenerationPromptPayload {
+  const systemInstruction = `<role>
+Akademik literatür tarama, konu sınıflandırma ve semantik bilgi erişim (IR) uzmanı.
+</role>
 
-  const reportData: JuryAnalysisResult = {
-    globalStatus:
-      (initialRecord?.globalStatus as PositioningGlobalStatus) ??
-      "NO_RELATED_LITERATURE",
-    gapAnalysisSummary:
-      (initialRecord?.gapAnalysisSummary as GapAnalysisStructured) ?? {
-        literatureMapping: "",
-        academicGap: "",
-        originalContribution: "",
-      },
-    recommendedTheses:
-      (initialRecord?.recommendedTheses as RecommendedThesisItem[]) ?? [],
-  };
+<instructions>
+# Görev ve Amaç
+Kullanıcının tez matrisini analiz ederek, yalnızca araştırmanın **SOMUT KONUSUNU, OLGUSAL SORUNSALLARINI, İNCELENEN AKTÖRLERİ VE DÖNEMSEL/TEMATİK KAPSAMINI** hedefleyen 3 ayrık semantik arama sorgusu ve akademik anahtar kavramlar üret.
 
-  return (
-    <PositioningReportView
-      reportData={reportData}
-      onConfirm={proceedFromPositioning}
-    />
-  );
+# Kritik İlke: Yalnızca Konu ve Olgusal Odak
+- Soyut felsefe, genel teorik kuramlar (örn. saf Gramsci, saf Marksizm) veya genel araştırma yöntemleri (örn. söylem analizi, anket tekniği) adına genel sorgu ÜRETMEYİN.
+- Tüm sorgular doğrudan araştırmacının incelediği **ampirik nesneye, aktörlere, siyasal/sosyal olguya, tarihsel döneme ve somut tartışma alanına** kilitlenmelidir.
+
+# 3 Boyutlu Konusal Sorgu Yapısı
+1. **primaryEmpiricalQuery (Temel Konu ve Olgusal Sorunsal):** Araştırmanın merkezindeki temel konuyu, incelenen ana olguyu ve söylemsel/siyasal tartışmayı hedefleyen 20-25 kelimelik yoğun semantik sorgu.
+2. **actorsAndSourcesQuery (Aktörler, Kurumlar ve Odak):** Araştırmada incelenen somut siyasal/sosyal aktörleri, hareketleri, partileri, kurumları veya birincil yayın odaklarını hedefleyen 20-25 kelimelik semantik sorgu.
+3. **periodAndContextQuery (Dönemsel, Bölgesel ve Tematik Kapsam):** Araştırmanın odaklandığı tarihsel dönemi (örn. 1990'lar, 1991-1999), somut vaka bağlamını ve talep/söylem içeriğindeki spesifik temaları hedefleyen 20-25 kelimelik semantik sorgu.
+4. **substantiveKeywords (Konusal Anahtar Kavramlar):** Literatürdeki konu tezlerini yakalamak için 4-6 adet spesifik akademik olgu, aktör, parti, dönem ve somut konu kavramı.
+
+# Sınırlamalar
+- Boolean operatörleri (AND, OR, NOT), tırnak işareti veya joker karakter (*) KULLANMAYIN.
+- Sorgular akıcı, yoğun, doğal akademik Türkçe ifadeler olmalıdır.
+</instructions>
+
+<examples>
+<example>
+<input>
+[Araştırma Problemi]: Kürt Özgürlük Hareketi'nin (PKK ve HEP-DEP-HADEP hattı) 1991-1999 döneminde manevra savaşından mevzi savaşına yönelik söylemsel dönüşümü, bağımsızlık talebinden anayasal statü ve demokratik haklar söylemine geçişi.
+[Kuramsal Çerçeve]: Gramsci manevra/mevzi savaşı, Snow ve Benford çerçeveleme teorisi.
+[Yöntem ve Ampirik Bağlam]: Nitel tarihsel söylem analizi, Serxwebûn dergisi, parti programları ve meclis konuşmaları.
+</input>
+<output>
+{
+  "primaryEmpiricalQuery": "Kürt siyasal hareketi PKK söylemsel dönüşümü bağımsızlık talebinden demokratik cumhuriyet ve anayasal haklar söylemine geçiş 1990lar",
+  "actorsAndSourcesQuery": "PKK HEP DEP HADEP yasal Kürt partileri Serxwebun yayınları parti programları ve meclis konuşmaları karşılaştırması",
+  "periodAndContextQuery": "1991 1999 dönemi Kürt hareketi siyasal taleplerin dönüşümü şiddet dışı siyasal alan ve kültürel haklar arayışı",
+  "substantiveKeywords": [
+    "Kürt hareketi",
+    "PKK söylemi",
+    "HEP DEP HADEP",
+    "1990lar Kürt siyaseti",
+    "Serxwebun",
+    "demokratik haklar söylemi"
+  ]
+}
+</output>
+</example>
+</examples>`;
+
+  const userPrompt = `<context>
+[Araştırma Problemi]:
+${matrix.subjectProblem}
+
+[Kuramsal Çerçeve (Yalnızca bağlam için)]:
+${matrix.theoreticalFramework || "Belirtilmemiş"}
+
+[Yöntem ve Ampirik Bağlam (Yalnızca bağlam için)]:
+${matrix.methodology || "Belirtilmemiş"}
+</context>
+
+<task>
+Yukarıdaki <context> içeriğini inceleyerek, araştırmanın yalnızca SOMUT KONUSUNU, AKTÖRLERİNİ ve OLGUSAL ALANINI hedefleyen 3 ayrık semantik arama sorgusu ile anahtar kavramları içeren JSON çıktısını üret.
+</task>`;
+
+  return { systemInstruction, userPrompt };
+}
+</file>
+
+<file path="src/app/(onboarding)/onboarding/positioning/_services/candidate-fusion.ts">
+import type { TezaraThesisDetails } from "@/lib/types";
+
+/** Constant for Reciprocal Rank Fusion smoothing (standard: 60). */
+const RRF_K = 60;
+
+/** Minimum abstract character length for a thesis to be considered evaluable. */
+const MIN_ABSTRACT_LENGTH = 50;
+
+/**
+ * Combines multiple ranked candidate lists from parallel Tezara searches
+ * using Reciprocal Rank Fusion (RRF).
+ *
+ * @param searchLists - Array of thesis result arrays from distinct query aspects.
+ * @param k - Smoothing constant.
+ * @returns Deduplicated array of candidate theses sorted by descending RRF score.
+ */
+export function reciprocalRankFusion(
+  searchLists: TezaraThesisDetails[][],
+  k = RRF_K,
+): TezaraThesisDetails[] {
+  const scoreMap = new Map<number, { thesis: TezaraThesisDetails; score: number }>();
+
+  for (const list of searchLists) {
+    for (let rank = 0; rank < list.length; rank++) {
+      const thesis = list[rank];
+      if (!thesis || !thesis.id) continue;
+
+      const rrfIncrement = 1 / (k + (rank + 1));
+      const existing = scoreMap.get(thesis.id);
+
+      if (existing) {
+        existing.score += rrfIncrement;
+      } else {
+        scoreMap.set(thesis.id, { thesis, score: rrfIncrement });
+      }
+    }
+  }
+
+  const fused = Array.from(scoreMap.values());
+  fused.sort((a, b) => b.score - a.score);
+
+  return fused.map((item) => item.thesis);
+}
+
+/**
+ * Filters out invalid candidate theses that lack meaningful content, titles, or abstracts.
+ *
+ * @param candidates - The array of candidate theses to validate.
+ * @returns Filtered candidates array with valid content.
+ */
+export function filterValidCandidates(
+  candidates: TezaraThesisDetails[],
+): TezaraThesisDetails[] {
+  const seenIds = new Set<number>();
+  const valid: TezaraThesisDetails[] = [];
+
+  for (const thesis of candidates) {
+    if (!thesis.id || seenIds.has(thesis.id)) continue;
+    if (!thesis.title || thesis.title.trim().length === 0) continue;
+
+    const abstractText = (thesis.abstract || "").trim();
+    if (abstractText.length < MIN_ABSTRACT_LENGTH) continue;
+
+    seenIds.add(thesis.id);
+    valid.push(thesis);
+  }
+
+  return valid;
+}
+</file>
+
+<file path="src/app/(onboarding)/onboarding/positioning/_services/sifting-formatters.ts">
+import type { TezaraThesisDetails } from "@/lib/types";
+import type { PositioningQuery } from "./query-generator";
+import type { PositioningMatrixInput } from "./validation";
+
+/**
+ * Sanitizes a search query string by removing quotes, wildcards, and normalizing whitespace.
+ *
+ * @param query - The raw query string.
+ * @returns Sanitized query string.
+ */
+export function sanitizeSearchQuery(query: string): string {
+  return query
+    .replace(/["'*?[\]{}()]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+/**
+ * Formats the thesis matrix and distilled empirical topic queries into structured YAML
+ * for Cohere Rerank v4.0 Pro, strictly comparing against the substantive subject matter and actors.
+ *
+ * @param distilledQuery - The generated multi-aspect queries.
+ * @param matrix - The original matrix.
+ * @returns YAML formatted string representing the target query.
+ */
+export function formatMatrixToYamlQuery(
+  distilledQuery: PositioningQuery,
+  matrix: PositioningMatrixInput,
+): string {
+  return `arastirma_konusu_ve_sorunsali: ${matrix.subjectProblem}
+temel_olgusal_odak: ${distilledQuery.primaryEmpiricalQuery}
+aktorler_ve_kurumlar: ${distilledQuery.actorsAndSourcesQuery}
+donem_ve_vaka_baglami: ${distilledQuery.periodAndContextQuery}
+konusal_anahtar_kavramlar: ${distilledQuery.substantiveKeywords.join(", ")}`;
+}
+
+/**
+ * Formats a candidate thesis into structured YAML for Cohere Rerank v4.0 Pro.
+ *
+ * @param thesis - The candidate thesis from Tezara.
+ * @returns YAML formatted string representing the candidate document.
+ */
+export function formatThesisToYaml(thesis: TezaraThesisDetails): string {
+  return `baslik: ${thesis.title}
+yazar: ${thesis.author || "Bilinmiyor"} (${thesis.year || "N/A"})
+tur: ${thesis.thesisType || "N/A"}
+universite_bolum: ${thesis.university || "N/A"} - ${thesis.department || "N/A"}
+dil: ${thesis.language || "Türkçe"}
+ozet: ${thesis.abstract || ""}`;
 }
 </file>
 
@@ -25353,6 +25333,39 @@ export async function performHybridRagSearch(
   });
 
   return finalResults;
+}
+</file>
+
+<file path="src/core/services/tezara/qdrant-client.ts">
+import { QdrantClient } from "@qdrant/js-client-rest";
+
+/** Global singleton Qdrant client instance. */
+let qdrantClient: QdrantClient | null = null;
+
+/**
+ * Returns the singleton Qdrant client connected to the Qdrant Cloud cluster.
+ *
+ * @throws Error when QDRANT_URL is missing.
+ * @returns Qdrant client instance.
+ */
+export function getQdrantClient(): QdrantClient {
+  if (qdrantClient) {
+    return qdrantClient;
+  }
+
+  const qdrantUrl = process.env.QDRANT_URL ?? "";
+  const qdrantApiKey = process.env.QDRANT_API_KEY ?? "";
+
+  if (!qdrantUrl) {
+    throw new Error("QDRANT_URL environment variable is not defined.");
+  }
+
+  qdrantClient = new QdrantClient({
+    url: qdrantUrl,
+    apiKey: qdrantApiKey || undefined,
+  });
+
+  return qdrantClient;
 }
 </file>
 
@@ -32174,204 +32187,52 @@ export function OutlineStatsBar({
 }
 </file>
 
-<file path="src/app/(onboarding)/onboarding/positioning/_services/query-generator.ts">
-import { z } from "zod";
-import { ThinkingLevel } from "@google/genai";
-import { FLASH_LITE_35, GEMINI_SEED } from "@/lib/constants";
-import {
-  generateGeminiStructuredContent,
-  type JsonSchema,
-} from "@/core/services/ai";
-import { buildQueryGenerationPromptPayload } from "../_prompts/query-generator.prompt";
-import type { Logger } from "@/lib/logger";
-import type { PositioningMatrixInput } from "./validation";
+<file path="src/app/(onboarding)/onboarding/positioning/_components/positioning-container.tsx">
+"use client";
 
-/** Zod schema for generated dense multi-aspect semantic search queries. */
-export const positioningQuerySchema = z.object({
-  primaryEmpiricalQuery: z
-    .string()
-    .describe(
-      "Vektör arama motoru için araştırmanın temel ampirik sorunsalını ve olgusunu hedefleyen 20-25 kelimelik yoğun semantik sorgu.",
-    ),
-  actorsAndSourcesQuery: z
-    .string()
-    .describe(
-      "Araştırmanın dayandığı kuramsal modelleri, kavramsal çerçeveyi ve temel analitik eksenleri hedefleyen 20-25 kelimelik semantik sorgu.",
-    ),
-  periodAndContextQuery: z
-    .string()
-    .describe(
-      "Araştırmanın yöntemini, vaka/örneklem yapısını, dönemini veya ampirik bağlamını hedefleyen 20-25 kelimelik semantik sorgu.",
-    ),
-  substantiveKeywords: z
-    .array(z.string())
-    .describe(
-      "Literatür eşleştirmesinde ve yeniden sıralamada kullanılacak 4-6 adet spesifik akademik olgu, aktör, kuram ve yöntem kavramı.",
-    ),
-});
+import type { Positioning } from "@/core/db/schema";
+import type { PositioningGlobalStatus, RecommendedThesisItem, GapAnalysisStructured } from "../_services/validation";
+import type { JuryAnalysisResult } from "../_services/analysis";
+import { usePositioningContinue } from "../../_hooks/use-positioning-continue";
+import { PositioningReportView } from "./positioning-report-view";
 
-export type PositioningQuery = z.infer<typeof positioningQuerySchema>;
-
-/** JSON schema matching positioningQuerySchema for Gemini structured outputs. */
-export const positioningQueryJsonSchema: JsonSchema = {
-  type: "object",
-  properties: {
-    primaryEmpiricalQuery: {
-      type: "string",
-      description:
-        "Vektör arama motoru için araştırmanın temel ampirik sorunsalını ve olgusunu hedefleyen 20-25 kelimelik yoğun semantik sorgu.",
-    },
-    actorsAndSourcesQuery: {
-      type: "string",
-      description:
-        "Araştırmanın dayandığı kuramsal modelleri, kavramsal çerçeveyi ve temel analitik eksenleri hedefleyen 20-25 kelimelik semantik sorgu.",
-    },
-    periodAndContextQuery: {
-      type: "string",
-      description:
-        "Araştırmanın yöntemini, vaka/örneklem yapısını, dönemini veya ampirik bağlamını hedefleyen 20-25 kelimelik semantik sorgu.",
-    },
-    substantiveKeywords: {
-      type: "array",
-      items: { type: "string" },
-      description:
-        "Literatür eşleştirmesinde ve yeniden sıralamada kullanılacak 4-6 adet spesifik akademik olgu, aktör, kuram ve yöntem kavramı.",
-    },
-  },
-  required: [
-    "primaryEmpiricalQuery",
-    "actorsAndSourcesQuery",
-    "periodAndContextQuery",
-    "substantiveKeywords",
-  ],
-  additionalProperties: false,
-};
+interface PositioningContainerProps {
+  initialRecord?: Positioning | null;
+}
 
 /**
- * Generates 3 complementary empirical, theoretical, and methodological semantic search queries
- * from the thesis matrix using FLASH_LITE_35 with LOW thinking for high speed and determinism.
+ * Client container that wraps and passes the pre-generated positioning gap analysis report
+ * to PositioningReportView.
  *
- * @param matrix - The positioning matrix containing subjectProblem, theoreticalFramework, methodology.
- * @param logger - Optional logger for observability.
- * @returns The structured multi-aspect positioning query output.
+ * @param props - Component props containing optional pre-generated positioning record.
+ * @returns The rendered positioning report view.
  */
-export async function generatePositioningQuery(
-  matrix: PositioningMatrixInput | { subjectProblem: string; theoreticalFramework?: string; methodology?: string },
-  logger?: Logger,
-): Promise<PositioningQuery> {
-  const payload = buildQueryGenerationPromptPayload(matrix);
+export function PositioningContainer({
+  initialRecord,
+}: PositioningContainerProps) {
+  const { proceedFromPositioning } = usePositioningContinue();
 
-  try {
-    const result = await generateGeminiStructuredContent<PositioningQuery>(
-      FLASH_LITE_35,
-      payload.systemInstruction,
-      payload.userPrompt,
-      positioningQueryJsonSchema,
-      logger,
-      {
-        zodSchema: positioningQuerySchema,
-        payloadStage: "positioning_query_generation",
-        seed: GEMINI_SEED,
-        thinkingConfig: { thinkingLevel: ThinkingLevel.LOW },
-        thesisMatrix: matrix,
-        quiet: true,
+  const reportData: JuryAnalysisResult = {
+    globalStatus:
+      (initialRecord?.globalStatus as PositioningGlobalStatus) ??
+      "NO_RELATED_LITERATURE",
+    gapAnalysisSummary:
+      (initialRecord?.gapAnalysisSummary as GapAnalysisStructured) ?? {
+        literatureMapping: "",
+        academicGap: "",
+        originalContribution: "",
       },
-    );
+    recommendedTheses:
+      (initialRecord?.recommendedTheses as RecommendedThesisItem[]) ?? [],
+  };
 
-    return result;
-  } catch (error) {
-    logger?.warn("positioning_query_generation_fallback", { error });
-    const fallbackSlice = matrix.subjectProblem.slice(0, 250);
-    return {
-      primaryEmpiricalQuery: fallbackSlice,
-      actorsAndSourcesQuery: fallbackSlice,
-      periodAndContextQuery: fallbackSlice,
-      substantiveKeywords: [],
-    };
-  }
+  return (
+    <PositioningReportView
+      reportData={reportData}
+      onConfirm={proceedFromPositioning}
+    />
+  );
 }
-</file>
-
-<file path="src/app/(onboarding)/onboarding/positioning/_services/validation.ts">
-import { z } from "zod";
-
-/**
- * Zod validation schema for the universal thesis positioning matrix.
- * Enforces minimum length constraints across the 3 core academic dimensions.
- */
-export const positioningMatrixSchema = z.object({
-  subjectProblem: z
-    .string()
-    .trim()
-    .min(3, "Araştırma problemi en az 3 karakter olmalıdır."),
-  theoreticalFramework: z
-    .string()
-    .trim()
-    .min(3, "Kuramsal veya kavramsal çerçeve en az 3 karakter olmalıdır."),
-  methodology: z
-    .string()
-    .trim()
-    .min(3, "Yöntem ve ampirik bağlam en az 3 karakter olmalıdır."),
-});
-
-/** Input payload type inferred from the positioning matrix Zod schema. */
-export type PositioningMatrixInput = z.infer<typeof positioningMatrixSchema>;
-
-/** Strategic literature roles for positioning recommended theses. */
-export const strategicRoleEnum = z.enum([
-  "SPECIFIC_FOCUS",
-  "FOUNDATIONAL_WORK",
-  "METHODOLOGICAL_BENCHMARK",
-  "ALTERNATIVE_PERSPECTIVE",
-]);
-
-export type StrategicRole = z.infer<typeof strategicRoleEnum>;
-
-/** Enum type representing the global positioning / literature gap status. */
-export type PositioningGlobalStatus =
-  | "DIRECT_OVERLAP"
-  | "NOVEL_GAP_IDENTIFIED"
-  | "NO_RELATED_LITERATURE";
-
-/** Structure for individual recommended thesis entries in gap analysis reports. */
-export interface RecommendedThesisItem {
-  id?: string;
-  externalThesisId?: string;
-  title: string;
-  author: string;
-  year: number;
-  university: string;
-  strategicRole?: StrategicRole;
-  literaturePosition?: string;
-  contributionArea: string;
-  relevanceReason: string;
-  doi?: string;
-  thesisType?: string;
-  abstract?: string;
-  tezaraUrl?: string;
-}
-
-/** Zod validation schema for the 3 structured gap analysis sections. */
-export const gapAnalysisStructuredSchema = z.object({
-  literatureMapping: z
-    .string()
-    .describe(
-      "Mevcut Literatürün Haritalandırılması bölümünün akademik analizi (Mevcut çalışmalar nerede yoğunlaşıyor?)",
-    ),
-  academicGap: z
-    .string()
-    .describe(
-      "Literatürdeki Boşluk bölümünün akademik analizi (Mevcut çalışmalar neleri açıkta bıraktı?)",
-    ),
-  originalContribution: z
-    .string()
-    .describe(
-      "Çalışmanın Özgün Katkısı bölümünün akademik analizi (Araştırmacının tezi bu boşluğu nasıl dolduracak?)",
-    ),
-});
-
-/** Structured gap analysis type inferred from Zod schema. */
-export type GapAnalysisStructured = z.infer<typeof gapAnalysisStructuredSchema>;
 </file>
 
 <file path="src/app/(onboarding)/onboarding/positioning/page.tsx">
@@ -34487,142 +34348,6 @@ export async function runMistralOcr(
   });
 
   throw lastError;
-}
-</file>
-
-<file path="src/core/services/tezara/hf-embedding.ts">
-import type { Logger } from "@/lib/logger";
-import {
-  DEFAULT_MAX_DELAY,
-  HttpError,
-  withRetry,
-} from "@/core/services/ai/llm-retry";
-
-const HF_EMBEDDING_ENDPOINT =
-  "https://router.huggingface.co/hf-inference/models/intfloat/multilingual-e5-base/pipeline/feature-extraction";
-
-const MAX_RETRIES = 3;
-
-/**
- * Generates a 768-dimensional embedding vector for a query using
- * `intfloat/multilingual-e5-base` via Hugging Face Serverless Inference API.
- *
- * @param query - Raw query text.
- * @param logger - Optional logger for observability.
- * @param silent - When true, suppresses the start/success log pair for flat pipelines.
- * @returns 768-dimensional dense vector array.
- */
-export async function getE5QueryEmbedding(
-  query: string,
-  logger?: Logger,
-  silent = false,
-): Promise<number[]> {
-  const hfApiKey = process.env.HUGGINGFACE_API_KEY ?? "";
-
-  if (!hfApiKey) {
-    throw new Error("HUGGINGFACE_API_KEY environment variable is not defined.");
-  }
-
-  const trimmed = query.trim();
-  const inputWithPrefix = trimmed.startsWith("query: ")
-    ? trimmed
-    : `query: ${trimmed}`;
-
-  const startTime = performance.now();
-
-  try {
-    const vector = await withRetry(
-      async (): Promise<number[]> => {
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 20_000);
-
-        try {
-          const res = await fetch(HF_EMBEDDING_ENDPOINT, {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              Authorization: `Bearer ${hfApiKey}`,
-            },
-            body: JSON.stringify({ inputs: [inputWithPrefix] }),
-            signal: controller.signal,
-          });
-
-          if (!res.ok) {
-            const errText = await res.text().catch(() => "");
-            throw new HttpError(res.status, errText, null);
-          }
-
-          const data = (await res.json()) as unknown;
-
-          if (Array.isArray(data) && Array.isArray(data[0])) {
-            return data[0] as number[];
-          }
-
-          if (Array.isArray(data) && typeof data[0] === "number") {
-            return data as number[];
-          }
-
-          throw new Error(
-            "Unexpected embedding response structure from Hugging Face.",
-          );
-        } finally {
-          clearTimeout(timeoutId);
-        }
-      },
-      {
-        maxRetries: MAX_RETRIES,
-        baseDelay: 500,
-        maxDelay: DEFAULT_MAX_DELAY,
-        isRetryable: (error) => {
-          if (error instanceof HttpError) {
-            return (
-              error.status === 429 ||
-              error.status >= 500 ||
-              error.status === 503
-            );
-          }
-          return true;
-        },
-        onRetry: (attempt, delayMs, error) => {
-          logger?.info("hf_embedding_retry", {
-            service: "tezara",
-            filePath: "src/features/tezara/index.ts",
-            step: "get_query_embedding",
-            data: {
-              attempt,
-              delayMs: Math.round(delayMs),
-              errorMessage:
-                error instanceof Error ? error.message : String(error),
-            },
-          });
-        },
-      },
-    );
-
-    const durationMs = performance.now() - startTime;
-    if (!silent) {
-      logger?.info("hf_embedding_success", {
-        service: "tezara",
-        filePath: "src/features/tezara/index.ts",
-        step: "get_query_embedding",
-        durationMs,
-        data: { query: trimmed, dimensions: vector.length },
-      });
-    }
-
-    return vector;
-  } catch (err) {
-    const durationMs = performance.now() - startTime;
-    logger?.error("hf_embedding_failed", {
-      service: "tezara",
-      filePath: "src/features/tezara/index.ts",
-      step: "get_query_embedding",
-      durationMs,
-      data: { query: trimmed },
-      error: err,
-    });
-    throw err;
-  }
 }
 </file>
 
@@ -39482,347 +39207,204 @@ export async function regenerateAndPersistOutlineAction(): Promise<
 }
 </file>
 
-<file path="src/app/(onboarding)/onboarding/positioning/_prompts/jury-analysis.prompt.ts">
-import type { PositioningMatrixInput } from "../_services/validation";
-
-/** Prompt payload structure separating system instructions from user prompt. */
-export interface JuryAnalysisPromptPayload {
-  systemInstruction: string;
-  userPrompt: string;
-}
-
-/**
- * Builds the hybrid XML/Markdown prompt payload for the final jury synthesis analysis,
- * strictly focusing on the empirical research topic, actors, and subject-matter literature gap.
- *
- * @param params - Parameters containing the validated matrix, formatted evaluated theses text, and count.
- * @returns Structured prompt payload.
- */
-export function buildPositioningJuryPromptPayload(params: {
-  input: PositioningMatrixInput;
-  thesisListText: string;
-  evaluatedCount: number;
-}): JuryAnalysisPromptPayload {
-  const { input, thesisListText, evaluatedCount } = params;
-
-  const systemInstruction = `<role>
-Akademik jüri başkanı, tez izleme komitesi raportörü ve alan uzmanı.
-</role>
-
-<instructions>
-# Görev ve Sentez Amacı
-Kullanıcının sunduğu tez konusunu/sorunsalını ve ilgili bulunan **KONUSAL ve OLGUSAL TEZLERİ** inceleyerek; çalışmanın konu literatüründeki özgünlük durumunu karara bağla, 3 boyutlu derin bir Konusal Boşluk Analizi Raporu sentezle ve en stratejik 4-8 adet konu kılavuz tezinin ID'lerini seç.
-
-# Jüri Değerlendirme Kuralları
-1. **globalStatus (Jüri Genel Kararı):**
-   - **NOVEL_GAP_IDENTIFIED (Özgün Katkı / Boşluk Mevcut):** Literatürde aynı konuyu/hareketi inceleyen çalışmalar var ancak araştırmacının dönemi, aktör ayrımı veya konu sorunsalı belirgin ve özgün bir olgusal boşluğu dolduruyor.
-   - **DIRECT_OVERLAP (Birebir Çakışma / Özgünlük Riski):** İncelenen tezlerden biri kullanıcının araştırma konusunu, aynı dönemi ve aynı aktörleri aynı kapsamda daha önce birebir çalışmış.
-   - **NO_RELATED_LITERATURE (Bakir Alan / Doğrudan Konu Tezi Yok):** Veritabanında doğrudan aynı konuyu veya aktörleri inceleyen tez bulunamadı.
-
-2. **gapAnalysisSummary (3 Boyutlu Konusal Boşluk Analizi Raporu):**
-   - **literatureMapping (Mevcut Konu Literatürünün Haritalandırılması):** Mevcut konu tezlerinin hangi aktörler, hangi dönemler ve hangi temalar üzerinde yoğunlaştığının akademik analizi (Markdown).
-   - **academicGap (Konudaki Olgusal / Dönemsel Boşluk):** Mevcut çalışmaların neleri ele almadığı, hangi dönem veya aktör dinamiklerini açıkta bıraktığının analizi (Markdown).
-   - **originalContribution (Çalışmanın Özgün Konusal Katkısı):** Araştırmacının tezinin bu olgusal/dönemsel boşluğu nasıl dolduracağının analizi (Markdown).
-
-3. **selectedThesisIds (Kılavuz Konu Tezlerinin Seçimi):**
-   - İncelenen ilgili tezler arasından araştırmacıya doğrudan konusal referans sunacak en stratejik 4 ila 8 adet tezin ID'sini seç.
-
-# Sınırlamalar
-- Yalnızca araştırmanın somut konusuna, aktörlerine ve ampirik alanına odaklanın. Konu dışı soyut teori veya genel yöntem tartışmalarına girmeyin.
-- Metinlerde akıcı, yetkin ve saygın bir akademik Türkçe kullanın.
-</instructions>
-
-<examples>
-<example>
-<input>
-[Kullanıcı Tez Konusu]:
-Kürt Özgürlük Hareketi'nin 1991-1999 döneminde söylemsel dönüşümü; PKK ve HEP-DEP-HADEP hattının taleplerindeki değişim ve kuluçka evresi.
-
-[İncelenen İlgili Tezler]:
-[Tez #1] ID: "201" | Başlık: 1990-2014 Dönemi Kürt Siyasal Hareketinin Söyleminin Dönüşümü | Rol: SPECIFIC_FOCUS
-[Tez #2] ID: "302" | Başlık: Türkiye'de Kürt Etno-Bölgesel Hareketi (1959-1984) | Rol: FOUNDATIONAL_WORK
-[Tez #3] ID: "403" | Başlık: PKK'nın Kürtçe ve Kültürel Haklar Politikası (1990'lar) | Rol: SPECIFIC_FOCUS
-</input>
-<output>
-{
-  "globalStatus": "NOVEL_GAP_IDENTIFIED",
-  "gapAnalysisSummary": {
-    "literatureMapping": "Türkiye'de Kürt hareketi üzerine yapılan mevcut tezler; 1980 öncesi tarihsel kökenler (Alış, 2017) ve 1990 sonrası yasal siyasi partilerin genel söylem evrimi (Okudan Dernek, 2014) ekseninde yoğunlaşmaktadır. Literatürde yasal partilerin parlamenter söylemleri ile silahlı kanadın yayın organlarındaki dönüşüm dinamikleri çoğunlukla birbirinden yalıtılmış olarak ele alınmıştır.",
-    "academicGap": "Mevcut konu literatürü, 1999 sonrasındaki söylemsel değişimi ani bir kırılma olarak görme eğilimindedir. 1991-1999 arası kuluçka dönemi; silahlı kanat (PKK) ile yasal parti hattının (HEP-DEP-HADEP) talep içeriklerindeki niteliksel dönüşüm ve bu iki aktör arasındaki söylemsel etkileşim açısından derinlemesine incelenmemiştir.",
-    "originalContribution": "Bu çalışma, 1991-1999 dönemini iki ayrı aktör hattının (silahlı ve yasal) talep tipolojisi üzerinden bağımsız olarak inceleyip karşılaştırarak, 1999 dönüşümünün tarihsel ve söylemsel kuluçka evresini ortaya koymakta ve konu literatüründeki önemli bir dönemsel ve olgusal boşluğu doldurmaktadır."
-  },
-  "selectedThesisIds": ["201", "302", "403"]
-}
-</output>
-</example>
-</examples>`;
-
-  const userPrompt = `<context>
-[Kullanıcı Tez Konusu ve Sorunsalı]:
-Araştırma Problemi ve Odak: ${input.subjectProblem}
-Kuramsal Çerçeve: ${input.theoreticalFramework || "Belirtilmemiş"}
-Yöntem ve Veri: ${input.methodology || "Belirtilmemiş"}
-
-[İncelenen İlgili Konu Tezleri (${evaluatedCount} Adet)]:
-${thesisListText}
-</context>
-
-<task>
-Yukarıdaki <context> içeriğindeki ${evaluatedCount} adet konu tezini ve kullanıcı konusunu <instructions> kurallarına göre analiz et; jüri durum kararını, 3 boyutlu konusal boşluk analizi raporunu ve kılavuz tez ID listesini içeren JSON çıktısını üret.
-</task>`;
-
-  return { systemInstruction, userPrompt };
-}
-</file>
-
-<file path="src/app/(onboarding)/onboarding/positioning/_services/decision-engine.ts">
-import { sql } from "drizzle-orm";
-import { db } from "@/core/db";
-import { positioning } from "@/core/db/schema";
-import { invalidateOnboardingStepCache } from "@/lib/cache-tags";
-import type { RecommendedThesisItem } from "./validation";
-import type { JuryAnalysisResult } from "./analysis";
-
-/**
- * Persists the positioning report in an atomic database transaction and invalidates cache tags.
- *
- * @param userId - The ID of the authenticated user.
- * @param matrixId - The ID of the thesis matrix.
- * @param analysisResult - The full jury analysis result to persist.
- * @returns The saved database record.
- */
-export async function savePositioningReportTransaction(
-  userId: number,
-  matrixId: number,
-  analysisResult: JuryAnalysisResult,
-) {
-  const formattedRecommendedTheses: RecommendedThesisItem[] =
-    analysisResult.recommendedTheses.map((t) => ({
-      id: String(t.externalThesisId || t.id),
-      externalThesisId: String(t.externalThesisId || t.id),
-      title: t.title,
-      author: t.author,
-      year: t.year,
-      university: t.university,
-      strategicRole: t.strategicRole,
-      literaturePosition: t.literaturePosition,
-      contributionArea: t.contributionArea,
-      relevanceReason: t.relevanceReason,
-      doi: t.doi,
-      thesisType: t.thesisType,
-      abstract: t.abstract,
-      tezaraUrl: t.tezaraUrl,
-    }));
-
-  const savedRecord = await db.transaction(async (tx) => {
-    const [row] = await tx
-      .insert(positioning)
-      .values({
-        userId,
-        matrixId,
-        globalStatus: analysisResult.globalStatus,
-        gapAnalysisSummary: analysisResult.gapAnalysisSummary,
-        recommendedTheses: formattedRecommendedTheses,
-        updatedAt: sql`now()`,
-      })
-      .onConflictDoUpdate({
-        target: positioning.matrixId,
-        set: {
-          globalStatus: analysisResult.globalStatus,
-          gapAnalysisSummary: analysisResult.gapAnalysisSummary,
-          recommendedTheses: formattedRecommendedTheses,
-          updatedAt: sql`now()`,
-        },
-      })
-      .returning();
-
-    return row;
-  });
-
-  try {
-    invalidateOnboardingStepCache("positioning");
-  } catch {
-    // Ignore cache tag error if invoked outside Next.js request context
-  }
-
-  return savedRecord;
-}
-</file>
-
-<file path="src/app/(onboarding)/onboarding/positioning/_services/sifting.ts">
-import { searchTezara } from "@/core/services/tezara";
-import type { TezaraThesisDetails } from "@/lib/types";
+<file path="src/app/(onboarding)/onboarding/positioning/_services/query-generator.ts">
+import { z } from "zod";
+import { ThinkingLevel } from "@google/genai";
+import { FLASH_LITE_35, GEMINI_SEED } from "@/lib/constants";
 import {
-  rerankWithCohere,
-  COHERE_RERANK_MODEL,
-} from "@/core/services/ai/cohere";
+  generateGeminiStructuredContent,
+  type JsonSchema,
+} from "@/core/services/ai";
+import { buildQueryGenerationPromptPayload } from "../_prompts/query-generator.prompt";
 import type { Logger } from "@/lib/logger";
 import type { PositioningMatrixInput } from "./validation";
-import { generatePositioningQuery } from "./query-generator";
-import {
-  sanitizeSearchQuery,
-  formatThesisToYaml,
-  formatMatrixToYamlQuery,
-} from "./sifting-formatters";
-import {
-  reciprocalRankFusion,
-  filterValidCandidates,
-} from "./candidate-fusion";
 
-export { sanitizeSearchQuery };
+/** Zod schema for generated dense multi-aspect semantic search queries. */
+export const positioningQuerySchema = z.object({
+  primaryEmpiricalQuery: z
+    .string()
+    .describe(
+      "Vektör arama motoru için araştırmanın temel ampirik sorunsalını ve olgusunu hedefleyen 20-25 kelimelik yoğun semantik sorgu.",
+    ),
+  actorsAndSourcesQuery: z
+    .string()
+    .describe(
+      "Araştırmanın dayandığı kuramsal modelleri, kavramsal çerçeveyi ve temel analitik eksenleri hedefleyen 20-25 kelimelik semantik sorgu.",
+    ),
+  periodAndContextQuery: z
+    .string()
+    .describe(
+      "Araştırmanın yöntemini, vaka/örneklem yapısını, dönemini veya ampirik bağlamını hedefleyen 20-25 kelimelik semantik sorgu.",
+    ),
+  substantiveKeywords: z
+    .array(z.string())
+    .describe(
+      "Literatür eşleştirmesinde ve yeniden sıralamada kullanılacak 4-6 adet spesifik akademik olgu, aktör, kuram ve yöntem kavramı.",
+    ),
+});
 
-/** Candidate thesis extended with Cohere semantic relevance score. */
-export interface SiftedThesis extends TezaraThesisDetails {
-  relevanceScore?: number;
-}
+export type PositioningQuery = z.infer<typeof positioningQuerySchema>;
 
-/** Epsilon threshold for floating point tie-breaking. */
-const SCORE_EPSILON = 1e-4;
+/** JSON schema matching positioningQuerySchema for Gemini structured outputs. */
+export const positioningQueryJsonSchema: JsonSchema = {
+  type: "object",
+  properties: {
+    primaryEmpiricalQuery: {
+      type: "string",
+      description:
+        "Vektör arama motoru için araştırmanın temel ampirik sorunsalını ve olgusunu hedefleyen 20-25 kelimelik yoğun semantik sorgu.",
+    },
+    actorsAndSourcesQuery: {
+      type: "string",
+      description:
+        "Araştırmanın dayandığı kuramsal modelleri, kavramsal çerçeveyi ve temel analitik eksenleri hedefleyen 20-25 kelimelik semantik sorgu.",
+    },
+    periodAndContextQuery: {
+      type: "string",
+      description:
+        "Araştırmanın yöntemini, vaka/örneklem yapısını, dönemini veya ampirik bağlamını hedefleyen 20-25 kelimelik semantik sorgu.",
+    },
+    substantiveKeywords: {
+      type: "array",
+      items: { type: "string" },
+      description:
+        "Literatür eşleştirmesinde ve yeniden sıralamada kullanılacak 4-6 adet spesifik akademik olgu, aktör, kuram ve yöntem kavramı.",
+    },
+  },
+  required: [
+    "primaryEmpiricalQuery",
+    "actorsAndSourcesQuery",
+    "periodAndContextQuery",
+    "substantiveKeywords",
+  ],
+  additionalProperties: false,
+};
 
 /**
- * 3-Dimensional Academic Sifting Engine:
- * 1. Generates 3 complementary queries (Problem, Theory, Method) via FLASH_LITE_35.
- * 2. Fetches candidate theses from Qdrant vector index in parallel.
- * 3. Fuses candidate pools via Reciprocal Rank Fusion (RRF).
- * 4. Filters valid candidates (abstract length, non-empty metadata).
- * 5. Applies Cohere Rerank v4.0 Pro to sort and select the top candidates.
+ * Generates 3 complementary empirical, theoretical, and methodological semantic search queries
+ * from the thesis matrix using FLASH_LITE_35 with LOW thinking for high speed and determinism.
  *
- * @param matrixInput - The validated positioning matrix input.
- * @param logger - Optional structured logger.
- * @param options - Optional limits for topN and candidate retrieval.
- * @returns Sorted candidate theses list.
+ * @param matrix - The positioning matrix containing subjectProblem, theoreticalFramework, methodology.
+ * @param logger - Optional logger for observability.
+ * @returns The structured multi-aspect positioning query output.
  */
-export async function searchAndSiftTheses(
-  matrixInput: PositioningMatrixInput,
+export async function generatePositioningQuery(
+  matrix: PositioningMatrixInput | { subjectProblem: string; theoreticalFramework?: string; methodology?: string },
   logger?: Logger,
-  options?: { topN?: number; candidateLimit?: number },
-): Promise<SiftedThesis[]> {
-  const topN = options?.topN ?? 30;
-  const singleQueryLimit = options?.candidateLimit ?? 100;
+): Promise<PositioningQuery> {
+  const payload = buildQueryGenerationPromptPayload(matrix);
 
-  const queryGenStart = performance.now();
-  logger?.info("sifting_query_generation_start", {
-    service: "gemini",
-    filePath: "src/app/(onboarding)/onboarding/positioning/_services/sifting.ts",
-  });
+  try {
+    const result = await generateGeminiStructuredContent<PositioningQuery>(
+      FLASH_LITE_35,
+      payload.systemInstruction,
+      payload.userPrompt,
+      positioningQueryJsonSchema,
+      logger,
+      {
+        zodSchema: positioningQuerySchema,
+        payloadStage: "positioning_query_generation",
+        seed: GEMINI_SEED,
+        thinkingConfig: { thinkingLevel: ThinkingLevel.LOW },
+        thesisMatrix: matrix,
+        quiet: true,
+      },
+    );
 
-  const distilledQuery = await generatePositioningQuery(matrixInput, logger);
-
-  const query1 = sanitizeSearchQuery(
-    distilledQuery.primaryEmpiricalQuery || matrixInput.subjectProblem,
-  );
-  const query2 = sanitizeSearchQuery(
-    distilledQuery.actorsAndSourcesQuery || matrixInput.subjectProblem,
-  );
-  const query3 = sanitizeSearchQuery(
-    distilledQuery.periodAndContextQuery || matrixInput.subjectProblem,
-  );
-
-  logger?.info("sifting_query_generation_success", {
-    service: "gemini",
-    filePath: "src/app/(onboarding)/onboarding/positioning/_services/sifting.ts",
-    durationMs: performance.now() - queryGenStart,
-    data: {
-      query1,
-      query2,
-      query3,
-      keywords: distilledQuery.substantiveKeywords,
-    },
-  });
-
-  const searchStart = performance.now();
-
-  logger?.info("sifting_multi_search_start", {
-    service: "tezara",
-    filePath: "src/app/(onboarding)/onboarding/positioning/_services/sifting.ts",
-    data: { queries: [query1, query2, query3], singleQueryLimit },
-  });
-
-  // 1. Parallel Multi-Aspect Vector Searches in Tezara (Qdrant E5)
-  const [res1, res2, res3] = await Promise.all([
-    searchTezara(query1, logger, {
-      limit: singleQueryLimit,
-      silent: true,
-    }),
-    searchTezara(query2, logger, {
-      limit: singleQueryLimit,
-      silent: true,
-    }),
-    searchTezara(query3, logger, {
-      limit: singleQueryLimit,
-      silent: true,
-    }),
-  ]);
-
-  // 2. Fuse candidate pools via Reciprocal Rank Fusion (RRF)
-  const fusedTheses = reciprocalRankFusion([res1, res2, res3]);
-
-  // 3. Filter valid candidates
-  const filteredCandidates = filterValidCandidates(fusedTheses);
-
-  if (filteredCandidates.length === 0) {
-    logger?.info("sifting_multi_search_success", {
-      service: "tezara",
-      filePath: "src/app/(onboarding)/onboarding/positioning/_services/sifting.ts",
-      durationMs: performance.now() - searchStart,
-      data: { candidateCount: 0 },
-    });
-    return [];
-  }
-
-  logger?.info("sifting_multi_search_success", {
-    service: "tezara",
-    filePath: "src/app/(onboarding)/onboarding/positioning/_services/sifting.ts",
-    durationMs: performance.now() - searchStart,
-    data: { candidateCount: filteredCandidates.length },
-  });
-
-  // 4. Cohere Rerank v4.0 Pro
-  const targetYamlQuery = formatMatrixToYamlQuery(distilledQuery, matrixInput);
-  const candidateYamlDocs = filteredCandidates.map(formatThesisToYaml);
-
-  const rerankStart = performance.now();
-
-  logger?.info("sifting_rerank_start", {
-    service: "cohere",
-    filePath: "src/app/(onboarding)/onboarding/positioning/_services/sifting.ts",
-    data: {
-      model: COHERE_RERANK_MODEL,
-      candidateCount: filteredCandidates.length,
-    },
-  });
-
-  const rerankResults = await rerankWithCohere({
-    query: targetYamlQuery,
-    documents: candidateYamlDocs,
-    logger,
-  });
-
-  const scoredTheses: SiftedThesis[] = rerankResults.map((res) => {
-    const candidate = filteredCandidates[res.index];
+    return result;
+  } catch (error) {
+    logger?.warn("positioning_query_generation_fallback", { error });
+    const fallbackSlice = matrix.subjectProblem.slice(0, 250);
     return {
-      ...candidate,
-      relevanceScore: res.relevanceScore,
+      primaryEmpiricalQuery: fallbackSlice,
+      actorsAndSourcesQuery: fallbackSlice,
+      periodAndContextQuery: fallbackSlice,
+      substantiveKeywords: [],
     };
-  });
-
-  scoredTheses.sort((a, b) => {
-    const delta = (b.relevanceScore ?? 0) - (a.relevanceScore ?? 0);
-    if (Math.abs(delta) > SCORE_EPSILON) return delta;
-    return a.id - b.id;
-  });
-
-  const selected = scoredTheses.slice(0, topN);
-
-  logger?.info("sifting_rerank_success", {
-    service: "cohere",
-    filePath: "src/app/(onboarding)/onboarding/positioning/_services/sifting.ts",
-    durationMs: performance.now() - rerankStart,
-    data: { topCount: selected.length },
-  });
-
-  return selected;
+  }
 }
+</file>
+
+<file path="src/app/(onboarding)/onboarding/positioning/_services/validation.ts">
+import { z } from "zod";
+
+/**
+ * Zod validation schema for the universal thesis positioning matrix.
+ * Enforces minimum length constraints across the 3 core academic dimensions.
+ */
+export const positioningMatrixSchema = z.object({
+  subjectProblem: z
+    .string()
+    .trim()
+    .min(3, "Araştırma problemi en az 3 karakter olmalıdır."),
+  theoreticalFramework: z
+    .string()
+    .trim()
+    .min(3, "Kuramsal veya kavramsal çerçeve en az 3 karakter olmalıdır."),
+  methodology: z
+    .string()
+    .trim()
+    .min(3, "Yöntem ve ampirik bağlam en az 3 karakter olmalıdır."),
+});
+
+/** Input payload type inferred from the positioning matrix Zod schema. */
+export type PositioningMatrixInput = z.infer<typeof positioningMatrixSchema>;
+
+/** Strategic literature roles for positioning recommended theses. */
+export const strategicRoleEnum = z.enum([
+  "SPECIFIC_FOCUS",
+  "FOUNDATIONAL_WORK",
+  "METHODOLOGICAL_BENCHMARK",
+  "ALTERNATIVE_PERSPECTIVE",
+]);
+
+export type StrategicRole = z.infer<typeof strategicRoleEnum>;
+
+/** Enum type representing the global positioning / literature gap status. */
+export type PositioningGlobalStatus =
+  | "DIRECT_OVERLAP"
+  | "NOVEL_GAP_IDENTIFIED"
+  | "NO_RELATED_LITERATURE";
+
+/** Structure for individual recommended thesis entries in gap analysis reports. */
+export interface RecommendedThesisItem {
+  id?: string;
+  externalThesisId?: string;
+  title: string;
+  author: string;
+  year: number;
+  university: string;
+  strategicRole?: StrategicRole;
+  literaturePosition?: string;
+  contributionArea: string;
+  relevanceReason: string;
+  doi?: string;
+  thesisType?: string;
+  abstract?: string;
+  tezaraUrl?: string;
+}
+
+/** Zod validation schema for the 3 structured gap analysis sections. */
+export const gapAnalysisStructuredSchema = z.object({
+  literatureMapping: z
+    .string()
+    .describe(
+      "Mevcut Literatürün Haritalandırılması bölümünün akademik analizi (Mevcut çalışmalar nerede yoğunlaşıyor?)",
+    ),
+  academicGap: z
+    .string()
+    .describe(
+      "Literatürdeki Boşluk bölümünün akademik analizi (Mevcut çalışmalar neleri açıkta bıraktı?)",
+    ),
+  originalContribution: z
+    .string()
+    .describe(
+      "Çalışmanın Özgün Katkısı bölümünün akademik analizi (Araştırmacının tezi bu boşluğu nasıl dolduracak?)",
+    ),
+});
+
+/** Structured gap analysis type inferred from Zod schema. */
+export type GapAnalysisStructured = z.infer<typeof gapAnalysisStructuredSchema>;
 </file>
 
 <file path="src/components/ui/select.tsx">
@@ -40437,6 +40019,142 @@ export async function rerankWithCohere(
 }
 </file>
 
+<file path="src/core/services/tezara/hf-embedding.ts">
+import type { Logger } from "@/lib/logger";
+import {
+  DEFAULT_MAX_DELAY,
+  HttpError,
+  withRetry,
+} from "@/core/services/ai/llm-retry";
+
+const HF_EMBEDDING_ENDPOINT =
+  "https://router.huggingface.co/hf-inference/models/intfloat/multilingual-e5-base/pipeline/feature-extraction";
+
+const MAX_RETRIES = 3;
+
+/**
+ * Generates a 768-dimensional embedding vector for a query using
+ * `intfloat/multilingual-e5-base` via Hugging Face Serverless Inference API.
+ *
+ * @param query - Raw query text.
+ * @param logger - Optional logger for observability.
+ * @param silent - When true, suppresses the start/success log pair for flat pipelines.
+ * @returns 768-dimensional dense vector array.
+ */
+export async function getE5QueryEmbedding(
+  query: string,
+  logger?: Logger,
+  silent = false,
+): Promise<number[]> {
+  const hfApiKey = process.env.HUGGINGFACE_API_KEY ?? "";
+
+  if (!hfApiKey) {
+    throw new Error("HUGGINGFACE_API_KEY environment variable is not defined.");
+  }
+
+  const trimmed = query.trim();
+  const inputWithPrefix = trimmed.startsWith("query: ")
+    ? trimmed
+    : `query: ${trimmed}`;
+
+  const startTime = performance.now();
+
+  try {
+    const vector = await withRetry(
+      async (): Promise<number[]> => {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 20_000);
+
+        try {
+          const res = await fetch(HF_EMBEDDING_ENDPOINT, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${hfApiKey}`,
+            },
+            body: JSON.stringify({ inputs: [inputWithPrefix] }),
+            signal: controller.signal,
+          });
+
+          if (!res.ok) {
+            const errText = await res.text().catch(() => "");
+            throw new HttpError(res.status, errText, null);
+          }
+
+          const data = (await res.json()) as unknown;
+
+          if (Array.isArray(data) && Array.isArray(data[0])) {
+            return data[0] as number[];
+          }
+
+          if (Array.isArray(data) && typeof data[0] === "number") {
+            return data as number[];
+          }
+
+          throw new Error(
+            "Unexpected embedding response structure from Hugging Face.",
+          );
+        } finally {
+          clearTimeout(timeoutId);
+        }
+      },
+      {
+        maxRetries: MAX_RETRIES,
+        baseDelay: 500,
+        maxDelay: DEFAULT_MAX_DELAY,
+        isRetryable: (error) => {
+          if (error instanceof HttpError) {
+            return (
+              error.status === 429 ||
+              error.status >= 500 ||
+              error.status === 503
+            );
+          }
+          return true;
+        },
+        onRetry: (attempt, delayMs, error) => {
+          logger?.info("hf_embedding_retry", {
+            service: "tezara",
+            filePath: "src/features/tezara/index.ts",
+            step: "get_query_embedding",
+            data: {
+              attempt,
+              delayMs: Math.round(delayMs),
+              errorMessage:
+                error instanceof Error ? error.message : String(error),
+            },
+          });
+        },
+      },
+    );
+
+    const durationMs = performance.now() - startTime;
+    if (!silent) {
+      logger?.info("hf_embedding_success", {
+        service: "tezara",
+        filePath: "src/features/tezara/index.ts",
+        step: "get_query_embedding",
+        durationMs,
+        data: { query: trimmed, dimensions: vector.length },
+      });
+    }
+
+    return vector;
+  } catch (err) {
+    const durationMs = performance.now() - startTime;
+    logger?.error("hf_embedding_failed", {
+      service: "tezara",
+      filePath: "src/features/tezara/index.ts",
+      step: "get_query_embedding",
+      durationMs,
+      data: { query: trimmed },
+      error: err,
+    });
+    throw err;
+  }
+}
+</file>
+
 <file path="src/lib/ai/prompt-builder.ts">
 /**
  * Standardized Prompt Builder for Fabricca LLM System.
@@ -40637,6 +40355,58 @@ export interface LiteraturePoolEntry {
   thesisBoxId: number;
   articles: JuryArticle[];
 }
+</file>
+
+<file path="AGENTS.md">
+# AGENTS.md
+
+## 1. Role & System Overview
+
+You are the **Lead Software Engineer** and **Primary Auditor** for Fabricca, a private digital thesis assistant and academic research platform.
+
+- **Scope & Access:** Private application restricted strictly to two seeded users. Not open to public registration.
+- **Engineering Mindset:** Write clean, minimal, production-ready code. Avoid over-engineering. Make targeted, high-impact edits.
+- **Repository Exploration:** Use semantic exploration tools (CodeGraph/LSP) for structural codebase exploration. When CodeGraph is unavailable or when targeting known files, direct file search and reading are fully supported.
+
+## 2. Core Stack & Architectural Constraints
+
+- **Framework:** Next.js (App Router, Server Actions)
+- **Database & ORM:** Neon Serverless PostgreSQL (`pgvector`), Drizzle ORM
+- **Primary LLM:** Google Gemini Flash (`FLASH_LITE_31`, `FLASH_LITE_35`, `FLASH_36` via `@google/genai`)
+- **Embedding Motor:** Cloudflare Workers AI (`@cf/baai/bge-m3` — SINGLE source embedding model; no secondary fallbacks allowed)
+- **Semantic Reranking:** Cohere Rerank API (`rerank-v4.0-pro` — ONLY for reranking)
+- **Object Storage:** Cloudflare R2 / AWS S3 (`@aws-sdk/client-s3`)
+- **Literature & DOI:** OpenAlex API (canonical literature source), Crossref API (DOI resolution)
+- **Secondary LLM:** Cerebras API (`gemma-4-31b` — metadata extraction and sanitization)
+
+> **Constraint:** Introducing alternative frameworks, third-party libraries, or secondary model fallbacks requires explicit user approval.
+
+## 3. The Golden Boundary Rule
+
+- **Backend & Logic Layer (100% English):** All DB column names, function names, local variables, Zod schemas, API payloads, and Logger step strings MUST be written in technical English (`camelCase` or `snake_case`). No Turkish characters in code/backend logic.
+- **User Interface & Academic Outputs (100% Turkish):** All UI elements, buttons, table headers, toast notifications, and AI-generated academic recommendations MUST be written in fluent, high-level academic Turkish. Transform backend English enums to Turkish on the UI layer.
+
+## 4. Code & Verification Rules
+
+- **Type Safety:** Avoid `any`. Prefer `unknown` with explicit type guards or Zod validation. If `any` is unavoidable at an external boundary, isolate and document it explicitly.
+- **Verification Strategy:** Run the narrowest relevant check first (file-scoped test or lint). Run full verification (`npm run check:full`) ONLY when modifying shared libraries, global configs, DB schemas, or multi-module interfaces.
+- **No Incomplete Code:** Never leave `// TODO` placeholders or incomplete snippets. All edited files must be functional, complete, and compilation-ready.
+
+## 5. Task-Specific Documentation (Progressive Disclosure)
+
+Before executing domain-specific tasks, consult the corresponding domain specification file:
+
+- **UI System, Styling & Components:** [docs/UI_RULES.md](docs/UI_RULES.md)
+- **Database Schema, Migrations & Progressive Save:** [docs/DATABASE_RULES.md](docs/DATABASE_RULES.md)
+- **LLM Integration, Models & Prompting:** [docs/LLM_INTEGRATION.md](docs/LLM_INTEGRATION.md)
+- **Development Standards, JSDoc, Error Handling & Logging:** [docs/DEVELOPMENT_STANDARDS.md](docs/DEVELOPMENT_STANDARDS.md)
+- **System Architecture, External Services & Storage:** [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)
+
+## 6. Instruction Precedence & Maintenance
+
+- **User Overrides:** User prompt instructions strictly override any rules in this repository for the current task.
+- **No Temporary Edits:** Do NOT modify `AGENTS.md` for one-off task overrides.
+- **Minimalist Specification:** Keep `AGENTS.md` minimal (~120–150 lines). Update it ONLY when making permanent repository-wide architectural policy changes.
 </file>
 
 <file path="src/app/(app)/advisor/_components/pipeline-result-view.tsx">
@@ -43906,379 +43676,358 @@ export default async function OnboardingMatrixPage() {
 }
 </file>
 
-<file path="src/app/(onboarding)/onboarding/positioning/_services/analysis-schemas.ts">
-import { z } from "zod";
-import type { JsonSchema } from "@/core/services/ai";
-import {
-  strategicRoleEnum,
-  gapAnalysisStructuredSchema,
-  type RecommendedThesisItem,
-  type PositioningGlobalStatus,
-  type GapAnalysisStructured,
-} from "./validation";
+<file path="src/app/(onboarding)/onboarding/positioning/_prompts/jury-analysis.prompt.ts">
+import type { PositioningMatrixInput } from "../_services/validation";
 
-/** Zod schema for a single evaluated thesis. */
-export const perThesisEvaluationSchema = z.object({
-  externalThesisId: z
-    .union([z.string(), z.number()])
-    .transform((val) => String(val))
-    .describe("Değerlendirilen tezin veritabanı ID'si"),
-  isRelevant: z
-    .boolean()
-    .describe(
-      "Aday tez kullanıcının 3 bileşenli tez matrisi (Problem, Kuram, Yöntem) için doğrudan kuramsal, yöntemsel veya ampirik bir muhatap mıdır?",
-    ),
-  relevanceReasoning: z
-    .string()
-    .optional()
-    .describe(
-      "Tezin neden ilgili olduğuna veya literatürdeki yerine dair somut akademik gerekçe (1-2 cümle)",
-    ),
-  isDirectOverlap: z
-    .boolean()
-    .describe(
-      "Kullanıcının tezi ile bu tez arasında birebir konu/yöntem/kapsam çakışması (özgünlük riski) var mı?",
-    ),
-  strategicRole: strategicRoleEnum
-    .optional()
-    .describe(
-      "Tezin kullanıcının çalışmasındaki stratejik rolü: FOUNDATIONAL_WORK | METHODOLOGICAL_BENCHMARK | SPECIFIC_FOCUS | ALTERNATIVE_PERSPECTIVE",
-    ),
-  contributionAreas: z
-    .array(z.string())
-    .describe(
-      "Tezin temas ettiği veya katkı sunduğu 1-2 spesifik akademik odak etiketi.",
-    ),
-  literaturePosition: z
-    .string()
-    .describe("Tezin literatürdeki yeri ve neyi incelediği (1 net cümle)"),
-  strategicUtility: z
-    .string()
-    .describe(
-      "Bu tezin araştırmacının tezinde nasıl konumlandırılacağı ve hangi boşluğun doldurulacağına dair stratejik not (1-2 cümle)",
-    ),
-});
+/** Prompt payload structure separating system instructions from user prompt. */
+export interface JuryAnalysisPromptPayload {
+  systemInstruction: string;
+  userPrompt: string;
+}
 
-export type PerThesisEvaluation = z.infer<typeof perThesisEvaluationSchema>;
+/**
+ * Builds the hybrid XML/Markdown prompt payload for the final jury synthesis analysis,
+ * strictly focusing on the empirical research topic, actors, and subject-matter literature gap.
+ *
+ * @param params - Parameters containing the validated matrix, formatted evaluated theses text, and count.
+ * @returns Structured prompt payload.
+ */
+export function buildPositioningJuryPromptPayload(params: {
+  input: PositioningMatrixInput;
+  thesisListText: string;
+  evaluatedCount: number;
+}): JuryAnalysisPromptPayload {
+  const { input, thesisListText, evaluatedCount } = params;
 
-/** Zod schema for batch thesis evaluation output. */
-export const batchThesisEvaluationSchema = z.object({
-  evaluations: z.array(perThesisEvaluationSchema),
-});
+  const systemInstruction = `<role>
+Akademik jüri başkanı, tez izleme komitesi raportörü ve alan uzmanı.
+</role>
 
-export type BatchThesisEvaluationOutput = z.infer<
-  typeof batchThesisEvaluationSchema
->;
+<instructions>
+# Görev ve Sentez Amacı
+Kullanıcının sunduğu tez konusunu/sorunsalını ve ilgili bulunan **KONUSAL ve OLGUSAL TEZLERİ** inceleyerek; çalışmanın konu literatüründeki özgünlük durumunu karara bağla, 3 boyutlu derin bir Konusal Boşluk Analizi Raporu sentezle ve araştırmacıya doğrudan referans sunacak kılavuz tezlerin ID'lerini seç.
 
-/** JSON Schema for batch per-thesis evaluation matching batchThesisEvaluationSchema. */
-export const batchThesisEvaluationJsonSchema: JsonSchema = {
-  type: "object",
-  properties: {
-    evaluations: {
-      type: "array",
-      items: {
-        type: "object",
-        properties: {
-          externalThesisId: {
-            type: "string",
-            description: "Değerlendirilen tezin ID'si",
-          },
-          isRelevant: {
-            type: "boolean",
-            description:
-              "Aday tez kullanıcının 3 bileşenli tez matrisi için doğrudan kuramsal, yöntemsel veya ampirik muhatap mıdır?",
-          },
-          relevanceReasoning: {
-            type: "string",
-            description:
-              "Tezin neden ilgili olduğuna dair somut akademik gerekçe (1-2 cümle)",
-          },
-          isDirectOverlap: {
-            type: "boolean",
-            description:
-              "Kullanıcının tezi ile birebir çakışma (özgünlük riski) var mı?",
-          },
-          strategicRole: {
-            type: "string",
-            enum: [
-              "FOUNDATIONAL_WORK",
-              "METHODOLOGICAL_BENCHMARK",
-              "SPECIFIC_FOCUS",
-              "ALTERNATIVE_PERSPECTIVE",
-            ],
-            description:
-              "Tezin stratejik rolü: FOUNDATIONAL_WORK (Öncül Çalışma), METHODOLOGICAL_BENCHMARK (Yöntem Referansı), SPECIFIC_FOCUS (Kısmi Odak), ALTERNATIVE_PERSPECTIVE (Karşıt Yaklaşım).",
-          },
-          contributionAreas: {
-            type: "array",
-            items: { type: "string" },
-            description:
-              "Tezin temas ettiği spesifik odak alanları (1-2 kısa etiket).",
-          },
-          literaturePosition: {
-            type: "string",
-            description:
-              "Tezin literatürdeki konumu ve ne yaptığı (1 net cümle).",
-          },
-          strategicUtility: {
-            type: "string",
-            description:
-              "Tezin araştırmacı tarafından nasıl kullanılacağına dair stratejik kullanım notu (1-2 cümle).",
-          },
-        },
-        required: [
-          "externalThesisId",
-          "isRelevant",
-          "isDirectOverlap",
-          "strategicRole",
-          "contributionAreas",
-          "literaturePosition",
-          "strategicUtility",
-        ],
-        additionalProperties: false,
-      },
-    },
+# Jüri Değerlendirme Kuralları
+1. **globalStatus (Jüri Genel Kararı):**
+   - **NOVEL_GAP_IDENTIFIED (Özgün Katkı / Boşluk Mevcut):** Literatürde aynı konuyu/hareketi inceleyen çalışmalar var ancak araştırmacının dönemi, aktör ayrımı veya konu sorunsalı belirgin ve özgün bir olgusal boşluğu dolduruyor.
+   - **DIRECT_OVERLAP (Birebir Çakışma / Özgünlük Riski):** İncelenen tezlerden biri kullanıcının araştırma konusunu, aynı dönemi ve aynı aktörleri aynı kapsamda daha önce birebir çalışmış.
+   - **NO_RELATED_LITERATURE (Bakir Alan / Doğrudan Konu Tezi Yok):** Veritabanında doğrudan aynı konuyu veya aktörleri inceleyen tez bulunamadı.
+
+2. **gapAnalysisSummary (3 Boyutlu Konusal Boşluk Analizi Raporu):**
+   - **literatureMapping (Mevcut Konu Literatürünün Haritalandırılması):** Mevcut konu tezlerinin hangi aktörler, hangi dönemler ve hangi temalar üzerinde yoğunlaştığının akademik analizi (Markdown).
+   - **academicGap (Konudaki Olgusal / Dönemsel Boşluk):** Mevcut çalışmaların neleri ele almadığı, hangi dönem veya aktör dinamiklerini açıkta bıraktığının analizi (Markdown).
+   - **originalContribution (Çalışmanın Özgün Konusal Katkısı):** Araştırmacının tezinin bu olgusal/dönemsel boşluğu nasıl dolduracağının analizi (Markdown).
+
+3. **selectedThesisIds (Kılavuz Konu Tezlerinin Seçimi):**
+   - İncelenen ilgili tezler arasından araştırmacıya doğrudan konusal referans sunacak en stratejik tezlerin ID'lerini seç.
+   - **Önemli:** Gerçek literatür durumunu yansıtın (0, 1, 2 veya daha fazla olabilir). Kesinlikle yapay olarak sayı tamamlamaya veya sınırda kalmış tezleri eklemeye çalışmayın; yalnızca gerçekten kılavuz niteliği taşıyanları seçin.
+
+# Sınırlamalar
+- Yalnızca araştırmanın somut konusuna, aktörlerine ve ampirik alanına odaklanın. Konu dışı soyut teori veya genel yöntem tartışmalarına girmeyin.
+- Metinlerde akıcı, yetkin ve saygın bir akademik Türkçe kullanın.
+</instructions>
+
+<examples>
+<example>
+<input>
+[Kullanıcı Tez Konusu]:
+Kürt Özgürlük Hareketi'nin 1991-1999 döneminde söylemsel dönüşümü; PKK ve HEP-DEP-HADEP hattının taleplerindeki değişim ve kuluçka evresi.
+
+[İncelenen İlgili Tezler]:
+[Tez #1] ID: "201" | Başlık: 1990-2014 Dönemi Kürt Siyasal Hareketinin Söyleminin Dönüşümü | Rol: SPECIFIC_FOCUS
+[Tez #2] ID: "302" | Başlık: Türkiye'de Kürt Etno-Bölgesel Hareketi (1959-1984) | Rol: FOUNDATIONAL_WORK
+[Tez #3] ID: "403" | Başlık: PKK'nın Kürtçe ve Kültürel Haklar Politikası (1990'lar) | Rol: SPECIFIC_FOCUS
+</input>
+<output>
+{
+  "globalStatus": "NOVEL_GAP_IDENTIFIED",
+  "gapAnalysisSummary": {
+    "literatureMapping": "Türkiye'de Kürt hareketi üzerine yapılan mevcut tezler; 1980 öncesi tarihsel kökenler (Alış, 2017) ve 1990 sonrası yasal siyasi partilerin genel söylem evrimi (Okudan Dernek, 2014) ekseninde yoğunlaşmaktadır. Literatürde yasal partilerin parlamenter söylemleri ile silahlı kanadın yayın organlarındaki dönüşüm dinamikleri çoğunlukla birbirinden yalıtılmış olarak ele alınmıştır.",
+    "academicGap": "Mevcut konu literatürü, 1999 sonrasındaki söylemsel değişimi ani bir kırılma olarak görme eğilimindedir. 1991-1999 arası kuluçka dönemi; silahlı kanat (PKK) ile yasal parti hattının (HEP-DEP-HADEP) talep içeriklerindeki niteliksel dönüşüm ve bu iki aktör arasındaki söylemsel etkileşim açısından derinlemesine incelenmemiştir.",
+    "originalContribution": "Bu çalışma, 1991-1999 dönemini iki ayrı aktör hattının (silahlı ve yasal) talep tipolojisi üzerinden bağımsız olarak inceleyip karşılaştırarak, 1999 dönüşümünün tarihsel ve söylemsel kuluçka evresini ortaya koymakta ve konu literatüründeki önemli bir dönemsel ve olgusal boşluğu doldurmaktadır."
   },
-  required: ["evaluations"],
-  additionalProperties: false,
-};
+  "selectedThesisIds": ["201", "302", "403"]
+}
+</output>
+</example>
+</examples>`;
 
-/** Zod schema for the final jury synthesis LLM output. */
-export const jurySynthesisResultSchema = z.object({
-  globalStatus: z.enum([
-    "DIRECT_OVERLAP",
-    "NOVEL_GAP_IDENTIFIED",
-    "NO_RELATED_LITERATURE",
-  ]),
-  gapAnalysisSummary: gapAnalysisStructuredSchema,
-  selectedThesisIds: z
-    .array(z.string())
-    .describe(
-      "İncelenen ilgili tezler arasından kılavuz kart olarak seçilen en stratejik 4-8 tezin ID listesi.",
-    ),
-});
+  const userPrompt = `<context>
+[Kullanıcı Tez Konusu ve Sorunsalı]:
+Araştırma Problemi ve Odak: ${input.subjectProblem}
+Kuramsal Çerçeve: ${input.theoreticalFramework || "Belirtilmemiş"}
+Yöntem ve Veri: ${input.methodology || "Belirtilmemiş"}
 
-export type JurySynthesisResult = z.infer<typeof jurySynthesisResultSchema>;
+[İncelenen İlgili Konu Tezleri (${evaluatedCount} Adet)]:
+${thesisListText}
+</context>
 
-/** JSON schema for Gemini structured output for jury synthesis. */
-export const jurySynthesisResultJsonSchema: JsonSchema = {
-  type: "object",
-  properties: {
-    globalStatus: {
-      type: "string",
-      enum: [
-        "DIRECT_OVERLAP",
-        "NOVEL_GAP_IDENTIFIED",
-        "NO_RELATED_LITERATURE",
-      ],
-      description:
-        "Jürinin genel özgünlük kararı: NOVEL_GAP_IDENTIFIED (Özgün Katkı / Boşluk Mevcut), DIRECT_OVERLAP (Birebir Çakışma / Özgünlük Riski), NO_RELATED_LITERATURE (Bakir Alan / İlgili Tez Bulunamadı).",
-    },
-    gapAnalysisSummary: {
-      type: "object",
-      properties: {
-        literatureMapping: {
-          type: "string",
-          description:
-            "Mevcut Literatürün Haritalandırılması: İncelenen tezlerin hangi kuramsal ve ampirik alanlarda yoğunlaştığının akademik analizi (Markdown).",
-        },
-        academicGap: {
-          type: "string",
-          description:
-            "Literatürdeki Boşluk: İncelenen tezlerin neleri ele almadığı, hangi boyutları açıkta bıraktığının analizi (Markdown).",
-        },
-        originalContribution: {
-          type: "string",
-          description:
-            "Çalışmanın Özgün Katkısı: Araştırmacının tezinin bu boşluğu problem, kuram ve yöntem açısından nasıl dolduracağının analizi (Markdown).",
-        },
-      },
-      required: [
-        "literatureMapping",
-        "academicGap",
-        "originalContribution",
-      ],
-      additionalProperties: false,
-    },
-    selectedThesisIds: {
-      type: "array",
-      items: { type: "string" },
-      description:
-        "İncelenen ilgili tezler arasından kılavuz kart olarak seçilen en stratejik 4-8 tezin ID listesi.",
-    },
-  },
-  required: ["globalStatus", "gapAnalysisSummary", "selectedThesisIds"],
-  additionalProperties: false,
-};
+<task>
+Yukarıdaki <context> içeriğindeki ${evaluatedCount} adet konu tezini ve kullanıcı konusunu <instructions> kurallarına göre analiz et; jüri durum kararını, 3 boyutlu konusal boşluk analizi raporunu ve kılavuz tez ID listesini içeren JSON çıktısını üret.
+</task>`;
 
-/** Full positioning jury analysis result including recommended thesis items. */
-export interface JuryAnalysisResult {
-  globalStatus: PositioningGlobalStatus;
-  gapAnalysisSummary: GapAnalysisStructured;
-  recommendedTheses: RecommendedThesisItem[];
+  return { systemInstruction, userPrompt };
 }
 </file>
 
-<file path="src/app/(onboarding)/onboarding/positioning/_services/analysis.ts">
-import { ThinkingLevel } from "@google/genai";
-import { FLASH_36, GEMINI_SEED } from "@/lib/constants";
-import { generateGeminiStructuredContent } from "@/core/services/ai";
-import type { Logger } from "@/lib/logger";
-import { buildPositioningJuryPromptPayload } from "../_prompts/jury-analysis.prompt";
-import type { EvaluatedThesis } from "./per-thesis-evaluation";
-import type { PositioningMatrixInput, RecommendedThesisItem } from "./validation";
-import {
-  jurySynthesisResultSchema,
-  jurySynthesisResultJsonSchema,
-  type JuryAnalysisResult,
-  type JurySynthesisResult,
-} from "./analysis-schemas";
-
-export {
-  jurySynthesisResultSchema,
-  jurySynthesisResultJsonSchema,
-  type JuryAnalysisResult,
-  type JurySynthesisResult,
-};
+<file path="src/app/(onboarding)/onboarding/positioning/_services/decision-engine.ts">
+import { sql } from "drizzle-orm";
+import { db } from "@/core/db";
+import { positioning } from "@/core/db/schema";
+import { invalidateOnboardingStepCache } from "@/lib/cache-tags";
+import type { RecommendedThesisItem } from "./validation";
+import type { JuryAnalysisResult } from "./analysis";
 
 /**
- * Runs the final synthesis jury LLM over the relevant evaluated theses using FLASH_36.
- * Assembles the globalStatus, 3-dimensional gapAnalysisSummary, and recommended guiding theses.
+ * Persists the positioning report in an atomic database transaction and invalidates cache tags.
  *
- * @param input - The validated positioning matrix.
- * @param evaluatedTheses - The relevant evaluated theses.
- * @param logger - Optional structured logger.
- * @returns The complete jury analysis result.
+ * @param userId - The ID of the authenticated user.
+ * @param matrixId - The ID of the thesis matrix.
+ * @param analysisResult - The full jury analysis result to persist.
+ * @returns The saved database record.
  */
-export async function analyzePositioningJury(
-  input: PositioningMatrixInput,
-  evaluatedTheses: EvaluatedThesis[],
-  logger?: Logger,
-): Promise<JuryAnalysisResult> {
-  const overlapping = evaluatedTheses.some(
-    (ev) => ev.evaluation.isDirectOverlap,
-  );
-
-  // 0 Results Scenario: Return clean NO_RELATED_LITERATURE fallback
-  if (evaluatedTheses.length === 0) {
-    logger?.info("positioning_jury_no_theses", {
-      service: "positioning",
-      filePath: "src/app/(onboarding)/onboarding/positioning/_services/analysis.ts",
-      data: { inputSubject: input.subjectProblem },
-    });
-
-    return {
-      globalStatus: "NO_RELATED_LITERATURE",
-      gapAnalysisSummary: {
-        literatureMapping:
-          "Ulusal tez merkezinde ve veri tabanında girilen tez matrisiyle (sorun, kuram, yöntem) doğrudan örtüşen veya aynı eksende konumlanan tamamlanmış bir akademik teze rastlanmamıştır.",
-        academicGap:
-          "Doğrudan eşleşen bir çalışma bulunmadığı için mevcut literatürde tespit edilmiş bir doymuşluk veya çakışma alanı tespit edilmemiştir.",
-        originalContribution:
-          "Çalışmanız literatürde henüz yeterince işlenmemiş, son derece bakir ve yüksek özgünlük potansiyeline sahip öncü bir alanda konumlanmaktadır.",
-      },
-      recommendedTheses: [],
-    };
-  }
-
-  const thesisListText = evaluatedTheses
-    .map((ev, idx) => {
-      const t = ev.thesis;
-      const e = ev.evaluation;
-      return `[Tez #${idx + 1}] ID: "${t.id}"
-Başlık: ${t.title}
-Yazar: ${t.author || "Bilinmiyor"} (${t.year || "N/A"})
-Üniversite/Bölüm: ${t.university || "N/A"} - ${t.department || "N/A"}
-Tür: ${t.thesisType || "N/A"}
-Dil: ${t.language || "Türkçe"}
-Birebir Çakışma: ${e.isDirectOverlap ? "EVET" : "HAYIR"}
-Stratejik Rol: ${e.strategicRole || "SPECIFIC_FOCUS"}
-Literatürdeki Yeri: ${e.literaturePosition || "N/A"}
-Stratejik Kullanım / Boşluk Doldurma: ${e.strategicUtility || "N/A"}
-Katkı/Odak Alanları: ${e.contributionAreas.join(", ") || "Yok"}`;
-    })
-    .join("\n\n---\n\n");
-
-  const payload = buildPositioningJuryPromptPayload({
-    input,
-    thesisListText,
-    evaluatedCount: evaluatedTheses.length,
-  });
-
-  const synthesis = await generateGeminiStructuredContent<JurySynthesisResult>(
-    FLASH_36,
-    payload.systemInstruction,
-    payload.userPrompt,
-    jurySynthesisResultJsonSchema,
-    logger,
-    {
-      zodSchema: jurySynthesisResultSchema,
-      payloadStage: "positioning_jury_synthesis",
-      seed: GEMINI_SEED,
-      thinkingConfig: { thinkingLevel: ThinkingLevel.LOW },
-      thesisMatrix: input,
-      quiet: true,
-    },
-  );
-
-  // Map selected theses or top relevant theses into RecommendedThesisItem[]
-  const evalByThesisId = new Map(
-    evaluatedTheses.map((ev) => [String(ev.thesis.id), ev]),
-  );
-
-  let selectedItems: EvaluatedThesis[] = [];
-
-  if (synthesis.selectedThesisIds && synthesis.selectedThesisIds.length > 0) {
-    for (const id of synthesis.selectedThesisIds) {
-      const found = evalByThesisId.get(String(id));
-      if (found) {
-        selectedItems.push(found);
-      }
-    }
-  }
-
-  // If LLM selected fewer than 4 or empty, supplement with top evaluated theses
-  if (selectedItems.length < 4) {
-    for (const ev of evaluatedTheses) {
-      if (!selectedItems.some((s) => s.thesis.id === ev.thesis.id)) {
-        selectedItems.push(ev);
-      }
-      if (selectedItems.length >= 6) break;
-    }
-  }
-
-  // Cap at 8 max recommended theses
-  selectedItems = selectedItems.slice(0, 8);
-
-  const recommendedTheses: RecommendedThesisItem[] = selectedItems.map((ev) => {
-    const t = ev.thesis;
-    const e = ev.evaluation;
-    return {
-      id: String(t.id),
-      externalThesisId: String(t.id),
+export async function savePositioningReportTransaction(
+  userId: number,
+  matrixId: number,
+  analysisResult: JuryAnalysisResult,
+) {
+  const formattedRecommendedTheses: RecommendedThesisItem[] =
+    analysisResult.recommendedTheses.map((t) => ({
+      id: String(t.externalThesisId || t.id),
+      externalThesisId: String(t.externalThesisId || t.id),
       title: t.title,
-      author: t.author || "Bilinmiyor",
-      year: t.year || new Date().getFullYear(),
-      university: t.university || "Bilinmiyor",
-      strategicRole: e.strategicRole || "SPECIFIC_FOCUS",
-      literaturePosition: e.literaturePosition,
-      contributionArea: e.contributionAreas.join(", ") || "Literatür İncelemesi",
-      relevanceReason: e.strategicUtility || e.relevanceReasoning || "",
+      author: t.author,
+      year: t.year,
+      university: t.university,
+      strategicRole: t.strategicRole,
+      literaturePosition: t.literaturePosition,
+      contributionArea: t.contributionArea,
+      relevanceReason: t.relevanceReason,
+      doi: t.doi,
       thesisType: t.thesisType,
       abstract: t.abstract,
-      tezaraUrl: `https://tez.yok.gov.tr/UlusalTezMerkezi/tezDetay.jsp?id=${t.id}`,
+      tezaraUrl: t.tezaraUrl,
+    }));
+
+  const savedRecord = await db.transaction(async (tx) => {
+    const [row] = await tx
+      .insert(positioning)
+      .values({
+        userId,
+        matrixId,
+        globalStatus: analysisResult.globalStatus,
+        gapAnalysisSummary: analysisResult.gapAnalysisSummary,
+        recommendedTheses: formattedRecommendedTheses,
+        updatedAt: sql`now()`,
+      })
+      .onConflictDoUpdate({
+        target: positioning.matrixId,
+        set: {
+          globalStatus: analysisResult.globalStatus,
+          gapAnalysisSummary: analysisResult.gapAnalysisSummary,
+          recommendedTheses: formattedRecommendedTheses,
+          updatedAt: sql`now()`,
+        },
+      })
+      .returning();
+
+    return row;
+  });
+
+  try {
+    invalidateOnboardingStepCache("positioning");
+  } catch {
+    // Ignore cache tag error if invoked outside Next.js request context
+  }
+
+  return savedRecord;
+}
+</file>
+
+<file path="src/app/(onboarding)/onboarding/positioning/_services/sifting.ts">
+import { searchTezara } from "@/core/services/tezara";
+import type { TezaraThesisDetails } from "@/lib/types";
+import {
+  rerankWithCohere,
+  COHERE_RERANK_MODEL,
+} from "@/core/services/ai/cohere";
+import type { Logger } from "@/lib/logger";
+import type { PositioningMatrixInput } from "./validation";
+import { generatePositioningQuery } from "./query-generator";
+import {
+  sanitizeSearchQuery,
+  formatThesisToYaml,
+  formatMatrixToYamlQuery,
+} from "./sifting-formatters";
+import {
+  reciprocalRankFusion,
+  filterValidCandidates,
+} from "./candidate-fusion";
+
+export { sanitizeSearchQuery };
+
+/** Candidate thesis extended with Cohere semantic relevance score. */
+export interface SiftedThesis extends TezaraThesisDetails {
+  relevanceScore?: number;
+}
+
+/** Epsilon threshold for floating point tie-breaking. */
+const SCORE_EPSILON = 1e-4;
+
+/** Minimum Cohere Rerank v4.0 relevance score to filter out irrelevant/noisy candidates. */
+export const MIN_COHERE_RELEVANCE_SCORE = 0.50;
+
+/**
+ * 3-Dimensional Academic Sifting Engine:
+ * 1. Generates 3 complementary queries (Problem, Theory, Method) via FLASH_LITE_35.
+ * 2. Fetches candidate theses from Qdrant vector index in parallel.
+ * 3. Fuses candidate pools via Reciprocal Rank Fusion (RRF).
+ * 4. Filters valid candidates (abstract length, non-empty metadata).
+ * 5. Applies Cohere Rerank v4.0 Pro and strictly filters out candidates below MIN_COHERE_RELEVANCE_SCORE.
+ *
+ * @param matrixInput - The validated positioning matrix input.
+ * @param logger - Optional structured logger.
+ * @param options - Optional limits for topN and candidate retrieval.
+ * @returns Sorted candidate theses list.
+ */
+export async function searchAndSiftTheses(
+  matrixInput: PositioningMatrixInput,
+  logger?: Logger,
+  options?: { topN?: number; candidateLimit?: number },
+): Promise<SiftedThesis[]> {
+  const topN = options?.topN ?? 20;
+  const singleQueryLimit = options?.candidateLimit ?? 50;
+
+  const queryGenStart = performance.now();
+  logger?.info("sifting_query_generation_start", {
+    service: "gemini",
+    filePath: "src/app/(onboarding)/onboarding/positioning/_services/sifting.ts",
+  });
+
+  const distilledQuery = await generatePositioningQuery(matrixInput, logger);
+
+  const query1 = sanitizeSearchQuery(
+    distilledQuery.primaryEmpiricalQuery || matrixInput.subjectProblem,
+  );
+  const query2 = sanitizeSearchQuery(
+    distilledQuery.actorsAndSourcesQuery || matrixInput.subjectProblem,
+  );
+  const query3 = sanitizeSearchQuery(
+    distilledQuery.periodAndContextQuery || matrixInput.subjectProblem,
+  );
+
+  logger?.info("sifting_query_generation_success", {
+    service: "gemini",
+    filePath: "src/app/(onboarding)/onboarding/positioning/_services/sifting.ts",
+    durationMs: performance.now() - queryGenStart,
+    data: {
+      query1,
+      query2,
+      query3,
+      keywords: distilledQuery.substantiveKeywords,
+    },
+  });
+
+  const searchStart = performance.now();
+
+  logger?.info("sifting_multi_search_start", {
+    service: "tezara",
+    filePath: "src/app/(onboarding)/onboarding/positioning/_services/sifting.ts",
+    data: { queries: [query1, query2, query3], singleQueryLimit },
+  });
+
+  // 1. Parallel Multi-Aspect Vector Searches in Tezara (Qdrant E5)
+  const [res1, res2, res3] = await Promise.all([
+    searchTezara(query1, logger, {
+      limit: singleQueryLimit,
+      silent: true,
+    }),
+    searchTezara(query2, logger, {
+      limit: singleQueryLimit,
+      silent: true,
+    }),
+    searchTezara(query3, logger, {
+      limit: singleQueryLimit,
+      silent: true,
+    }),
+  ]);
+
+  // 2. Fuse candidate pools via Reciprocal Rank Fusion (RRF)
+  const fusedTheses = reciprocalRankFusion([res1, res2, res3]);
+
+  // 3. Filter valid candidates
+  const filteredCandidates = filterValidCandidates(fusedTheses);
+
+  if (filteredCandidates.length === 0) {
+    logger?.info("sifting_multi_search_success", {
+      service: "tezara",
+      filePath: "src/app/(onboarding)/onboarding/positioning/_services/sifting.ts",
+      durationMs: performance.now() - searchStart,
+      data: { candidateCount: 0 },
+    });
+    return [];
+  }
+
+  logger?.info("sifting_multi_search_success", {
+    service: "tezara",
+    filePath: "src/app/(onboarding)/onboarding/positioning/_services/sifting.ts",
+    durationMs: performance.now() - searchStart,
+    data: { candidateCount: filteredCandidates.length },
+  });
+
+  // 4. Cohere Rerank v4.0 Pro
+  const targetYamlQuery = formatMatrixToYamlQuery(distilledQuery, matrixInput);
+  const candidateYamlDocs = filteredCandidates.map(formatThesisToYaml);
+
+  const rerankStart = performance.now();
+
+  logger?.info("sifting_rerank_start", {
+    service: "cohere",
+    filePath: "src/app/(onboarding)/onboarding/positioning/_services/sifting.ts",
+    data: {
+      model: COHERE_RERANK_MODEL,
+      candidateCount: filteredCandidates.length,
+    },
+  });
+
+  const rerankResults = await rerankWithCohere({
+    query: targetYamlQuery,
+    documents: candidateYamlDocs,
+    logger,
+  });
+
+  const scoredTheses: SiftedThesis[] = rerankResults.map((res) => {
+    const candidate = filteredCandidates[res.index];
+    return {
+      ...candidate,
+      relevanceScore: res.relevanceScore,
     };
   });
 
-  const finalGlobalStatus = overlapping
-    ? "DIRECT_OVERLAP"
-    : synthesis.globalStatus;
+  scoredTheses.sort((a, b) => {
+    const delta = (b.relevanceScore ?? 0) - (a.relevanceScore ?? 0);
+    if (Math.abs(delta) > SCORE_EPSILON) return delta;
+    return a.id - b.id;
+  });
 
-  return {
-    globalStatus: finalGlobalStatus,
-    gapAnalysisSummary: synthesis.gapAnalysisSummary,
-    recommendedTheses,
-  };
+  const confidentTheses = scoredTheses.filter(
+    (t) => (t.relevanceScore ?? 0) >= MIN_COHERE_RELEVANCE_SCORE,
+  );
+
+  const selected = confidentTheses.slice(0, topN);
+
+  logger?.info("sifting_rerank_success", {
+    service: "cohere",
+    filePath: "src/app/(onboarding)/onboarding/positioning/_services/sifting.ts",
+    durationMs: performance.now() - rerankStart,
+    data: {
+      candidateCount: filteredCandidates.length,
+      confidentCount: confidentTheses.length,
+      topCount: selected.length,
+    },
+  });
+
+  return selected;
 }
 </file>
 
@@ -44640,58 +44389,6 @@ export async function getProfile() {
     createdAt: user.createdAt,
   };
 }
-</file>
-
-<file path="AGENTS.md">
-# AGENTS.md
-
-## 1. Role & System Overview
-
-You are the **Lead Software Engineer** and **Primary Auditor** for Fabricca, a private digital thesis assistant and academic research platform.
-
-- **Scope & Access:** Private application restricted strictly to two seeded users. Not open to public registration.
-- **Engineering Mindset:** Write clean, minimal, production-ready code. Avoid over-engineering. Make targeted, high-impact edits.
-- **Repository Exploration:** Use semantic exploration tools (CodeGraph/LSP) for structural codebase exploration. When CodeGraph is unavailable or when targeting known files, direct file search and reading are fully supported.
-
-## 2. Core Stack & Architectural Constraints
-
-- **Framework:** Next.js (App Router, Server Actions)
-- **Database & ORM:** Neon Serverless PostgreSQL (`pgvector`), Drizzle ORM
-- **Primary LLM:** Google Gemini Flash (`FLASH_LITE_31`, `FLASH_LITE_35`, `FLASH_36` via `@google/genai`)
-- **Embedding Motor:** Cloudflare Workers AI (`@cf/baai/bge-m3` — SINGLE source embedding model; no secondary fallbacks allowed)
-- **Semantic Reranking:** Cohere Rerank API (`rerank-v4.0-pro` — ONLY for reranking)
-- **Object Storage:** Cloudflare R2 / AWS S3 (`@aws-sdk/client-s3`)
-- **Literature & DOI:** OpenAlex API (canonical literature source), Crossref API (DOI resolution)
-- **Secondary LLM:** Cerebras API (`gemma-4-31b` — metadata extraction and sanitization)
-
-> **Constraint:** Introducing alternative frameworks, third-party libraries, or secondary model fallbacks requires explicit user approval.
-
-## 3. The Golden Boundary Rule
-
-- **Backend & Logic Layer (100% English):** All DB column names, function names, local variables, Zod schemas, API payloads, and Logger step strings MUST be written in technical English (`camelCase` or `snake_case`). No Turkish characters in code/backend logic.
-- **User Interface & Academic Outputs (100% Turkish):** All UI elements, buttons, table headers, toast notifications, and AI-generated academic recommendations MUST be written in fluent, high-level academic Turkish. Transform backend English enums to Turkish on the UI layer.
-
-## 4. Code & Verification Rules
-
-- **Type Safety:** Avoid `any`. Prefer `unknown` with explicit type guards or Zod validation. If `any` is unavoidable at an external boundary, isolate and document it explicitly.
-- **Verification Strategy:** Run the narrowest relevant check first (file-scoped test or lint). Run full verification (`npm run check:full`) ONLY when modifying shared libraries, global configs, DB schemas, or multi-module interfaces.
-- **No Incomplete Code:** Never leave `// TODO` placeholders or incomplete snippets. All edited files must be functional, complete, and compilation-ready.
-
-## 5. Task-Specific Documentation (Progressive Disclosure)
-
-Before executing domain-specific tasks, consult the corresponding domain specification file:
-
-- **UI System, Styling & Components:** [docs/UI_RULES.md](docs/UI_RULES.md)
-- **Database Schema, Migrations & Progressive Save:** [docs/DATABASE_RULES.md](docs/DATABASE_RULES.md)
-- **LLM Integration, Models & Prompting:** [docs/LLM_INTEGRATION.md](docs/LLM_INTEGRATION.md)
-- **Development Standards, JSDoc, Error Handling & Logging:** [docs/DEVELOPMENT_STANDARDS.md](docs/DEVELOPMENT_STANDARDS.md)
-- **System Architecture, External Services & Storage:** [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)
-
-## 6. Instruction Precedence & Maintenance
-
-- **User Overrides:** User prompt instructions strictly override any rules in this repository for the current task.
-- **No Temporary Edits:** Do NOT modify `AGENTS.md` for one-off task overrides.
-- **Minimalist Specification:** Keep `AGENTS.md` minimal (~120–150 lines). Update it ONLY when making permanent repository-wide architectural policy changes.
 </file>
 
 <file path="src/app/(app)/advisor/_components/chat-message-item.tsx">
@@ -46450,136 +46147,369 @@ export default async function OutlinePage() {
 }
 </file>
 
-<file path="src/app/(onboarding)/onboarding/positioning/_prompts/per-thesis-evaluation.prompt.ts">
-import type { PositioningMatrixInput } from "../_services/validation";
-import type { SiftedThesis } from "../_services/sifting";
+<file path="src/app/(onboarding)/onboarding/positioning/_services/analysis-schemas.ts">
+import { z } from "zod";
+import type { JsonSchema } from "@/core/services/ai";
+import {
+  strategicRoleEnum,
+  gapAnalysisStructuredSchema,
+  type RecommendedThesisItem,
+  type PositioningGlobalStatus,
+  type GapAnalysisStructured,
+} from "./validation";
 
-/** Prompt payload structure separating system instructions from user prompt. */
-export interface PerThesisEvaluationPromptPayload {
-  systemInstruction: string;
-  userPrompt: string;
+/** Zod schema for a single evaluated thesis. */
+export const perThesisEvaluationSchema = z.object({
+  externalThesisId: z
+    .union([z.string(), z.number()])
+    .transform((val) => String(val))
+    .describe("Değerlendirilen tezin veritabanı ID'si"),
+  isRelevant: z
+    .boolean()
+    .describe(
+      "Aday tez kullanıcının 3 bileşenli tez matrisi (Problem, Kuram, Yöntem) için doğrudan kuramsal, yöntemsel veya ampirik bir muhatap mıdır?",
+    ),
+  relevanceReasoning: z
+    .string()
+    .optional()
+    .describe(
+      "Tezin neden ilgili olduğuna veya literatürdeki yerine dair somut akademik gerekçe (1-2 cümle)",
+    ),
+  isDirectOverlap: z
+    .boolean()
+    .describe(
+      "Kullanıcının tezi ile bu tez arasında birebir konu/yöntem/kapsam çakışması (özgünlük riski) var mı?",
+    ),
+  strategicRole: strategicRoleEnum
+    .optional()
+    .describe(
+      "Tezin kullanıcının çalışmasındaki stratejik rolü: FOUNDATIONAL_WORK | METHODOLOGICAL_BENCHMARK | SPECIFIC_FOCUS | ALTERNATIVE_PERSPECTIVE",
+    ),
+  contributionAreas: z
+    .array(z.string())
+    .describe(
+      "Tezin temas ettiği veya katkı sunduğu 1-2 spesifik akademik odak etiketi.",
+    ),
+  literaturePosition: z
+    .string()
+    .describe("Tezin literatürdeki yeri ve neyi incelediği (1 net cümle)"),
+  strategicUtility: z
+    .string()
+    .describe(
+      "Bu tezin araştırmacının tezinde nasıl konumlandırılacağı ve hangi boşluğun doldurulacağına dair stratejik not (1-2 cümle)",
+    ),
+});
+
+export type PerThesisEvaluation = z.infer<typeof perThesisEvaluationSchema>;
+
+/** Zod schema for batch thesis evaluation output. */
+export const batchThesisEvaluationSchema = z.object({
+  evaluations: z.array(perThesisEvaluationSchema),
+});
+
+export type BatchThesisEvaluationOutput = z.infer<
+  typeof batchThesisEvaluationSchema
+>;
+
+/** JSON Schema for batch per-thesis evaluation matching batchThesisEvaluationSchema. */
+export const batchThesisEvaluationJsonSchema: JsonSchema = {
+  type: "object",
+  properties: {
+    evaluations: {
+      type: "array",
+      items: {
+        type: "object",
+        properties: {
+          externalThesisId: {
+            type: "string",
+            description: "Değerlendirilen tezin ID'si",
+          },
+          isRelevant: {
+            type: "boolean",
+            description:
+              "Aday tez kullanıcının 3 bileşenli tez matrisi için doğrudan kuramsal, yöntemsel veya ampirik muhatap mıdır?",
+          },
+          relevanceReasoning: {
+            type: "string",
+            description:
+              "Tezin neden ilgili olduğuna dair somut akademik gerekçe (1-2 cümle)",
+          },
+          isDirectOverlap: {
+            type: "boolean",
+            description:
+              "Kullanıcının tezi ile birebir çakışma (özgünlük riski) var mı?",
+          },
+          strategicRole: {
+            type: "string",
+            enum: [
+              "FOUNDATIONAL_WORK",
+              "METHODOLOGICAL_BENCHMARK",
+              "SPECIFIC_FOCUS",
+              "ALTERNATIVE_PERSPECTIVE",
+            ],
+            description:
+              "Tezin stratejik rolü: FOUNDATIONAL_WORK (Öncül Çalışma), METHODOLOGICAL_BENCHMARK (Yöntem Referansı), SPECIFIC_FOCUS (Kısmi Odak), ALTERNATIVE_PERSPECTIVE (Karşıt Yaklaşım).",
+          },
+          contributionAreas: {
+            type: "array",
+            items: { type: "string" },
+            description:
+              "Tezin temas ettiği spesifik odak alanları (1-2 kısa etiket).",
+          },
+          literaturePosition: {
+            type: "string",
+            description:
+              "Tezin literatürdeki konumu ve ne yaptığı (1 net cümle).",
+          },
+          strategicUtility: {
+            type: "string",
+            description:
+              "Tezin araştırmacı tarafından nasıl kullanılacağına dair stratejik kullanım notu (1-2 cümle).",
+          },
+        },
+        required: [
+          "externalThesisId",
+          "isRelevant",
+          "isDirectOverlap",
+          "strategicRole",
+          "contributionAreas",
+          "literaturePosition",
+          "strategicUtility",
+        ],
+        additionalProperties: false,
+      },
+    },
+  },
+  required: ["evaluations"],
+  additionalProperties: false,
+};
+
+/** Zod schema for the final jury synthesis LLM output. */
+export const jurySynthesisResultSchema = z.object({
+  globalStatus: z.enum([
+    "DIRECT_OVERLAP",
+    "NOVEL_GAP_IDENTIFIED",
+    "NO_RELATED_LITERATURE",
+  ]),
+  gapAnalysisSummary: gapAnalysisStructuredSchema,
+  selectedThesisIds: z
+    .array(z.string())
+    .describe(
+      "İncelenen ilgili tezler arasından kılavuz kart olarak seçilen en stratejik 4-8 tezin ID listesi.",
+    ),
+});
+
+export type JurySynthesisResult = z.infer<typeof jurySynthesisResultSchema>;
+
+/** JSON schema for Gemini structured output for jury synthesis. */
+export const jurySynthesisResultJsonSchema: JsonSchema = {
+  type: "object",
+  properties: {
+    globalStatus: {
+      type: "string",
+      enum: [
+        "DIRECT_OVERLAP",
+        "NOVEL_GAP_IDENTIFIED",
+        "NO_RELATED_LITERATURE",
+      ],
+      description:
+        "Jürinin genel özgünlük kararı: NOVEL_GAP_IDENTIFIED (Özgün Katkı / Boşluk Mevcut), DIRECT_OVERLAP (Birebir Çakışma / Özgünlük Riski), NO_RELATED_LITERATURE (Bakir Alan / İlgili Tez Bulunamadı).",
+    },
+    gapAnalysisSummary: {
+      type: "object",
+      properties: {
+        literatureMapping: {
+          type: "string",
+          description:
+            "Mevcut Literatürün Haritalandırılması: İncelenen tezlerin hangi kuramsal ve ampirik alanlarda yoğunlaştığının akademik analizi (Markdown).",
+        },
+        academicGap: {
+          type: "string",
+          description:
+            "Literatürdeki Boşluk: İncelenen tezlerin neleri ele almadığı, hangi boyutları açıkta bıraktığının analizi (Markdown).",
+        },
+        originalContribution: {
+          type: "string",
+          description:
+            "Çalışmanın Özgün Katkısı: Araştırmacının tezinin bu boşluğu problem, kuram ve yöntem açısından nasıl dolduracağının analizi (Markdown).",
+        },
+      },
+      required: [
+        "literatureMapping",
+        "academicGap",
+        "originalContribution",
+      ],
+      additionalProperties: false,
+    },
+    selectedThesisIds: {
+      type: "array",
+      items: { type: "string" },
+      description:
+        "İncelenen ilgili tezler arasından kılavuz kart olarak seçilen en stratejik 4-8 tezin ID listesi.",
+    },
+  },
+  required: ["globalStatus", "gapAnalysisSummary", "selectedThesisIds"],
+  additionalProperties: false,
+};
+
+/** Full positioning jury analysis result including recommended thesis items. */
+export interface JuryAnalysisResult {
+  globalStatus: PositioningGlobalStatus;
+  gapAnalysisSummary: GapAnalysisStructured;
+  recommendedTheses: RecommendedThesisItem[];
 }
+</file>
+
+<file path="src/app/(onboarding)/onboarding/positioning/_services/analysis.ts">
+import { ThinkingLevel } from "@google/genai";
+import { FLASH_36, GEMINI_SEED } from "@/lib/constants";
+import { generateGeminiStructuredContent } from "@/core/services/ai";
+import type { Logger } from "@/lib/logger";
+import { buildPositioningJuryPromptPayload } from "../_prompts/jury-analysis.prompt";
+import type { EvaluatedThesis } from "./per-thesis-evaluation";
+import type { PositioningMatrixInput, RecommendedThesisItem } from "./validation";
+import {
+  jurySynthesisResultSchema,
+  jurySynthesisResultJsonSchema,
+  type JuryAnalysisResult,
+  type JurySynthesisResult,
+} from "./analysis-schemas";
+
+export {
+  jurySynthesisResultSchema,
+  jurySynthesisResultJsonSchema,
+  type JuryAnalysisResult,
+  type JurySynthesisResult,
+};
 
 /**
- * Builds the XML/Markdown hybrid prompt payload for batch per-thesis evaluation,
- * strictly focusing on substantive topic and empirical relevance as per user requirements.
+ * Runs the final synthesis jury LLM over the relevant evaluated theses using FLASH_36.
+ * Assembles the globalStatus, 3-dimensional gapAnalysisSummary, and recommended guiding theses.
  *
- * @param matrix - The 3-field thesis matrix.
- * @param candidateTheses - The batch of candidate theses to evaluate.
- * @returns Structured prompt payload.
+ * @param input - The validated positioning matrix.
+ * @param evaluatedTheses - The relevant evaluated theses.
+ * @param logger - Optional structured logger.
+ * @returns The complete jury analysis result.
  */
-export function buildPerThesisEvaluationPromptPayload(
-  matrix: PositioningMatrixInput,
-  candidateTheses: SiftedThesis[],
-): PerThesisEvaluationPromptPayload {
-  const systemInstruction = `<role>
-Kıdemli akademik hakem, tez izleme komitesi üyesi ve sosyal bilimler alan uzmanı.
-</role>
+export async function analyzePositioningJury(
+  input: PositioningMatrixInput,
+  evaluatedTheses: EvaluatedThesis[],
+  logger?: Logger,
+): Promise<JuryAnalysisResult> {
+  const overlapping = evaluatedTheses.some(
+    (ev) => ev.evaluation.isDirectOverlap,
+  );
 
-<instructions>
-# Görev ve Temel İlke
-Verilen tez konusunu ve sorunsalını baz alarak, aday tezleri **YALNIZCA KONUSAL VE OLGUSAL İLİŞKİSİ** açısından değerlendir.
+  // 0 Results Scenario: Return clean NO_RELATED_LITERATURE fallback
+  if (evaluatedTheses.length === 0) {
+    logger?.info("positioning_jury_no_theses", {
+      service: "positioning",
+      filePath: "src/app/(onboarding)/onboarding/positioning/_services/analysis.ts",
+      data: { inputSubject: input.subjectProblem },
+    });
 
-# Kritik Eleme Kuralı: Yalnızca Konu Odaklı İlgililik
-- **isRelevant:** Yalnızca araştırmacının incelediği **SOMUT KONUYA, OLGUSAL ALANA, AKTÖRLERE, HAREKETLERE VEYA DÖNEMSEL TARTIŞMALARA** doğrudan temas eden tezler 'true' olarak kabul edilmelidir.
-- **Kabul Edilmeyecekler (isRelevant: false):**
-  - Konudan bağımsız saf kuramsal/felsefi tezler (örn. konudan kopuk genel Gramsci, hegemonya veya epistemoloji tezleri).
-  - Konudan bağımsız genel yöntem tezleri (örn. başka bir alandaki söylem analizi veya anket tezleri).
-  - Konuyla ilgisiz genel dış politika veya güvenlik tezleri.
-  - Sadece kelime benzerliği içeren farklı disiplinlerdeki alakasız çalışmalar.
+    return {
+      globalStatus: "NO_RELATED_LITERATURE",
+      gapAnalysisSummary: {
+        literatureMapping:
+          "Ulusal tez merkezinde ve veri tabanında girilen tez matrisiyle (sorun, kuram, yöntem) doğrudan örtüşen veya aynı eksende konumlanan tamamlanmış bir akademik teze rastlanmamıştır.",
+        academicGap:
+          "Doğrudan eşleşen bir çalışma bulunmadığı için mevcut literatürde tespit edilmiş bir doymuşluk veya çakışma alanı tespit edilmemiştir.",
+        originalContribution:
+          "Çalışmanız literatürde henüz yeterince işlenmemiş, son derece bakir ve yüksek özgünlük potansiyeline sahip öncü bir alanda konumlanmaktadır.",
+      },
+      recommendedTheses: [],
+    };
+  }
 
-# Değerlendirme Ölçütleri
-1. **isRelevant (Konusal İlgililik):** Aday tez doğrudan kullanıcının araştırdığı konuyu, aktörleri, hareketi veya dönemi mi inceliyor? (Evet ise true, aksi halde false).
-2. **isDirectOverlap (Birebir Çakışma / Özgünlük Riski):** Aday tez kullanıcının araştırdığı soruyu aynı dönem, aynı aktörler ve aynı kapsamda birebir çözmüş ve araştırmacının tezine özgün bir boşluk bırakmamış mıdır? (Evet ise true, aksi halde false).
-3. **strategicRole (Konusal Stratejik Rol):** İlgili tezler için aşağıdaki konusal rollerden en uygun olanını seç:
-   - **SPECIFIC_FOCUS (Kısmi / Komşu Olgusal Odak):** Konunun belirli bir alt boyutunu (örn. yasal parti hattı, dil politikası, kongre kararları veya komşu bir dönemi) inceleyen çalışma.
-   - **FOUNDATIONAL_WORK (Öncül Konu Çalışması):** Konunun tarihsel kökenlerini (örn. 1980 öncesi, erken dönem örgütlenme) veya ana gelişim hattını kuran temel konu tezi.
-   - **METHODOLOGICAL_BENCHMARK (Paralel Olgusal Analiz):** Aynı konuyu benzer bir ampirik veri seti veya söylem analiziyle inceleyen konusal referans.
-   - **ALTERNATIVE_PERSPECTIVE (Karşıt / Farklı Olgusal Yaklaşım):** Aynı olguyu veya hareketi zıt/farklı bir siyasal ya da olgusal açıklamayla yorumlayan tartışma kaynağı.
-4. **contributionAreas (Katkı / Odak Alanları):** Tezin temas ettiği 1-2 adet somut konu etiketi (örn: "Yasal Kürt Siyaseti", "1990'lar Kürt Hareketi Söylemi").
-5. **literaturePosition (Literatürdeki Yeri):** Tezin neyi araştırdığını ve konuya ne kattığını özetleyen 1 net cümle.
-6. **strategicUtility (Stratejik Kullanım Notu):** Araştırmacının kendi tezinde bu konusal çalışmayı nasıl konumlandıracağına dair 1-2 cümlelik rehber not.
-
-# Sınırlamalar
-- Yalnızca <context> içinde verilen aday tezlerin metin ve özetlerine dayanın.
-- Her adayın 'externalThesisId' değerini birebir koruyun.
-</instructions>
-
-<examples>
-<example>
-<input>
-[Kullanıcı Tez Konusu]:
-Kürt Özgürlük Hareketi'nin (PKK ve HEP-DEP-HADEP hattı) 1991-1999 döneminde manevra savaşından mevzi savaşına söylemsel dönüşümü ve taleplerin niteliksel değişimi.
-
-[Aday Tez #1]:
-ID: "101"
-Başlık: İdeolojik Hegemonya Sorunsalı ve Gramsci Felsefesi
-Yazar: Ali Can (1998)
-Özet: Bu çalışmada Gramsci'nin hapishane defterlerindeki hegemonya, mevzi savaşı ve sivil toplum kavramları felsefi olarak incelenmiştir.
-
-[Aday Tez #2]:
-ID: "202"
-Başlık: 1990-2014 Dönemi Kürt Siyasal Hareketinin Söyleminin Dönüşümü
-Yazar: Kadriye Okudan Dernek (2014)
-Özet: Bu tezde 1990 sonrası Türkiye'de yasal Kürt siyasal partilerinin (HEP, DEP, HADEP, DEHAP, DTP, BDP, HDP) program ve söylemlerindeki değişim incelenmiştir.
-</input>
-<output>
-{
-  "evaluations": [
-    {
-      "externalThesisId": "101",
-      "isRelevant": false,
-      "relevanceReasoning": "Konu dışı saf felsefi/kuramsal çalışma; Kürt siyasal hareketi veya 1990'lar ampirik olgusuyla doğrudan ilişkisi yoktur.",
-      "isDirectOverlap": false,
-      "strategicRole": "FOUNDATIONAL_WORK",
-      "contributionAreas": ["Siyaset Felsefesi"],
-      "literaturePosition": "Gramsci'nin hegemonya kavramını felsefi olarak ele almıştır.",
-      "strategicUtility": "Genel teori tezi olduğu için konu konumlandırmasında doğrudan kullanılmamalıdır."
-    },
-    {
-      "externalThesisId": "202",
-      "isRelevant": true,
-      "relevanceReasoning": "Doğrudan kullanıcının incelediği 1990'lar yasal Kürt partileri hattını ve söylemsel dönüşümünü ampirik olarak incelemektedir.",
-      "isDirectOverlap": false,
-      "strategicRole": "SPECIFIC_FOCUS",
-      "contributionAreas": ["Yasal Kürt Partileri", "Söylemsel Dönüşüm"],
-      "literaturePosition": "1990-2014 arası yasal Kürt partilerinin söylemsel evrimini ampirik metinler üzerinden incelemiştir.",
-      "strategicUtility": "Araştırmacı bu çalışmayı yasal/mevzi kanadın söylemsel bulguları için doğrudan birincil bir karşılaştırma ve konumlandırma referansı olarak kullanmalıdır."
-    }
-  ]
-}
-</output>
-</example>
-</examples>`;
-
-  const candidatesText = candidateTheses
-    .map((t, idx) => {
-      return `[Aday Tez #${idx + 1}]
-ID: "${t.id}"
+  const thesisListText = evaluatedTheses
+    .map((ev, idx) => {
+      const t = ev.thesis;
+      const e = ev.evaluation;
+      return `[Tez #${idx + 1}] ID: "${t.id}"
 Başlık: ${t.title}
 Yazar: ${t.author || "Bilinmiyor"} (${t.year || "N/A"})
-Tür: ${t.thesisType || "N/A"}
 Üniversite/Bölüm: ${t.university || "N/A"} - ${t.department || "N/A"}
+Tür: ${t.thesisType || "N/A"}
 Dil: ${t.language || "Türkçe"}
-Özet: ${t.abstract || ""}`;
+Birebir Çakışma: ${e.isDirectOverlap ? "EVET" : "HAYIR"}
+Stratejik Rol: ${e.strategicRole || "SPECIFIC_FOCUS"}
+Literatürdeki Yeri: ${e.literaturePosition || "N/A"}
+Stratejik Kullanım / Boşluk Doldurma: ${e.strategicUtility || "N/A"}
+Katkı/Odak Alanları: ${e.contributionAreas.join(", ") || "Yok"}`;
     })
     .join("\n\n---\n\n");
 
-  const userPrompt = `<context>
-[Kullanıcı Tez Konusu ve Sorunsalı]:
-Araştırma Problemi ve Odak: ${matrix.subjectProblem}
-Kuramsal Çerçeve (Arka plan): ${matrix.theoreticalFramework || "Belirtilmemiş"}
-Yöntem ve Veri (Arka plan): ${matrix.methodology || "Belirtilmemiş"}
+  const payload = buildPositioningJuryPromptPayload({
+    input,
+    thesisListText,
+    evaluatedCount: evaluatedTheses.length,
+  });
 
-[Değerlendirilecek Aday Tezler (${candidateTheses.length} Adet)]:
-${candidatesText}
-</context>
+  const synthesis = await generateGeminiStructuredContent<JurySynthesisResult>(
+    FLASH_36,
+    payload.systemInstruction,
+    payload.userPrompt,
+    jurySynthesisResultJsonSchema,
+    logger,
+    {
+      zodSchema: jurySynthesisResultSchema,
+      payloadStage: "positioning_jury_synthesis",
+      seed: GEMINI_SEED,
+      thinkingConfig: { thinkingLevel: ThinkingLevel.LOW },
+      thesisMatrix: input,
+      quiet: true,
+    },
+  );
 
-<task>
-Yukarıdaki <context> içinde yer alan ${candidateTheses.length} adet aday tezi <instructions> kurallarına göre analiz et; yalnızca KONUSAL ve OLGUSAL ilgililik filtresini uygulayarak yapılandırılmış JSON çıktısını üret.
-</task>`;
+  // Map selected theses into RecommendedThesisItem[] strictly respecting the Jury's natural decision
+  const evalByThesisId = new Map(
+    evaluatedTheses.map((ev) => [String(ev.thesis.id), ev]),
+  );
 
-  return { systemInstruction, userPrompt };
+  let selectedItems: EvaluatedThesis[] = [];
+
+  if (synthesis.selectedThesisIds && synthesis.selectedThesisIds.length > 0) {
+    for (const id of synthesis.selectedThesisIds) {
+      const found = evalByThesisId.get(String(id));
+      if (found && !selectedItems.some((s) => s.thesis.id === found.thesis.id)) {
+        selectedItems.push(found);
+      }
+    }
+  }
+
+  // Cap at 8 max recommended theses without artificial padding
+  selectedItems = selectedItems.slice(0, 8);
+
+  const recommendedTheses: RecommendedThesisItem[] = selectedItems.map((ev) => {
+    const t = ev.thesis;
+    const e = ev.evaluation;
+    return {
+      id: String(t.id),
+      externalThesisId: String(t.id),
+      title: t.title,
+      author: t.author || "Bilinmiyor",
+      year: t.year || new Date().getFullYear(),
+      university: t.university || "Bilinmiyor",
+      strategicRole: e.strategicRole || "SPECIFIC_FOCUS",
+      literaturePosition: e.literaturePosition,
+      contributionArea: e.contributionAreas.join(", ") || "Literatür İncelemesi",
+      relevanceReason: e.strategicUtility || e.relevanceReasoning || "",
+      thesisType: t.thesisType,
+      abstract: t.abstract,
+      tezaraUrl: `https://tez.yok.gov.tr/UlusalTezMerkezi/tezDetay.jsp?id=${t.id}`,
+    };
+  });
+
+  const finalGlobalStatus = overlapping
+    ? "DIRECT_OVERLAP"
+    : synthesis.globalStatus;
+
+  return {
+    globalStatus: finalGlobalStatus,
+    gapAnalysisSummary: synthesis.gapAnalysisSummary,
+    recommendedTheses,
+  };
 }
 </file>
 
@@ -48359,6 +48289,158 @@ export async function resetOnboardingAction() {
   }
 
   redirect("/onboarding");
+}
+</file>
+
+<file path="src/app/(onboarding)/onboarding/positioning/_prompts/per-thesis-evaluation.prompt.ts">
+import type { PositioningMatrixInput } from "../_services/validation";
+import type { SiftedThesis } from "../_services/sifting";
+
+/** Prompt payload structure separating system instructions from user prompt. */
+export interface PerThesisEvaluationPromptPayload {
+  systemInstruction: string;
+  userPrompt: string;
+}
+
+/**
+ * Builds the XML/Markdown hybrid prompt payload for batch per-thesis evaluation,
+ * strictly focusing on substantive topic and empirical relevance as per user requirements.
+ *
+ * @param matrix - The 3-field thesis matrix.
+ * @param candidateTheses - The batch of candidate theses to evaluate.
+ * @returns Structured prompt payload.
+ */
+export function buildPerThesisEvaluationPromptPayload(
+  matrix: PositioningMatrixInput,
+  candidateTheses: SiftedThesis[],
+): PerThesisEvaluationPromptPayload {
+  const systemInstruction = `<role>
+Kıdemli akademik hakem, tez izleme komitesi üyesi ve sosyal bilimler alan uzmanı.
+</role>
+
+<instructions>
+# Görev ve Temel İlke
+Verilen tez konusunu ve sorunsalını baz alarak, aday tezleri **YALNIZCA SOMUT KONUSAL VE OLGUSAL İLİŞKİSİ** açısından değerlendir.
+
+# KATI ELEME KURALLARI (Kesinlikle 'isRelevant: false' Yapılacaklar):
+1. **YÖNTEMSEL BENZERLİK TUZAĞI:** Aday tezin kullanıcıyla aynı yöntemi (örn. söylem analizi, anket, derinlemesine mülakat, arşiv taraması) kullanmış olması ASLA tek başına bir ilgililik gerekçesi değildir. Konu ve incelenen somut olgu farklıysa KESİNLİKLE 'isRelevant: false' verilmelidir.
+2. **GENİŞ ŞEMSİYE KAVRAM TUZAĞI:** Sırf genel disiplin veya çatı kavramlar (örn. genel "Türkiye siyaseti", "demokratikleşme", "kamu yönetimi", "devlet aklı", "sosyal medya", "modernleşme") ortak diye alakasız araştırmalar 'isRelevant: true' YAPILAMAZ.
+3. **FARKLI AKTÖR VEYA FARKLI COĞRAFYA:** Kullanıcının odaklandığı somut aktör, kurum, siyasal hareket veya olgusal bağlam dışındaki çalışmalar (örn. farklı bir ülkedeki hareket veya tamamen farklı bir kamu kurumu) 'isRelevant: false' olarak elenmelidir.
+4. **SAF KURAMSAL/FELSEFİ ÇALIŞMALAR:** Kullanıcının kuramsal çerçevesindeki düşünürü (örn. saf Gramsci felsefesi, saf Habermas) ele alan ama kullanıcının somut ampirik alanına temas etmeyen çalışmalar 'isRelevant: false' olarak elenmelidir.
+
+# YALNIZCA ŞU DURUMDA 'isRelevant: true' VERİLİR:
+Aday tez doğrudan kullanıcının araştırdığı **SOMUT AMBİRİK NESNEYİ, OLGUSAL SORUNSALI, AKTÖRLERİ VEYA DOĞRUDAN İLGİLİ DÖNEMSEL/SİYASAL GELİŞİMİ** inceliyorsa 'true' kabul edilir.
+
+# Değerlendirme Ölçütleri
+1. **isRelevant (Konusal İlgililik):** Aday tez doğrudan kullanıcının araştırdığı somut konuyu, aktörleri veya ampirik olguyu mu inceliyor? (Evet ise true, aksi halde false).
+2. **isDirectOverlap (Birebir Çakışma / Özgünlük Riski):** Aday tez kullanıcının araştırdığı soruyu aynı dönem, aynı aktörler ve aynı kapsamda birebir çözmüş ve araştırmacının tezine özgün bir boşluk bırakmamış mıdır? (Evet ise true, aksi halde false).
+3. **strategicRole (Konusal Stratejik Rol):** İlgili tezler için aşağıdaki rollerden en uygun olanını seç:
+   - **SPECIFIC_FOCUS (Kısmi / Komşu Olgusal Odak):** Konunun belirli bir alt boyutunu (örn. yasal parti kanadı, komşu bir dönemi veya alt bir kurumu) inceleyen çalışma.
+   - **FOUNDATIONAL_WORK (Öncül Konu Çalışması):** Konunun tarihsel kökenlerini veya ana gelişim hattını kuran temel konu tezi.
+   - **METHODOLOGICAL_BENCHMARK (Paralel Olgusal Analiz):** Aynı ampirik konuyu benzer bir veri setiyle inceleyen doğrudan konusal referans.
+   - **ALTERNATIVE_PERSPECTIVE (Karşıt / Farklı Olgusal Yaklaşım):** Aynı konuyu farklı bir siyasal ya da olgusal açıklamayla yorumlayan tartışma kaynağı.
+4. **contributionAreas (Katkı / Odak Alanları):** Tezin temas ettiği 1-2 adet somut konu etiketi (örn: "Yasal Kürt Partileri", "1990'lar Söylemsel Dönüşüm").
+5. **literaturePosition (Literatürdeki Yeri):** Tezin neyi araştırdığını ve konuya ne kattığını özetleyen 1 net cümle.
+6. **strategicUtility (Stratejik Kullanım Notu):** Araştırmacının kendi tezinde bu konusal çalışmayı nasıl konumlandıracağına dair 1-2 cümlelik rehber not.
+
+# Sınırlamalar
+- Yalnızca <context> içinde verilen aday tezlerin metin ve özetlerine dayanın.
+- Her adayın 'externalThesisId' değerini birebir koruyun.
+</instructions>
+
+<examples>
+<example>
+<input>
+[Kullanıcı Tez Konusu]:
+Kürt Özgürlük Hareketi'nin (PKK ve HEP-DEP-HADEP hattı) 1991-1999 döneminde manevra savaşından mevzi savaşına söylemsel dönüşümü ve taleplerin niteliksel değişimi.
+[Kuramsal Çerçeve]: Gramsci manevra/mevzi savaşı, Snow ve Benford çerçeveleme teorisi.
+[Yöntem]: Nitel tarihsel söylem analizi.
+
+[Aday Tez #1]:
+ID: "101"
+Başlık: İdeolojik Hegemonya Sorunsalı ve Gramsci Felsefesi
+Yazar: Ali Can (1998)
+Özet: Bu çalışmada Gramsci'nin hapishane defterlerindeki hegemonya, mevzi savaşı ve sivil toplum kavramları felsefi olarak incelenmiştir.
+
+[Aday Tez #2]:
+ID: "102"
+Başlık: Türk Basınında Dış Politika Haberlerinin Söylem Analizi: 1995-2000 Dönemi
+Yazar: Selim Kaya (2002)
+Özet: Hürriyet ve Sabah gazetelerinde Türkiye'nin AB ile ilişkileri üzerine çıkan köşe yazıları nitel tarihsel söylem analizi yöntemiyle incelenmiştir.
+
+[Aday Tez #3]:
+ID: "203"
+Başlık: 1990-2014 Dönemi Kürt Siyasal Hareketinin Söyleminin Dönüşümü
+Yazar: Kadriye Okudan Dernek (2014)
+Özet: Bu tezde 1990 sonrası Türkiye'de yasal Kürt siyasal partilerinin (HEP, DEP, HADEP, DEHAP, DTP, BDP, HDP) program ve söylemlerindeki değişim incelenmiştir.
+</input>
+<output>
+{
+  "evaluations": [
+    {
+      "externalThesisId": "101",
+      "isRelevant": false,
+      "relevanceReasoning": "Konu dışı saf felsefi/kuramsal çalışma; kullanıcının ampirik konusu olan Kürt hareketi ve 1990'lar siyasetiyle doğrudan ilişkisi yoktur.",
+      "isDirectOverlap": false,
+      "strategicRole": "FOUNDATIONAL_WORK",
+      "contributionAreas": ["Siyaset Felsefesi"],
+      "literaturePosition": "Gramsci'nin hegemonya kavramını felsefi olarak ele almıştır.",
+      "strategicUtility": "Genel teori tezi olduğu için konu konumlandırmasında doğrudan kullanılamaz."
+    },
+    {
+      "externalThesisId": "102",
+      "isRelevant": false,
+      "relevanceReasoning": "Yöntemsel benzerlik tuzağı: Söylem analizi yöntemi kullanılmış olsa da incelenen konu AB dış politikası olup araştırmacının konusuyla tamamen alakasızdır.",
+      "isDirectOverlap": false,
+      "strategicRole": "METHODOLOGICAL_BENCHMARK",
+      "contributionAreas": ["Dış Politika"],
+      "literaturePosition": "AB ilişkileri basındaki söylem üzerinden incelenmiştir.",
+      "strategicUtility": "Konu dışı olduğu için değerlendirmeye alınmamalıdır."
+    },
+    {
+      "externalThesisId": "203",
+      "isRelevant": true,
+      "relevanceReasoning": "Doğrudan kullanıcının incelediği 1990'lar yasal Kürt partileri hattını ve söylemsel dönüşümünü ampirik olarak incelemektedir.",
+      "isDirectOverlap": false,
+      "strategicRole": "SPECIFIC_FOCUS",
+      "contributionAreas": ["Yasal Kürt Partileri", "Söylemsel Dönüşüm"],
+      "literaturePosition": "1990-2014 arası yasal Kürt partilerinin söylemsel evrimini ampirik metinler üzerinden incelemiştir.",
+      "strategicUtility": "Araştırmacı bu çalışmayı yasal/mevzi kanadın söylemsel bulguları için doğrudan birincil bir karşılaştırma ve konumlandırma referansı olarak kullanmalıdır."
+    }
+  ]
+}
+</output>
+</example>
+</examples>`;
+
+  const candidatesText = candidateTheses
+    .map((t, idx) => {
+      return `[Aday Tez #${idx + 1}]
+ID: "${t.id}"
+Başlık: ${t.title}
+Yazar: ${t.author || "Bilinmiyor"} (${t.year || "N/A"})
+Tür: ${t.thesisType || "N/A"}
+Üniversite/Bölüm: ${t.university || "N/A"} - ${t.department || "N/A"}
+Dil: ${t.language || "Türkçe"}
+Özet: ${t.abstract || ""}`;
+    })
+    .join("\n\n---\n\n");
+
+  const userPrompt = `<context>
+[Kullanıcı Tez Konusu ve Sorunsalı]:
+Araştırma Problemi ve Odak: ${matrix.subjectProblem}
+Kuramsal Çerçeve (Arka plan): ${matrix.theoreticalFramework || "Belirtilmemiş"}
+Yöntem ve Veri (Arka plan): ${matrix.methodology || "Belirtilmemiş"}
+
+[Değerlendirilecek Aday Tezler (${candidateTheses.length} Adet)]:
+${candidatesText}
+</context>
+
+<task>
+Yukarıdaki <context> içinde yer alan ${candidateTheses.length} adet aday tezi <instructions> kurallarına göre analiz et; yalnızca KONUSAL ve OLGUSAL ilgililik filtresini uygulayarak yapılandırılmış JSON çıktısını üret.
+</task>`;
+
+  return { systemInstruction, userPrompt };
 }
 </file>
 
@@ -51118,143 +51200,6 @@ export function useLiteratureReview(): UseLiteratureReviewResult {
 }
 </file>
 
-<file path="src/app/(onboarding)/onboarding/positioning/_services/per-thesis-evaluation.ts">
-import { ThinkingLevel } from "@google/genai";
-import { FLASH_LITE_35, GEMINI_SEED } from "@/lib/constants";
-import { generateGeminiStructuredContent } from "@/core/services/ai";
-import type { Logger } from "@/lib/logger";
-import { buildPerThesisEvaluationPromptPayload } from "../_prompts/per-thesis-evaluation.prompt";
-import type { PositioningMatrixInput } from "./validation";
-import type { SiftedThesis } from "./sifting";
-import {
-  batchThesisEvaluationSchema,
-  batchThesisEvaluationJsonSchema,
-  type PerThesisEvaluation,
-  type BatchThesisEvaluationOutput,
-} from "./analysis-schemas";
-
-/** Combined evaluated thesis pairing the raw thesis with its LLM evaluation. */
-export interface EvaluatedThesis {
-  thesis: SiftedThesis;
-  evaluation: PerThesisEvaluation;
-}
-
-/** Number of candidate theses evaluated in a single parallel batch call. */
-const BATCH_CHUNK_SIZE = 5;
-
-/**
- * Evaluates candidate theses in parallel batches of 5 using FLASH_LITE_35 with LOW thinking.
- * Each thesis is evaluated for relevance, direct overlap (novelty risk), strategic role,
- * literature position, and strategic utility.
- *
- * @param matrix - The 3-field positioning matrix.
- * @param theses - The sifted candidate theses from Tezara & Cohere.
- * @param logger - Optional structured logger.
- * @returns Array of evaluated theses pairing metadata with AI evaluations.
- */
-export async function evaluateThesesInParallel(
-  matrix: PositioningMatrixInput,
-  theses: SiftedThesis[],
-  logger?: Logger,
-): Promise<EvaluatedThesis[]> {
-  if (theses.length === 0) {
-    return [];
-  }
-
-  const evalStart = performance.now();
-  logger?.info("per_thesis_evaluation_start", {
-    service: "gemini",
-    filePath: "src/app/(onboarding)/onboarding/positioning/_services/per-thesis-evaluation.ts",
-    data: { candidateCount: theses.length, chunkSize: BATCH_CHUNK_SIZE },
-  });
-
-  // Divide candidate list into chunks of 5
-  const chunks: SiftedThesis[][] = [];
-  for (let i = 0; i < theses.length; i += BATCH_CHUNK_SIZE) {
-    chunks.push(theses.slice(i, i + BATCH_CHUNK_SIZE));
-  }
-
-  const thesisById = new Map<string, SiftedThesis>(
-    theses.map((t) => [String(t.id), t]),
-  );
-
-  // Execute all chunk evaluations in parallel
-  const chunkPromises = chunks.map(async (chunk, chunkIdx) => {
-    const payload = buildPerThesisEvaluationPromptPayload(matrix, chunk);
-
-    try {
-      const result =
-        await generateGeminiStructuredContent<BatchThesisEvaluationOutput>(
-          FLASH_LITE_35,
-          payload.systemInstruction,
-          payload.userPrompt,
-          batchThesisEvaluationJsonSchema,
-          logger,
-          {
-            zodSchema: batchThesisEvaluationSchema,
-            payloadStage: `per_thesis_eval_chunk_${chunkIdx + 1}`,
-            seed: GEMINI_SEED,
-            thinkingConfig: { thinkingLevel: ThinkingLevel.LOW },
-            thesisMatrix: matrix,
-            quiet: true,
-          },
-        );
-
-      return result.evaluations;
-    } catch (error) {
-      logger?.warn("per_thesis_eval_chunk_error", {
-        data: {
-          chunkIdx,
-          chunkCount: chunk.length,
-        },
-        error,
-      });
-
-      // Fallback for failed chunk: return default safe evaluations
-      return chunk.map((t) => ({
-        externalThesisId: String(t.id),
-        isRelevant: true,
-        relevanceReasoning: "Otomatik süzme ile eşleşen literatür adayı.",
-        isDirectOverlap: false,
-        strategicRole: "SPECIFIC_FOCUS" as const,
-        contributionAreas: ["Literatür İncelemesi"],
-        literaturePosition: t.title,
-        strategicUtility:
-          "Bu çalışma alanındaki genel eğilimleri ve kavramsal çerçeveyi anlamak için incelenmelidir.",
-      }));
-    }
-  });
-
-  const chunkResults = await Promise.all(chunkPromises);
-  const allEvaluations = chunkResults.flat();
-
-  const evaluatedTheses: EvaluatedThesis[] = [];
-  for (const evaluation of allEvaluations) {
-    const rawThesis = thesisById.get(String(evaluation.externalThesisId));
-    if (rawThesis) {
-      evaluatedTheses.push({
-        thesis: rawThesis,
-        evaluation,
-      });
-    }
-  }
-
-  logger?.info("per_thesis_evaluation_success", {
-    service: "gemini",
-    filePath: "src/app/(onboarding)/onboarding/positioning/_services/per-thesis-evaluation.ts",
-    durationMs: performance.now() - evalStart,
-    data: {
-      totalCandidates: theses.length,
-      evaluatedCount: evaluatedTheses.length,
-      relevantCount: evaluatedTheses.filter((e) => e.evaluation.isRelevant).length,
-      overlappingCount: evaluatedTheses.filter((e) => e.evaluation.isDirectOverlap).length,
-    },
-  });
-
-  return evaluatedTheses;
-}
-</file>
-
 <file path="src/lib/logger.ts">
 import {
   C_RESET,
@@ -51576,6 +51521,79 @@ export class Logger implements LoggerInstance {
 }
 </file>
 
+<file path="package.json">
+{
+  "name": "fabricca",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "eslint .",
+    "typecheck": "tsc --noEmit",
+    "check:full": "npm run lint && npm run typecheck && npx prettier --write .",
+    "db:push": "drizzle-kit push --force",
+    "db:reset": "tsx src/core/db/reset.ts",
+    "db:seed": "tsx src/core/db/seed.ts"
+  },
+  "dependencies": {
+    "@aws-sdk/client-s3": "^3.1097.0",
+    "@aws-sdk/s3-request-presigner": "^3.1097.0",
+    "@firecrawl/pdf-inspector": "^1.12.0",
+    "@google/genai": "^2.8.0",
+    "@neondatabase/serverless": "^1.0.0",
+    "@qdrant/js-client-rest": "^1.19.0",
+    "@radix-ui/react-alert-dialog": "^1.1.16",
+    "@radix-ui/react-checkbox": "^1.3.4",
+    "@radix-ui/react-collapsible": "^1.1.17",
+    "@radix-ui/react-dialog": "^1.1.23",
+    "@radix-ui/react-label": "^2.1.9",
+    "@radix-ui/react-popover": "^1.1.23",
+    "@radix-ui/react-scroll-area": "^1.2.11",
+    "@radix-ui/react-slot": "^1.2.5",
+    "@tanstack/react-query": "^5.101.0",
+    "bcrypt-ts": "^6.0.0",
+    "class-variance-authority": "^0.7.1",
+    "clsx": "^2.1.1",
+    "drizzle-orm": "^0.45.2",
+    "lucide-react": "^0.510.0",
+    "next": "^16.3.0",
+    "next-themes": "^0.4.6",
+    "react": "^19.2.7",
+    "react-dom": "^19.2.7",
+    "react-markdown": "^10.1.0",
+    "rehype-raw": "^7.0.0",
+    "remark-gfm": "^4.0.1",
+    "sonner": "^2.0.7",
+    "tailwind-merge": "^3.2.0",
+    "tailwindcss-animate": "^1.0.7",
+    "zod": "^4.4.3"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "^4.1.6",
+    "@types/node": "^22.15.3",
+    "@types/react": "^19.2.17",
+    "@types/react-dom": "^19.2.3",
+    "dotenv": "^16.4.7",
+    "drizzle-kit": "^0.31.10",
+    "eslint": "^9.39.4",
+    "eslint-config-next": "^16.3.0",
+    "postcss": "^8.5.3",
+    "prettier": "^3.9.3",
+    "repomix": "^1.18.0",
+    "tailwindcss": "^4.1.6",
+    "tsx": "^4.22.4",
+    "typescript": "^5.8.3"
+  },
+  "overrides": {
+    "@esbuild-kit/core-utils": {
+      "esbuild": "^0.25.4"
+    }
+  }
+}
+</file>
+
 <file path="src/app/(onboarding)/onboarding/boxes/_components/boxes-container.tsx">
 "use client";
 
@@ -51817,6 +51835,136 @@ const BoxCard = memo(function BoxCard({
 });
 </file>
 
+<file path="src/app/(onboarding)/onboarding/positioning/_services/per-thesis-evaluation.ts">
+import { ThinkingLevel } from "@google/genai";
+import { FLASH_LITE_35, GEMINI_SEED } from "@/lib/constants";
+import { generateGeminiStructuredContent } from "@/core/services/ai";
+import type { Logger } from "@/lib/logger";
+import { buildPerThesisEvaluationPromptPayload } from "../_prompts/per-thesis-evaluation.prompt";
+import type { PositioningMatrixInput } from "./validation";
+import type { SiftedThesis } from "./sifting";
+import {
+  batchThesisEvaluationSchema,
+  batchThesisEvaluationJsonSchema,
+  type PerThesisEvaluation,
+  type BatchThesisEvaluationOutput,
+} from "./analysis-schemas";
+
+/** Combined evaluated thesis pairing the raw thesis with its LLM evaluation. */
+export interface EvaluatedThesis {
+  thesis: SiftedThesis;
+  evaluation: PerThesisEvaluation;
+}
+
+/** Number of candidate theses evaluated in a single parallel batch call. */
+const BATCH_CHUNK_SIZE = 4;
+
+/**
+ * Evaluates candidate theses in parallel batches of 4 using FLASH_LITE_35 with LOW thinking.
+ * Each thesis is evaluated for relevance, direct overlap (novelty risk), strategic role,
+ * literature position, and strategic utility.
+ *
+ * @param matrix - The 3-field positioning matrix.
+ * @param theses - The sifted candidate theses from Tezara & Cohere.
+ * @param logger - Optional structured logger.
+ * @returns Array of evaluated theses pairing metadata with AI evaluations.
+ */
+export async function evaluateThesesInParallel(
+  matrix: PositioningMatrixInput,
+  theses: SiftedThesis[],
+  logger?: Logger,
+): Promise<EvaluatedThesis[]> {
+  if (theses.length === 0) {
+    return [];
+  }
+
+  const evalStart = performance.now();
+  logger?.info("per_thesis_evaluation_start", {
+    service: "gemini",
+    filePath: "src/app/(onboarding)/onboarding/positioning/_services/per-thesis-evaluation.ts",
+    data: { candidateCount: theses.length, chunkSize: BATCH_CHUNK_SIZE },
+  });
+
+  // Divide candidate list into chunks of 4
+  const chunks: SiftedThesis[][] = [];
+  for (let i = 0; i < theses.length; i += BATCH_CHUNK_SIZE) {
+    chunks.push(theses.slice(i, i + BATCH_CHUNK_SIZE));
+  }
+
+  const thesisById = new Map<string, SiftedThesis>(
+    theses.map((t) => [String(t.id), t]),
+  );
+
+  // Execute all chunk evaluations in parallel
+  const chunkPromises = chunks.map(async (chunk, chunkIdx) => {
+    const payload = buildPerThesisEvaluationPromptPayload(matrix, chunk);
+
+    try {
+      const result =
+        await generateGeminiStructuredContent<BatchThesisEvaluationOutput>(
+          FLASH_LITE_35,
+          payload.systemInstruction,
+          payload.userPrompt,
+          batchThesisEvaluationJsonSchema,
+          logger,
+          {
+            zodSchema: batchThesisEvaluationSchema,
+            payloadStage: `per_thesis_eval_chunk_${chunkIdx + 1}`,
+            seed: GEMINI_SEED,
+            thinkingConfig: { thinkingLevel: ThinkingLevel.LOW },
+            thesisMatrix: matrix,
+            quiet: true,
+          },
+        );
+
+      return result.evaluations;
+    } catch (error) {
+      logger?.error("per_thesis_eval_chunk_error", {
+        data: {
+          chunkIdx,
+          chunkCount: chunk.length,
+        },
+        error,
+      });
+
+      throw new Error(
+        `Aday tez değerlendirme paketi (#${chunkIdx + 1}) işlenirken hata oluştu: ${
+          error instanceof Error ? error.message : String(error)
+        }`,
+      );
+    }
+  });
+
+  const chunkResults = await Promise.all(chunkPromises);
+  const allEvaluations = chunkResults.flat();
+
+  const evaluatedTheses: EvaluatedThesis[] = [];
+  for (const evaluation of allEvaluations) {
+    const rawThesis = thesisById.get(String(evaluation.externalThesisId));
+    if (rawThesis) {
+      evaluatedTheses.push({
+        thesis: rawThesis,
+        evaluation,
+      });
+    }
+  }
+
+  logger?.info("per_thesis_evaluation_success", {
+    service: "gemini",
+    filePath: "src/app/(onboarding)/onboarding/positioning/_services/per-thesis-evaluation.ts",
+    durationMs: performance.now() - evalStart,
+    data: {
+      totalCandidates: theses.length,
+      evaluatedCount: evaluatedTheses.length,
+      relevantCount: evaluatedTheses.filter((e) => e.evaluation.isRelevant).length,
+      overlappingCount: evaluatedTheses.filter((e) => e.evaluation.isDirectOverlap).length,
+    },
+  });
+
+  return evaluatedTheses;
+}
+</file>
+
 <file path="src/app/(onboarding)/onboarding/actions.ts">
 "use server";
 
@@ -51977,79 +52125,6 @@ export async function clearDownstreamDbAction(
     return {
       error: "Sıfırlama işlemi gerçekleştirilirken bir hata oluştu.",
     };
-  }
-}
-</file>
-
-<file path="package.json">
-{
-  "name": "fabricca",
-  "version": "0.1.0",
-  "private": true,
-  "scripts": {
-    "dev": "next dev",
-    "build": "next build",
-    "start": "next start",
-    "lint": "eslint .",
-    "typecheck": "tsc --noEmit",
-    "check:full": "npm run lint && npm run typecheck && npx prettier --write .",
-    "db:push": "drizzle-kit push --force",
-    "db:reset": "tsx src/core/db/reset.ts",
-    "db:seed": "tsx src/core/db/seed.ts"
-  },
-  "dependencies": {
-    "@aws-sdk/client-s3": "^3.1097.0",
-    "@aws-sdk/s3-request-presigner": "^3.1097.0",
-    "@firecrawl/pdf-inspector": "^1.12.0",
-    "@google/genai": "^2.8.0",
-    "@neondatabase/serverless": "^1.0.0",
-    "@qdrant/js-client-rest": "^1.19.0",
-    "@radix-ui/react-alert-dialog": "^1.1.16",
-    "@radix-ui/react-checkbox": "^1.3.4",
-    "@radix-ui/react-collapsible": "^1.1.17",
-    "@radix-ui/react-dialog": "^1.1.23",
-    "@radix-ui/react-label": "^2.1.9",
-    "@radix-ui/react-popover": "^1.1.23",
-    "@radix-ui/react-scroll-area": "^1.2.11",
-    "@radix-ui/react-slot": "^1.2.5",
-    "@tanstack/react-query": "^5.101.0",
-    "bcrypt-ts": "^6.0.0",
-    "class-variance-authority": "^0.7.1",
-    "clsx": "^2.1.1",
-    "drizzle-orm": "^0.45.2",
-    "lucide-react": "^0.510.0",
-    "next": "^16.3.0",
-    "next-themes": "^0.4.6",
-    "react": "^19.2.7",
-    "react-dom": "^19.2.7",
-    "react-markdown": "^10.1.0",
-    "rehype-raw": "^7.0.0",
-    "remark-gfm": "^4.0.1",
-    "sonner": "^2.0.7",
-    "tailwind-merge": "^3.2.0",
-    "tailwindcss-animate": "^1.0.7",
-    "zod": "^4.4.3"
-  },
-  "devDependencies": {
-    "@tailwindcss/postcss": "^4.1.6",
-    "@types/node": "^22.15.3",
-    "@types/react": "^19.2.17",
-    "@types/react-dom": "^19.2.3",
-    "dotenv": "^16.4.7",
-    "drizzle-kit": "^0.31.10",
-    "eslint": "^9.39.4",
-    "eslint-config-next": "^16.3.0",
-    "postcss": "^8.5.3",
-    "prettier": "^3.9.3",
-    "repomix": "^1.18.0",
-    "tailwindcss": "^4.1.6",
-    "tsx": "^4.22.4",
-    "typescript": "^5.8.3"
-  },
-  "overrides": {
-    "@esbuild-kit/core-utils": {
-      "esbuild": "^0.25.4"
-    }
   }
 }
 </file>
@@ -53403,6 +53478,7 @@ import {
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
+import { splitBilingualTitle } from "@/lib/academic/title-utils";
 import type { JuryAnalysisResult } from "../_services/analysis";
 import type { StrategicRole } from "../_services/validation";
 import { PositioningMarkdownRenderer } from "./positioning-markdown-renderer";
@@ -53410,6 +53486,18 @@ import { PositioningMarkdownRenderer } from "./positioning-markdown-renderer";
 interface PositioningReportViewProps {
   reportData: JuryAnalysisResult;
   onConfirm: () => void;
+}
+
+const ROLE_SORT_PRIORITY: Record<StrategicRole, number> = {
+  FOUNDATIONAL_WORK: 1,
+  METHODOLOGICAL_BENCHMARK: 2,
+  SPECIFIC_FOCUS: 3,
+  ALTERNATIVE_PERSPECTIVE: 4,
+};
+
+function getRoleSortPriority(role?: StrategicRole): number {
+  if (!role) return 5;
+  return ROLE_SORT_PRIORITY[role] ?? 5;
 }
 
 /**
@@ -53426,7 +53514,6 @@ function getRoleBadgeConfig(role?: StrategicRole) {
         description: "Temel Kuramsal / Kavramsal Çerçeve Referansı",
         icon: BookOpen,
         badgeClass: "bg-info/10 text-info border-info/20",
-        borderClass: "border-l-info",
       };
     case "METHODOLOGICAL_BENCHMARK":
       return {
@@ -53434,7 +53521,6 @@ function getRoleBadgeConfig(role?: StrategicRole) {
         description: "Metodolojik Model ve Saha Referansı",
         icon: GitFork,
         badgeClass: "bg-primary/10 text-primary border-primary/20",
-        borderClass: "border-l-primary",
       };
     case "SPECIFIC_FOCUS":
       return {
@@ -53442,7 +53528,6 @@ function getRoleBadgeConfig(role?: StrategicRole) {
         description: "Spesifik Alt Boyut veya Yakın Vaka",
         icon: Target,
         badgeClass: "bg-secondary text-secondary-foreground border-border",
-        borderClass: "border-l-border",
       };
     case "ALTERNATIVE_PERSPECTIVE":
       return {
@@ -53450,7 +53535,6 @@ function getRoleBadgeConfig(role?: StrategicRole) {
         description: "Farklı Kuramsal Eksen veya Zıt Bulgular",
         icon: Layers,
         badgeClass: "bg-warning/10 text-warning border-warning/20",
-        borderClass: "border-l-warning",
       };
     default:
       return {
@@ -53458,7 +53542,6 @@ function getRoleBadgeConfig(role?: StrategicRole) {
         description: "İlgili Literatür Kaynağı",
         icon: Compass,
         badgeClass: "bg-muted text-muted-foreground border-border",
-        borderClass: "border-l-border",
       };
   }
 }
@@ -53479,6 +53562,15 @@ export function PositioningReportView({
   const isDirectOverlap = reportData.globalStatus === "DIRECT_OVERLAP";
   const isNoRelated = reportData.globalStatus === "NO_RELATED_LITERATURE";
 
+  const sortedTheses = [...reportData.recommendedTheses].sort((a, b) => {
+    const priorityA = getRoleSortPriority(a.strategicRole);
+    const priorityB = getRoleSortPriority(b.strategicRole);
+    if (priorityA !== priorityB) {
+      return priorityA - priorityB;
+    }
+    return (b.year || 0) - (a.year || 0);
+  });
+
   const handleConfirm = async () => {
     if (confirming) return;
     setConfirming(true);
@@ -53494,23 +53586,23 @@ export function PositioningReportView({
       {/* 1. Global Jury Evaluation Status Banner */}
       <Card
         className={cn(
-          "rounded-md border transition-all shadow-sm",
+          "rounded-md border transition-colors",
           isNovelGap
-            ? "bg-success/5 border-success/30"
+            ? "bg-success/5 border-success/20"
             : isDirectOverlap
-              ? "bg-destructive/5 border-destructive/30"
-              : "bg-info/5 border-info/30",
+              ? "bg-destructive/5 border-destructive/20"
+              : "bg-info/5 border-info/20",
         )}
       >
         <CardContent className="p-4 sm:p-6 flex items-start gap-4">
           <div
             className={cn(
-              "p-2.5 rounded-md shrink-0 border",
+              "p-2 rounded-md shrink-0 border",
               isNovelGap
-                ? "bg-background/90 text-success border-success/30"
+                ? "bg-background text-success border-success/20"
                 : isDirectOverlap
-                  ? "bg-background/90 text-destructive border-destructive/30"
-                  : "bg-background/90 text-info border-info/30",
+                  ? "bg-background text-destructive border-destructive/20"
+                  : "bg-background text-info border-info/20",
             )}
           >
             {isNovelGap && <CheckCircle2 className="h-5 w-5" />}
@@ -53528,10 +53620,10 @@ export function PositioningReportView({
                 className={cn(
                   "px-2.5 py-0.5 text-xs font-semibold shrink-0",
                   isNovelGap
-                    ? "bg-success/15 text-success border-success/30"
+                    ? "bg-success/10 text-success border-success/20"
                     : isDirectOverlap
-                      ? "bg-destructive/15 text-destructive border-destructive/30"
-                      : "bg-info/15 text-info border-info/30",
+                      ? "bg-destructive/10 text-destructive border-destructive/20"
+                      : "bg-info/10 text-info border-info/20",
                 )}
               >
                 {isNovelGap
@@ -53542,7 +53634,7 @@ export function PositioningReportView({
               </Badge>
             </div>
 
-            <h3 className="font-serif text-lg sm:text-xl font-bold tracking-tight text-foreground">
+            <h3 className="font-serif text-lg sm:text-xl font-semibold tracking-tight text-foreground">
               {isNovelGap && "Özgün Katkı: Belirgin Bir Literatür Boşluğu Tespit Edildi"}
               {isDirectOverlap && "Dikkat: Birebir Çakışan Tamamlanmış Tez Tespit Edildi"}
               {isNoRelated && "Öncü Çalışma: Doğrudan İlgili Tez Bulunamadı"}
@@ -53563,7 +53655,7 @@ export function PositioningReportView({
       {/* 2. 3-Dimensional Gap Analysis Report */}
       <div className="space-y-4">
         <div className="flex flex-col space-y-1">
-          <h2 className="font-serif text-xl font-bold tracking-tight text-foreground">
+          <h2 className="font-serif text-xl font-semibold tracking-tight text-foreground">
             Akademik Boşluk Analizi ve Literatür Sentezi
           </h2>
           <p className="text-sm leading-relaxed text-muted-foreground">
@@ -53577,12 +53669,12 @@ export function PositioningReportView({
       </div>
 
       {/* 3. Strategic Recommended Theses Cards */}
-      {reportData.recommendedTheses.length > 0 && (
+      {sortedTheses.length > 0 && (
         <div className="space-y-4 pt-2">
           <div className="flex items-center justify-between gap-4 flex-wrap">
             <div className="flex flex-col space-y-1">
-              <h2 className="font-serif text-xl font-bold tracking-tight text-foreground">
-                Kılavuz ve Öncül Tezler ({reportData.recommendedTheses.length})
+              <h2 className="font-serif text-xl font-semibold tracking-tight text-foreground">
+                Kılavuz ve Öncül Tezler ({sortedTheses.length})
               </h2>
               <p className="text-sm leading-relaxed text-muted-foreground">
                 Çalışmanızın temel kuramsal, yöntemsel ve olgusal zeminini oluşturan en stratejik tezler ve konumlandırma rehberi.
@@ -53591,9 +53683,10 @@ export function PositioningReportView({
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {reportData.recommendedTheses.map((thesis, idx) => {
+            {sortedTheses.map((thesis, idx) => {
               const roleConfig = getRoleBadgeConfig(thesis.strategicRole);
               const RoleIcon = roleConfig.icon;
+              const { mainTitle, secondaryTitle } = splitBilingualTitle(thesis.title);
               const yökUrl =
                 thesis.tezaraUrl ||
                 `https://tez.yok.gov.tr/UlusalTezMerkezi/tezDetay.jsp?id=${thesis.externalThesisId || thesis.id}`;
@@ -53601,10 +53694,7 @@ export function PositioningReportView({
               return (
                 <Card
                   key={thesis.id || thesis.externalThesisId || `thesis-${idx}`}
-                  className={cn(
-                    "flex flex-col justify-between border rounded-md bg-card transition-all hover:border-border/80 border-l-4 shadow-sm",
-                    roleConfig.borderClass,
-                  )}
+                  className="flex flex-col justify-between border border-border rounded-md bg-card transition-colors hover:border-border/80"
                 >
                   <CardHeader className="p-4 sm:p-5 pb-3 sm:pb-3 space-y-2.5">
                     <div className="flex items-start justify-between gap-2 flex-wrap">
@@ -53619,30 +53709,37 @@ export function PositioningReportView({
                         {roleConfig.label}
                       </Badge>
                       {thesis.thesisType && (
-                        <span className="text-[11px] font-medium text-muted-foreground bg-muted/60 px-2 py-0.5 rounded border border-border/40">
+                        <span className="text-xs font-medium text-muted-foreground bg-muted/60 px-2 py-0.5 rounded border border-border/40">
                           {thesis.thesisType}
                         </span>
                       )}
                     </div>
 
-                    <CardTitle className="font-serif text-base font-bold leading-snug tracking-tight text-foreground line-clamp-2">
-                      {thesis.title}
-                    </CardTitle>
+                    <div className="space-y-1">
+                      <CardTitle className="font-serif text-base font-semibold leading-snug tracking-tight text-foreground line-clamp-2">
+                        {mainTitle}
+                      </CardTitle>
+                      {secondaryTitle && (
+                        <p className="font-sans text-xs text-muted-foreground leading-normal line-clamp-2 italic">
+                          {secondaryTitle}
+                        </p>
+                      )}
+                    </div>
 
                     {/* Metadata chips */}
                     <div className="flex items-center gap-3 text-xs text-muted-foreground flex-wrap pt-0.5">
                       <span className="flex items-center gap-1">
-                        <User className="h-3.5 w-3.5 text-muted-foreground/70" />
-                        <span className="font-medium text-foreground/80">
+                        <User className="h-3.5 w-3.5 text-muted-foreground" />
+                        <span className="font-medium text-foreground">
                           {thesis.author}
                         </span>
                       </span>
                       <span className="flex items-center gap-1">
-                        <Calendar className="h-3.5 w-3.5 text-muted-foreground/70" />
+                        <Calendar className="h-3.5 w-3.5 text-muted-foreground" />
                         {thesis.year}
                       </span>
                       <span className="flex items-center gap-1">
-                        <GraduationCap className="h-3.5 w-3.5 text-muted-foreground/70" />
+                        <GraduationCap className="h-3.5 w-3.5 text-muted-foreground" />
                         <span className="truncate max-w-[180px]">
                           {thesis.university}
                         </span>
@@ -53650,10 +53747,10 @@ export function PositioningReportView({
                     </div>
                   </CardHeader>
 
-                  <CardContent className="p-4 sm:p-5 pt-0 space-y-3 text-xs leading-relaxed text-muted-foreground font-sans flex-1">
+                  <CardContent className="p-4 sm:p-5 pt-0 space-y-2.5 text-xs leading-relaxed text-muted-foreground font-sans flex-1">
                     {thesis.literaturePosition && (
-                      <div className="rounded-md bg-muted/40 p-2.5 border border-border/40 space-y-1">
-                        <span className="font-semibold text-foreground text-[11px] block">
+                      <div className="rounded-md bg-muted/30 p-3 border border-border/40 space-y-1">
+                        <span className="font-semibold text-foreground text-xs block">
                           Literatürdeki Yeri (Ne Yaptı?):
                         </span>
                         <p className="text-muted-foreground leading-relaxed">
@@ -53663,19 +53760,19 @@ export function PositioningReportView({
                     )}
 
                     {thesis.relevanceReason && (
-                      <div className="rounded-md bg-primary/5 p-2.5 border border-primary/15 space-y-1">
-                        <span className="font-semibold text-primary text-[11px] block">
+                      <div className="rounded-md bg-primary/5 p-3 border border-primary/20 space-y-1">
+                        <span className="font-semibold text-primary text-xs block">
                           Stratejik Kullanım / Boşluk Doldurma:
                         </span>
-                        <p className="text-foreground/90 leading-relaxed">
+                        <p className="text-foreground leading-relaxed">
                           {thesis.relevanceReason}
                         </p>
                       </div>
                     )}
                   </CardContent>
 
-                  <CardFooter className="p-4 sm:p-5 pt-2 flex items-center justify-between border-t border-border/40 gap-2">
-                    <span className="text-[11px] text-muted-foreground">
+                  <CardFooter className="p-4 sm:p-5 pt-3 flex items-center justify-between border-t border-border/40 gap-2">
+                    <span className="text-xs text-muted-foreground">
                       ID: <span className="font-mono">{thesis.externalThesisId || thesis.id}</span>
                     </span>
 
@@ -53697,16 +53794,12 @@ export function PositioningReportView({
       )}
 
       {/* 4. Bottom Action Bar */}
-      <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-6 border-t border-border">
-        <div className="text-xs text-muted-foreground text-center sm:text-left">
-          Konumlandırma raporunu onayladığınızda tezinizin altyapısal konu kutuları otomatik olarak üretilecektir.
-        </div>
-
+      <div className="flex items-center justify-end pt-6">
         <Button
           onClick={handleConfirm}
           disabled={confirming}
           size="lg"
-          className="w-full sm:w-auto font-sans font-semibold gap-2 shadow-sm"
+          className="w-full sm:w-auto font-sans font-semibold gap-2"
         >
           {confirming ? (
             <>
