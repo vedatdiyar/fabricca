@@ -1,4 +1,4 @@
-import { and, eq, inArray } from "drizzle-orm";
+import { eq, inArray } from "drizzle-orm";
 import { db } from "@/core/db";
 import { boxes, matrices, positioning, sources } from "@/core/db/schema";
 import type {

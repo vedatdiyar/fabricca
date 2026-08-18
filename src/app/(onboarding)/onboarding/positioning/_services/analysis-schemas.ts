@@ -2,6 +2,67 @@ import { z } from "zod";
 import type { JsonSchema } from "@/core/services/ai";
 import { gapAnalysisStructuredSchema, strategicRoleEnum } from "./validation";
 
+/** Zod schema for Stage 1 binary triage single item output. */
+export const binaryTriageItemSchema = z.object({
+  externalThesisId: z
+    .union([z.string(), z.number()])
+    .transform((val) => String(val))
+    .describe("Değerlendirilen tezin ID'si"),
+  isRelevant: z
+    .boolean()
+    .describe(
+      "Aday tez kullanıcının 3 bileşenli tez matrisi (Problem, Kuram, Yöntem) için doğrudan kuramsal, yöntemsel veya ampirik birincil muhatap mıdır?",
+    ),
+  decisionReason: z
+    .string()
+    .describe("Tezin kabul veya ret gerekçesini açıklayan 1-2 cümle"),
+});
+
+/** Inferred type for a single binary triage result. */
+export type BinaryTriageItem = z.infer<typeof binaryTriageItemSchema>;
+
+/** Zod schema for Stage 1 binary triage batch output. */
+export const binaryTriageOutputSchema = z.object({
+  evaluations: z.array(binaryTriageItemSchema),
+});
+
+/** Inferred type for batch binary triage output. */
+export type BinaryTriageOutput = z.infer<typeof binaryTriageOutputSchema>;
+
+/** JSON Schema for Gemini structured output in Stage 1 binary triage. */
+export const binaryTriageJsonSchema: JsonSchema = {
+  type: "object",
+  properties: {
+    evaluations: {
+      type: "array",
+      items: {
+        type: "object",
+        properties: {
+          externalThesisId: {
+            type: "string",
+            description: "Değerlendirilen tezin ID'si",
+          },
+          isRelevant: {
+            type: "boolean",
+            description:
+              "Aday tez kullanıcının 3 bileşenli tez matrisi (Problem, Kuram, Yöntem) için doğrudan kuramsal, yöntemsel veya ampirik birincil muhatap mıdır? Dışsal medya analizi, izole alt tema, kronolojik sapma veya jenerik derleme varsa false.",
+          },
+          decisionReason: {
+            type: "string",
+            maxLength: 250,
+            description: "Tezin kabul veya ret gerekçesini açıklayan 1-2 net cümle (maks 250 karakter)",
+          },
+        },
+        required: ["externalThesisId", "isRelevant", "decisionReason"],
+        additionalProperties: false,
+      },
+      description: "Batch içerisindeki her bir adayın ikili eleme sonuçları",
+    },
+  },
+  required: ["evaluations"],
+  additionalProperties: false,
+};
+
 /** Zod schema for an individual recommended guiding thesis. */
 export const juryRecommendedThesisSchema = z.object({
   externalThesisId: z

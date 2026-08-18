@@ -6,9 +6,15 @@ import {
   type JsonSchema,
 } from "@/core/services/ai";
 import type { Logger } from "@/lib/logger";
+import { buildBinaryTriagePromptPayload } from "../_prompts/binary-triage.prompt";
 import { buildPerThesisEvaluationPromptPayload } from "../_prompts/per-thesis-evaluation.prompt";
 import { strategicRoleEnum, type PositioningMatrixInput } from "./validation";
 import type { SiftedThesis } from "./sifting";
+import {
+  binaryTriageOutputSchema,
+  binaryTriageJsonSchema,
+  type BinaryTriageOutput,
+} from "./analysis-schemas";
 
 /** Zod schema for the single-thesis strategic relevance/originality/role evaluation output. */
 export const perThesisEvaluationSchema = z.object({
@@ -19,13 +25,13 @@ export const perThesisEvaluationSchema = z.object({
   isRelevant: z
     .boolean()
     .describe(
-      "Bu tezi okumadan geçmek ciddi bir akademik eksiklik olur mu? YALNIZCA gerçekten zorunlu okuma kalitesindeyse true. Tipik 35 adayda 0-3 tez true alır.",
+      "Aday tez kullanıcının 3 bileşenli tez matrisi (Problem, Kuram, Yöntem) için doğrudan kuramsal, yöntemsel veya ampirik birincil muhatap mıdır?",
     ),
   relevanceReasoning: z
     .string()
     .optional()
     .describe(
-      "Tezin ampirik olarak neden ilgili veya ilgisiz olduğuna dair somut gerekçe (1-2 cümle)",
+      "Tezin ampirik olarak neden ilgili olduğuna dair somut gerekçe (1-2 cümle)",
     ),
   isDirectOverlap: z
     .boolean()
@@ -76,13 +82,13 @@ export const perThesisEvaluationJsonSchema: JsonSchema = {
     isRelevant: {
       type: "boolean",
       description:
-        "Bu tezi okumadan geçmek araştırmacı için ciddi bir akademik eksiklik yaratır mı? YALNIZCA zorunlu okuma niteliğindeki tezlerde true, diğerlerinde false. 35 adayda beklenti 0-3 kabuldür.",
+        "Aday tez kullanıcının 3 bileşenli tez matrisi için doğrudan kuramsal, yöntemsel veya ampirik birincil muhatap mıdır?",
     },
     relevanceReasoning: {
       type: "string",
       maxLength: 180,
       description:
-        "Tezin ampirik olarak neden kabul veya red edildiğine dair somut gerekçe (1-2 net cümle, maks 180 karakter)",
+        "Tezin ampirik olarak neden kabul edildiğine dair somut gerekçe (1-2 net cümle, maks 180 karakter)",
     },
     isDirectOverlap: {
       type: "boolean",
@@ -105,25 +111,24 @@ export const perThesisEvaluationJsonSchema: JsonSchema = {
       items: { type: "string" },
       maxItems: 2,
       description:
-        "Tezin kullanıcının tezine katkı sağladığı spesifik odak alanları (1-2 adet kısa etiket). İlgisiz tezlerde boş dizi [].",
+        "Tezin kullanıcının tezine katkı sağladığı spesifik odak alanları (1-2 adet kısa etiket).",
     },
     literaturePosition: {
       type: "string",
       maxLength: 120,
       description:
-        "Tezin literatürdeki konumu ve ne yaptığı (1 net cümle, maks 120 karakter). İlgisiz tezlerde boş string.",
+        "Tezin literatürdeki konumu ve ne yaptığı (1 net cümle, maks 120 karakter).",
     },
     strategicUtility: {
       type: "string",
-      maxLength: 150,
+      maxLength: 180,
       description:
-        "Tezin kullanıcının tezinde nasıl kullanılacağına ve hangi boşluğu dolduracağına dair stratejik rehber not (1 cümle, maks 150 karakter). İlgisiz tezlerde boş string.",
+        "Tezin kullanıcının tezinde nasıl kullanılacağına ve hangi boşluğu dolduracağına dair stratejik rehber not (1-2 cümle, maks 180 karakter).",
     },
   },
   required: [
     "externalThesisId",
     "isRelevant",
-    "relevanceReasoning",
     "isDirectOverlap",
     "contributionAreas",
     "literaturePosition",
@@ -139,7 +144,7 @@ export const batchThesisEvaluationJsonSchema: JsonSchema = {
     evaluations: {
       type: "array",
       items: perThesisEvaluationJsonSchema,
-      description: "Batch içerisindeki her bir adayın değerlendirme sonuçları",
+      description: "Ön elemeden geçen kilit tezlerin stratejik profilleme sonuçları",
     },
   },
   required: ["evaluations"],
@@ -153,16 +158,81 @@ export interface EvaluatedThesis {
 }
 
 /**
- * Evaluates a batch of candidate theses against the user's thesis matrix via structured output.
+ * Runs Stage 1 binary triage across candidate theses in parallel batches.
  *
  * @param input - The validated positioning matrix input.
- * @param batch - The slice of candidate theses to evaluate together.
+ * @param batch - The candidate theses to screen.
+ * @param logger - Optional structured logger.
+ * @returns Array of candidate theses that passed the triage with isRelevant true.
+ */
+async function triageBatchTheses(
+  input: PositioningMatrixInput,
+  batch: SiftedThesis[],
+  logger?: Logger,
+): Promise<{ passedTheses: SiftedThesis[]; reasonByThesisId: Map<string, string> }> {
+  if (batch.length === 0) {
+    return { passedTheses: [], reasonByThesisId: new Map() };
+  }
+
+  const payload = buildBinaryTriagePromptPayload(input, batch);
+
+  const result =
+    await generateGeminiStructuredContent<BinaryTriageOutput>(
+      FLASH_LITE_35,
+      payload.systemInstruction,
+      payload.userPrompt,
+      binaryTriageJsonSchema,
+      logger,
+      {
+        zodSchema: binaryTriageOutputSchema,
+        payloadStage: "positioning_binary_triage",
+        seed: GEMINI_SEED,
+        thinkingConfig: { thinkingLevel: ThinkingLevel.LOW },
+        thesisMatrix: input,
+        quiet: true,
+      },
+    );
+
+  const evalMap = new Map<string, { isRelevant: boolean; decisionReason: string }>();
+  for (const ev of result.evaluations) {
+    evalMap.set(String(ev.externalThesisId), {
+      isRelevant: ev.isRelevant,
+      decisionReason: ev.decisionReason,
+    });
+  }
+
+  const passedTheses: SiftedThesis[] = [];
+  const reasonByThesisId = new Map<string, string>();
+
+  for (let i = 0; i < batch.length; i++) {
+    const thesis = batch[i];
+    const evaluation =
+      evalMap.get(String(thesis.id)) ?? result.evaluations[i] ?? null;
+
+    if (evaluation?.isRelevant) {
+      passedTheses.push(thesis);
+      if (evaluation.decisionReason) {
+        reasonByThesisId.set(String(thesis.id), evaluation.decisionReason);
+      }
+    }
+  }
+
+  return { passedTheses, reasonByThesisId };
+}
+
+/**
+ * Evaluates a batch of pre-screened relevant candidate theses to produce detailed strategic profiles.
+ *
+ * @param input - The validated positioning matrix input.
+ * @param batch - The slice of relevant candidate theses to profile together.
+ * @param reasonsMap - Optional map of pre-screened triage reasons.
  * @param logger - Optional structured logger for pipeline events.
  * @returns Array of successfully evaluated theses in the batch.
  */
 export async function evaluateBatchTheses(
   input: PositioningMatrixInput,
   batch: SiftedThesis[],
+  reasonsMap?: Map<string, string>,
   logger?: Logger,
 ): Promise<EvaluatedThesis[]> {
   if (batch.length === 0) return [];
@@ -178,7 +248,7 @@ export async function evaluateBatchTheses(
       logger,
       {
         zodSchema: batchThesisEvaluationSchema,
-        payloadStage: "positioning_per_thesis_evaluation",
+        payloadStage: "positioning_deep_profiling",
         seed: GEMINI_SEED,
         thinkingConfig: { thinkingLevel: ThinkingLevel.LOW },
         thesisMatrix: input,
@@ -203,6 +273,11 @@ export async function evaluateBatchTheses(
         evaluation: {
           ...evaluation,
           externalThesisId: String(thesis.id),
+          isRelevant: true,
+          relevanceReasoning:
+            evaluation.relevanceReasoning ||
+            reasonsMap?.get(String(thesis.id)) ||
+            undefined,
         },
       });
     } else {
@@ -221,7 +296,7 @@ export async function evaluateBatchTheses(
 }
 
 /**
- * Evaluates a single thesis against the user's thesis matrix via the 3-stage decision chain.
+ * Evaluates a single thesis against the user's thesis matrix via the 2-stage decision chain.
  *
  * @param input - The validated positioning matrix input.
  * @param thesis - The single thesis candidate to evaluate.
@@ -233,7 +308,7 @@ export async function evaluateSingleThesis(
   thesis: SiftedThesis,
   logger?: Logger,
 ): Promise<PerThesisEvaluation> {
-  const evaluated = await evaluateBatchTheses(input, [thesis], logger);
+  const evaluated = await evaluateBatchTheses(input, [thesis], undefined, logger);
   if (evaluated.length === 0) {
     throw new Error(`Failed to evaluate thesis ${thesis.id}`);
   }
@@ -241,20 +316,15 @@ export async function evaluateSingleThesis(
 }
 
 /**
- * Evaluates all candidate theses in parallel batches.
- * A fixed batch size of 12 keeps the request fan-out small (3 requests for 35 theses),
- * which minimizes total wall-clock when the API serializes concurrent calls while
- * preserving per-request calibration. An explicit `batchSize` override forces a
- * different batch size for benchmarking or tuning.
- *
- * The candidate theses are always deterministically sorted by thesis ID prior to batching
- * to guarantee identical grouping and deterministic evaluation across runs.
+ * Evaluates all candidate theses in a 2-stage pipeline:
+ * Stage 1: Coarse-grained domain-agnostic binary triage across all candidate theses.
+ * Stage 2: Fine-grained deep strategic profiling on the surviving relevant candidates.
  *
  * @param input - The validated positioning matrix input.
  * @param theses - The full list of candidate theses to evaluate.
  * @param logger - Optional structured logger for pipeline events.
- * @param options - Optional settings: fixed batchSize override.
- * @returns The evaluated theses that were successfully processed, matching deterministic order.
+ * @param options - Optional settings: fixed batchSize override for triage.
+ * @returns The evaluated theses that passed triage and were profiled.
  */
 export async function evaluateThesesInParallel(
   input: PositioningMatrixInput,
@@ -266,7 +336,7 @@ export async function evaluateThesesInParallel(
 
   const startTime = performance.now();
 
-  // 1. Sort theses deterministically by thesis ID (numeric/alphanumeric order)
+  // 1. Sort theses deterministically by thesis ID
   const sortedTheses = [...theses].sort((a, b) =>
     String(a.id).localeCompare(String(b.id), undefined, {
       numeric: true,
@@ -274,62 +344,89 @@ export async function evaluateThesesInParallel(
     }),
   );
 
-  // 2. Fixed batch size of 12 minimizes request count (and thus serialized wall-clock)
-  //    while keeping each batch within a sane output size.
-  const batchSize = options?.batchSize ?? 12;
-
-  const batches: SiftedThesis[][] = [];
-  for (let i = 0; i < sortedTheses.length; i += batchSize) {
-    batches.push(sortedTheses.slice(i, i + batchSize));
+  // 2. Stage 1: Batch Binary Triage across candidates
+  const triageBatchSize = options?.batchSize ?? 18;
+  const triageBatches: SiftedThesis[][] = [];
+  for (let i = 0; i < sortedTheses.length; i += triageBatchSize) {
+    triageBatches.push(sortedTheses.slice(i, i + triageBatchSize));
   }
 
-  logger?.info("positioning_per_thesis_evaluation_start", {
+  logger?.info("positioning_binary_triage_start", {
     service: "positioning",
     filePath: "src/features/positioning/per-thesis-evaluation.ts",
     data: {
       total: sortedTheses.length,
-      batchSize,
-      batchCount: batches.length,
-      mode: "batch_parallel_scheduled",
+      batchSize: triageBatchSize,
+      batchCount: triageBatches.length,
     },
   });
 
-  const settled = await Promise.allSettled(
-    batches.map((batch) => evaluateBatchTheses(input, batch, logger)),
+  const triageSettled = await Promise.allSettled(
+    triageBatches.map((batch) => triageBatchTheses(input, batch, logger)),
   );
 
-  const allEvaluated: EvaluatedThesis[] = [];
+  const survivingTheses: SiftedThesis[] = [];
+  const triageReasons = new Map<string, string>();
 
-  for (let idx = 0; idx < settled.length; idx++) {
-    const res = settled[idx];
-    const batch = batches[idx];
+  for (let idx = 0; idx < triageSettled.length; idx++) {
+    const res = triageSettled[idx];
     if (res.status === "fulfilled") {
-      allEvaluated.push(...res.value);
+      survivingTheses.push(...res.value.passedTheses);
+      for (const [id, reason] of res.value.reasonByThesisId.entries()) {
+        triageReasons.set(id, reason);
+      }
     } else {
-      logger?.error("positioning_per_thesis_batch_failed", {
+      logger?.error("positioning_binary_triage_batch_failed", {
         service: "positioning",
         filePath: "src/features/positioning/per-thesis-evaluation.ts",
         data: {
           batchIndex: idx,
-          thesisIds: batch.map((t) => t.id),
         },
         error: res.reason,
       });
     }
   }
 
-  logger?.info("positioning_per_thesis_evaluation_success", {
+  logger?.info("positioning_binary_triage_success", {
     service: "positioning",
     filePath: "src/features/positioning/per-thesis-evaluation.ts",
     durationMs: Math.round(performance.now() - startTime),
     data: {
-      total: sortedTheses.length,
-      batchSize,
-      batchCount: batches.length,
-      evaluatedCount: allEvaluated.length,
-      relevantCount: allEvaluated.filter((e) => e.evaluation.isRelevant).length,
+      totalCandidates: sortedTheses.length,
+      survivingCount: survivingTheses.length,
     },
   });
 
-  return allEvaluated;
+  if (survivingTheses.length === 0) {
+    return [];
+  }
+
+  // 3. Stage 2: Deep Strategic Profiling on surviving theses
+  const profileStart = performance.now();
+  logger?.info("positioning_deep_profiling_start", {
+    service: "positioning",
+    filePath: "src/features/positioning/per-thesis-evaluation.ts",
+    data: {
+      survivingCount: survivingTheses.length,
+    },
+  });
+
+  const profiledTheses = await evaluateBatchTheses(
+    input,
+    survivingTheses,
+    triageReasons,
+    logger,
+  );
+
+  logger?.info("positioning_deep_profiling_success", {
+    service: "positioning",
+    filePath: "src/features/positioning/per-thesis-evaluation.ts",
+    durationMs: Math.round(performance.now() - profileStart),
+    data: {
+      profiledCount: profiledTheses.length,
+      totalDurationMs: Math.round(performance.now() - startTime),
+    },
+  });
+
+  return profiledTheses;
 }

@@ -406,7 +406,7 @@ function RecommendedThesisCard({ thesis, index }: RecommendedThesisCardProps) {
             rel="noreferrer"
             className="inline-flex items-center gap-1 text-[11px] font-medium text-primary hover:underline"
           >
-            Tezara'da Aç <ExternalLink className="h-3 w-3" />
+            Tezara&apos;da Aç <ExternalLink className="h-3 w-3" />
           </a>
         )}
       </CardFooter>
