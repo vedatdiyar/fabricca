@@ -36,6 +36,8 @@ export const juryRecommendedThesisSchema = z.object({
     .string()
     .optional()
     .describe("Tezin türü (Örn: Yüksek Lisans veya Doktora)"),
+  abstract: z.string().optional().describe("Tezin Tezara'dan alınan özet metni"),
+  tezaraUrl: z.string().optional().describe("Tezara sayfasının URL'si"),
 });
 
 /** Inferred type for a single recommended guiding thesis card. */
@@ -87,18 +89,21 @@ export const jurySynthesisResultJsonSchema: JsonSchema = {
       properties: {
         literatureMapping: {
           type: "string",
+          maxLength: 1200,
           description:
-            "Mevcut Literatürün Haritalandırılması: Sunulan tezlerin araştırmanın hangi boyutlarını ele aldığının tematik haritası ve akademik özeti. Tezleri stratejik rollerine (Şemsiye, Paralel hat, Ardıl eşik) göre gruplayarak tematik özetle. Her tezden bahsederken mutlaka APA formatında atıf ver: (Yazar, Yıl).",
+            "Mevcut Literatürün Haritalandırılması: Sunulan tezlerin araştırmanın hangi boyutlarını ele aldığının tematik haritası ve akademik özeti. Tezleri stratejik rolüne göre gruplayarak tematik özetle. Her tezden bahsederken mutlaka APA formatında atıf ver: (Yazar, Yıl). Maks 1200 karakter.",
         },
         academicGap: {
           type: "string",
+          maxLength: 800,
           description:
-            "Literatürdeki Boşluk: İncelediğin tezlerin neleri göz ardı ettiği veya yetersiz kaldığı alanların analizi. Mutlaka APA atıflarıyla açıkla.",
+            "Literatürdeki Boşluk: İncelediğin tezlerin neleri göz ardı ettiği veya yetersiz kaldığı alanların analizi. Mutlaka APA atıflarıyla açıkla. Maks 800 karakter.",
         },
         originalContribution: {
           type: "string",
+          maxLength: 600,
           description:
-            "Çalışmanın Özgün Katkısı: Kullanıcının tez matrisinin bu boşluğu nasıl doldurduğu ve literatüre getirdiği akademik yenilik.",
+            "Çalışmanın Özgün Katkısı: Kullanıcının tez matrisinin bu boşluğu nasıl doldurduğu ve literatüre getirdiği akademik yenilik. Maks 600 karakter.",
         },
       },
       required: ["literatureMapping", "academicGap", "originalContribution"],

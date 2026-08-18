@@ -28,6 +28,8 @@ export function mapRecommendedTheses(
         contributionArea: e.contributionAreas.join(", ") || "",
         relevanceReason: e.strategicUtility ?? "",
         thesisType: t.thesisType,
+        abstract: t.abstract || undefined,
+        tezaraUrl: `https://tezara.org/theses/${t.id}`,
       };
     });
 }

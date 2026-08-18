@@ -146,17 +146,19 @@ export function PositioningReportView({
         <PositioningMarkdownRenderer content={reportData.gapAnalysisSummary} />
       </div>
 
-      {/* 3. Strategic Guide Thesis Cards */}
+      {/* 3. Essential Thesis Cards */}
       {reportData.recommendedTheses &&
         reportData.recommendedTheses.length > 0 && (
           <div className="space-y-4">
-            <div className="flex items-center gap-3">
-              <div className="h-px flex-1 bg-border/40" />
-              <h4 className="font-sans text-xs font-medium uppercase tracking-wider text-muted-foreground">
-                Stratejik Rehber Tez Kartları (
-                {reportData.recommendedTheses.length})
-              </h4>
-              <div className="h-px flex-1 bg-border/40" />
+            <div className="flex flex-col items-center gap-1.5 text-center">
+              <div className="flex items-center gap-3 w-full">
+                <div className="h-px flex-1 bg-border/40" />
+                <h4 className="font-sans text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                  Zorunlu Okuma: Temel Tezler (
+                  {reportData.recommendedTheses.length})
+                </h4>
+                <div className="h-px flex-1 bg-border/40" />
+              </div>
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 items-stretch">
@@ -388,11 +390,25 @@ function RecommendedThesisCard({ thesis, index }: RecommendedThesisCardProps) {
         )}
       </CardContent>
 
-      {/* Footer: Guide Index */}
+      {/* Footer: Guide Index & Link */}
       <CardFooter className="px-4 py-2 bg-background/30 border-t border-border/40 flex items-center justify-between gap-2 text-xs shrink-0">
         <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">
-          Rehber Kaynak #{index + 1}
+          Zorunlu Okuma #{index + 1}
         </span>
+        {(thesis.tezaraUrl || thesis.doi || thesis.externalThesisId) && (
+          <a
+            href={
+              thesis.tezaraUrl ||
+              thesis.doi ||
+              `https://tezara.org/theses/${thesis.externalThesisId}`
+            }
+            target="_blank"
+            rel="noreferrer"
+            className="inline-flex items-center gap-1 text-[11px] font-medium text-primary hover:underline"
+          >
+            Tezara'da Aç <ExternalLink className="h-3 w-3" />
+          </a>
+        )}
       </CardFooter>
     </Card>
   );

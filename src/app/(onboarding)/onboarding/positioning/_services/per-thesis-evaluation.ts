@@ -19,7 +19,7 @@ export const perThesisEvaluationSchema = z.object({
   isRelevant: z
     .boolean()
     .describe(
-      "Kullanıcının araştırma nesnesi/olgusal sahasıyla doğrudan alakalı mı?",
+      "Bu tezi okumadan geçmek ciddi bir akademik eksiklik olur mu? YALNIZCA gerçekten zorunlu okuma kalitesindeyse true. Tipik 35 adayda 0-3 tez true alır.",
     ),
   relevanceReasoning: z
     .string()
@@ -76,12 +76,13 @@ export const perThesisEvaluationJsonSchema: JsonSchema = {
     isRelevant: {
       type: "boolean",
       description:
-        "Kullanıcının araştırma nesnesi/olgusal sahasıyla doğrudan alakalı mı? İlgisiz tezlerde false.",
+        "Bu tezi okumadan geçmek araştırmacı için ciddi bir akademik eksiklik yaratır mı? YALNIZCA zorunlu okuma niteliğindeki tezlerde true, diğerlerinde false. 35 adayda beklenti 0-3 kabuldür.",
     },
     relevanceReasoning: {
       type: "string",
+      maxLength: 180,
       description:
-        "Tezin ampirik olarak neden ilgili veya ilgisiz olduğuna dair somut gerekçe (1-2 cümle)",
+        "Tezin ampirik olarak neden kabul veya red edildiğine dair somut gerekçe (1-2 net cümle, maks 180 karakter)",
     },
     isDirectOverlap: {
       type: "boolean",
@@ -102,23 +103,27 @@ export const perThesisEvaluationJsonSchema: JsonSchema = {
     contributionAreas: {
       type: "array",
       items: { type: "string" },
+      maxItems: 2,
       description:
-        "Tezin kullanıcının tezine katkı sağladığı spesifik odak alanları (1-3 adet). İlgisiz tezlerde boş dizi [].",
+        "Tezin kullanıcının tezine katkı sağladığı spesifik odak alanları (1-2 adet kısa etiket). İlgisiz tezlerde boş dizi [].",
     },
     literaturePosition: {
       type: "string",
+      maxLength: 120,
       description:
-        "Tezin literatürdeki konumu ve ne yaptığı (1 net cümle). İlgisiz tezlerde boş string.",
+        "Tezin literatürdeki konumu ve ne yaptığı (1 net cümle, maks 120 karakter). İlgisiz tezlerde boş string.",
     },
     strategicUtility: {
       type: "string",
+      maxLength: 150,
       description:
-        "Tezin kullanıcının tezinde nasıl kullanılacağına ve hangi boşluğu dolduracağına dair stratejik rehber not (1-2 cümle). İlgisiz tezlerde boş string.",
+        "Tezin kullanıcının tezinde nasıl kullanılacağına ve hangi boşluğu dolduracağına dair stratejik rehber not (1 cümle, maks 150 karakter). İlgisiz tezlerde boş string.",
     },
   },
   required: [
     "externalThesisId",
     "isRelevant",
+    "relevanceReasoning",
     "isDirectOverlap",
     "contributionAreas",
     "literaturePosition",
@@ -237,7 +242,10 @@ export async function evaluateSingleThesis(
 
 /**
  * Evaluates all candidate theses in parallel batches.
- * To optimize throughput and latency while respecting quotas, candidate theses are grouped in batches of 5.
+ * A fixed batch size of 12 keeps the request fan-out small (3 requests for 35 theses),
+ * which minimizes total wall-clock when the API serializes concurrent calls while
+ * preserving per-request calibration. An explicit `batchSize` override forces a
+ * different batch size for benchmarking or tuning.
  *
  * The candidate theses are always deterministically sorted by thesis ID prior to batching
  * to guarantee identical grouping and deterministic evaluation across runs.
@@ -245,12 +253,14 @@ export async function evaluateSingleThesis(
  * @param input - The validated positioning matrix input.
  * @param theses - The full list of candidate theses to evaluate.
  * @param logger - Optional structured logger for pipeline events.
+ * @param options - Optional settings: fixed batchSize override.
  * @returns The evaluated theses that were successfully processed, matching deterministic order.
  */
 export async function evaluateThesesInParallel(
   input: PositioningMatrixInput,
   theses: SiftedThesis[],
   logger?: Logger,
+  options?: { batchSize?: number },
 ): Promise<EvaluatedThesis[]> {
   if (theses.length === 0) return [];
 
@@ -264,8 +274,9 @@ export async function evaluateThesesInParallel(
     }),
   );
 
-  // 2. Batch size of 5 gives optimal comparative context and minimum network overhead
-  const batchSize = 5;
+  // 2. Fixed batch size of 12 minimizes request count (and thus serialized wall-clock)
+  //    while keeping each batch within a sane output size.
+  const batchSize = options?.batchSize ?? 12;
 
   const batches: SiftedThesis[][] = [];
   for (let i = 0; i < sortedTheses.length; i += batchSize) {

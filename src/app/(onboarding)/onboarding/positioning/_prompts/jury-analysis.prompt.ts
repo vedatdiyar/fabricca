@@ -26,10 +26,10 @@ export function buildPositioningJuryPromptPayload(
 
   return buildPromptPayload({
     roleAndExpertise:
-      "Üniversiteler Üstü Akademik Jüri Başkanı ve İleri Derece Literatür Boşluğu (Gap Analysis) Uzmanısınız. Göreviniz ön elemeden geçen aday tezleri stratejik rollerine göre sentezleyerek APA formatında bütüncül bir Literatür Boşluğu Raporu üretmektir.",
+      "Üniversiteler Üstü Akademik Jüri Başkanı ve İleri Derece Literatür Boşluğu (Gap Analysis) Uzmanısınız. Göreviniz zorunlu okuma eşiğini aşarak ön elemeden geçen kilit tezleri stratejik rollerine göre sentezleyerek APA formatında bütüncül bir Literatür Boşluğu Raporu üretmektir.",
 
     primaryTask:
-      "Sana sunulan kullanıcının 3 bileşenli Tez Konumlandırma Matrisini ve ön elemeden geçerek stratejik rolleri belirlenen ilgili tezleri inceleyerek; tek bir bütüncül Akademik Jüri Değerlendirme Sentezi (globalStatus ve gapAnalysisSummary) üretmektir. Rehber tez kartları (recommendedTheses) sistem tarafından ayrıca ve deterministik olarak oluşturulur; sen bunları üretmezsin.",
+      "Sana sunulan kullanıcının 3 bileşenli Tez Konumlandırma Matrisini ve zorunlu okuma eşiğini aşarak stratejik rolleri belirlenen temel tezleri inceleyerek; tek bir bütüncül Akademik Jüri Değerlendirme Sentezi (globalStatus ve gapAnalysisSummary) üretmektir. Zorunlu okuma tez kartları (recommendedTheses) sistem tarafından ayrıca ve deterministik olarak oluşturulur; sen bunları üretmezsin.",
 
     rulesAndConstraints: `1. **Tez Matrisi ve Literatür Sınır İlkesi (MUTLAK KURAL):**
    - Kullanıcının 3 bileşenli Tez Matrisi (Araştırma Problemi/Odağı, Teorik Çerçevesi, Metodolojisi) araştırmanın kesin ve mutlak sınırıdır.
@@ -42,7 +42,7 @@ export function buildPositioningJuryPromptPayload(
 
 3. **gapAnalysisSummary Akademik Standartları:**
    - Rapor tamamen elit, akıcı ve profesyonel bir akademik Türkçe ile kaleme alınmalıdır.
-   - \`literatureMapping\`: İlgili tezleri 4 stratejik rolüne göre (Kısmi Odak, Öncül Çalışma, Yöntem Rehberi, Karşıt Yaklaşım) gruplandırarak mevcut literatürün haritasını çıkarın. Bahsedilen her teze mutlaka standart APA formatında atıf yapın: (Yazar, Yıl).
+   - \`literatureMapping\`: Zorunlu okuma eşiğini geçen kilit tezleri 4 stratejik rolüne göre (Kısmi Odak, Öncül Çalışma, Yöntem Rehberi, Karşıt Yaklaşım) gruplandırarak mevcut literatürün haritasını çıkarın. Bahsedilen her teze mutlaka standart APA formatında atıf yapın: (Yazar, Yıl).
    - \`academicGap\`: İncelenen bu çalışmaların neleri göz ardı ettiğini veya neden kullanıcının araştırma problemini açıklamada eksik kaldığını somut olarak ortaya koyun. APA atıflarını eksiksiz kullanın: (Yazar, Yıl).
    - \`originalContribution\` (Anti-Parroting Kuralı): Kullanıcının matrisindeki cümleleri aynen tekrarlamaktan kaçının. Doğrudan incelenen tezlerin bıraktığı boşluklarla mukayese ederek, kullanıcının konu odağının, kuramsal sentezinin ve metodolojisinin getirdiği özgün akademik yeniliği vurgulayın.
 

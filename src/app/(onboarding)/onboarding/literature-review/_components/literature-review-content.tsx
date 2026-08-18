@@ -241,10 +241,6 @@ export function LiteratureReviewContent() {
     (box) =>
       box.boxType !== "RELATED_THESES" && box.title !== RELATED_THESES_TITLE,
   );
-  const relatedBox = subBoxes.find(
-    (box) =>
-      box.boxType === "RELATED_THESES" || box.title === RELATED_THESES_TITLE,
-  );
 
   if (loading) {
     return <LiteratureReviewSkeleton />;
@@ -302,27 +298,6 @@ export function LiteratureReviewContent() {
           );
         })}
       </div>
-
-      {relatedBox && (
-        <Card className="p-6 space-y-4 rounded-md">
-          <div className="flex items-center gap-2">
-            <h2 className="font-serif text-xl font-semibold tracking-tight text-foreground">
-              {relatedBox.title || RELATED_THESES_TITLE}
-            </h2>
-            {relatedBox.boxType && (
-              <span className="inline-flex items-center px-2 py-1 rounded-md text-[10px] font-semibold border bg-primary/10 border-primary/20 text-primary ml-auto">
-                {getBoxTypeLabel(relatedBox.boxType)}
-              </span>
-            )}
-          </div>
-          {relatedBox.description && (
-            <p className="text-sm text-muted-foreground leading-relaxed">
-              {relatedBox.description}
-            </p>
-          )}
-          <SubBoxDone subBox={relatedBox} literaturePool={literaturePool} />
-        </Card>
-      )}
 
       <div className="flex justify-end mt-8 pb-8">
         <Button onClick={handleFinalize} disabled={confirming} size="lg">

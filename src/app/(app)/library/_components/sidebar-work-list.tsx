@@ -40,7 +40,6 @@ const BOX_TABS: { id: ThesisBoxType; label: string }[] = [
   },
   { id: "METHODOLOGY", label: BOX_TYPE_SHORT_LABELS.METHODOLOGY },
   { id: "PRIMARY_MATERIAL", label: BOX_TYPE_SHORT_LABELS.PRIMARY_MATERIAL },
-  { id: "RELATED_THESES", label: BOX_TYPE_SHORT_LABELS.RELATED_THESES },
 ];
 
 interface SidebarWorkListProps {
