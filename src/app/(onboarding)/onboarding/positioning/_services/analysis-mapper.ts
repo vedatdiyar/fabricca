@@ -23,7 +23,7 @@ export function mapRecommendedTheses(
         author: t.author,
         year: t.year,
         university: t.university,
-        strategicRole: e.strategicRole ?? "BROAD_CONTEXT",
+        strategicRole: e.strategicRole ?? "SPECIFIC_FOCUS",
         literaturePosition: e.literaturePosition ?? "",
         contributionArea: e.contributionAreas.join(", ") || "",
         relevanceReason: e.strategicUtility ?? "",

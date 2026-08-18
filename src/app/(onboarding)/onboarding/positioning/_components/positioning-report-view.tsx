@@ -251,9 +251,13 @@ function RecommendedThesisCard({ thesis, index }: RecommendedThesisCardProps) {
       : thesis.title.slice(separatorIndex + 3).trim();
 
   const roleConfig =
-    thesis.strategicRole && STRATEGIC_ROLE_CONFIG[thesis.strategicRole]
-      ? STRATEGIC_ROLE_CONFIG[thesis.strategicRole]
-      : STRATEGIC_ROLE_CONFIG.BROAD_CONTEXT;
+    thesis.strategicRole &&
+    (thesis.strategicRole as keyof typeof STRATEGIC_ROLE_CONFIG) in
+      STRATEGIC_ROLE_CONFIG
+      ? STRATEGIC_ROLE_CONFIG[
+          thesis.strategicRole as keyof typeof STRATEGIC_ROLE_CONFIG
+        ]
+      : STRATEGIC_ROLE_CONFIG.SPECIFIC_FOCUS;
   const RoleIcon = roleConfig.icon;
 
   return (

@@ -39,16 +39,16 @@ Tür: ${thesis.thesisType || "N/A"} | Dil: ${thesis.language || "N/A"}
       "Sana sunulan kullanıcının Araştırma Problemi (subjectProblem) ile aday tezleri (1 veya daha fazla) bağımsız olarak karşılaştırarak; yüzeysel kelime benzerliklerini eleyip yalnızca kullanıcının araştırma nesnesine, yöntemine, birincil verisine veya doğrudan kurumsal/tarihsel sahasına GERÇEK ve AYRIŞTIRICI katkı sunan tezleri belirlemektir. Her bir tezin ampirik uygunluğunu (isRelevant), somut gerekçesini (relevanceReasoning), birebir çakışma durumunu (isDirectOverlap) ve eğer uygunsa tezin literatürdeki stratejik rolünü (strategicRole, literaturePosition, strategicUtility) belirleyip 'evaluations' dizisi altında döndür.",
 
     rulesAndConstraints: `1. **Tavizsiz ve Sert Eleme İlkeleri (MUTLAK RED KURALLARI - \`isRelevant: false\`):**
-   - **Yüzeysel Kelime Eşleşmesi Tuzağı:** Aday tezler vektör aramasından geldiği için ortak isimler, aktörler veya kavramlar içerecektir. Yalnızca metinde aynı kelimelerin geçmesi ASLA bir uygunluk sebebi değildir; tezin ampirik araştırma sorusu kullanıcının araştırma sorusuyla doğrudan kesişmiyorsa tereddütsüz \`isRelevant: false\` veriniz.
+   - **Geniş Çerçeve / Genel Arka Plan Yasağı (MUTLAK KURAL):** Genel bağlam, dönemin genel siyasi tarihi veya jenerik siyasallaşma tezleri ASLA kabul edilmez. Tezin araştırmacının tezinde doğrudan birincil kaynak, yöntem rehberi veya kuramsal/karşıt kutup olması şarttır.
+   - **Yüzeysel Kelime ve Dışsal Temsil Eşleşmesi:** Medya yansımaları, genel gazete haber analizleri veya üçüncü şahıs algı derlemeleri elenmelidir (\`isRelevant: false\`).
    - **Epistemolojik ve Metodolojik Uyuşmazlık:** Kullanıcının araştırması içsel nitel/söylemsel veya kuramsal bir çözümleme yapıyorsa; konuyu yalnızca dışsal bürokrasi/güvenlik raporu diliyle, genel istihbarat özetleriyle veya üçüncü taraf algı/medya temsilleriyle yüzeysel işleyen tezleri derhal eleyiniz (\`isRelevant: false\`).
    - **Kavramsal, Dönemsel ve Olgusal Anakronizm:** Kullanıcının odaklandığı dönemin çok öncesini/sonrasını, alakasız liderlik psikolojisini, farklı coğrafi sahaları veya üçüncü ülkeleri ele alan çalışmaları eleyiniz (\`isRelevant: false\`).
    - **Jenerik Derlemeler ve Klon Tezler:** Özgün bir birincil veri seti veya yöntemsel model sunmayan, genel lisansüstü derleme niteliğindeki ("X'in siyasallaşması", "Y'nin genel tarihi" gibi) birbirini tekrar eden klon tezlere geçit vermeyiniz (\`isRelevant: false\`).
 
-2. **Kabul Şartları ve Stratejik Rol Tanımları (\`isRelevant: true\`):**
-   - Bir tez ancak ve ancak kullanıcının araştırma probleminin, temel yönteminin, birincil veri havuzunun veya doğrudan odaklandığı kurumsal/tarihsel sahanın **ÖZGÜN VE AYRIŞTIRICI BİR BOYUTUNA** doğrudan katkı sunuyorsa \`isRelevant: true\` verilebilir:
-     * \`BROAD_CONTEXT\`: Yalnızca araştırmanın yapıldığı kurumsal ve tarihsel sahanın omurgasını doğrudan temellendiren kilit arka plan çalışmaları.
-     * \`SPECIFIC_FOCUS\`: Kullanıcının araştırma sahasındaki spesifik bir alt aktöre, yayın organına veya birincil metin havuzuna doğrudan odaklanan derinlemesine çalışmalar.
-     * \`FOUNDATIONAL_WORK\`: Araştırma sorusunun kuramsal zeminini veya hemen önceki kuluçka/hazırlık evresini inceleyen öncül çalışmalar.
+2. **Kabul Şartları ve 4 Somut Stratejik Rol Tanımı (\`isRelevant: true\`):**
+   - Bir tez ancak ve ancak aşağıdaki 4 rolden birine TAM ve EKSİKSİZ oturuyorsa \`isRelevant: true\` verilebilir:
+     * \`SPECIFIC_FOCUS\`: Kullanıcının araştırma sahasındaki spesifik bir alt aktöre (HEP/DEP/HADEP gibi yasal partiler veya PKK/ERNK), belirli bir yayın organına (Özgür Halk, Serxwebûn vb.) veya birincil metin havuzuna doğrudan odaklanan derinlemesine çalışmalar.
+     * \`FOUNDATIONAL_WORK\`: Araştırma sorusunun kuramsal zeminini veya hemen önceki kuluçka/hazırlık evresini inceleyen kilit öncül çalışmalar.
      * \`METHODOLOGICAL_BENCHMARK\`: Kullanıcının uyguladığı analiz modelini veya yöntem tipolojisini benzer bir sahada başarıyla işletmiş yöntemsel kılavuz çalışmalar.
      * \`ALTERNATIVE_PERSPECTIVE\`: Kullanıcının temel savına/hipotezine doğrudan karşıt veya eleştirel bir açıklama modeli getiren kilit tartışma çalışmaları.
 
@@ -64,9 +64,9 @@ Tür: ${thesis.thesisType || "N/A"} | Dil: ${thesis.language || "N/A"}
    - Girdi bağlamında verilen tüm tezlerin ID'lerini 'externalThesisId' alanında eksiksiz ve birebir aynı değerle 'evaluations' dizisine dahil et.`,
 
     workflowSteps: `1. Her bir aday tezin ampirik özetini kullanıcının araştırma problemiyle bağımsız olarak tavizsiz bir akademik süzgeçten geçir.
-2. Tez kullanıcının özgün araştırma sorusuna, yöntemine veya birincil veri kaynağına GERÇEKTEN somut ve ayrıştırıcı bir katkı sunuyor mu?
-3. Sadece yüzeysel kelime benzerliği varsa, dışsal/güvenlik raporu diliyle yazılmışsa veya ampirik katma değeri yoksa tereddütsüz \`isRelevant: false\` ver.
-4. Yalnızca gerçek bir akademik katkısı olanlara \`isRelevant: true\` ver ve 5 stratejik rolden en uygununu ata.
+2. Tez kullanıcının özgün araştırma sorusuna, yöntemine veya birincil veri kaynağına 4 stratejik rolden biri üzerinden GERÇEKTEN somut ve ayrıştırıcı bir katkı sunuyor mu?
+3. Sadece genel arka plan, medya yansıması veya yüzeysel kelime benzerliği varsa tereddütsüz \`isRelevant: false\` ver.
+4. Yalnızca 4 rolden birine giren gerçek akademik katkılara \`isRelevant: true\` ver ve rolünü ata.
 5. Girdideki tüm tezlerin değerlendirmelerini 'evaluations' dizisinde toplayıp döndür.`,
 
     outputFormat:
@@ -96,12 +96,12 @@ Yazar: Lokman Karadağ (2016)
     {
       "externalThesisId": "363401",
       "isRelevant": true,
-      "relevanceReasoning": "Aday tez, kullanıcının araştırma sahasının yasal partiler hattını (1990-2014) geniş bir perspektifle inceleyerek araştırmanın kurumsal siyaset ayağına doğrudan ampirik zemin sunmaktadır.",
+      "relevanceReasoning": "Aday tez, kullanıcının araştırma sahasının yasal partiler hattını (1990-2014) doğrudan parti programları üzerinden inceleyerek araştırmanın kurumsal siyaset ayağına doğrudan ampirik odak sunmaktadır.",
       "isDirectOverlap": false,
-      "strategicRole": "BROAD_CONTEXT",
+      "strategicRole": "SPECIFIC_FOCUS",
       "contributionAreas": ["Yasal parti söylemi", "1990'lar dönemselleştirmesi"],
-      "literaturePosition": "1990-2014 dönemindeki yasal Kürt parti geleneğini geniş bir dönemsel perspektifle incelemiştir.",
-      "strategicUtility": "Bu tezi Giriş ve Literatür Taraması bölümlerinde yasal partilerin tarihsel seyrini temellendirmek için kullanabilir; tezinizin farkını ise bu çalışmanın yüzeysel geçtiği 1991-1999 kuluçka evresini silahlı kanatla karşılaştırmalı olarak derinleştirme noktasında vurgulayabilirsiniz."
+      "literaturePosition": "1990-2014 dönemindeki yasal Kürt parti geleneğini doğrudan parti metinleri ve belgeleri üzerinden incelemiştir.",
+      "strategicUtility": "Bu tezi Giriş ve Literatür Taraması bölümlerinde yasal partilerin tarihsel seyrini temellendirmek için kullanabilir; tezinizin farkını ise bu çalışmanın aksine süreci silahlı kanatla karşılaştırmalı ve kuluçka evresi vurgusuyla ele almanız noktasında belirtebilirsiniz."
     },
     {
       "externalThesisId": "447567",

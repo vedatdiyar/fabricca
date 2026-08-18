@@ -42,7 +42,7 @@ export function buildPositioningJuryPromptPayload(
 
 3. **gapAnalysisSummary Akademik Standartları:**
    - Rapor tamamen elit, akıcı ve profesyonel bir akademik Türkçe ile kaleme alınmalıdır.
-   - \`literatureMapping\`: İlgili tezleri 5 stratejik rolüne göre (Geniş Çerçeve, Kısmi Odak, Öncül Çalışma, Yöntem Rehberi, Karşıt Yaklaşım) gruplandırarak mevcut literatürün haritasını çıkarın. Bahsedilen her teze mutlaka standart APA formatında atıf yapın: (Yazar, Yıl).
+   - \`literatureMapping\`: İlgili tezleri 4 stratejik rolüne göre (Kısmi Odak, Öncül Çalışma, Yöntem Rehberi, Karşıt Yaklaşım) gruplandırarak mevcut literatürün haritasını çıkarın. Bahsedilen her teze mutlaka standart APA formatında atıf yapın: (Yazar, Yıl).
    - \`academicGap\`: İncelenen bu çalışmaların neleri göz ardı ettiğini veya neden kullanıcının araştırma problemini açıklamada eksik kaldığını somut olarak ortaya koyun. APA atıflarını eksiksiz kullanın: (Yazar, Yıl).
    - \`originalContribution\` (Anti-Parroting Kuralı): Kullanıcının matrisindeki cümleleri aynen tekrarlamaktan kaçının. Doğrudan incelenen tezlerin bıraktığı boşluklarla mukayese ederek, kullanıcının konu odağının, kuramsal sentezinin ve metodolojisinin getirdiği özgün akademik yeniliği vurgulayın.
 
@@ -50,7 +50,7 @@ export function buildPositioningJuryPromptPayload(
    - gapAnalysisSummary içinde yalnızca sana sunulan tez listesindeki gerçek yazar, yıl ve eser bilgilerini kullanın. Tüm APA (Yazar, Yıl) atıflarını doğrudan listedeki mevcut kayıtlardan türetin.`,
 
     workflowSteps: `1. Ön elemeden geçen tezlerin stratejik rollerini ve künyelerini incele.
-2. Tezleri 5 stratejik role (Geniş Çerçeve, Kısmi Odak, Öncül Çalışma, Yöntem Rehberi, Karşıt Yaklaşım) göre tematik olarak grupla.
+2. Tezleri 4 stratejik role (Kısmi Odak, Öncül Çalışma, Yöntem Rehberi, Karşıt Yaklaşım) göre tematik olarak grupla.
 3. gapAnalysisSummary (literatureMapping, academicGap, originalContribution) metinlerini APA atıflarıyla oluştur.
 4. globalStatus kuralına göre tek bir değer belirle.`,
 
@@ -71,7 +71,7 @@ Yazar: Ali Yılmaz (2015)
 Üniversite/Bölüm: Ankara Üniversitesi - Siyaset Bilimi
 Tür: Doktora | Dil: Türkçe
 Birebir Örtüşme: HAYIR
-Stratejik Rol: BROAD_CONTEXT
+Stratejik Rol: SPECIFIC_FOCUS
 Literatürdeki Yeri (Ne Yaptı?): 1990-2014 dönemindeki yasal Kürt parti geleneğini geniş bir dönemsel perspektifle incelemiştir.
 Stratejik Kullanım / Boşluk Doldurma: Bu tezi Giriş ve Literatür Taraması bölümlerinde yasal partilerin tarihsel seyrini temellendirmek için kullanabilir; tezinizin farkını ise 1991-1999 kuluçka evresini silahlı kanatla karşılaştırmalı derinleştirme noktasında vurgulayabilirsiniz.
 Katkı/Odak Alanları: Yasal parti söylemi, 1990'lar dönemselleştirmesi

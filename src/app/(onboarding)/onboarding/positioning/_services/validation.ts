@@ -27,14 +27,12 @@ export const positioningMatrixSchema = z.object({
 export type PositioningMatrixInput = z.infer<typeof positioningMatrixSchema>;
 
 export type StrategicRole =
-  | "BROAD_CONTEXT"
   | "SPECIFIC_FOCUS"
   | "FOUNDATIONAL_WORK"
   | "METHODOLOGICAL_BENCHMARK"
   | "ALTERNATIVE_PERSPECTIVE";
 
 export const strategicRoleEnum = z.enum([
-  "BROAD_CONTEXT",
   "SPECIFIC_FOCUS",
   "FOUNDATIONAL_WORK",
   "METHODOLOGICAL_BENCHMARK",

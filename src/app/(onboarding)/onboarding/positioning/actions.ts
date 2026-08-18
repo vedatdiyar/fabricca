@@ -132,7 +132,7 @@ export async function runPositioningJuryAction(
       return {
         ...rec,
         strategicRole:
-          rec.strategicRole || ev?.strategicRole || "BROAD_CONTEXT",
+          rec.strategicRole || ev?.strategicRole || "SPECIFIC_FOCUS",
         literaturePosition: rec.literaturePosition || ev?.literaturePosition,
         thesisType:
           thesisTypeById.get(String(rec.externalThesisId)) || undefined,

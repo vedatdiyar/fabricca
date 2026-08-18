@@ -35,7 +35,7 @@ export const perThesisEvaluationSchema = z.object({
   strategicRole: strategicRoleEnum
     .optional()
     .describe(
-      "Tezin kullanıcının tezindeki stratejik rolü: BROAD_CONTEXT | SPECIFIC_FOCUS | FOUNDATIONAL_WORK | METHODOLOGICAL_BENCHMARK | ALTERNATIVE_PERSPECTIVE",
+      "Tezin kullanıcının tezindeki stratejik rolü: SPECIFIC_FOCUS | FOUNDATIONAL_WORK | METHODOLOGICAL_BENCHMARK | ALTERNATIVE_PERSPECTIVE",
     ),
   contributionAreas: z
     .array(z.string())
@@ -91,14 +91,13 @@ export const perThesisEvaluationJsonSchema: JsonSchema = {
     strategicRole: {
       type: "string",
       enum: [
-        "BROAD_CONTEXT",
         "SPECIFIC_FOCUS",
         "FOUNDATIONAL_WORK",
         "METHODOLOGICAL_BENCHMARK",
         "ALTERNATIVE_PERSPECTIVE",
       ],
       description:
-        "Tezin stratejik rolü: BROAD_CONTEXT (Geniş Çerçeve), SPECIFIC_FOCUS (Kısmi Odak), FOUNDATIONAL_WORK (Öncül Çalışma), METHODOLOGICAL_BENCHMARK (Yöntem Rehberi), ALTERNATIVE_PERSPECTIVE (Karşıt Yaklaşım).",
+        "Tezin stratejik rolü: SPECIFIC_FOCUS (Kısmi Odak), FOUNDATIONAL_WORK (Öncül Çalışma), METHODOLOGICAL_BENCHMARK (Yöntem Rehberi), ALTERNATIVE_PERSPECTIVE (Karşıt Yaklaşım).",
     },
     contributionAreas: {
       type: "array",
@@ -176,7 +175,7 @@ export async function evaluateBatchTheses(
         zodSchema: batchThesisEvaluationSchema,
         payloadStage: "positioning_per_thesis_evaluation",
         seed: GEMINI_SEED,
-        thinkingConfig: { thinkingLevel: ThinkingLevel.HIGH },
+        thinkingConfig: { thinkingLevel: ThinkingLevel.LOW },
         thesisMatrix: input,
         quiet: true,
       },
@@ -238,9 +237,7 @@ export async function evaluateSingleThesis(
 
 /**
  * Evaluates all candidate theses in parallel batches.
- * To respect the 15 RPM per-minute quota limit, the batch size is dynamically calculated as:
- *   batchSize = Math.max(1, Math.ceil(theses.length / 15))
- * (e.g. 30 theses -> 2 per batch, 45 theses -> 3 per batch).
+ * To optimize throughput and latency while respecting quotas, candidate theses are grouped in batches of 5.
  *
  * The candidate theses are always deterministically sorted by thesis ID prior to batching
  * to guarantee identical grouping and deterministic evaluation across runs.
@@ -267,8 +264,8 @@ export async function evaluateThesesInParallel(
     }),
   );
 
-  // 2. Calculate batch size: minute limit is 15, so total batches will be <= 15 calls
-  const batchSize = Math.max(1, Math.ceil(sortedTheses.length / 15));
+  // 2. Batch size of 5 gives optimal comparative context and minimum network overhead
+  const batchSize = 5;
 
   const batches: SiftedThesis[][] = [];
   for (let i = 0; i < sortedTheses.length; i += batchSize) {

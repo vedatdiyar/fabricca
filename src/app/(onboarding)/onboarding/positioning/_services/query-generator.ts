@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { ThinkingLevel } from "@google/genai";
-import { FLASH_LITE_31, GEMINI_SEED } from "@/lib/constants";
+import { FLASH_LITE_35, GEMINI_SEED } from "@/lib/constants";
 import {
   generateGeminiStructuredContent,
   type JsonSchema,
@@ -72,7 +72,7 @@ export const positioningQueryJsonSchema: JsonSchema = {
 
 /**
  * Generates dense, multi-aspect empirical semantic search queries purely from the subjectProblem
- * using FLASH_LITE_31 and HIGH thinking.
+ * using FLASH_LITE_35 and LOW thinking for fast, deterministic semantic extraction.
  *
  * @param matrix - The positioning matrix containing subjectProblem.
  * @param logger - Optional logger for observability.
@@ -86,7 +86,7 @@ export async function generatePositioningQuery(
 
   try {
     const result = await generateGeminiStructuredContent<PositioningQuery>(
-      FLASH_LITE_31,
+      FLASH_LITE_35,
       payload.systemInstruction,
       payload.userPrompt,
       positioningQueryJsonSchema,
@@ -95,7 +95,7 @@ export async function generatePositioningQuery(
         zodSchema: positioningQuerySchema,
         payloadStage: "positioning_query_generation",
         seed: GEMINI_SEED,
-        thinkingConfig: { thinkingLevel: ThinkingLevel.HIGH },
+        thinkingConfig: { thinkingLevel: ThinkingLevel.LOW },
         thesisMatrix: matrix,
         quiet: true,
       },

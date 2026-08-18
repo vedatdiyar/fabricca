@@ -5885,7 +5885,7 @@ export function mapRecommendedTheses(
         author: t.author,
         year: t.year,
         university: t.university,
-        strategicRole: e.strategicRole ?? "BROAD_CONTEXT",
+        strategicRole: e.strategicRole ?? "SPECIFIC_FOCUS",
         literaturePosition: e.literaturePosition ?? "",
         contributionArea: e.contributionAreas.join(", ") || "",
         relevanceReason: e.strategicUtility ?? "",
@@ -6059,14 +6059,12 @@ export const positioningMatrixSchema = z.object({
 export type PositioningMatrixInput = z.infer<typeof positioningMatrixSchema>;
 
 export type StrategicRole =
-  | "BROAD_CONTEXT"
   | "SPECIFIC_FOCUS"
   | "FOUNDATIONAL_WORK"
   | "METHODOLOGICAL_BENCHMARK"
   | "ALTERNATIVE_PERSPECTIVE";
 
 export const strategicRoleEnum = z.enum([
-  "BROAD_CONTEXT",
   "SPECIFIC_FOCUS",
   "FOUNDATIONAL_WORK",
   "METHODOLOGICAL_BENCHMARK",
@@ -23517,7 +23515,7 @@ export function buildPositioningJuryPromptPayload(
 
 3. **gapAnalysisSummary Akademik Standartları:**
    - Rapor tamamen elit, akıcı ve profesyonel bir akademik Türkçe ile kaleme alınmalıdır.
-   - \`literatureMapping\`: İlgili tezleri 5 stratejik rolüne göre (Geniş Çerçeve, Kısmi Odak, Öncül Çalışma, Yöntem Rehberi, Karşıt Yaklaşım) gruplandırarak mevcut literatürün haritasını çıkarın. Bahsedilen her teze mutlaka standart APA formatında atıf yapın: (Yazar, Yıl).
+   - \`literatureMapping\`: İlgili tezleri 4 stratejik rolüne göre (Kısmi Odak, Öncül Çalışma, Yöntem Rehberi, Karşıt Yaklaşım) gruplandırarak mevcut literatürün haritasını çıkarın. Bahsedilen her teze mutlaka standart APA formatında atıf yapın: (Yazar, Yıl).
    - \`academicGap\`: İncelenen bu çalışmaların neleri göz ardı ettiğini veya neden kullanıcının araştırma problemini açıklamada eksik kaldığını somut olarak ortaya koyun. APA atıflarını eksiksiz kullanın: (Yazar, Yıl).
    - \`originalContribution\` (Anti-Parroting Kuralı): Kullanıcının matrisindeki cümleleri aynen tekrarlamaktan kaçının. Doğrudan incelenen tezlerin bıraktığı boşluklarla mukayese ederek, kullanıcının konu odağının, kuramsal sentezinin ve metodolojisinin getirdiği özgün akademik yeniliği vurgulayın.
 
@@ -23525,7 +23523,7 @@ export function buildPositioningJuryPromptPayload(
    - gapAnalysisSummary içinde yalnızca sana sunulan tez listesindeki gerçek yazar, yıl ve eser bilgilerini kullanın. Tüm APA (Yazar, Yıl) atıflarını doğrudan listedeki mevcut kayıtlardan türetin.`,
 
     workflowSteps: `1. Ön elemeden geçen tezlerin stratejik rollerini ve künyelerini incele.
-2. Tezleri 5 stratejik role (Geniş Çerçeve, Kısmi Odak, Öncül Çalışma, Yöntem Rehberi, Karşıt Yaklaşım) göre tematik olarak grupla.
+2. Tezleri 4 stratejik role (Kısmi Odak, Öncül Çalışma, Yöntem Rehberi, Karşıt Yaklaşım) göre tematik olarak grupla.
 3. gapAnalysisSummary (literatureMapping, academicGap, originalContribution) metinlerini APA atıflarıyla oluştur.
 4. globalStatus kuralına göre tek bir değer belirle.`,
 
@@ -23546,7 +23544,7 @@ Yazar: Ali Yılmaz (2015)
 Üniversite/Bölüm: Ankara Üniversitesi - Siyaset Bilimi
 Tür: Doktora | Dil: Türkçe
 Birebir Örtüşme: HAYIR
-Stratejik Rol: BROAD_CONTEXT
+Stratejik Rol: SPECIFIC_FOCUS
 Literatürdeki Yeri (Ne Yaptı?): 1990-2014 dönemindeki yasal Kürt parti geleneğini geniş bir dönemsel perspektifle incelemiştir.
 Stratejik Kullanım / Boşluk Doldurma: Bu tezi Giriş ve Literatür Taraması bölümlerinde yasal partilerin tarihsel seyrini temellendirmek için kullanabilir; tezinizin farkını ise 1991-1999 kuluçka evresini silahlı kanatla karşılaştırmalı derinleştirme noktasında vurgulayabilirsiniz.
 Katkı/Odak Alanları: Yasal parti söylemi, 1990'lar dönemselleştirmesi
@@ -23595,7 +23593,7 @@ export const juryRecommendedThesisSchema = z.object({
   strategicRole: strategicRoleEnum
     .optional()
     .describe(
-      "Tezin stratejik rolü: BROAD_CONTEXT | SPECIFIC_FOCUS | FOUNDATIONAL_WORK | METHODOLOGICAL_BENCHMARK | ALTERNATIVE_PERSPECTIVE",
+      "Tezin stratejik rolü: SPECIFIC_FOCUS | FOUNDATIONAL_WORK | METHODOLOGICAL_BENCHMARK | ALTERNATIVE_PERSPECTIVE",
     ),
   literaturePosition: z
     .string()
@@ -23694,7 +23692,7 @@ export const jurySynthesisResultJsonSchema: JsonSchema = {
 <file path="src/app/(onboarding)/onboarding/positioning/_services/query-generator.ts">
 import { z } from "zod";
 import { ThinkingLevel } from "@google/genai";
-import { FLASH_LITE_31, GEMINI_SEED } from "@/lib/constants";
+import { FLASH_LITE_35, GEMINI_SEED } from "@/lib/constants";
 import {
   generateGeminiStructuredContent,
   type JsonSchema,
@@ -23766,7 +23764,7 @@ export const positioningQueryJsonSchema: JsonSchema = {
 
 /**
  * Generates dense, multi-aspect empirical semantic search queries purely from the subjectProblem
- * using FLASH_LITE_31 and HIGH thinking.
+ * using FLASH_LITE_35 and LOW thinking for fast, deterministic semantic extraction.
  *
  * @param matrix - The positioning matrix containing subjectProblem.
  * @param logger - Optional logger for observability.
@@ -23780,7 +23778,7 @@ export async function generatePositioningQuery(
 
   try {
     const result = await generateGeminiStructuredContent<PositioningQuery>(
-      FLASH_LITE_31,
+      FLASH_LITE_35,
       payload.systemInstruction,
       payload.userPrompt,
       positioningQueryJsonSchema,
@@ -23789,7 +23787,7 @@ export async function generatePositioningQuery(
         zodSchema: positioningQuerySchema,
         payloadStage: "positioning_query_generation",
         seed: GEMINI_SEED,
-        thinkingConfig: { thinkingLevel: ThinkingLevel.HIGH },
+        thinkingConfig: { thinkingLevel: ThinkingLevel.LOW },
         thesisMatrix: matrix,
         quiet: true,
       },
@@ -32623,16 +32621,16 @@ Tür: ${thesis.thesisType || "N/A"} | Dil: ${thesis.language || "N/A"}
       "Sana sunulan kullanıcının Araştırma Problemi (subjectProblem) ile aday tezleri (1 veya daha fazla) bağımsız olarak karşılaştırarak; yüzeysel kelime benzerliklerini eleyip yalnızca kullanıcının araştırma nesnesine, yöntemine, birincil verisine veya doğrudan kurumsal/tarihsel sahasına GERÇEK ve AYRIŞTIRICI katkı sunan tezleri belirlemektir. Her bir tezin ampirik uygunluğunu (isRelevant), somut gerekçesini (relevanceReasoning), birebir çakışma durumunu (isDirectOverlap) ve eğer uygunsa tezin literatürdeki stratejik rolünü (strategicRole, literaturePosition, strategicUtility) belirleyip 'evaluations' dizisi altında döndür.",
 
     rulesAndConstraints: `1. **Tavizsiz ve Sert Eleme İlkeleri (MUTLAK RED KURALLARI - \`isRelevant: false\`):**
-   - **Yüzeysel Kelime Eşleşmesi Tuzağı:** Aday tezler vektör aramasından geldiği için ortak isimler, aktörler veya kavramlar içerecektir. Yalnızca metinde aynı kelimelerin geçmesi ASLA bir uygunluk sebebi değildir; tezin ampirik araştırma sorusu kullanıcının araştırma sorusuyla doğrudan kesişmiyorsa tereddütsüz \`isRelevant: false\` veriniz.
+   - **Geniş Çerçeve / Genel Arka Plan Yasağı (MUTLAK KURAL):** Genel bağlam, dönemin genel siyasi tarihi veya jenerik siyasallaşma tezleri ASLA kabul edilmez. Tezin araştırmacının tezinde doğrudan birincil kaynak, yöntem rehberi veya kuramsal/karşıt kutup olması şarttır.
+   - **Yüzeysel Kelime ve Dışsal Temsil Eşleşmesi:** Medya yansımaları, genel gazete haber analizleri veya üçüncü şahıs algı derlemeleri elenmelidir (\`isRelevant: false\`).
    - **Epistemolojik ve Metodolojik Uyuşmazlık:** Kullanıcının araştırması içsel nitel/söylemsel veya kuramsal bir çözümleme yapıyorsa; konuyu yalnızca dışsal bürokrasi/güvenlik raporu diliyle, genel istihbarat özetleriyle veya üçüncü taraf algı/medya temsilleriyle yüzeysel işleyen tezleri derhal eleyiniz (\`isRelevant: false\`).
    - **Kavramsal, Dönemsel ve Olgusal Anakronizm:** Kullanıcının odaklandığı dönemin çok öncesini/sonrasını, alakasız liderlik psikolojisini, farklı coğrafi sahaları veya üçüncü ülkeleri ele alan çalışmaları eleyiniz (\`isRelevant: false\`).
    - **Jenerik Derlemeler ve Klon Tezler:** Özgün bir birincil veri seti veya yöntemsel model sunmayan, genel lisansüstü derleme niteliğindeki ("X'in siyasallaşması", "Y'nin genel tarihi" gibi) birbirini tekrar eden klon tezlere geçit vermeyiniz (\`isRelevant: false\`).
 
-2. **Kabul Şartları ve Stratejik Rol Tanımları (\`isRelevant: true\`):**
-   - Bir tez ancak ve ancak kullanıcının araştırma probleminin, temel yönteminin, birincil veri havuzunun veya doğrudan odaklandığı kurumsal/tarihsel sahanın **ÖZGÜN VE AYRIŞTIRICI BİR BOYUTUNA** doğrudan katkı sunuyorsa \`isRelevant: true\` verilebilir:
-     * \`BROAD_CONTEXT\`: Yalnızca araştırmanın yapıldığı kurumsal ve tarihsel sahanın omurgasını doğrudan temellendiren kilit arka plan çalışmaları.
-     * \`SPECIFIC_FOCUS\`: Kullanıcının araştırma sahasındaki spesifik bir alt aktöre, yayın organına veya birincil metin havuzuna doğrudan odaklanan derinlemesine çalışmalar.
-     * \`FOUNDATIONAL_WORK\`: Araştırma sorusunun kuramsal zeminini veya hemen önceki kuluçka/hazırlık evresini inceleyen öncül çalışmalar.
+2. **Kabul Şartları ve 4 Somut Stratejik Rol Tanımı (\`isRelevant: true\`):**
+   - Bir tez ancak ve ancak aşağıdaki 4 rolden birine TAM ve EKSİKSİZ oturuyorsa \`isRelevant: true\` verilebilir:
+     * \`SPECIFIC_FOCUS\`: Kullanıcının araştırma sahasındaki spesifik bir alt aktöre (HEP/DEP/HADEP gibi yasal partiler veya PKK/ERNK), belirli bir yayın organına (Özgür Halk, Serxwebûn vb.) veya birincil metin havuzuna doğrudan odaklanan derinlemesine çalışmalar.
+     * \`FOUNDATIONAL_WORK\`: Araştırma sorusunun kuramsal zeminini veya hemen önceki kuluçka/hazırlık evresini inceleyen kilit öncül çalışmalar.
      * \`METHODOLOGICAL_BENCHMARK\`: Kullanıcının uyguladığı analiz modelini veya yöntem tipolojisini benzer bir sahada başarıyla işletmiş yöntemsel kılavuz çalışmalar.
      * \`ALTERNATIVE_PERSPECTIVE\`: Kullanıcının temel savına/hipotezine doğrudan karşıt veya eleştirel bir açıklama modeli getiren kilit tartışma çalışmaları.
 
@@ -32648,9 +32646,9 @@ Tür: ${thesis.thesisType || "N/A"} | Dil: ${thesis.language || "N/A"}
    - Girdi bağlamında verilen tüm tezlerin ID'lerini 'externalThesisId' alanında eksiksiz ve birebir aynı değerle 'evaluations' dizisine dahil et.`,
 
     workflowSteps: `1. Her bir aday tezin ampirik özetini kullanıcının araştırma problemiyle bağımsız olarak tavizsiz bir akademik süzgeçten geçir.
-2. Tez kullanıcının özgün araştırma sorusuna, yöntemine veya birincil veri kaynağına GERÇEKTEN somut ve ayrıştırıcı bir katkı sunuyor mu?
-3. Sadece yüzeysel kelime benzerliği varsa, dışsal/güvenlik raporu diliyle yazılmışsa veya ampirik katma değeri yoksa tereddütsüz \`isRelevant: false\` ver.
-4. Yalnızca gerçek bir akademik katkısı olanlara \`isRelevant: true\` ver ve 5 stratejik rolden en uygununu ata.
+2. Tez kullanıcının özgün araştırma sorusuna, yöntemine veya birincil veri kaynağına 4 stratejik rolden biri üzerinden GERÇEKTEN somut ve ayrıştırıcı bir katkı sunuyor mu?
+3. Sadece genel arka plan, medya yansıması veya yüzeysel kelime benzerliği varsa tereddütsüz \`isRelevant: false\` ver.
+4. Yalnızca 4 rolden birine giren gerçek akademik katkılara \`isRelevant: true\` ver ve rolünü ata.
 5. Girdideki tüm tezlerin değerlendirmelerini 'evaluations' dizisinde toplayıp döndür.`,
 
     outputFormat:
@@ -32680,12 +32678,12 @@ Yazar: Lokman Karadağ (2016)
     {
       "externalThesisId": "363401",
       "isRelevant": true,
-      "relevanceReasoning": "Aday tez, kullanıcının araştırma sahasının yasal partiler hattını (1990-2014) geniş bir perspektifle inceleyerek araştırmanın kurumsal siyaset ayağına doğrudan ampirik zemin sunmaktadır.",
+      "relevanceReasoning": "Aday tez, kullanıcının araştırma sahasının yasal partiler hattını (1990-2014) doğrudan parti programları üzerinden inceleyerek araştırmanın kurumsal siyaset ayağına doğrudan ampirik odak sunmaktadır.",
       "isDirectOverlap": false,
-      "strategicRole": "BROAD_CONTEXT",
+      "strategicRole": "SPECIFIC_FOCUS",
       "contributionAreas": ["Yasal parti söylemi", "1990'lar dönemselleştirmesi"],
-      "literaturePosition": "1990-2014 dönemindeki yasal Kürt parti geleneğini geniş bir dönemsel perspektifle incelemiştir.",
-      "strategicUtility": "Bu tezi Giriş ve Literatür Taraması bölümlerinde yasal partilerin tarihsel seyrini temellendirmek için kullanabilir; tezinizin farkını ise bu çalışmanın yüzeysel geçtiği 1991-1999 kuluçka evresini silahlı kanatla karşılaştırmalı olarak derinleştirme noktasında vurgulayabilirsiniz."
+      "literaturePosition": "1990-2014 dönemindeki yasal Kürt parti geleneğini doğrudan parti metinleri ve belgeleri üzerinden incelemiştir.",
+      "strategicUtility": "Bu tezi Giriş ve Literatür Taraması bölümlerinde yasal partilerin tarihsel seyrini temellendirmek için kullanabilir; tezinizin farkını ise bu çalışmanın aksine süreci silahlı kanatla karşılaştırmalı ve kuluçka evresi vurgusuyla ele almanız noktasında belirtebilirsiniz."
     },
     {
       "externalThesisId": "447567",
@@ -46259,7 +46257,7 @@ export const perThesisEvaluationSchema = z.object({
   strategicRole: strategicRoleEnum
     .optional()
     .describe(
-      "Tezin kullanıcının tezindeki stratejik rolü: BROAD_CONTEXT | SPECIFIC_FOCUS | FOUNDATIONAL_WORK | METHODOLOGICAL_BENCHMARK | ALTERNATIVE_PERSPECTIVE",
+      "Tezin kullanıcının tezindeki stratejik rolü: SPECIFIC_FOCUS | FOUNDATIONAL_WORK | METHODOLOGICAL_BENCHMARK | ALTERNATIVE_PERSPECTIVE",
     ),
   contributionAreas: z
     .array(z.string())
@@ -46315,14 +46313,13 @@ export const perThesisEvaluationJsonSchema: JsonSchema = {
     strategicRole: {
       type: "string",
       enum: [
-        "BROAD_CONTEXT",
         "SPECIFIC_FOCUS",
         "FOUNDATIONAL_WORK",
         "METHODOLOGICAL_BENCHMARK",
         "ALTERNATIVE_PERSPECTIVE",
       ],
       description:
-        "Tezin stratejik rolü: BROAD_CONTEXT (Geniş Çerçeve), SPECIFIC_FOCUS (Kısmi Odak), FOUNDATIONAL_WORK (Öncül Çalışma), METHODOLOGICAL_BENCHMARK (Yöntem Rehberi), ALTERNATIVE_PERSPECTIVE (Karşıt Yaklaşım).",
+        "Tezin stratejik rolü: SPECIFIC_FOCUS (Kısmi Odak), FOUNDATIONAL_WORK (Öncül Çalışma), METHODOLOGICAL_BENCHMARK (Yöntem Rehberi), ALTERNATIVE_PERSPECTIVE (Karşıt Yaklaşım).",
     },
     contributionAreas: {
       type: "array",
@@ -46400,7 +46397,7 @@ export async function evaluateBatchTheses(
         zodSchema: batchThesisEvaluationSchema,
         payloadStage: "positioning_per_thesis_evaluation",
         seed: GEMINI_SEED,
-        thinkingConfig: { thinkingLevel: ThinkingLevel.HIGH },
+        thinkingConfig: { thinkingLevel: ThinkingLevel.LOW },
         thesisMatrix: input,
         quiet: true,
       },
@@ -46462,9 +46459,7 @@ export async function evaluateSingleThesis(
 
 /**
  * Evaluates all candidate theses in parallel batches.
- * To respect the 15 RPM per-minute quota limit, the batch size is dynamically calculated as:
- *   batchSize = Math.max(1, Math.ceil(theses.length / 15))
- * (e.g. 30 theses -> 2 per batch, 45 theses -> 3 per batch).
+ * To optimize throughput and latency while respecting quotas, candidate theses are grouped in batches of 5.
  *
  * The candidate theses are always deterministically sorted by thesis ID prior to batching
  * to guarantee identical grouping and deterministic evaluation across runs.
@@ -46491,8 +46486,8 @@ export async function evaluateThesesInParallel(
     }),
   );
 
-  // 2. Calculate batch size: minute limit is 15, so total batches will be <= 15 calls
-  const batchSize = Math.max(1, Math.ceil(sortedTheses.length / 15));
+  // 2. Batch size of 5 gives optimal comparative context and minimum network overhead
+  const batchSize = 5;
 
   const batches: SiftedThesis[][] = [];
   for (let i = 0; i < sortedTheses.length; i += batchSize) {
@@ -48041,269 +48036,6 @@ export async function resetOnboardingAction() {
 }
 </file>
 
-<file path="src/app/(onboarding)/onboarding/positioning/_components/positioning-markdown-renderer.tsx">
-import React from "react";
-import { Compass, ScanEye, Sparkles } from "lucide-react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import type { GapAnalysisStructured } from "@/app/(onboarding)/onboarding/positioning/_services/validation";
-
-interface PositioningMarkdownRendererProps {
-  content: GapAnalysisStructured | string | unknown;
-  className?: string;
-}
-
-/**
- * Parses inline markdown formatting (bold, italic, inline code).
- *
- * @param text - The raw text to parse.
- * @returns The parsed React nodes with applied formatting.
- */
-function parseInlineMarkdown(text: string): React.ReactNode[] {
-  if (!text) return [];
-  const parts = text.split(/(\*\*.*?\*\*|\*.*?\*|`.*?`)/g);
-  return parts.map((part, idx) => {
-    if (part.startsWith("**") && part.endsWith("**")) {
-      return (
-        <strong
-          key={`strong-${idx}-${part}`}
-          className="font-semibold text-foreground"
-        >
-          {part.slice(2, -2)}
-        </strong>
-      );
-    }
-    if (part.startsWith("*") && part.endsWith("*")) {
-      return (
-        <em key={`em-${idx}-${part}`} className="italic text-foreground">
-          {part.slice(1, -1)}
-        </em>
-      );
-    }
-    if (part.startsWith("`") && part.endsWith("`")) {
-      return (
-        <code
-          key={`code-${idx}-${part}`}
-          className="rounded bg-muted px-2 py-1 font-mono text-xs text-primary"
-        >
-          {part.slice(1, -1)}
-        </code>
-      );
-    }
-    return part;
-  });
-}
-
-/**
- * Normalizes structured, JSON, or legacy markdown payloads into GapAnalysisStructured.
- *
- * @param content - The raw content payload to normalize.
- * @returns The normalized structured gap analysis data.
- */
-function normalizeGapAnalysis(
-  content: GapAnalysisStructured | string | unknown,
-): GapAnalysisStructured {
-  if (!content) {
-    return {
-      literatureMapping: "",
-      academicGap: "",
-      originalContribution: "",
-    };
-  }
-
-  if (
-    typeof content === "object" &&
-    content !== null &&
-    ("literatureMapping" in content ||
-      "academicGap" in content ||
-      "originalContribution" in content)
-  ) {
-    const obj = content as Record<string, unknown>;
-    return {
-      literatureMapping: String(obj.literatureMapping ?? ""),
-      academicGap: String(obj.academicGap ?? ""),
-      originalContribution: String(obj.originalContribution ?? ""),
-    };
-  }
-
-  if (typeof content === "string") {
-    const trimmed = content.trim();
-    if (trimmed.startsWith("{")) {
-      try {
-        const parsed = JSON.parse(trimmed);
-        if (typeof parsed === "object" && parsed !== null) {
-          return {
-            literatureMapping: String(parsed.literatureMapping ?? ""),
-            academicGap: String(parsed.academicGap ?? ""),
-            originalContribution: String(parsed.originalContribution ?? ""),
-          };
-        }
-      } catch {}
-    }
-
-    return parseLegacyMarkdown(trimmed);
-  }
-
-  return {
-    literatureMapping: String(content),
-    academicGap: "",
-    originalContribution: "",
-  };
-}
-
-/**
- * Legacy parser for un-migrated database records saved in Markdown format.
- *
- * @param markdown - The legacy markdown content to parse.
- * @returns The parsed structured gap analysis data.
- */
-function parseLegacyMarkdown(markdown: string): GapAnalysisStructured {
-  const result: GapAnalysisStructured = {
-    literatureMapping: "",
-    academicGap: "",
-    originalContribution: "",
-  };
-
-  const sections = markdown.split(/##\s+/);
-  for (const sec of sections) {
-    const lines = sec.trim().split("\n");
-    const heading = lines[0]?.toLowerCase() ?? "";
-    const body = lines.slice(1).join("\n").trim();
-
-    if (
-      heading.includes("harita") ||
-      heading.includes("literatürün") ||
-      heading.includes("mevcut")
-    ) {
-      result.literatureMapping = body || lines.join("\n").trim();
-    } else if (
-      heading.includes("boşluk") ||
-      heading.includes("eksik") ||
-      heading.includes("gap")
-    ) {
-      result.academicGap = body;
-    } else if (
-      heading.includes("özgün") ||
-      heading.includes("katkı") ||
-      heading.includes("değer")
-    ) {
-      result.originalContribution = body;
-    } else if (!result.literatureMapping && body) {
-      result.literatureMapping = sec.trim();
-    }
-  }
-
-  return result;
-}
-
-/**
- * Derives a stable key for a rendered paragraph from its leading text.
- *
- * @param paragraph - The paragraph content.
- * @returns A deterministic content-based key.
- */
-function paragraphKey(paragraph: string): string {
-  const head = paragraph.trim().replace(/\s+/g, " ").slice(0, 48).toLowerCase();
-  return head.length > 0 ? head : "empty-paragraph";
-}
-
-/**
- * Renders the 3 fixed jury synthesis sections as cards with designated icons.
- *
- * @param root0 - The component props.
- * @param root0.content - The gap analysis content to render.
- * @param root0.className - Optional extra CSS class for the wrapper.
- * @returns The rendered synthesis section cards or null.
- */
-export function PositioningMarkdownRenderer({
-  content,
-  className = "",
-}: PositioningMarkdownRendererProps) {
-  if (!content) return null;
-
-  const data = normalizeGapAnalysis(content);
-
-  return (
-    <div className={`space-y-4 ${className}`}>
-      {/* 1. Mevcut Literatürün Haritalandırılması */}
-      <Card className="rounded-md border border-border bg-card hover:border-border/60 transition-colors">
-        <CardHeader className="p-4 sm:p-6 pb-3 sm:pb-3 flex flex-row items-center justify-between gap-3 border-b border-border/40 space-y-0">
-          <div className="flex items-center gap-3">
-            <div className="p-2 rounded-md bg-info/10 text-info border border-info/20 shrink-0">
-              <Compass className="h-4 w-4" />
-            </div>
-            <CardTitle className="font-serif text-lg font-semibold tracking-tight text-foreground">
-              Mevcut Literatürün Haritalandırılması
-            </CardTitle>
-          </div>
-          <Badge
-            variant="outline"
-            className="bg-info/10 text-info border-info/20 px-2.5 py-0.5 text-xs font-medium shrink-0 hidden sm:inline-flex"
-          >
-            Literatür Analizi
-          </Badge>
-        </CardHeader>
-        <CardContent className="p-4 sm:p-6 pt-4 text-sm leading-relaxed text-foreground space-y-3 font-sans">
-          {data.literatureMapping.split("\n\n").map((para) => (
-            <p key={paragraphKey(para)}>{parseInlineMarkdown(para)}</p>
-          ))}
-        </CardContent>
-      </Card>
-
-      {/* 2. Literatürdeki Boşluk */}
-      <Card className="rounded-md border border-border bg-card hover:border-border/60 transition-colors">
-        <CardHeader className="p-4 sm:p-6 pb-3 sm:pb-3 flex flex-row items-center justify-between gap-3 border-b border-border/40 space-y-0">
-          <div className="flex items-center gap-3">
-            <div className="p-2 rounded-md bg-warning/10 text-warning border border-warning/20 shrink-0">
-              <ScanEye className="h-4 w-4" />
-            </div>
-            <CardTitle className="font-serif text-lg font-semibold tracking-tight text-foreground">
-              Literatürdeki Boşluk
-            </CardTitle>
-          </div>
-          <Badge
-            variant="outline"
-            className="bg-warning/10 text-warning border-warning/20 px-2.5 py-0.5 text-xs font-medium shrink-0 hidden sm:inline-flex"
-          >
-            Akademik Boşluk
-          </Badge>
-        </CardHeader>
-        <CardContent className="p-4 sm:p-6 pt-4 text-sm leading-relaxed text-foreground space-y-3 font-sans">
-          {data.academicGap.split("\n\n").map((para) => (
-            <p key={paragraphKey(para)}>{parseInlineMarkdown(para)}</p>
-          ))}
-        </CardContent>
-      </Card>
-
-      {/* 3. Çalışmanın Özgün Katkısı */}
-      <Card className="rounded-md border border-border bg-card hover:border-border/60 transition-colors">
-        <CardHeader className="p-4 sm:p-6 pb-3 sm:pb-3 flex flex-row items-center justify-between gap-3 border-b border-border/40 space-y-0">
-          <div className="flex items-center gap-3">
-            <div className="p-2 rounded-md bg-success/10 text-success border border-success/20 shrink-0">
-              <Sparkles className="h-4 w-4" />
-            </div>
-            <CardTitle className="font-serif text-lg font-semibold tracking-tight text-foreground">
-              Çalışmanın Özgün Katkısı
-            </CardTitle>
-          </div>
-          <Badge
-            variant="outline"
-            className="bg-success/10 text-success border-success/20 px-2.5 py-0.5 text-xs font-medium shrink-0 hidden sm:inline-flex"
-          >
-            Özgün Değer
-          </Badge>
-        </CardHeader>
-        <CardContent className="p-4 sm:p-6 pt-4 text-sm leading-relaxed text-foreground space-y-3 font-sans">
-          {data.originalContribution.split("\n\n").map((para) => (
-            <p key={paragraphKey(para)}>{parseInlineMarkdown(para)}</p>
-          ))}
-        </CardContent>
-      </Card>
-    </div>
-  );
-}
-</file>
-
 <file path="README.md">
 # Fabricca — Dijital Tez Asistanı
 
@@ -49840,6 +49572,269 @@ function OutlineEditor({
           )}
         </Button>
       </div>
+    </div>
+  );
+}
+</file>
+
+<file path="src/app/(onboarding)/onboarding/positioning/_components/positioning-markdown-renderer.tsx">
+import React from "react";
+import { Compass, ScanEye, Sparkles } from "lucide-react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import type { GapAnalysisStructured } from "@/app/(onboarding)/onboarding/positioning/_services/validation";
+
+interface PositioningMarkdownRendererProps {
+  content: GapAnalysisStructured | string | unknown;
+  className?: string;
+}
+
+/**
+ * Parses inline markdown formatting (bold, italic, inline code).
+ *
+ * @param text - The raw text to parse.
+ * @returns The parsed React nodes with applied formatting.
+ */
+function parseInlineMarkdown(text: string): React.ReactNode[] {
+  if (!text) return [];
+  const parts = text.split(/(\*\*.*?\*\*|\*.*?\*|`.*?`)/g);
+  return parts.map((part, idx) => {
+    if (part.startsWith("**") && part.endsWith("**")) {
+      return (
+        <strong
+          key={`strong-${idx}-${part}`}
+          className="font-semibold text-foreground"
+        >
+          {part.slice(2, -2)}
+        </strong>
+      );
+    }
+    if (part.startsWith("*") && part.endsWith("*")) {
+      return (
+        <em key={`em-${idx}-${part}`} className="italic text-foreground">
+          {part.slice(1, -1)}
+        </em>
+      );
+    }
+    if (part.startsWith("`") && part.endsWith("`")) {
+      return (
+        <code
+          key={`code-${idx}-${part}`}
+          className="rounded bg-muted px-2 py-1 font-mono text-xs text-primary"
+        >
+          {part.slice(1, -1)}
+        </code>
+      );
+    }
+    return part;
+  });
+}
+
+/**
+ * Normalizes structured, JSON, or legacy markdown payloads into GapAnalysisStructured.
+ *
+ * @param content - The raw content payload to normalize.
+ * @returns The normalized structured gap analysis data.
+ */
+function normalizeGapAnalysis(
+  content: GapAnalysisStructured | string | unknown,
+): GapAnalysisStructured {
+  if (!content) {
+    return {
+      literatureMapping: "",
+      academicGap: "",
+      originalContribution: "",
+    };
+  }
+
+  if (
+    typeof content === "object" &&
+    content !== null &&
+    ("literatureMapping" in content ||
+      "academicGap" in content ||
+      "originalContribution" in content)
+  ) {
+    const obj = content as Record<string, unknown>;
+    return {
+      literatureMapping: String(obj.literatureMapping ?? ""),
+      academicGap: String(obj.academicGap ?? ""),
+      originalContribution: String(obj.originalContribution ?? ""),
+    };
+  }
+
+  if (typeof content === "string") {
+    const trimmed = content.trim();
+    if (trimmed.startsWith("{")) {
+      try {
+        const parsed = JSON.parse(trimmed);
+        if (typeof parsed === "object" && parsed !== null) {
+          return {
+            literatureMapping: String(parsed.literatureMapping ?? ""),
+            academicGap: String(parsed.academicGap ?? ""),
+            originalContribution: String(parsed.originalContribution ?? ""),
+          };
+        }
+      } catch {}
+    }
+
+    return parseLegacyMarkdown(trimmed);
+  }
+
+  return {
+    literatureMapping: String(content),
+    academicGap: "",
+    originalContribution: "",
+  };
+}
+
+/**
+ * Legacy parser for un-migrated database records saved in Markdown format.
+ *
+ * @param markdown - The legacy markdown content to parse.
+ * @returns The parsed structured gap analysis data.
+ */
+function parseLegacyMarkdown(markdown: string): GapAnalysisStructured {
+  const result: GapAnalysisStructured = {
+    literatureMapping: "",
+    academicGap: "",
+    originalContribution: "",
+  };
+
+  const sections = markdown.split(/##\s+/);
+  for (const sec of sections) {
+    const lines = sec.trim().split("\n");
+    const heading = lines[0]?.toLowerCase() ?? "";
+    const body = lines.slice(1).join("\n").trim();
+
+    if (
+      heading.includes("harita") ||
+      heading.includes("literatürün") ||
+      heading.includes("mevcut")
+    ) {
+      result.literatureMapping = body || lines.join("\n").trim();
+    } else if (
+      heading.includes("boşluk") ||
+      heading.includes("eksik") ||
+      heading.includes("gap")
+    ) {
+      result.academicGap = body;
+    } else if (
+      heading.includes("özgün") ||
+      heading.includes("katkı") ||
+      heading.includes("değer")
+    ) {
+      result.originalContribution = body;
+    } else if (!result.literatureMapping && body) {
+      result.literatureMapping = sec.trim();
+    }
+  }
+
+  return result;
+}
+
+/**
+ * Derives a stable key for a rendered paragraph from its leading text.
+ *
+ * @param paragraph - The paragraph content.
+ * @returns A deterministic content-based key.
+ */
+function paragraphKey(paragraph: string): string {
+  const head = paragraph.trim().replace(/\s+/g, " ").slice(0, 48).toLowerCase();
+  return head.length > 0 ? head : "empty-paragraph";
+}
+
+/**
+ * Renders the 3 fixed jury synthesis sections as cards with designated icons.
+ *
+ * @param root0 - The component props.
+ * @param root0.content - The gap analysis content to render.
+ * @param root0.className - Optional extra CSS class for the wrapper.
+ * @returns The rendered synthesis section cards or null.
+ */
+export function PositioningMarkdownRenderer({
+  content,
+  className = "",
+}: PositioningMarkdownRendererProps) {
+  if (!content) return null;
+
+  const data = normalizeGapAnalysis(content);
+
+  return (
+    <div className={`space-y-4 ${className}`}>
+      {/* 1. Mevcut Literatürün Haritalandırılması */}
+      <Card className="rounded-md border border-border bg-card hover:border-border/60 transition-colors">
+        <CardHeader className="p-4 sm:p-6 pb-3 sm:pb-3 flex flex-row items-center justify-between gap-3 border-b border-border/40 space-y-0">
+          <div className="flex items-center gap-3">
+            <div className="p-2 rounded-md bg-info/10 text-info border border-info/20 shrink-0">
+              <Compass className="h-4 w-4" />
+            </div>
+            <CardTitle className="font-serif text-lg font-semibold tracking-tight text-foreground">
+              Mevcut Literatürün Haritalandırılması
+            </CardTitle>
+          </div>
+          <Badge
+            variant="outline"
+            className="bg-info/10 text-info border-info/20 px-2.5 py-0.5 text-xs font-medium shrink-0 hidden sm:inline-flex"
+          >
+            Literatür Analizi
+          </Badge>
+        </CardHeader>
+        <CardContent className="p-4 sm:p-6 pt-4 text-sm leading-relaxed text-foreground space-y-3 font-sans">
+          {data.literatureMapping.split("\n\n").map((para) => (
+            <p key={paragraphKey(para)}>{parseInlineMarkdown(para)}</p>
+          ))}
+        </CardContent>
+      </Card>
+
+      {/* 2. Literatürdeki Boşluk */}
+      <Card className="rounded-md border border-border bg-card hover:border-border/60 transition-colors">
+        <CardHeader className="p-4 sm:p-6 pb-3 sm:pb-3 flex flex-row items-center justify-between gap-3 border-b border-border/40 space-y-0">
+          <div className="flex items-center gap-3">
+            <div className="p-2 rounded-md bg-warning/10 text-warning border border-warning/20 shrink-0">
+              <ScanEye className="h-4 w-4" />
+            </div>
+            <CardTitle className="font-serif text-lg font-semibold tracking-tight text-foreground">
+              Literatürdeki Boşluk
+            </CardTitle>
+          </div>
+          <Badge
+            variant="outline"
+            className="bg-warning/10 text-warning border-warning/20 px-2.5 py-0.5 text-xs font-medium shrink-0 hidden sm:inline-flex"
+          >
+            Akademik Boşluk
+          </Badge>
+        </CardHeader>
+        <CardContent className="p-4 sm:p-6 pt-4 text-sm leading-relaxed text-foreground space-y-3 font-sans">
+          {data.academicGap.split("\n\n").map((para) => (
+            <p key={paragraphKey(para)}>{parseInlineMarkdown(para)}</p>
+          ))}
+        </CardContent>
+      </Card>
+
+      {/* 3. Çalışmanın Özgün Katkısı */}
+      <Card className="rounded-md border border-border bg-card hover:border-border/60 transition-colors">
+        <CardHeader className="p-4 sm:p-6 pb-3 sm:pb-3 flex flex-row items-center justify-between gap-3 border-b border-border/40 space-y-0">
+          <div className="flex items-center gap-3">
+            <div className="p-2 rounded-md bg-success/10 text-success border border-success/20 shrink-0">
+              <Sparkles className="h-4 w-4" />
+            </div>
+            <CardTitle className="font-serif text-lg font-semibold tracking-tight text-foreground">
+              Çalışmanın Özgün Katkısı
+            </CardTitle>
+          </div>
+          <Badge
+            variant="outline"
+            className="bg-success/10 text-success border-success/20 px-2.5 py-0.5 text-xs font-medium shrink-0 hidden sm:inline-flex"
+          >
+            Özgün Değer
+          </Badge>
+        </CardHeader>
+        <CardContent className="p-4 sm:p-6 pt-4 text-sm leading-relaxed text-foreground space-y-3 font-sans">
+          {data.originalContribution.split("\n\n").map((para) => (
+            <p key={paragraphKey(para)}>{parseInlineMarkdown(para)}</p>
+          ))}
+        </CardContent>
+      </Card>
     </div>
   );
 }
@@ -52345,9 +52340,13 @@ function RecommendedThesisCard({ thesis, index }: RecommendedThesisCardProps) {
       : thesis.title.slice(separatorIndex + 3).trim();
 
   const roleConfig =
-    thesis.strategicRole && STRATEGIC_ROLE_CONFIG[thesis.strategicRole]
-      ? STRATEGIC_ROLE_CONFIG[thesis.strategicRole]
-      : STRATEGIC_ROLE_CONFIG.BROAD_CONTEXT;
+    thesis.strategicRole &&
+    (thesis.strategicRole as keyof typeof STRATEGIC_ROLE_CONFIG) in
+      STRATEGIC_ROLE_CONFIG
+      ? STRATEGIC_ROLE_CONFIG[
+          thesis.strategicRole as keyof typeof STRATEGIC_ROLE_CONFIG
+        ]
+      : STRATEGIC_ROLE_CONFIG.SPECIFIC_FOCUS;
   const RoleIcon = roleConfig.icon;
 
   return (
@@ -53845,7 +53844,7 @@ export async function runPositioningJuryAction(
       return {
         ...rec,
         strategicRole:
-          rec.strategicRole || ev?.strategicRole || "BROAD_CONTEXT",
+          rec.strategicRole || ev?.strategicRole || "SPECIFIC_FOCUS",
         literaturePosition: rec.literaturePosition || ev?.literaturePosition,
         thesisType:
           thesisTypeById.get(String(rec.externalThesisId)) || undefined,
