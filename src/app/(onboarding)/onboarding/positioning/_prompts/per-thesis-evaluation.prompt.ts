@@ -1,115 +1,130 @@
-import {
-  buildPromptPayload,
-  type PromptPayload,
-} from "@/lib/ai/prompt-builder";
-import type { PositioningMatrixInput } from "@/app/(onboarding)/onboarding/positioning/_services/validation";
-import type { SiftedThesis } from "@/app/(onboarding)/onboarding/positioning/_services/sifting";
+import type { PositioningMatrixInput } from "../_services/validation";
+import type { SiftedThesis } from "../_services/sifting";
+
+/** Prompt payload structure separating system instructions from user prompt. */
+export interface PerThesisEvaluationPromptPayload {
+  systemInstruction: string;
+  userPrompt: string;
+}
 
 /**
- * Builds the standardized PromptPayload for Stage 2: Deep Strategic Profiling of pre-screened relevant theses.
- * Strictly adheres to docs/LLM_INTEGRATION.md (Hybrid XML + Markdown Encapsulation).
+ * Builds the XML/Markdown hybrid prompt payload for batch per-thesis evaluation,
+ * strictly focusing on substantive topic and empirical relevance as per user requirements.
  *
- * @param input - The validated positioning matrix input.
- * @param thesesInput - One or more pre-screened relevant theses to profile.
- * @returns Standardized PromptPayload containing systemInstruction and userPrompt.
+ * @param matrix - The 3-field thesis matrix.
+ * @param candidateTheses - The batch of candidate theses to evaluate.
+ * @returns Structured prompt payload.
  */
 export function buildPerThesisEvaluationPromptPayload(
-  input: PositioningMatrixInput | { subjectProblem: string; theoreticalFramework?: string; methodology?: string },
-  thesesInput: SiftedThesis[] | SiftedThesis,
-): PromptPayload {
-  const theses = Array.isArray(thesesInput) ? thesesInput : [thesesInput];
+  matrix: PositioningMatrixInput,
+  candidateTheses: SiftedThesis[],
+): PerThesisEvaluationPromptPayload {
+  const systemInstruction = `<role>
+Kıdemli akademik hakem, tez izleme komitesi üyesi ve sosyal bilimler alan uzmanı.
+</role>
 
-  const candidateThesesContext = theses
-    .map(
-      (thesis, idx) => `--- TEZ #${idx + 1} ---
-Tez ID: ${thesis.id}
-Başlık: ${thesis.title}
-Yazar: ${thesis.author || "Bilinmiyor"} (${thesis.year || "N/A"})
-Üniversite/Bölüm: ${thesis.university || "N/A"} - ${thesis.department || "N/A"}
-Tür: ${thesis.thesisType || "N/A"} | Dil: ${thesis.language || "N/A"}
-Özet: ${thesis.abstract}`,
-    )
-    .join("\n\n");
+<instructions>
+# Görev ve Temel İlke
+Verilen tez konusunu ve sorunsalını baz alarak, aday tezleri **YALNIZCA KONUSAL VE OLGUSAL İLİŞKİSİ** açısından değerlendir.
 
-  const subjectProblem = input.subjectProblem || "";
-  const theoreticalFramework = ("theoreticalFramework" in input && input.theoreticalFramework) ? input.theoreticalFramework : "Belirtilmemiş";
-  const methodology = ("methodology" in input && input.methodology) ? input.methodology : "Belirtilmemiş";
+# Kritik Eleme Kuralı: Yalnızca Konu Odaklı İlgililik
+- **isRelevant:** Yalnızca araştırmacının incelediği **SOMUT KONUYA, OLGUSAL ALANA, AKTÖRLERE, HAREKETLERE VEYA DÖNEMSEL TARTIŞMALARA** doğrudan temas eden tezler 'true' olarak kabul edilmelidir.
+- **Kabul Edilmeyecekler (isRelevant: false):**
+  - Konudan bağımsız saf kuramsal/felsefi tezler (örn. konudan kopuk genel Gramsci, hegemonya veya epistemoloji tezleri).
+  - Konudan bağımsız genel yöntem tezleri (örn. başka bir alandaki söylem analizi veya anket tezleri).
+  - Konuyla ilgisiz genel dış politika veya güvenlik tezleri.
+  - Sadece kelime benzerliği içeren farklı disiplinlerdeki alakasız çalışmalar.
 
-  return buildPromptPayload({
-    roleAndExpertise:
-      "Üniversiteler Üstü Akademik Jüri Kıdemli Metodoloji Raportörüsünüz. Göreviniz, ön elemeden başarıyla geçmiş temel rehber tezlerin stratejik rollerini, literatürdeki konumlarını ve araştırmacının tez yazımında nasıl kullanılacaklarını derinlemesine yapılandırmaktır.",
+# Değerlendirme Ölçütleri
+1. **isRelevant (Konusal İlgililik):** Aday tez doğrudan kullanıcının araştırdığı konuyu, aktörleri, hareketi veya dönemi mi inceliyor? (Evet ise true, aksi halde false).
+2. **isDirectOverlap (Birebir Çakışma / Özgünlük Riski):** Aday tez kullanıcının araştırdığı soruyu aynı dönem, aynı aktörler ve aynı kapsamda birebir çözmüş ve araştırmacının tezine özgün bir boşluk bırakmamış mıdır? (Evet ise true, aksi halde false).
+3. **strategicRole (Konusal Stratejik Rol):** İlgili tezler için aşağıdaki konusal rollerden en uygun olanını seç:
+   - **SPECIFIC_FOCUS (Kısmi / Komşu Olgusal Odak):** Konunun belirli bir alt boyutunu (örn. yasal parti hattı, dil politikası, kongre kararları veya komşu bir dönemi) inceleyen çalışma.
+   - **FOUNDATIONAL_WORK (Öncül Konu Çalışması):** Konunun tarihsel kökenlerini (örn. 1980 öncesi, erken dönem örgütlenme) veya ana gelişim hattını kuran temel konu tezi.
+   - **METHODOLOGICAL_BENCHMARK (Paralel Olgusal Analiz):** Aynı konuyu benzer bir ampirik veri seti veya söylem analiziyle inceleyen konusal referans.
+   - **ALTERNATIVE_PERSPECTIVE (Karşıt / Farklı Olgusal Yaklaşım):** Aynı olguyu veya hareketi zıt/farklı bir siyasal ya da olgusal açıklamayla yorumlayan tartışma kaynağı.
+4. **contributionAreas (Katkı / Odak Alanları):** Tezin temas ettiği 1-2 adet somut konu etiketi (örn: "Yasal Kürt Siyaseti", "1990'lar Kürt Hareketi Söylemi").
+5. **literaturePosition (Literatürdeki Yeri):** Tezin neyi araştırdığını ve konuya ne kattığını özetleyen 1 net cümle.
+6. **strategicUtility (Stratejik Kullanım Notu):** Araştırmacının kendi tezinde bu konusal çalışmayı nasıl konumlandıracağına dair 1-2 cümlelik rehber not.
 
-    primaryTask:
-      "Sana sunulan kullanıcının 3 bileşenli Tez Matrisi (Araştırma Problemi, Teorik Çerçevesi, Metodolojisi) ile ön elemeden geçmiş kilit tezleri inceleyerek; her bir tezin stratejik rolünü (strategicRole), literatür konumunu (literaturePosition), stratejik kullanım rehberini (strategicUtility), katkı alanlarını (contributionAreas) ve birebir çakışma durumunu (isDirectOverlap) belirleyip 'evaluations' dizisi altında döndür.",
+# Sınırlamalar
+- Yalnızca <context> içinde verilen aday tezlerin metin ve özetlerine dayanın.
+- Her adayın 'externalThesisId' değerini birebir koruyun.
+</instructions>
 
-    rulesAndConstraints: `1. **4 Somut Stratejik Rol Tanımı:**
-   - \`SPECIFIC_FOCUS\`: Kullanıcının araştırma sahasındaki spesifik bir alt aktöre, kuruma, belirli bir yayın organına veya birincil metin havuzuna doğrudan odaklanan derinlemesine çalışmalar.
-   - \`FOUNDATIONAL_WORK\`: Araştırma sorusunun kuramsal zeminini veya incelenen dönemin hemen önceki kuluçka/hazırlık evresini inceleyen kilit öncül çalışmalar.
-   - \`METHODOLOGICAL_BENCHMARK\`: Kullanıcının uyguladığı analiz modelini veya yöntem tipolojisini benzer bir sahada başarıyla işletmiş yöntemsel kılavuz çalışmalar.
-   - \`ALTERNATIVE_PERSPECTIVE\`: Kullanıcının temel savına/hipotezine doğrudan karşıt veya eleştirel bir açıklama modeli getiren kilit tartışma çalışmaları.
-
-2. **Birebir Çakışma Tespiti (\`isDirectOverlap\`):**
-   - Yalnızca ve yalnızca incelenen tezin Araştırma Odağı + Kuramsal Çerçevesi + Veri Seti kullanıcının teziyle **BİREBİR AYNI** ise (kullanıcının çalışmasında özgünlük riski varsa) \`isDirectOverlap: true\` verilir.
-   - Konu benzer olsa da farklı bir dönem, kuram veya yöntem işletiliyorsa kesinlikle \`isDirectOverlap: false\` verilir.
-
-3. **Öz, Yoğun ve Eylem Odaklı Rehberlik Dili:**
-   - \`literaturePosition\`: Tezin neyi, hangi veriyle incelediğini özetleyin (tam 1 net cümle, maks 120 karakter).
-   - \`strategicUtility\`: Araştırmacıya doğrudan tez yazımında yol gösteren eylem dili: "Bu tezi Giriş / Literatür bölümünde [X] için referans verebilir; tezinizin farkını ise [Y] noktasında vurgulayabilirsiniz." (1-2 konsantre cümle, maks 180 karakter).
-   - \`contributionAreas\`: Tezin katkı sunduğu spesifik odak alanları (yalnızca 1-2 adet kısa ve öz etiket).
-
-4. **Bütünlük:**
-   - Girdi bağlamında verilen tüm tezlerin ID'lerini 'externalThesisId' alanında eksiksiz ve birebir aynı değerle 'evaluations' dizisine dahil et.`,
-
-    workflowSteps: `1. Her bir tezin özetini kullanıcının araştırma problemi, teorik çerçevesi ve metodolojisiyle karşılaştır.
-2. Teze en uygun stratejik rolü (SPECIFIC_FOCUS, FOUNDATIONAL_WORK, METHODOLOGICAL_BENCHMARK, ALTERNATIVE_PERSPECTIVE) ata.
-3. Birebir örtüşme (isDirectOverlap) kontrolü yap.
-4. literaturePosition ve eylem odaklı strategicUtility notunu yaz.
-5. Tüm profilleri 'evaluations' dizisinde toplayıp döndür.`,
-
-    outputFormat:
-      "Çıktı, 'evaluations' dizisi içeren belirtilen JSON şemasına harfiyen uyan saf JSON nesnesidir.",
-
-    examples: `<example>
+<examples>
+<example>
 <input>
-=== KULLANICININ TEZ MATRİSİ ===
-1. Araştırma Problemi: 1980 Sonrası Türkiye'de İktisadi Dönüşüm ve İş Dünyası Örgütlerinin Söylemi (TÜSİAD ve MÜSİAD Karşılaştırması).
-2. Teorik Çerçeve: Eleştirel Ekonomi Politik ve Hegemonya Kuramı.
-3. Metodoloji: Nitel Söylem Analizi.
+[Kullanıcı Tez Konusu]:
+Kürt Özgürlük Hareketi'nin (PKK ve HEP-DEP-HADEP hattı) 1991-1999 döneminde manevra savaşından mevzi savaşına söylemsel dönüşümü ve taleplerin niteliksel değişimi.
 
-=== PROFİLLENECEK TEZ ===
---- TEZ #1 ---
-Tez ID: 101
-Başlık: 1980-2000 Döneminde TÜSİAD ve MÜSİAD'ın İktisadi Söyleminin Evrimi
-Yazar: Ahmet Kaya (2018)
-Üniversite/Bölüm: Ankara Üniversitesi - İktisat
-Özet: İki iş örgütünün yayınladığı resmi raporlar ve genel kurul bildirileri üzerinden sermaye fraksiyonlarının söylemsel dönüşümünü inceler.
+[Aday Tez #1]:
+ID: "101"
+Başlık: İdeolojik Hegemonya Sorunsalı ve Gramsci Felsefesi
+Yazar: Ali Can (1998)
+Özet: Bu çalışmada Gramsci'nin hapishane defterlerindeki hegemonya, mevzi savaşı ve sivil toplum kavramları felsefi olarak incelenmiştir.
+
+[Aday Tez #2]:
+ID: "202"
+Başlık: 1990-2014 Dönemi Kürt Siyasal Hareketinin Söyleminin Dönüşümü
+Yazar: Kadriye Okudan Dernek (2014)
+Özet: Bu tezde 1990 sonrası Türkiye'de yasal Kürt siyasal partilerinin (HEP, DEP, HADEP, DEHAP, DTP, BDP, HDP) program ve söylemlerindeki değişim incelenmiştir.
 </input>
 <output>
 {
   "evaluations": [
     {
       "externalThesisId": "101",
+      "isRelevant": false,
+      "relevanceReasoning": "Konu dışı saf felsefi/kuramsal çalışma; Kürt siyasal hareketi veya 1990'lar ampirik olgusuyla doğrudan ilişkisi yoktur.",
+      "isDirectOverlap": false,
+      "strategicRole": "FOUNDATIONAL_WORK",
+      "contributionAreas": ["Siyaset Felsefesi"],
+      "literaturePosition": "Gramsci'nin hegemonya kavramını felsefi olarak ele almıştır.",
+      "strategicUtility": "Genel teori tezi olduğu için konu konumlandırmasında doğrudan kullanılmamalıdır."
+    },
+    {
+      "externalThesisId": "202",
       "isRelevant": true,
+      "relevanceReasoning": "Doğrudan kullanıcının incelediği 1990'lar yasal Kürt partileri hattını ve söylemsel dönüşümünü ampirik olarak incelemektedir.",
       "isDirectOverlap": false,
       "strategicRole": "SPECIFIC_FOCUS",
-      "contributionAreas": ["İş örgütleri söylemi", "Sermaye fraksiyonları"],
-      "literaturePosition": "1980-2000 döneminde TÜSİAD ve MÜSİAD resmi raporlarını eleştirel söylem analiziyle incelemiştir.",
-      "strategicUtility": "Giriş ve Literatür bölümünde iş örgütlerinin tarihsel söylem ayrışmasını temellendirmek için referans verebilir; tezinizin farkını Gramsciyen hegemonya ekseninde vurgulayabilirsiniz."
+      "contributionAreas": ["Yasal Kürt Partileri", "Söylemsel Dönüşüm"],
+      "literaturePosition": "1990-2014 arası yasal Kürt partilerinin söylemsel evrimini ampirik metinler üzerinden incelemiştir.",
+      "strategicUtility": "Araştırmacı bu çalışmayı yasal/mevzi kanadın söylemsel bulguları için doğrudan birincil bir karşılaştırma ve konumlandırma referansı olarak kullanmalıdır."
     }
   ]
 }
 </output>
-</example>`,
+</example>
+</examples>`;
 
-    inputContext: `### KULLANICININ TEZ MATRİSİ:
-1. Araştırma Problemi ve Odağı: ${subjectProblem}
-2. Teorik ve Kavramsal Çerçeve: ${theoreticalFramework}
-3. Metodoloji: ${methodology}
+  const candidatesText = candidateTheses
+    .map((t, idx) => {
+      return `[Aday Tez #${idx + 1}]
+ID: "${t.id}"
+Başlık: ${t.title}
+Yazar: ${t.author || "Bilinmiyor"} (${t.year || "N/A"})
+Tür: ${t.thesisType || "N/A"}
+Üniversite/Bölüm: ${t.university || "N/A"} - ${t.department || "N/A"}
+Dil: ${t.language || "Türkçe"}
+Özet: ${t.abstract || ""}`;
+    })
+    .join("\n\n---\n\n");
 
-### PROFİLLENECEK KİLİT TEZLER (${theses.length} ADET):
-${candidateThesesContext}`,
+  const userPrompt = `<context>
+[Kullanıcı Tez Konusu ve Sorunsalı]:
+Araştırma Problemi ve Odak: ${matrix.subjectProblem}
+Kuramsal Çerçeve (Arka plan): ${matrix.theoreticalFramework || "Belirtilmemiş"}
+Yöntem ve Veri (Arka plan): ${matrix.methodology || "Belirtilmemiş"}
 
-    taskTrigger:
-      "Yukarıdaki <context> içinde yer alan kilit tezlerin her birini <instructions> kurallarına göre analiz ederek 'evaluations' dizisi altında JSON formatında profilleme çıktılarını üret.",
-  });
+[Değerlendirilecek Aday Tezler (${candidateTheses.length} Adet)]:
+${candidatesText}
+</context>
+
+<task>
+Yukarıdaki <context> içinde yer alan ${candidateTheses.length} adet aday tezi <instructions> kurallarına göre analiz et; yalnızca KONUSAL ve OLGUSAL ilgililik filtresini uygulayarak yapılandırılmış JSON çıktısını üret.
+</task>`;
+
+  return { systemInstruction, userPrompt };
 }

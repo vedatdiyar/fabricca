@@ -1,8 +1,8 @@
 "use client";
 
 import type { Positioning } from "@/core/db/schema";
-import type { PositioningGlobalStatus } from "@/app/(onboarding)/onboarding/positioning/_services/validation";
-import type { JuryAnalysisResult } from "@/app/(onboarding)/onboarding/positioning/_services/analysis";
+import type { PositioningGlobalStatus, RecommendedThesisItem, GapAnalysisStructured } from "../_services/validation";
+import type { JuryAnalysisResult } from "../_services/analysis";
 import { usePositioningContinue } from "../../_hooks/use-positioning-continue";
 import { PositioningReportView } from "./positioning-report-view";
 
@@ -11,11 +11,10 @@ interface PositioningContainerProps {
 }
 
 /**
- * Minimal wrapper that renders the positioning gap analysis report, which is always
- * pre-generated server-side with no pipeline running client-side.
+ * Client container that wraps and passes the pre-generated positioning gap analysis report
+ * to PositioningReportView.
  *
- * @param root0 - The component props.
- * @param root0.initialRecord - Optional pre-generated positioning record.
+ * @param props - Component props containing optional pre-generated positioning record.
  * @returns The rendered positioning report view.
  */
 export function PositioningContainer({
@@ -28,14 +27,13 @@ export function PositioningContainer({
       (initialRecord?.globalStatus as PositioningGlobalStatus) ??
       "NO_RELATED_LITERATURE",
     gapAnalysisSummary:
-      (initialRecord?.gapAnalysisSummary as JuryAnalysisResult["gapAnalysisSummary"]) ?? {
+      (initialRecord?.gapAnalysisSummary as GapAnalysisStructured) ?? {
         literatureMapping: "",
         academicGap: "",
         originalContribution: "",
       },
     recommendedTheses:
-      (initialRecord?.recommendedTheses as JuryAnalysisResult["recommendedTheses"]) ??
-      [],
+      (initialRecord?.recommendedTheses as RecommendedThesisItem[]) ?? [],
   };
 
   return (

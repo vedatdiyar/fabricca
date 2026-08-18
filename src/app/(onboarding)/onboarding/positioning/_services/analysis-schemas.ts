@@ -1,36 +1,68 @@
 import { z } from "zod";
 import type { JsonSchema } from "@/core/services/ai";
-import { gapAnalysisStructuredSchema, strategicRoleEnum } from "./validation";
+import {
+  strategicRoleEnum,
+  gapAnalysisStructuredSchema,
+  type RecommendedThesisItem,
+  type PositioningGlobalStatus,
+  type GapAnalysisStructured,
+} from "./validation";
 
-/** Zod schema for Stage 1 binary triage single item output. */
-export const binaryTriageItemSchema = z.object({
+/** Zod schema for a single evaluated thesis. */
+export const perThesisEvaluationSchema = z.object({
   externalThesisId: z
     .union([z.string(), z.number()])
     .transform((val) => String(val))
-    .describe("Değerlendirilen tezin ID'si"),
+    .describe("Değerlendirilen tezin veritabanı ID'si"),
   isRelevant: z
     .boolean()
     .describe(
-      "Aday tez kullanıcının 3 bileşenli tez matrisi (Problem, Kuram, Yöntem) için doğrudan kuramsal, yöntemsel veya ampirik birincil muhatap mıdır?",
+      "Aday tez kullanıcının 3 bileşenli tez matrisi (Problem, Kuram, Yöntem) için doğrudan kuramsal, yöntemsel veya ampirik bir muhatap mıdır?",
     ),
-  decisionReason: z
+  relevanceReasoning: z
     .string()
-    .describe("Tezin kabul veya ret gerekçesini açıklayan 1-2 cümle"),
+    .optional()
+    .describe(
+      "Tezin neden ilgili olduğuna veya literatürdeki yerine dair somut akademik gerekçe (1-2 cümle)",
+    ),
+  isDirectOverlap: z
+    .boolean()
+    .describe(
+      "Kullanıcının tezi ile bu tez arasında birebir konu/yöntem/kapsam çakışması (özgünlük riski) var mı?",
+    ),
+  strategicRole: strategicRoleEnum
+    .optional()
+    .describe(
+      "Tezin kullanıcının çalışmasındaki stratejik rolü: FOUNDATIONAL_WORK | METHODOLOGICAL_BENCHMARK | SPECIFIC_FOCUS | ALTERNATIVE_PERSPECTIVE",
+    ),
+  contributionAreas: z
+    .array(z.string())
+    .describe(
+      "Tezin temas ettiği veya katkı sunduğu 1-2 spesifik akademik odak etiketi.",
+    ),
+  literaturePosition: z
+    .string()
+    .describe("Tezin literatürdeki yeri ve neyi incelediği (1 net cümle)"),
+  strategicUtility: z
+    .string()
+    .describe(
+      "Bu tezin araştırmacının tezinde nasıl konumlandırılacağı ve hangi boşluğun doldurulacağına dair stratejik not (1-2 cümle)",
+    ),
 });
 
-/** Inferred type for a single binary triage result. */
-export type BinaryTriageItem = z.infer<typeof binaryTriageItemSchema>;
+export type PerThesisEvaluation = z.infer<typeof perThesisEvaluationSchema>;
 
-/** Zod schema for Stage 1 binary triage batch output. */
-export const binaryTriageOutputSchema = z.object({
-  evaluations: z.array(binaryTriageItemSchema),
+/** Zod schema for batch thesis evaluation output. */
+export const batchThesisEvaluationSchema = z.object({
+  evaluations: z.array(perThesisEvaluationSchema),
 });
 
-/** Inferred type for batch binary triage output. */
-export type BinaryTriageOutput = z.infer<typeof binaryTriageOutputSchema>;
+export type BatchThesisEvaluationOutput = z.infer<
+  typeof batchThesisEvaluationSchema
+>;
 
-/** JSON Schema for Gemini structured output in Stage 1 binary triage. */
-export const binaryTriageJsonSchema: JsonSchema = {
+/** JSON Schema for batch per-thesis evaluation matching batchThesisEvaluationSchema. */
+export const batchThesisEvaluationJsonSchema: JsonSchema = {
   type: "object",
   properties: {
     evaluations: {
@@ -45,84 +77,64 @@ export const binaryTriageJsonSchema: JsonSchema = {
           isRelevant: {
             type: "boolean",
             description:
-              "Aday tez kullanıcının 3 bileşenli tez matrisi (Problem, Kuram, Yöntem) için doğrudan kuramsal, yöntemsel veya ampirik birincil muhatap mıdır? Dışsal medya analizi, izole alt tema, kronolojik sapma veya jenerik derleme varsa false.",
+              "Aday tez kullanıcının 3 bileşenli tez matrisi için doğrudan kuramsal, yöntemsel veya ampirik muhatap mıdır?",
           },
-          decisionReason: {
+          relevanceReasoning: {
             type: "string",
-            maxLength: 250,
-            description: "Tezin kabul veya ret gerekçesini açıklayan 1-2 net cümle (maks 250 karakter)",
+            description:
+              "Tezin neden ilgili olduğuna dair somut akademik gerekçe (1-2 cümle)",
+          },
+          isDirectOverlap: {
+            type: "boolean",
+            description:
+              "Kullanıcının tezi ile birebir çakışma (özgünlük riski) var mı?",
+          },
+          strategicRole: {
+            type: "string",
+            enum: [
+              "FOUNDATIONAL_WORK",
+              "METHODOLOGICAL_BENCHMARK",
+              "SPECIFIC_FOCUS",
+              "ALTERNATIVE_PERSPECTIVE",
+            ],
+            description:
+              "Tezin stratejik rolü: FOUNDATIONAL_WORK (Öncül Çalışma), METHODOLOGICAL_BENCHMARK (Yöntem Referansı), SPECIFIC_FOCUS (Kısmi Odak), ALTERNATIVE_PERSPECTIVE (Karşıt Yaklaşım).",
+          },
+          contributionAreas: {
+            type: "array",
+            items: { type: "string" },
+            description:
+              "Tezin temas ettiği spesifik odak alanları (1-2 kısa etiket).",
+          },
+          literaturePosition: {
+            type: "string",
+            description:
+              "Tezin literatürdeki konumu ve ne yaptığı (1 net cümle).",
+          },
+          strategicUtility: {
+            type: "string",
+            description:
+              "Tezin araştırmacı tarafından nasıl kullanılacağına dair stratejik kullanım notu (1-2 cümle).",
           },
         },
-        required: ["externalThesisId", "isRelevant", "decisionReason"],
+        required: [
+          "externalThesisId",
+          "isRelevant",
+          "isDirectOverlap",
+          "strategicRole",
+          "contributionAreas",
+          "literaturePosition",
+          "strategicUtility",
+        ],
         additionalProperties: false,
       },
-      description: "Batch içerisindeki her bir adayın ikili eleme sonuçları",
     },
   },
   required: ["evaluations"],
   additionalProperties: false,
 };
 
-/** Zod schema for an individual recommended guiding thesis. */
-export const juryRecommendedThesisSchema = z.object({
-  externalThesisId: z
-    .union([z.string(), z.number()])
-    .transform((val) => String(val))
-    .describe("Süzülen tez listesindeki tez ID'si"),
-  title: z.string().describe("Tezin tam akademik başlığı"),
-  author: z.string().describe("Tezin yazarı"),
-  year: z.number().describe("Tezin hazırlanma yılı"),
-  university: z.string().describe("Tezin sunulduğu üniversite"),
-  strategicRole: strategicRoleEnum
-    .optional()
-    .describe(
-      "Tezin stratejik rolü: SPECIFIC_FOCUS | FOUNDATIONAL_WORK | METHODOLOGICAL_BENCHMARK | ALTERNATIVE_PERSPECTIVE",
-    ),
-  literaturePosition: z
-    .string()
-    .optional()
-    .describe("Tezin literatürdeki yerini ve ne yaptığını anlatan 1 net cümle"),
-  contributionArea: z
-    .string()
-    .describe(
-      "Tezin kullanıcının çalışmasında odaklandığı spesifik alan (Örn: Yasal Parti Söylemi ve Dönemselleştirme)",
-    ),
-  relevanceReason: z
-    .string()
-    .describe(
-      "Kullanıcının bu tezi Giriş ve Literatür bölümlerinde nasıl kaynak olarak kullanacağına ve tezin hangi boşluğunu dolduracağına dair stratejik rehber not",
-    ),
-  doi: z.string().optional().describe("Tezin DOI adresi (varsa)"),
-  thesisType: z
-    .string()
-    .optional()
-    .describe("Tezin türü (Örn: Yüksek Lisans veya Doktora)"),
-  abstract: z.string().optional().describe("Tezin Tezara'dan alınan özet metni"),
-  tezaraUrl: z.string().optional().describe("Tezara sayfasının URL'si"),
-});
-
-/** Inferred type for a single recommended guiding thesis card. */
-export type JuryRecommendedThesis = z.infer<typeof juryRecommendedThesisSchema>;
-
-/** Zod schema for the complete positioning report assembled after the LLM synthesis. */
-export const juryAnalysisResultSchema = z.object({
-  globalStatus: z.enum([
-    "DIRECT_OVERLAP",
-    "NOVEL_GAP_IDENTIFIED",
-    "NO_RELATED_LITERATURE",
-  ]),
-  gapAnalysisSummary: gapAnalysisStructuredSchema,
-  recommendedTheses: z
-    .array(juryRecommendedThesisSchema)
-    .describe(
-      "Ön elemeden geçerek jüriye sunulan ilgili rehber tezlerin listesi.",
-    ),
-});
-
-/** Inferred type for the jury analysis result. */
-export type JuryAnalysisResult = z.infer<typeof juryAnalysisResultSchema>;
-
-/** Zod schema for the focused LLM jury synthesis output — global status and gap analysis only. */
+/** Zod schema for the final jury synthesis LLM output. */
 export const jurySynthesisResultSchema = z.object({
   globalStatus: z.enum([
     "DIRECT_OVERLAP",
@@ -130,48 +142,69 @@ export const jurySynthesisResultSchema = z.object({
     "NO_RELATED_LITERATURE",
   ]),
   gapAnalysisSummary: gapAnalysisStructuredSchema,
+  selectedThesisIds: z
+    .array(z.string())
+    .describe(
+      "İncelenen ilgili tezler arasından kılavuz kart olarak seçilen en stratejik 4-8 tezin ID listesi.",
+    ),
 });
 
-/** Inferred type for the LLM jury synthesis output. */
 export type JurySynthesisResult = z.infer<typeof jurySynthesisResultSchema>;
 
-/** JSON Schema for Gemini structured outputs of the focused jury synthesis. */
+/** JSON schema for Gemini structured output for jury synthesis. */
 export const jurySynthesisResultJsonSchema: JsonSchema = {
   type: "object",
   properties: {
     globalStatus: {
       type: "string",
-      enum: ["DIRECT_OVERLAP", "NOVEL_GAP_IDENTIFIED", "NO_RELATED_LITERATURE"],
+      enum: [
+        "DIRECT_OVERLAP",
+        "NOVEL_GAP_IDENTIFIED",
+        "NO_RELATED_LITERATURE",
+      ],
       description:
-        "Yalnızca Konu + Teori + Analiz Birimi BİREBİR aynı ise DIRECT_OVERLAP verilir. Özgün katkı varsa NOVEL_GAP_IDENTIFIED verilir.",
+        "Jürinin genel özgünlük kararı: NOVEL_GAP_IDENTIFIED (Özgün Katkı / Boşluk Mevcut), DIRECT_OVERLAP (Birebir Çakışma / Özgünlük Riski), NO_RELATED_LITERATURE (Bakir Alan / İlgili Tez Bulunamadı).",
     },
     gapAnalysisSummary: {
       type: "object",
       properties: {
         literatureMapping: {
           type: "string",
-          maxLength: 1200,
           description:
-            "Mevcut Literatürün Haritalandırılması: Sunulan tezlerin araştırmanın hangi boyutlarını ele aldığının tematik haritası ve akademik özeti. Tezleri stratejik rolüne göre gruplayarak tematik özetle. Her tezden bahsederken mutlaka APA formatında atıf ver: (Yazar, Yıl). Maks 1200 karakter.",
+            "Mevcut Literatürün Haritalandırılması: İncelenen tezlerin hangi kuramsal ve ampirik alanlarda yoğunlaştığının akademik analizi (Markdown).",
         },
         academicGap: {
           type: "string",
-          maxLength: 800,
           description:
-            "Literatürdeki Boşluk: İncelediğin tezlerin neleri göz ardı ettiği veya yetersiz kaldığı alanların analizi. Mutlaka APA atıflarıyla açıkla. Maks 800 karakter.",
+            "Literatürdeki Boşluk: İncelenen tezlerin neleri ele almadığı, hangi boyutları açıkta bıraktığının analizi (Markdown).",
         },
         originalContribution: {
           type: "string",
-          maxLength: 600,
           description:
-            "Çalışmanın Özgün Katkısı: Kullanıcının tez matrisinin bu boşluğu nasıl doldurduğu ve literatüre getirdiği akademik yenilik. Maks 600 karakter.",
+            "Çalışmanın Özgün Katkısı: Araştırmacının tezinin bu boşluğu problem, kuram ve yöntem açısından nasıl dolduracağının analizi (Markdown).",
         },
       },
-      required: ["literatureMapping", "academicGap", "originalContribution"],
+      required: [
+        "literatureMapping",
+        "academicGap",
+        "originalContribution",
+      ],
       additionalProperties: false,
-      description: "3 sabit akademik sentez bölümü",
+    },
+    selectedThesisIds: {
+      type: "array",
+      items: { type: "string" },
+      description:
+        "İncelenen ilgili tezler arasından kılavuz kart olarak seçilen en stratejik 4-8 tezin ID listesi.",
     },
   },
-  required: ["globalStatus", "gapAnalysisSummary"],
+  required: ["globalStatus", "gapAnalysisSummary", "selectedThesisIds"],
   additionalProperties: false,
 };
+
+/** Full positioning jury analysis result including recommended thesis items. */
+export interface JuryAnalysisResult {
+  globalStatus: PositioningGlobalStatus;
+  gapAnalysisSummary: GapAnalysisStructured;
+  recommendedTheses: RecommendedThesisItem[];
+}

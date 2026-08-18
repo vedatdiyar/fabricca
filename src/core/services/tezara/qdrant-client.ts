@@ -1,8 +1,5 @@
 import { QdrantClient } from "@qdrant/js-client-rest";
 
-const QDRANT_URL = process.env.QDRANT_URL ?? "";
-const QDRANT_API_KEY = process.env.QDRANT_API_KEY ?? "";
-
 /** Global singleton Qdrant client instance. */
 let qdrantClient: QdrantClient | null = null;
 
@@ -17,13 +14,16 @@ export function getQdrantClient(): QdrantClient {
     return qdrantClient;
   }
 
-  if (!QDRANT_URL) {
+  const qdrantUrl = process.env.QDRANT_URL ?? "";
+  const qdrantApiKey = process.env.QDRANT_API_KEY ?? "";
+
+  if (!qdrantUrl) {
     throw new Error("QDRANT_URL environment variable is not defined.");
   }
 
   qdrantClient = new QdrantClient({
-    url: QDRANT_URL,
-    apiKey: QDRANT_API_KEY || undefined,
+    url: qdrantUrl,
+    apiKey: qdrantApiKey || undefined,
   });
 
   return qdrantClient;

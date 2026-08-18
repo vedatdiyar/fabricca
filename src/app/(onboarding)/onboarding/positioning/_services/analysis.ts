@@ -4,39 +4,29 @@ import { generateGeminiStructuredContent } from "@/core/services/ai";
 import type { Logger } from "@/lib/logger";
 import { buildPositioningJuryPromptPayload } from "../_prompts/jury-analysis.prompt";
 import type { EvaluatedThesis } from "./per-thesis-evaluation";
-import type { PositioningMatrixInput } from "./validation";
+import type { PositioningMatrixInput, RecommendedThesisItem } from "./validation";
 import {
-  juryRecommendedThesisSchema,
-  juryAnalysisResultSchema,
   jurySynthesisResultSchema,
   jurySynthesisResultJsonSchema,
-  type JuryRecommendedThesis,
   type JuryAnalysisResult,
   type JurySynthesisResult,
 } from "./analysis-schemas";
-import { mapRecommendedTheses } from "./analysis-mapper";
 
 export {
-  juryRecommendedThesisSchema,
-  juryAnalysisResultSchema,
   jurySynthesisResultSchema,
   jurySynthesisResultJsonSchema,
-  type JuryRecommendedThesis,
   type JuryAnalysisResult,
   type JurySynthesisResult,
-  mapRecommendedTheses,
 };
 
 /**
- * Runs the final synthesis jury LLM over the relevant evaluated theses to produce
- * the global status and gap analysis in a single focused Gemini call. The
- * recommended guiding thesis cards are assembled deterministically in TypeScript
- * from the evaluated theses, keeping the LLM output lean and fast.
+ * Runs the final synthesis jury LLM over the relevant evaluated theses using FLASH_36.
+ * Assembles the globalStatus, 3-dimensional gapAnalysisSummary, and recommended guiding theses.
  *
- * @param input - The validated positioning matrix input.
- * @param evaluatedTheses - The relevant evaluated theses to synthesize (irrelevant ones already dropped).
- * @param logger - Optional structured logger for pipeline events.
- * @returns The structured jury analysis result.
+ * @param input - The validated positioning matrix.
+ * @param evaluatedTheses - The relevant evaluated theses.
+ * @param logger - Optional structured logger.
+ * @returns The complete jury analysis result.
  */
 export async function analyzePositioningJury(
   input: PositioningMatrixInput,
@@ -47,10 +37,11 @@ export async function analyzePositioningJury(
     (ev) => ev.evaluation.isDirectOverlap,
   );
 
+  // 0 Results Scenario: Return clean NO_RELATED_LITERATURE fallback
   if (evaluatedTheses.length === 0) {
     logger?.info("positioning_jury_no_theses", {
       service: "positioning",
-      filePath: "src/features/positioning/analysis.ts",
+      filePath: "src/app/(onboarding)/onboarding/positioning/_services/analysis.ts",
       data: { inputSubject: input.subjectProblem },
     });
 
@@ -58,11 +49,11 @@ export async function analyzePositioningJury(
       globalStatus: "NO_RELATED_LITERATURE",
       gapAnalysisSummary: {
         literatureMapping:
-          "Veritabanında girilen tez matrisiyle doğrudan ilişkilendirilebilecek herhangi bir akademik teze rastlanmamıştır.",
+          "Ulusal tez merkezinde ve veri tabanında girilen tez matrisiyle (sorun, kuram, yöntem) doğrudan örtüşen veya aynı eksende konumlanan tamamlanmış bir akademik teze rastlanmamıştır.",
         academicGap:
-          "Doğrudan eşleşen bir çalışma bulunmadığı için mevcut literatürde tespit edilmiş bir çakışma veya doymuşluk alanı bulunmamaktadır.",
+          "Doğrudan eşleşen bir çalışma bulunmadığı için mevcut literatürde tespit edilmiş bir doymuşluk veya çakışma alanı tespit edilmemiştir.",
         originalContribution:
-          "Çalışmanız literatürde henüz işlenmemiş son derece bakir ve yüksek özgünlüğe sahip bir alanda konumlanmaktadır.",
+          "Çalışmanız literatürde henüz yeterince işlenmemiş, son derece bakir ve yüksek özgünlük potansiyeline sahip öncü bir alanda konumlanmaktadır.",
       },
       recommendedTheses: [],
     };
@@ -72,14 +63,15 @@ export async function analyzePositioningJury(
     .map((ev, idx) => {
       const t = ev.thesis;
       const e = ev.evaluation;
-      return `[Tez #${idx + 1}] ID: ${t.id}
+      return `[Tez #${idx + 1}] ID: "${t.id}"
 Başlık: ${t.title}
 Yazar: ${t.author || "Bilinmiyor"} (${t.year || "N/A"})
 Üniversite/Bölüm: ${t.university || "N/A"} - ${t.department || "N/A"}
-Tür: ${t.thesisType || "N/A"} | Dil: ${t.language || "N/A"}
-Birebir Örtüşme: ${e.isDirectOverlap ? "EVET" : "HAYIR"}
-Stratejik Rol: ${e.strategicRole || "UMBRELLA_MACRO"}
-Literatürdeki Yeri (Ne Yaptı?): ${e.literaturePosition || "N/A"}
+Tür: ${t.thesisType || "N/A"}
+Dil: ${t.language || "Türkçe"}
+Birebir Çakışma: ${e.isDirectOverlap ? "EVET" : "HAYIR"}
+Stratejik Rol: ${e.strategicRole || "SPECIFIC_FOCUS"}
+Literatürdeki Yeri: ${e.literaturePosition || "N/A"}
 Stratejik Kullanım / Boşluk Doldurma: ${e.strategicUtility || "N/A"}
 Katkı/Odak Alanları: ${e.contributionAreas.join(", ") || "Yok"}`;
     })
@@ -99,21 +91,70 @@ Katkı/Odak Alanları: ${e.contributionAreas.join(", ") || "Yok"}`;
     logger,
     {
       zodSchema: jurySynthesisResultSchema,
-      payloadStage: "positioning_jury_analysis",
+      payloadStage: "positioning_jury_synthesis",
       seed: GEMINI_SEED,
       thinkingConfig: { thinkingLevel: ThinkingLevel.LOW },
-      thesisMatrix: { input, filteredThesesCount: evaluatedTheses.length },
+      thesisMatrix: input,
       quiet: true,
     },
   );
 
-  if (overlapping) {
-    synthesis.globalStatus = "DIRECT_OVERLAP";
+  // Map selected theses or top relevant theses into RecommendedThesisItem[]
+  const evalByThesisId = new Map(
+    evaluatedTheses.map((ev) => [String(ev.thesis.id), ev]),
+  );
+
+  let selectedItems: EvaluatedThesis[] = [];
+
+  if (synthesis.selectedThesisIds && synthesis.selectedThesisIds.length > 0) {
+    for (const id of synthesis.selectedThesisIds) {
+      const found = evalByThesisId.get(String(id));
+      if (found) {
+        selectedItems.push(found);
+      }
+    }
   }
 
+  // If LLM selected fewer than 4 or empty, supplement with top evaluated theses
+  if (selectedItems.length < 4) {
+    for (const ev of evaluatedTheses) {
+      if (!selectedItems.some((s) => s.thesis.id === ev.thesis.id)) {
+        selectedItems.push(ev);
+      }
+      if (selectedItems.length >= 6) break;
+    }
+  }
+
+  // Cap at 8 max recommended theses
+  selectedItems = selectedItems.slice(0, 8);
+
+  const recommendedTheses: RecommendedThesisItem[] = selectedItems.map((ev) => {
+    const t = ev.thesis;
+    const e = ev.evaluation;
+    return {
+      id: String(t.id),
+      externalThesisId: String(t.id),
+      title: t.title,
+      author: t.author || "Bilinmiyor",
+      year: t.year || new Date().getFullYear(),
+      university: t.university || "Bilinmiyor",
+      strategicRole: e.strategicRole || "SPECIFIC_FOCUS",
+      literaturePosition: e.literaturePosition,
+      contributionArea: e.contributionAreas.join(", ") || "Literatür İncelemesi",
+      relevanceReason: e.strategicUtility || e.relevanceReasoning || "",
+      thesisType: t.thesisType,
+      abstract: t.abstract,
+      tezaraUrl: `https://tez.yok.gov.tr/UlusalTezMerkezi/tezDetay.jsp?id=${t.id}`,
+    };
+  });
+
+  const finalGlobalStatus = overlapping
+    ? "DIRECT_OVERLAP"
+    : synthesis.globalStatus;
+
   return {
-    globalStatus: synthesis.globalStatus,
+    globalStatus: finalGlobalStatus,
     gapAnalysisSummary: synthesis.gapAnalysisSummary,
-    recommendedTheses: mapRecommendedTheses(evaluatedTheses),
+    recommendedTheses,
   };
 }

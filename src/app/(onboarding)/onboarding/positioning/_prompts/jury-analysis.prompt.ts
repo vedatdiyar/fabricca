@@ -1,102 +1,90 @@
-import {
-  buildPromptPayload,
-  type PromptPayload,
-} from "@/lib/ai/prompt-builder";
-import type { PositioningMatrixInput } from "@/app/(onboarding)/onboarding/positioning/_services/validation";
+import type { PositioningMatrixInput } from "../_services/validation";
 
-export interface PositioningJuryPromptInput {
-  input: PositioningMatrixInput;
-  thesisListText: string;
-  evaluatedCount: number;
+/** Prompt payload structure separating system instructions from user prompt. */
+export interface JuryAnalysisPromptPayload {
+  systemInstruction: string;
+  userPrompt: string;
 }
 
 /**
- * Builds the standardized PromptPayload for the unified final LLM positioning
- * jury synthesis. The LLM only produces the global status and the gap analysis
- * synthesis; the recommended guiding thesis cards are assembled deterministically
- * in TypeScript and are NOT part of the LLM output contract.
+ * Builds the hybrid XML/Markdown prompt payload for the final jury synthesis analysis,
+ * strictly focusing on the empirical research topic, actors, and subject-matter literature gap.
  *
- * @param params - Matrix input, serialized thesis text, and candidate count.
- * @returns Standardized PromptPayload containing systemInstruction and userPrompt.
+ * @param params - Parameters containing the validated matrix, formatted evaluated theses text, and count.
+ * @returns Structured prompt payload.
  */
-export function buildPositioningJuryPromptPayload(
-  params: PositioningJuryPromptInput,
-): PromptPayload {
+export function buildPositioningJuryPromptPayload(params: {
+  input: PositioningMatrixInput;
+  thesisListText: string;
+  evaluatedCount: number;
+}): JuryAnalysisPromptPayload {
   const { input, thesisListText, evaluatedCount } = params;
 
-  return buildPromptPayload({
-    roleAndExpertise:
-      "Üniversiteler Üstü Akademik Jüri Başkanı ve İleri Derece Literatür Boşluğu (Gap Analysis) Uzmanısınız. Göreviniz zorunlu okuma eşiğini aşarak ön elemeden geçen kilit tezleri stratejik rollerine göre sentezleyerek APA formatında bütüncül bir Literatür Boşluğu Raporu üretmektir.",
+  const systemInstruction = `<role>
+Akademik jüri başkanı, tez izleme komitesi raportörü ve alan uzmanı.
+</role>
 
-    primaryTask:
-      "Sana sunulan kullanıcının 3 bileşenli Tez Konumlandırma Matrisini ve zorunlu okuma eşiğini aşarak stratejik rolleri belirlenen temel tezleri inceleyerek; tek bir bütüncül Akademik Jüri Değerlendirme Sentezi (globalStatus ve gapAnalysisSummary) üretmektir. Zorunlu okuma tez kartları (recommendedTheses) sistem tarafından ayrıca ve deterministik olarak oluşturulur; sen bunları üretmezsin.",
+<instructions>
+# Görev ve Sentez Amacı
+Kullanıcının sunduğu tez konusunu/sorunsalını ve ilgili bulunan **KONUSAL ve OLGUSAL TEZLERİ** inceleyerek; çalışmanın konu literatüründeki özgünlük durumunu karara bağla, 3 boyutlu derin bir Konusal Boşluk Analizi Raporu sentezle ve en stratejik 4-8 adet konu kılavuz tezinin ID'lerini seç.
 
-    rulesAndConstraints: `1. **Tez Matrisi ve Literatür Sınır İlkesi (MUTLAK KURAL):**
-   - Kullanıcının 3 bileşenli Tez Matrisi (Araştırma Problemi/Odağı, Teorik Çerçevesi, Metodolojisi) araştırmanın kesin ve mutlak sınırıdır.
-   - Değerlendirmeleri strictly kullanıcının matrisinde yer alan konu, kuram ve yöntem ile sana verilen ilgili tez listesi üzerinden yürütün; matriste veya tez listesinde bulunmayan hayali kaynaklar uydurmaktan kaçının.
+# Jüri Değerlendirme Kuralları
+1. **globalStatus (Jüri Genel Kararı):**
+   - **NOVEL_GAP_IDENTIFIED (Özgün Katkı / Boşluk Mevcut):** Literatürde aynı konuyu/hareketi inceleyen çalışmalar var ancak araştırmacının dönemi, aktör ayrımı veya konu sorunsalı belirgin ve özgün bir olgusal boşluğu dolduruyor.
+   - **DIRECT_OVERLAP (Birebir Çakışma / Özgünlük Riski):** İncelenen tezlerden biri kullanıcının araştırma konusunu, aynı dönemi ve aynı aktörleri aynı kapsamda daha önce birebir çalışmış.
+   - **NO_RELATED_LITERATURE (Bakir Alan / Doğrudan Konu Tezi Yok):** Veritabanında doğrudan aynı konuyu veya aktörleri inceleyen tez bulunamadı.
 
-2. **globalStatus Belirleme Kuralı:**
-   - \`DIRECT_OVERLAP\`: İlgili tezlerden en az biri \`Birebir Örtüşme: EVET\` olarak işaretlendiyse KESİNLİKLE verilir (özgünlük riski).
-   - \`NOVEL_GAP_IDENTIFIED\`: İlgili tezler mevcut ancak hiçbiri \`Birebir Örtüşme: EVET\` değilse verilir (kullanıcının çalışması özgün bir kuluçka dönemi, çift hatlı sentez veya yeni kavramsal çatma sunuyor demektir).
-   - \`NO_RELATED_LITERATURE\`: Ön elemeden hiçbir ilgili tez geçmediyse kullanılır.
+2. **gapAnalysisSummary (3 Boyutlu Konusal Boşluk Analizi Raporu):**
+   - **literatureMapping (Mevcut Konu Literatürünün Haritalandırılması):** Mevcut konu tezlerinin hangi aktörler, hangi dönemler ve hangi temalar üzerinde yoğunlaştığının akademik analizi (Markdown).
+   - **academicGap (Konudaki Olgusal / Dönemsel Boşluk):** Mevcut çalışmaların neleri ele almadığı, hangi dönem veya aktör dinamiklerini açıkta bıraktığının analizi (Markdown).
+   - **originalContribution (Çalışmanın Özgün Konusal Katkısı):** Araştırmacının tezinin bu olgusal/dönemsel boşluğu nasıl dolduracağının analizi (Markdown).
 
-3. **gapAnalysisSummary Akademik Standartları:**
-   - Rapor tamamen elit, akıcı ve profesyonel bir akademik Türkçe ile kaleme alınmalıdır.
-   - \`literatureMapping\`: Zorunlu okuma eşiğini geçen kilit tezleri 4 stratejik rolüne göre (Kısmi Odak, Öncül Çalışma, Yöntem Rehberi, Karşıt Yaklaşım) gruplandırarak mevcut literatürün haritasını çıkarın. Bahsedilen her teze mutlaka standart APA formatında atıf yapın: (Yazar, Yıl).
-   - \`academicGap\`: İncelenen bu çalışmaların neleri göz ardı ettiğini veya neden kullanıcının araştırma problemini açıklamada eksik kaldığını somut olarak ortaya koyun. APA atıflarını eksiksiz kullanın: (Yazar, Yıl).
-   - \`originalContribution\` (Anti-Parroting Kuralı): Kullanıcının matrisindeki cümleleri aynen tekrarlamaktan kaçının. Doğrudan incelenen tezlerin bıraktığı boşluklarla mukayese ederek, kullanıcının konu odağının, kuramsal sentezinin ve metodolojisinin getirdiği özgün akademik yeniliği vurgulayın.
+3. **selectedThesisIds (Kılavuz Konu Tezlerinin Seçimi):**
+   - İncelenen ilgili tezler arasından araştırmacıya doğrudan konusal referans sunacak en stratejik 4 ila 8 adet tezin ID'sini seç.
 
-4. **Sıfır Hallüsinasyon Kuralı (MUTLAK):**
-   - gapAnalysisSummary içinde yalnızca sana sunulan tez listesindeki gerçek yazar, yıl ve eser bilgilerini kullanın. Tüm APA (Yazar, Yıl) atıflarını doğrudan listedeki mevcut kayıtlardan türetin.`,
+# Sınırlamalar
+- Yalnızca araştırmanın somut konusuna, aktörlerine ve ampirik alanına odaklanın. Konu dışı soyut teori veya genel yöntem tartışmalarına girmeyin.
+- Metinlerde akıcı, yetkin ve saygın bir akademik Türkçe kullanın.
+</instructions>
 
-    workflowSteps: `1. Ön elemeden geçen tezlerin stratejik rollerini ve künyelerini incele.
-2. Tezleri 4 stratejik role (Kısmi Odak, Öncül Çalışma, Yöntem Rehberi, Karşıt Yaklaşım) göre tematik olarak grupla.
-3. gapAnalysisSummary (literatureMapping, academicGap, originalContribution) metinlerini APA atıflarıyla oluştur.
-4. globalStatus kuralına göre tek bir değer belirle.`,
-
-    outputFormat:
-      "Çıktı, yalnızca globalStatus ve gapAnalysisSummary alanlarını içeren belirtilen JSON şemasına harfiyen uyan saf JSON nesnesidir. recommendedTheses üretilmez.",
-
-    examples: `<example>
+<examples>
+<example>
 <input>
-=== KULLANICININ TEZ MATRİSİ ===
-1. Araştırma Problemi ve Odağı: 1991-1999 döneminde Kürt siyasal hareketinin taleplerindeki niteliksel dönüşümü manevra savaşından mevzi savaşına geçiş bağlamında PKK ve legal partiler (HEP-DEP-HADEP) üzerinden inceler.
-2. Teorik ve Kavramsal Çerçeve: Antonio Gramsci'nin hegemonya ve mevzi savaşı kuramı.
-3. Metodoloji: Söylem-tarihsel yaklaşım (DHA) ve nitel içerik analizi.
+[Kullanıcı Tez Konusu]:
+Kürt Özgürlük Hareketi'nin 1991-1999 döneminde söylemsel dönüşümü; PKK ve HEP-DEP-HADEP hattının taleplerindeki değişim ve kuluçka evresi.
 
-=== ÖN ELEMEDEN GEÇEN İLGİLİ TEZLER (1 ADET) ===
-[Tez #1] ID: 363401
-Başlık: 1990-2014 Dönemi Kürt Siyasal Hareketinin Söyleminin Dönüşümü
-Yazar: Ali Yılmaz (2015)
-Üniversite/Bölüm: Ankara Üniversitesi - Siyaset Bilimi
-Tür: Doktora | Dil: Türkçe
-Birebir Örtüşme: HAYIR
-Stratejik Rol: SPECIFIC_FOCUS
-Literatürdeki Yeri (Ne Yaptı?): 1990-2014 dönemindeki yasal Kürt parti geleneğini geniş bir dönemsel perspektifle incelemiştir.
-Stratejik Kullanım / Boşluk Doldurma: Bu tezi Giriş ve Literatür Taraması bölümlerinde yasal partilerin tarihsel seyrini temellendirmek için kullanabilir; tezinizin farkını ise 1991-1999 kuluçka evresini silahlı kanatla karşılaştırmalı derinleştirme noktasında vurgulayabilirsiniz.
-Katkı/Odak Alanları: Yasal parti söylemi, 1990'lar dönemselleştirmesi
+[İncelenen İlgili Tezler]:
+[Tez #1] ID: "201" | Başlık: 1990-2014 Dönemi Kürt Siyasal Hareketinin Söyleminin Dönüşümü | Rol: SPECIFIC_FOCUS
+[Tez #2] ID: "302" | Başlık: Türkiye'de Kürt Etno-Bölgesel Hareketi (1959-1984) | Rol: FOUNDATIONAL_WORK
+[Tez #3] ID: "403" | Başlık: PKK'nın Kürtçe ve Kültürel Haklar Politikası (1990'lar) | Rol: SPECIFIC_FOCUS
 </input>
 <output>
 {
   "globalStatus": "NOVEL_GAP_IDENTIFIED",
   "gapAnalysisSummary": {
-    "literatureMapping": "Mevcut literatürde Yılmaz (2015), 1990-2014 arasındaki yasal Kürt partilerinin söylemsel seyrini geniş bir makro çerçevede inceleyerek kurumsal siyasetin evrimini ortaya koymuştur.",
-    "academicGap": "Yılmaz (2015) çalışmasında yasal parti geleneğini geniş bir dönemsel hatta ele almış; ancak 1991-1999 kuluçka döneminde yasal hat ile silahlı kanat arasındaki stratejik etkileşimi ve mevzi savaşı dinamiklerini karşılaştırmalı bir derinlikle işlememiştir.",
-    "originalContribution": "Çalışmanız, mevcut literatürün genel geçtiği 1991-1999 dönemi kuluçka evresini Gramsciyen mevzi savaşı kavram setiyle ele alarak, yasal ve silahlı kanadın söylemsel dönüşümünü çift hatlı ampirik bir karşılaştırmayla aydınlatma noktasında özgün bir akademik katkı sunmaktadır."
-  }
+    "literatureMapping": "Türkiye'de Kürt hareketi üzerine yapılan mevcut tezler; 1980 öncesi tarihsel kökenler (Alış, 2017) ve 1990 sonrası yasal siyasi partilerin genel söylem evrimi (Okudan Dernek, 2014) ekseninde yoğunlaşmaktadır. Literatürde yasal partilerin parlamenter söylemleri ile silahlı kanadın yayın organlarındaki dönüşüm dinamikleri çoğunlukla birbirinden yalıtılmış olarak ele alınmıştır.",
+    "academicGap": "Mevcut konu literatürü, 1999 sonrasındaki söylemsel değişimi ani bir kırılma olarak görme eğilimindedir. 1991-1999 arası kuluçka dönemi; silahlı kanat (PKK) ile yasal parti hattının (HEP-DEP-HADEP) talep içeriklerindeki niteliksel dönüşüm ve bu iki aktör arasındaki söylemsel etkileşim açısından derinlemesine incelenmemiştir.",
+    "originalContribution": "Bu çalışma, 1991-1999 dönemini iki ayrı aktör hattının (silahlı ve yasal) talep tipolojisi üzerinden bağımsız olarak inceleyip karşılaştırarak, 1999 dönüşümünün tarihsel ve söylemsel kuluçka evresini ortaya koymakta ve konu literatüründeki önemli bir dönemsel ve olgusal boşluğu doldurmaktadır."
+  },
+  "selectedThesisIds": ["201", "302", "403"]
 }
 </output>
-</example>`,
+</example>
+</examples>`;
 
-    inputContext: `### KULLANICININ TEZ MATRİSİ:
-1. Araştırma Problemi ve Odağı: ${input.subjectProblem}
-2. Teorik ve Kavramsal Çerçeve: ${input.theoreticalFramework}
-3. Metodoloji: ${input.methodology}
+  const userPrompt = `<context>
+[Kullanıcı Tez Konusu ve Sorunsalı]:
+Araştırma Problemi ve Odak: ${input.subjectProblem}
+Kuramsal Çerçeve: ${input.theoreticalFramework || "Belirtilmemiş"}
+Yöntem ve Veri: ${input.methodology || "Belirtilmemiş"}
 
-### ÖN ELEMEDEN GEÇEN İLGİLİ TEZLER (${evaluatedCount} ADET):
-${thesisListText}`,
+[İncelenen İlgili Konu Tezleri (${evaluatedCount} Adet)]:
+${thesisListText}
+</context>
 
-    taskTrigger:
-      "Yukarıdaki <context> içeriğini <instructions> kurallarına göre analiz ederek Akademik Jüri Değerlendirme Sentezini (globalStatus, gapAnalysisSummary) eksiksiz JSON formatında üret.",
-  });
+<task>
+Yukarıdaki <context> içeriğindeki ${evaluatedCount} adet konu tezini ve kullanıcı konusunu <instructions> kurallarına göre analiz et; jüri durum kararını, 3 boyutlu konusal boşluk analizi raporunu ve kılavuz tez ID listesini içeren JSON çıktısını üret.
+</task>`;
+
+  return { systemInstruction, userPrompt };
 }

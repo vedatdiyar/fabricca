@@ -24,32 +24,34 @@ export interface SiftedThesis extends TezaraThesisDetails {
   relevanceScore?: number;
 }
 
-/** Difference threshold under which two relevance scores are treated as a tie. */
+/** Epsilon threshold for floating point tie-breaking. */
 const SCORE_EPSILON = 1e-4;
 
 /**
- * Ultra-fast multi-aspect direct semantic thesis sifting engine:
- * Extracts 3 complementary empirical focus queries via FLASH_LITE_31 purely from subjectProblem,
- * fetches candidate theses from Qdrant Cloud in parallel, fuses them via RRF, filters valid abstracts
- * and languages, and applies Cohere Rerank v4.0 Pro to sort the top-N candidates.
+ * 3-Dimensional Academic Sifting Engine:
+ * 1. Generates 3 complementary queries (Problem, Theory, Method) via FLASH_LITE_35.
+ * 2. Fetches candidate theses from Qdrant vector index in parallel.
+ * 3. Fuses candidate pools via Reciprocal Rank Fusion (RRF).
+ * 4. Filters valid candidates (abstract length, non-empty metadata).
+ * 5. Applies Cohere Rerank v4.0 Pro to sort and select the top candidates.
  *
  * @param matrixInput - The validated positioning matrix input.
- * @param logger - Optional structured logger for pipeline events.
- * @param options - Optional settings for topN and candidateLimit.
- * @returns The selected top theses sorted deterministically.
+ * @param logger - Optional structured logger.
+ * @param options - Optional limits for topN and candidate retrieval.
+ * @returns Sorted candidate theses list.
  */
 export async function searchAndSiftTheses(
   matrixInput: PositioningMatrixInput,
   logger?: Logger,
   options?: { topN?: number; candidateLimit?: number },
 ): Promise<SiftedThesis[]> {
-  const topN = options?.topN ?? 35;
+  const topN = options?.topN ?? 30;
   const singleQueryLimit = options?.candidateLimit ?? 100;
 
   const queryGenStart = performance.now();
   logger?.info("sifting_query_generation_start", {
     service: "gemini",
-    filePath: "src/features/positioning/sifting.ts",
+    filePath: "src/app/(onboarding)/onboarding/positioning/_services/sifting.ts",
   });
 
   const distilledQuery = await generatePositioningQuery(matrixInput, logger);
@@ -66,7 +68,7 @@ export async function searchAndSiftTheses(
 
   logger?.info("sifting_query_generation_success", {
     service: "gemini",
-    filePath: "src/features/positioning/sifting.ts",
+    filePath: "src/app/(onboarding)/onboarding/positioning/_services/sifting.ts",
     durationMs: performance.now() - queryGenStart,
     data: {
       query1,
@@ -80,11 +82,11 @@ export async function searchAndSiftTheses(
 
   logger?.info("sifting_multi_search_start", {
     service: "tezara",
-    filePath: "src/features/positioning/sifting.ts",
+    filePath: "src/app/(onboarding)/onboarding/positioning/_services/sifting.ts",
     data: { queries: [query1, query2, query3], singleQueryLimit },
   });
 
-  // 1. Multi-Aspect Parallel Qdrant Searches
+  // 1. Parallel Multi-Aspect Vector Searches in Tezara (Qdrant E5)
   const [res1, res2, res3] = await Promise.all([
     searchTezara(query1, logger, {
       limit: singleQueryLimit,
@@ -109,7 +111,7 @@ export async function searchAndSiftTheses(
   if (filteredCandidates.length === 0) {
     logger?.info("sifting_multi_search_success", {
       service: "tezara",
-      filePath: "src/features/positioning/sifting.ts",
+      filePath: "src/app/(onboarding)/onboarding/positioning/_services/sifting.ts",
       durationMs: performance.now() - searchStart,
       data: { candidateCount: 0 },
     });
@@ -118,7 +120,7 @@ export async function searchAndSiftTheses(
 
   logger?.info("sifting_multi_search_success", {
     service: "tezara",
-    filePath: "src/features/positioning/sifting.ts",
+    filePath: "src/app/(onboarding)/onboarding/positioning/_services/sifting.ts",
     durationMs: performance.now() - searchStart,
     data: { candidateCount: filteredCandidates.length },
   });
@@ -131,7 +133,7 @@ export async function searchAndSiftTheses(
 
   logger?.info("sifting_rerank_start", {
     service: "cohere",
-    filePath: "src/features/positioning/sifting.ts",
+    filePath: "src/app/(onboarding)/onboarding/positioning/_services/sifting.ts",
     data: {
       model: COHERE_RERANK_MODEL,
       candidateCount: filteredCandidates.length,
@@ -162,7 +164,7 @@ export async function searchAndSiftTheses(
 
   logger?.info("sifting_rerank_success", {
     service: "cohere",
-    filePath: "src/features/positioning/sifting.ts",
+    filePath: "src/app/(onboarding)/onboarding/positioning/_services/sifting.ts",
     durationMs: performance.now() - rerankStart,
     data: { topCount: selected.length },
   });

@@ -6,12 +6,12 @@ import type { RecommendedThesisItem } from "./validation";
 import type { JuryAnalysisResult } from "./analysis";
 
 /**
- * Persists the positioning report within a transaction and invalidates the step cache.
+ * Persists the positioning report in an atomic database transaction and invalidates cache tags.
  *
- * @param userId - The id of the user the report belongs to.
- * @param input - The validated positioning matrix input.
- * @param analysisResult - The jury analysis result to persist.
- * @returns The saved positioning report record.
+ * @param userId - The ID of the authenticated user.
+ * @param matrixId - The ID of the thesis matrix.
+ * @param analysisResult - The full jury analysis result to persist.
+ * @returns The saved database record.
  */
 export async function savePositioningReportTransaction(
   userId: number,
@@ -20,8 +20,8 @@ export async function savePositioningReportTransaction(
 ) {
   const formattedRecommendedTheses: RecommendedThesisItem[] =
     analysisResult.recommendedTheses.map((t) => ({
-      id: String(t.externalThesisId),
-      externalThesisId: String(t.externalThesisId),
+      id: String(t.externalThesisId || t.id),
+      externalThesisId: String(t.externalThesisId || t.id),
       title: t.title,
       author: t.author,
       year: t.year,
@@ -32,6 +32,8 @@ export async function savePositioningReportTransaction(
       relevanceReason: t.relevanceReason,
       doi: t.doi,
       thesisType: t.thesisType,
+      abstract: t.abstract,
+      tezaraUrl: t.tezaraUrl,
     }));
 
   const savedRecord = await db.transaction(async (tx) => {
@@ -62,7 +64,7 @@ export async function savePositioningReportTransaction(
   try {
     invalidateOnboardingStepCache("positioning");
   } catch {
-    // Gracefully ignore cache tag error when called outside Next.js request context (e.g. CLI/scripts)
+    // Ignore cache tag error if invoked outside Next.js request context
   }
 
   return savedRecord;

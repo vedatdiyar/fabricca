@@ -1,81 +1,69 @@
 import type { TezaraThesisDetails } from "@/lib/types";
 
-const ALLOWED_LANGUAGES = new Set([
-  "tr",
-  "tur",
-  "turkish",
-  "türkçe",
-  "en",
-  "eng",
-  "english",
-  "ingilizce",
-]);
+/** Constant for Reciprocal Rank Fusion smoothing (standard: 60). */
+const RRF_K = 60;
+
+/** Minimum abstract character length for a thesis to be considered evaluable. */
+const MIN_ABSTRACT_LENGTH = 50;
 
 /**
- * Whether a thesis language tag matches Turkish or English; missing tags are kept.
+ * Combines multiple ranked candidate lists from parallel Tezara searches
+ * using Reciprocal Rank Fusion (RRF).
  *
- * @param lang - The thesis language tag to check.
- * @returns True when the language is allowed or the tag is missing.
- */
-export function isAllowedLanguage(lang?: string): boolean {
-  if (!lang || !lang.trim()) {
-    return true;
-  }
-  const normalized = lang
-    .replace(/İ/g, "i")
-    .replace(/I/g, "ı")
-    .toLowerCase()
-    .trim();
-  return ALLOWED_LANGUAGES.has(normalized);
-}
-
-/**
- * Merges multiple ranked candidate lists using Reciprocal Rank Fusion (RRF) to eliminate single-query blind spots.
- *
- * @param rankedLists - Array of thesis candidate lists.
- * @param k - Smoothing constant (default: 60).
- * @returns Deduplicated and fused list of theses.
+ * @param searchLists - Array of thesis result arrays from distinct query aspects.
+ * @param k - Smoothing constant.
+ * @returns Deduplicated array of candidate theses sorted by descending RRF score.
  */
 export function reciprocalRankFusion(
-  rankedLists: Array<TezaraThesisDetails[]>,
-  k = 60,
+  searchLists: TezaraThesisDetails[][],
+  k = RRF_K,
 ): TezaraThesisDetails[] {
-  const scoreMap = new Map<
-    number,
-    { thesis: TezaraThesisDetails; rrfScore: number }
-  >();
+  const scoreMap = new Map<number, { thesis: TezaraThesisDetails; score: number }>();
 
-  for (const list of rankedLists) {
-    list.forEach((thesis, rank) => {
-      const id = thesis.id;
-      const current = scoreMap.get(id) || { thesis, rrfScore: 0 };
-      current.rrfScore += 1 / (k + rank + 1);
-      scoreMap.set(id, current);
-    });
+  for (const list of searchLists) {
+    for (let rank = 0; rank < list.length; rank++) {
+      const thesis = list[rank];
+      if (!thesis || !thesis.id) continue;
+
+      const rrfIncrement = 1 / (k + (rank + 1));
+      const existing = scoreMap.get(thesis.id);
+
+      if (existing) {
+        existing.score += rrfIncrement;
+      } else {
+        scoreMap.set(thesis.id, { thesis, score: rrfIncrement });
+      }
+    }
   }
 
-  return Array.from(scoreMap.values())
-    .sort((a, b) => b.rrfScore - a.rrfScore)
-    .map((item) => item.thesis);
+  const fused = Array.from(scoreMap.values());
+  fused.sort((a, b) => b.score - a.score);
+
+  return fused.map((item) => item.thesis);
 }
 
 /**
- * Filters candidates ensuring sufficient abstract length and supported languages.
+ * Filters out invalid candidate theses that lack meaningful content, titles, or abstracts.
  *
- * @param theses - Candidate theses to filter.
- * @returns Filtered candidate theses.
+ * @param candidates - The array of candidate theses to validate.
+ * @returns Filtered candidates array with valid content.
  */
 export function filterValidCandidates(
-  theses: TezaraThesisDetails[],
+  candidates: TezaraThesisDetails[],
 ): TezaraThesisDetails[] {
-  return theses.filter((thesis) => {
-    const hasSufficientAbstract =
-      thesis.abstract && thesis.abstract.trim().length >= 80;
-    if (!hasSufficientAbstract) return false;
+  const seenIds = new Set<number>();
+  const valid: TezaraThesisDetails[] = [];
 
-    const isValidLang = isAllowedLanguage(thesis.language);
-    if (!isValidLang) return false;
+  for (const thesis of candidates) {
+    if (!thesis.id || seenIds.has(thesis.id)) continue;
+    if (!thesis.title || thesis.title.trim().length === 0) continue;
 
-    return true;
-  });
+    const abstractText = (thesis.abstract || "").trim();
+    if (abstractText.length < MIN_ABSTRACT_LENGTH) continue;
+
+    seenIds.add(thesis.id);
+    valid.push(thesis);
+  }
+
+  return valid;
 }

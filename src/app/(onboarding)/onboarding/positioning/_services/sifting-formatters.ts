@@ -3,45 +3,48 @@ import type { PositioningQuery } from "./query-generator";
 import type { PositioningMatrixInput } from "./validation";
 
 /**
- * Sanitizes query text for vector search.
+ * Sanitizes a search query string by removing quotes, wildcards, and normalizing whitespace.
  *
- * @param rawQuery - The raw query string to sanitize.
- * @returns The cleaned query string.
+ * @param query - The raw query string.
+ * @returns Sanitized query string.
  */
-export function sanitizeSearchQuery(rawQuery: string): string {
-  if (!rawQuery) return "";
-  return rawQuery
-    .replace(/\b(OR|AND|NOT)\b/gi, " ")
-    .replace(/[+*?:^~={}[\]()"\\]/g, " ")
+export function sanitizeSearchQuery(query: string): string {
+  return query
+    .replace(/["'*?[\]{}()]/g, " ")
     .replace(/\s+/g, " ")
     .trim();
 }
 
 /**
- * Formats a thesis's title and abstract into a YAML document for reranking.
+ * Formats the thesis matrix and distilled empirical topic queries into structured YAML
+ * for Cohere Rerank v4.0 Pro, strictly comparing against the substantive subject matter and actors.
  *
- * @param thesis - The thesis to format.
- * @returns The formatted YAML string.
+ * @param distilledQuery - The generated multi-aspect queries.
+ * @param matrix - The original matrix.
+ * @returns YAML formatted string representing the target query.
  */
-export function formatThesisToYaml(thesis: TezaraThesisDetails): string {
-  return [`Title: ${thesis.title}`, `Abstract: ${thesis.abstract}`].join("\n");
+export function formatMatrixToYamlQuery(
+  distilledQuery: PositioningQuery,
+  matrix: PositioningMatrixInput,
+): string {
+  return `arastirma_konusu_ve_sorunsali: ${matrix.subjectProblem}
+temel_olgusal_odak: ${distilledQuery.primaryEmpiricalQuery}
+aktorler_ve_kurumlar: ${distilledQuery.actorsAndSourcesQuery}
+donem_ve_vaka_baglami: ${distilledQuery.periodAndContextQuery}
+konusal_anahtar_kavramlar: ${distilledQuery.substantiveKeywords.join(", ")}`;
 }
 
 /**
- * Formats the multi-aspect positioning query and matrix into a rich YAML query for Cohere cross-encoder reranking.
+ * Formats a candidate thesis into structured YAML for Cohere Rerank v4.0 Pro.
  *
- * @param query - The generated positioning query containing empirical sub-queries and substantive keywords.
- * @param input - The validated positioning matrix input.
- * @returns The formatted YAML query string.
+ * @param thesis - The candidate thesis from Tezara.
+ * @returns YAML formatted string representing the candidate document.
  */
-export function formatMatrixToYamlQuery(
-  query: PositioningQuery,
-  input: PositioningMatrixInput,
-): string {
-  const lines = [
-    `ResearchFocus: ${query.primaryEmpiricalQuery} ${query.actorsAndSourcesQuery}`,
-    `SubstantiveKeywords: ${query.substantiveKeywords.join(", ")}`,
-    `SubjectProblem: ${input.subjectProblem}`,
-  ];
-  return lines.join("\n");
+export function formatThesisToYaml(thesis: TezaraThesisDetails): string {
+  return `baslik: ${thesis.title}
+yazar: ${thesis.author || "Bilinmiyor"} (${thesis.year || "N/A"})
+tur: ${thesis.thesisType || "N/A"}
+universite_bolum: ${thesis.university || "N/A"} - ${thesis.department || "N/A"}
+dil: ${thesis.language || "Türkçe"}
+ozet: ${thesis.abstract || ""}`;
 }

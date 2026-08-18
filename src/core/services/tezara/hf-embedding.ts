@@ -5,7 +5,6 @@ import {
   withRetry,
 } from "@/core/services/ai/llm-retry";
 
-const HF_API_KEY = process.env.HUGGINGFACE_API_KEY ?? "";
 const HF_EMBEDDING_ENDPOINT =
   "https://router.huggingface.co/hf-inference/models/intfloat/multilingual-e5-base/pipeline/feature-extraction";
 
@@ -25,7 +24,9 @@ export async function getE5QueryEmbedding(
   logger?: Logger,
   silent = false,
 ): Promise<number[]> {
-  if (!HF_API_KEY) {
+  const hfApiKey = process.env.HUGGINGFACE_API_KEY ?? "";
+
+  if (!hfApiKey) {
     throw new Error("HUGGINGFACE_API_KEY environment variable is not defined.");
   }
 
@@ -47,7 +48,7 @@ export async function getE5QueryEmbedding(
             method: "POST",
             headers: {
               "Content-Type": "application/json",
-              Authorization: `Bearer ${HF_API_KEY}`,
+              Authorization: `Bearer ${hfApiKey}`,
             },
             body: JSON.stringify({ inputs: [inputWithPrefix] }),
             signal: controller.signal,

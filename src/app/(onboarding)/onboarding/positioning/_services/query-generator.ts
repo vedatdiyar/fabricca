@@ -9,7 +9,7 @@ import { buildQueryGenerationPromptPayload } from "../_prompts/query-generator.p
 import type { Logger } from "@/lib/logger";
 import type { PositioningMatrixInput } from "./validation";
 
-/** Zod schema for generated dense multi-aspect empirical semantic search queries. */
+/** Zod schema for generated dense multi-aspect semantic search queries. */
 export const positioningQuerySchema = z.object({
   primaryEmpiricalQuery: z
     .string()
@@ -19,23 +19,23 @@ export const positioningQuerySchema = z.object({
   actorsAndSourcesQuery: z
     .string()
     .describe(
-      "Araştırmanın incelediği somut aktörleri, kurumları, partileri veya birincil yayın/veri kaynaklarını hedefleyen semantik sorgu.",
+      "Araştırmanın dayandığı kuramsal modelleri, kavramsal çerçeveyi ve temel analitik eksenleri hedefleyen 20-25 kelimelik semantik sorgu.",
     ),
   periodAndContextQuery: z
     .string()
     .describe(
-      "Araştırmanın odaklandığı tarihsel dönemi, dönemsel kırılmaları veya somut coğrafi/mekânsal bağlamı hedefleyen semantik sorgu.",
+      "Araştırmanın yöntemini, vaka/örneklem yapısını, dönemini veya ampirik bağlamını hedefleyen 20-25 kelimelik semantik sorgu.",
     ),
   substantiveKeywords: z
     .array(z.string())
     .describe(
-      "Literatür eşleştirmesinde ve yeniden sıralamada kullanılacak 4-6 adet spesifik akademik olgu, aktör ve dönem kavramı.",
+      "Literatür eşleştirmesinde ve yeniden sıralamada kullanılacak 4-6 adet spesifik akademik olgu, aktör, kuram ve yöntem kavramı.",
     ),
 });
 
 export type PositioningQuery = z.infer<typeof positioningQuerySchema>;
 
-/** Vanilla JSON schema for Gemini structured output. */
+/** JSON schema matching positioningQuerySchema for Gemini structured outputs. */
 export const positioningQueryJsonSchema: JsonSchema = {
   type: "object",
   properties: {
@@ -47,18 +47,18 @@ export const positioningQueryJsonSchema: JsonSchema = {
     actorsAndSourcesQuery: {
       type: "string",
       description:
-        "Araştırmanın incelediği somut aktörleri, kurumları, partileri veya birincil yayın/veri kaynaklarını hedefleyen semantik sorgu.",
+        "Araştırmanın dayandığı kuramsal modelleri, kavramsal çerçeveyi ve temel analitik eksenleri hedefleyen 20-25 kelimelik semantik sorgu.",
     },
     periodAndContextQuery: {
       type: "string",
       description:
-        "Araştırmanın odaklandığı tarihsel dönemi, dönemsel kırılmaları veya somut coğrafi/mekânsal bağlamı hedefleyen semantik sorgu.",
+        "Araştırmanın yöntemini, vaka/örneklem yapısını, dönemini veya ampirik bağlamını hedefleyen 20-25 kelimelik semantik sorgu.",
     },
     substantiveKeywords: {
       type: "array",
       items: { type: "string" },
       description:
-        "Literatür eşleştirmesinde ve yeniden sıralamada kullanılacak 4-6 adet spesifik akademik olgu, aktör ve dönem kavramı.",
+        "Literatür eşleştirmesinde ve yeniden sıralamada kullanılacak 4-6 adet spesifik akademik olgu, aktör, kuram ve yöntem kavramı.",
     },
   },
   required: [
@@ -71,18 +71,18 @@ export const positioningQueryJsonSchema: JsonSchema = {
 };
 
 /**
- * Generates dense, multi-aspect empirical semantic search queries purely from the subjectProblem
- * using FLASH_LITE_35 and LOW thinking for fast, deterministic semantic extraction.
+ * Generates 3 complementary empirical, theoretical, and methodological semantic search queries
+ * from the thesis matrix using FLASH_LITE_35 with LOW thinking for high speed and determinism.
  *
- * @param matrix - The positioning matrix containing subjectProblem.
+ * @param matrix - The positioning matrix containing subjectProblem, theoreticalFramework, methodology.
  * @param logger - Optional logger for observability.
  * @returns The structured multi-aspect positioning query output.
  */
 export async function generatePositioningQuery(
-  matrix: PositioningMatrixInput | { subjectProblem: string },
+  matrix: PositioningMatrixInput | { subjectProblem: string; theoreticalFramework?: string; methodology?: string },
   logger?: Logger,
 ): Promise<PositioningQuery> {
-  const payload = buildQueryGenerationPromptPayload(matrix.subjectProblem);
+  const payload = buildQueryGenerationPromptPayload(matrix);
 
   try {
     const result = await generateGeminiStructuredContent<PositioningQuery>(
@@ -104,7 +104,6 @@ export async function generatePositioningQuery(
     return result;
   } catch (error) {
     logger?.warn("positioning_query_generation_fallback", { error });
-    // Safe fallback if LLM query generation fails
     const fallbackSlice = matrix.subjectProblem.slice(0, 250);
     return {
       primaryEmpiricalQuery: fallbackSlice,

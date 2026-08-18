@@ -7,23 +7,25 @@ import type { Positioning } from "@/core/db/schema";
 import { getSession, SESSION_ERROR_MSG } from "@/lib/session";
 import { Logger } from "@/lib/logger";
 import type { ThesisMatrix } from "@/lib/types";
-import { positioningMatrixSchema } from "@/app/(onboarding)/onboarding/positioning/_services/validation";
+import { positioningMatrixSchema } from "./_services/validation";
 import {
   searchAndSiftTheses,
   type SiftedThesis,
-} from "@/app/(onboarding)/onboarding/positioning/_services/sifting";
-import { evaluateThesesInParallel } from "@/app/(onboarding)/onboarding/positioning/_services/per-thesis-evaluation";
-import { analyzePositioningJury } from "@/app/(onboarding)/onboarding/positioning/_services/analysis";
-import { savePositioningReportTransaction } from "@/app/(onboarding)/onboarding/positioning/_services/decision-engine";
+} from "./_services/sifting";
+import { evaluateThesesInParallel } from "./_services/per-thesis-evaluation";
+import {
+  analyzePositioningJury,
+  type JuryAnalysisResult,
+} from "./_services/analysis";
+import { savePositioningReportTransaction } from "./_services/decision-engine";
 import { sanitizeAcademicDataBulk } from "@/core/services/academic";
-import type { JuryAnalysisResult } from "@/app/(onboarding)/onboarding/positioning/_services/analysis";
 
 /**
- * Runs query generation, Tezara search, and Cohere rerank; jury analysis and DB writes run separately.
+ * 1. Kademe: Çok boyutlu sorgu üretir, Tezara (Qdrant) taraması ve Cohere Rerank v4.0 Pro çalıştırır.
  *
- * @param matrixInput - The thesis matrix used to derive the search queries.
- * @param flowId - The log flow identifier for structured logging.
- * @returns The sifted thesis list on success or an error message on failure.
+ * @param matrixInput - Kullanıcının sunduğu tez matrisi.
+ * @param flowId - Gözlemlenebilirlik log akış kimliği.
+ * @returns Başarılıysa filtrelenmiş tez listesi, aksi halde hata mesajı.
  */
 export async function runPositioningSearchAction(
   matrixInput: ThesisMatrix,
@@ -60,19 +62,19 @@ export async function runPositioningSearchAction(
     });
     return {
       error:
-        "Akademik arama sorguları üretilirken bir hata oluştu. Lütfen tekrar deneyin.",
+        "Akademik arama sorguları üretilirken veya literatür taranırken bir hata oluştu. Lütfen tekrar deneyin.",
     };
   }
 }
 
 /**
- * Runs the per-thesis relevance/originality evaluations in parallel and then the
- * final synthesis jury LLM over the relevant evaluated theses.
+ * 2. ve 3. Kademe: Aday tezlerin paralel derin değerlendirmesini (FLASH_LITE_35)
+ * ve ardından nihai jüri sentez analizini (FLASH_36) yürütür.
  *
- * @param matrixInput - The thesis matrix used for the jury evaluation.
- * @param theses - The sifted thesis candidates to analyze.
- * @param flowId - The log flow identifier for structured logging.
- * @returns The jury analysis result on success or an error message on failure.
+ * @param matrixInput - Kullanıcının tez matrisi.
+ * @param theses - Süzülmüş aday tezler.
+ * @param flowId - Log akış kimliği.
+ * @returns Başarılıysa jüri analiz sonucu, aksi halde hata mesajı.
  */
 export async function runPositioningJuryAction(
   matrixInput: ThesisMatrix,
@@ -103,6 +105,7 @@ export async function runPositioningJuryAction(
     const session = await getSession();
     if (!session) return { error: SESSION_ERROR_MSG };
 
+    // 2. Kademe: Paralel derin tez değerlendirmesi
     const evaluatedTheses = await evaluateThesesInParallel(
       validated,
       theses,
@@ -114,30 +117,15 @@ export async function runPositioningJuryAction(
     );
 
     log.info("positioning_jury_analysis_start");
+
+    // 3. Kademe: FLASH_36 Jüri sentezi
     const juryResult = await analyzePositioningJury(
       validated,
       relevantTheses,
       log,
     );
-    log.info("positioning_jury_analysis_success");
 
-    const thesisTypeById = new Map<string, string>(
-      relevantTheses.map((ev) => [String(ev.thesis.id), ev.thesis.thesisType]),
-    );
-    const evalByThesisId = new Map(
-      relevantTheses.map((ev) => [String(ev.thesis.id), ev.evaluation]),
-    );
-    juryResult.recommendedTheses = juryResult.recommendedTheses.map((rec) => {
-      const ev = evalByThesisId.get(String(rec.externalThesisId));
-      return {
-        ...rec,
-        strategicRole:
-          rec.strategicRole || ev?.strategicRole || "SPECIFIC_FOCUS",
-        literaturePosition: rec.literaturePosition || ev?.literaturePosition,
-        thesisType:
-          thesisTypeById.get(String(rec.externalThesisId)) || undefined,
-      };
-    });
+    log.info("positioning_jury_analysis_success");
 
     return { success: true, juryResult };
   } catch (error) {
@@ -146,18 +134,18 @@ export async function runPositioningJuryAction(
     });
     return {
       error:
-        "Akademik jüri analizi sırasında bir hata oluştu. Lütfen tekrar deneyin.",
+        "Akademik jüri analizi sentezlenirken bir hata oluştu. Lütfen tekrar deneyin.",
     };
   }
 }
 
 /**
- * Sanitizes the jury result and persists the positioning report to the database.
+ * Cerebras API ile başlık ve yazar verilerini sanitize eder ve raporu veritabanına atomik olarak kaydeder.
  *
- * @param matrixInput - The thesis matrix used for the positioning report.
- * @param juryResult - The jury analysis result to persist.
- * @param flowId - The log flow identifier for structured logging.
- * @returns A success marker or an error message on failure.
+ * @param matrixInput - Tez matrisi.
+ * @param juryResult - Jüri analiz sonucu.
+ * @param flowId - Log akış kimliği.
+ * @returns Başarı durumu veya hata mesajı.
  */
 export async function persistPositioningReportAction(
   matrixInput: ThesisMatrix,
@@ -180,6 +168,7 @@ export async function persistPositioningReportAction(
       return { error: "Form doğrulaması başarısız." };
     }
 
+    // Cerebras Sanitization for titles and authors
     if (juryResult.recommendedTheses.length > 0) {
       const itemsToSanitize = juryResult.recommendedTheses.map((t) => ({
         title: t.title || "",
@@ -225,10 +214,10 @@ export async function persistPositioningReportAction(
 }
 
 /**
- * Emits the final pipeline total-duration TOTAL log line.
+ * Toplam pipeline süresini kaydeder.
  *
- * @param flowId - The pipeline flow identifier.
- * @param durationMs - Total pipeline duration in milliseconds.
+ * @param flowId - Akış kimliği.
+ * @param durationMs - Milisaniye cinsinden toplam süre.
  */
 export async function logPositioningPipelineSuccessAction(
   flowId: string,
@@ -241,9 +230,9 @@ export async function logPositioningPipelineSuccessAction(
 }
 
 /**
- * Returns the user's positioning record linked to their thesis matrix.
+ * Kullanıcının mevcut tez matrisine bağlı konumlandırma kaydını döner.
  *
- * @returns The matching positioning record or null.
+ * @returns Konumlandırma kaydı veya null.
  */
 export async function getPositioningAction(): Promise<Positioning | null> {
   const session = await getSession();

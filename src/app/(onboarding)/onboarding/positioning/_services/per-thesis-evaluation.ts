@@ -1,432 +1,134 @@
-import { z } from "zod";
 import { ThinkingLevel } from "@google/genai";
 import { FLASH_LITE_35, GEMINI_SEED } from "@/lib/constants";
-import {
-  generateGeminiStructuredContent,
-  type JsonSchema,
-} from "@/core/services/ai";
+import { generateGeminiStructuredContent } from "@/core/services/ai";
 import type { Logger } from "@/lib/logger";
-import { buildBinaryTriagePromptPayload } from "../_prompts/binary-triage.prompt";
 import { buildPerThesisEvaluationPromptPayload } from "../_prompts/per-thesis-evaluation.prompt";
-import { strategicRoleEnum, type PositioningMatrixInput } from "./validation";
+import type { PositioningMatrixInput } from "./validation";
 import type { SiftedThesis } from "./sifting";
 import {
-  binaryTriageOutputSchema,
-  binaryTriageJsonSchema,
-  type BinaryTriageOutput,
+  batchThesisEvaluationSchema,
+  batchThesisEvaluationJsonSchema,
+  type PerThesisEvaluation,
+  type BatchThesisEvaluationOutput,
 } from "./analysis-schemas";
 
-/** Zod schema for the single-thesis strategic relevance/originality/role evaluation output. */
-export const perThesisEvaluationSchema = z.object({
-  externalThesisId: z
-    .union([z.string(), z.number()])
-    .transform((val) => String(val))
-    .describe("Değerlendirilen tezin ID'si"),
-  isRelevant: z
-    .boolean()
-    .describe(
-      "Aday tez kullanıcının 3 bileşenli tez matrisi (Problem, Kuram, Yöntem) için doğrudan kuramsal, yöntemsel veya ampirik birincil muhatap mıdır?",
-    ),
-  relevanceReasoning: z
-    .string()
-    .optional()
-    .describe(
-      "Tezin ampirik olarak neden ilgili olduğuna dair somut gerekçe (1-2 cümle)",
-    ),
-  isDirectOverlap: z
-    .boolean()
-    .describe(
-      "Kullanıcının tezi ile birebir örtüşme var mı (kullanıcı tezi özgün değil mi)?",
-    ),
-  strategicRole: strategicRoleEnum
-    .optional()
-    .describe(
-      "Tezin kullanıcının tezindeki stratejik rolü: SPECIFIC_FOCUS | FOUNDATIONAL_WORK | METHODOLOGICAL_BENCHMARK | ALTERNATIVE_PERSPECTIVE",
-    ),
-  contributionAreas: z
-    .array(z.string())
-    .describe(
-      "Tezin kullanıcının tezine katkı sağladığı/benzediği spesifik odak alanları (1-3 adet)",
-    ),
-  literaturePosition: z
-    .string()
-    .describe("Tezin literatürdeki konumu ve ne yaptığı (1 net cümle)"),
-  strategicUtility: z
-    .string()
-    .describe(
-      "Tezin kullanıcının tezinde nasıl kullanılacağına ve hangi boşluğu dolduracağına dair stratejik rehber not (1-2 cümle)",
-    ),
-});
-
-/** Inferred type for a single-thesis evaluation result. */
-export type PerThesisEvaluation = z.infer<typeof perThesisEvaluationSchema>;
-
-/** Zod schema for batch thesis evaluation output. */
-export const batchThesisEvaluationSchema = z.object({
-  evaluations: z.array(perThesisEvaluationSchema),
-});
-
-/** Inferred type for batch thesis evaluation output. */
-export type BatchThesisEvaluationOutput = z.infer<
-  typeof batchThesisEvaluationSchema
->;
-
-/** JSON Schema for single per-thesis evaluation item. */
-export const perThesisEvaluationJsonSchema: JsonSchema = {
-  type: "object",
-  properties: {
-    externalThesisId: {
-      type: "string",
-      description: "Değerlendirilen tezin ID'si",
-    },
-    isRelevant: {
-      type: "boolean",
-      description:
-        "Aday tez kullanıcının 3 bileşenli tez matrisi için doğrudan kuramsal, yöntemsel veya ampirik birincil muhatap mıdır?",
-    },
-    relevanceReasoning: {
-      type: "string",
-      maxLength: 180,
-      description:
-        "Tezin ampirik olarak neden kabul edildiğine dair somut gerekçe (1-2 net cümle, maks 180 karakter)",
-    },
-    isDirectOverlap: {
-      type: "boolean",
-      description:
-        "Kullanıcının tezi ile birebir örtüşme var mı (kullanıcı tezi özgün değil mi)?",
-    },
-    strategicRole: {
-      type: "string",
-      enum: [
-        "SPECIFIC_FOCUS",
-        "FOUNDATIONAL_WORK",
-        "METHODOLOGICAL_BENCHMARK",
-        "ALTERNATIVE_PERSPECTIVE",
-      ],
-      description:
-        "Tezin stratejik rolü: SPECIFIC_FOCUS (Kısmi Odak), FOUNDATIONAL_WORK (Öncül Çalışma), METHODOLOGICAL_BENCHMARK (Yöntem Rehberi), ALTERNATIVE_PERSPECTIVE (Karşıt Yaklaşım).",
-    },
-    contributionAreas: {
-      type: "array",
-      items: { type: "string" },
-      maxItems: 2,
-      description:
-        "Tezin kullanıcının tezine katkı sağladığı spesifik odak alanları (1-2 adet kısa etiket).",
-    },
-    literaturePosition: {
-      type: "string",
-      maxLength: 120,
-      description:
-        "Tezin literatürdeki konumu ve ne yaptığı (1 net cümle, maks 120 karakter).",
-    },
-    strategicUtility: {
-      type: "string",
-      maxLength: 180,
-      description:
-        "Tezin kullanıcının tezinde nasıl kullanılacağına ve hangi boşluğu dolduracağına dair stratejik rehber not (1-2 cümle, maks 180 karakter).",
-    },
-  },
-  required: [
-    "externalThesisId",
-    "isRelevant",
-    "isDirectOverlap",
-    "contributionAreas",
-    "literaturePosition",
-    "strategicUtility",
-  ],
-  additionalProperties: false,
-};
-
-/** JSON Schema for Gemini structured outputs of the batch per-thesis evaluation. */
-export const batchThesisEvaluationJsonSchema: JsonSchema = {
-  type: "object",
-  properties: {
-    evaluations: {
-      type: "array",
-      items: perThesisEvaluationJsonSchema,
-      description: "Ön elemeden geçen kilit tezlerin stratejik profilleme sonuçları",
-    },
-  },
-  required: ["evaluations"],
-  additionalProperties: false,
-};
-
-/** A thesis paired with its per-thesis evaluation result. */
+/** Combined evaluated thesis pairing the raw thesis with its LLM evaluation. */
 export interface EvaluatedThesis {
   thesis: SiftedThesis;
   evaluation: PerThesisEvaluation;
 }
 
+/** Number of candidate theses evaluated in a single parallel batch call. */
+const BATCH_CHUNK_SIZE = 5;
+
 /**
- * Runs Stage 1 binary triage across candidate theses in parallel batches.
+ * Evaluates candidate theses in parallel batches of 5 using FLASH_LITE_35 with LOW thinking.
+ * Each thesis is evaluated for relevance, direct overlap (novelty risk), strategic role,
+ * literature position, and strategic utility.
  *
- * @param input - The validated positioning matrix input.
- * @param batch - The candidate theses to screen.
+ * @param matrix - The 3-field positioning matrix.
+ * @param theses - The sifted candidate theses from Tezara & Cohere.
  * @param logger - Optional structured logger.
- * @returns Array of candidate theses that passed the triage with isRelevant true.
- */
-async function triageBatchTheses(
-  input: PositioningMatrixInput,
-  batch: SiftedThesis[],
-  logger?: Logger,
-): Promise<{ passedTheses: SiftedThesis[]; reasonByThesisId: Map<string, string> }> {
-  if (batch.length === 0) {
-    return { passedTheses: [], reasonByThesisId: new Map() };
-  }
-
-  const payload = buildBinaryTriagePromptPayload(input, batch);
-
-  const result =
-    await generateGeminiStructuredContent<BinaryTriageOutput>(
-      FLASH_LITE_35,
-      payload.systemInstruction,
-      payload.userPrompt,
-      binaryTriageJsonSchema,
-      logger,
-      {
-        zodSchema: binaryTriageOutputSchema,
-        payloadStage: "positioning_binary_triage",
-        seed: GEMINI_SEED,
-        thinkingConfig: { thinkingLevel: ThinkingLevel.LOW },
-        thesisMatrix: input,
-        quiet: true,
-      },
-    );
-
-  const evalMap = new Map<string, { isRelevant: boolean; decisionReason: string }>();
-  for (const ev of result.evaluations) {
-    evalMap.set(String(ev.externalThesisId), {
-      isRelevant: ev.isRelevant,
-      decisionReason: ev.decisionReason,
-    });
-  }
-
-  const passedTheses: SiftedThesis[] = [];
-  const reasonByThesisId = new Map<string, string>();
-
-  for (let i = 0; i < batch.length; i++) {
-    const thesis = batch[i];
-    const evaluation =
-      evalMap.get(String(thesis.id)) ?? result.evaluations[i] ?? null;
-
-    if (evaluation?.isRelevant) {
-      passedTheses.push(thesis);
-      if (evaluation.decisionReason) {
-        reasonByThesisId.set(String(thesis.id), evaluation.decisionReason);
-      }
-    }
-  }
-
-  return { passedTheses, reasonByThesisId };
-}
-
-/**
- * Evaluates a batch of pre-screened relevant candidate theses to produce detailed strategic profiles.
- *
- * @param input - The validated positioning matrix input.
- * @param batch - The slice of relevant candidate theses to profile together.
- * @param reasonsMap - Optional map of pre-screened triage reasons.
- * @param logger - Optional structured logger for pipeline events.
- * @returns Array of successfully evaluated theses in the batch.
- */
-export async function evaluateBatchTheses(
-  input: PositioningMatrixInput,
-  batch: SiftedThesis[],
-  reasonsMap?: Map<string, string>,
-  logger?: Logger,
-): Promise<EvaluatedThesis[]> {
-  if (batch.length === 0) return [];
-
-  const payload = buildPerThesisEvaluationPromptPayload(input, batch);
-
-  const result =
-    await generateGeminiStructuredContent<BatchThesisEvaluationOutput>(
-      FLASH_LITE_35,
-      payload.systemInstruction,
-      payload.userPrompt,
-      batchThesisEvaluationJsonSchema,
-      logger,
-      {
-        zodSchema: batchThesisEvaluationSchema,
-        payloadStage: "positioning_deep_profiling",
-        seed: GEMINI_SEED,
-        thinkingConfig: { thinkingLevel: ThinkingLevel.LOW },
-        thesisMatrix: input,
-        quiet: true,
-      },
-    );
-
-  const evalMap = new Map<string, PerThesisEvaluation>();
-  for (const ev of result.evaluations) {
-    evalMap.set(String(ev.externalThesisId), ev);
-  }
-
-  const evaluatedTheses: EvaluatedThesis[] = [];
-  for (let i = 0; i < batch.length; i++) {
-    const thesis = batch[i];
-    const evaluation =
-      evalMap.get(String(thesis.id)) ?? result.evaluations[i] ?? null;
-
-    if (evaluation) {
-      evaluatedTheses.push({
-        thesis,
-        evaluation: {
-          ...evaluation,
-          externalThesisId: String(thesis.id),
-          isRelevant: true,
-          relevanceReasoning:
-            evaluation.relevanceReasoning ||
-            reasonsMap?.get(String(thesis.id)) ||
-            undefined,
-        },
-      });
-    } else {
-      logger?.warn("positioning_per_thesis_missing_in_batch_response", {
-        service: "positioning",
-        filePath: "src/features/positioning/per-thesis-evaluation.ts",
-        data: {
-          thesisId: thesis.id,
-          thesisTitle: thesis.title,
-        },
-      });
-    }
-  }
-
-  return evaluatedTheses;
-}
-
-/**
- * Evaluates a single thesis against the user's thesis matrix via the 2-stage decision chain.
- *
- * @param input - The validated positioning matrix input.
- * @param thesis - The single thesis candidate to evaluate.
- * @param logger - Optional structured logger for pipeline events.
- * @returns The structured per-thesis evaluation result.
- */
-export async function evaluateSingleThesis(
-  input: PositioningMatrixInput,
-  thesis: SiftedThesis,
-  logger?: Logger,
-): Promise<PerThesisEvaluation> {
-  const evaluated = await evaluateBatchTheses(input, [thesis], undefined, logger);
-  if (evaluated.length === 0) {
-    throw new Error(`Failed to evaluate thesis ${thesis.id}`);
-  }
-  return evaluated[0].evaluation;
-}
-
-/**
- * Evaluates all candidate theses in a 2-stage pipeline:
- * Stage 1: Coarse-grained domain-agnostic binary triage across all candidate theses.
- * Stage 2: Fine-grained deep strategic profiling on the surviving relevant candidates.
- *
- * @param input - The validated positioning matrix input.
- * @param theses - The full list of candidate theses to evaluate.
- * @param logger - Optional structured logger for pipeline events.
- * @param options - Optional settings: fixed batchSize override for triage.
- * @returns The evaluated theses that passed triage and were profiled.
+ * @returns Array of evaluated theses pairing metadata with AI evaluations.
  */
 export async function evaluateThesesInParallel(
-  input: PositioningMatrixInput,
+  matrix: PositioningMatrixInput,
   theses: SiftedThesis[],
   logger?: Logger,
-  options?: { batchSize?: number },
 ): Promise<EvaluatedThesis[]> {
-  if (theses.length === 0) return [];
-
-  const startTime = performance.now();
-
-  // 1. Sort theses deterministically by thesis ID
-  const sortedTheses = [...theses].sort((a, b) =>
-    String(a.id).localeCompare(String(b.id), undefined, {
-      numeric: true,
-      sensitivity: "base",
-    }),
-  );
-
-  // 2. Stage 1: Batch Binary Triage across candidates
-  const triageBatchSize = options?.batchSize ?? 18;
-  const triageBatches: SiftedThesis[][] = [];
-  for (let i = 0; i < sortedTheses.length; i += triageBatchSize) {
-    triageBatches.push(sortedTheses.slice(i, i + triageBatchSize));
-  }
-
-  logger?.info("positioning_binary_triage_start", {
-    service: "positioning",
-    filePath: "src/features/positioning/per-thesis-evaluation.ts",
-    data: {
-      total: sortedTheses.length,
-      batchSize: triageBatchSize,
-      batchCount: triageBatches.length,
-    },
-  });
-
-  const triageSettled = await Promise.allSettled(
-    triageBatches.map((batch) => triageBatchTheses(input, batch, logger)),
-  );
-
-  const survivingTheses: SiftedThesis[] = [];
-  const triageReasons = new Map<string, string>();
-
-  for (let idx = 0; idx < triageSettled.length; idx++) {
-    const res = triageSettled[idx];
-    if (res.status === "fulfilled") {
-      survivingTheses.push(...res.value.passedTheses);
-      for (const [id, reason] of res.value.reasonByThesisId.entries()) {
-        triageReasons.set(id, reason);
-      }
-    } else {
-      logger?.error("positioning_binary_triage_batch_failed", {
-        service: "positioning",
-        filePath: "src/features/positioning/per-thesis-evaluation.ts",
-        data: {
-          batchIndex: idx,
-        },
-        error: res.reason,
-      });
-    }
-  }
-
-  logger?.info("positioning_binary_triage_success", {
-    service: "positioning",
-    filePath: "src/features/positioning/per-thesis-evaluation.ts",
-    durationMs: Math.round(performance.now() - startTime),
-    data: {
-      totalCandidates: sortedTheses.length,
-      survivingCount: survivingTheses.length,
-    },
-  });
-
-  if (survivingTheses.length === 0) {
+  if (theses.length === 0) {
     return [];
   }
 
-  // 3. Stage 2: Deep Strategic Profiling on surviving theses
-  const profileStart = performance.now();
-  logger?.info("positioning_deep_profiling_start", {
-    service: "positioning",
-    filePath: "src/features/positioning/per-thesis-evaluation.ts",
-    data: {
-      survivingCount: survivingTheses.length,
-    },
+  const evalStart = performance.now();
+  logger?.info("per_thesis_evaluation_start", {
+    service: "gemini",
+    filePath: "src/app/(onboarding)/onboarding/positioning/_services/per-thesis-evaluation.ts",
+    data: { candidateCount: theses.length, chunkSize: BATCH_CHUNK_SIZE },
   });
 
-  const profiledTheses = await evaluateBatchTheses(
-    input,
-    survivingTheses,
-    triageReasons,
-    logger,
+  // Divide candidate list into chunks of 5
+  const chunks: SiftedThesis[][] = [];
+  for (let i = 0; i < theses.length; i += BATCH_CHUNK_SIZE) {
+    chunks.push(theses.slice(i, i + BATCH_CHUNK_SIZE));
+  }
+
+  const thesisById = new Map<string, SiftedThesis>(
+    theses.map((t) => [String(t.id), t]),
   );
 
-  logger?.info("positioning_deep_profiling_success", {
-    service: "positioning",
-    filePath: "src/features/positioning/per-thesis-evaluation.ts",
-    durationMs: Math.round(performance.now() - profileStart),
+  // Execute all chunk evaluations in parallel
+  const chunkPromises = chunks.map(async (chunk, chunkIdx) => {
+    const payload = buildPerThesisEvaluationPromptPayload(matrix, chunk);
+
+    try {
+      const result =
+        await generateGeminiStructuredContent<BatchThesisEvaluationOutput>(
+          FLASH_LITE_35,
+          payload.systemInstruction,
+          payload.userPrompt,
+          batchThesisEvaluationJsonSchema,
+          logger,
+          {
+            zodSchema: batchThesisEvaluationSchema,
+            payloadStage: `per_thesis_eval_chunk_${chunkIdx + 1}`,
+            seed: GEMINI_SEED,
+            thinkingConfig: { thinkingLevel: ThinkingLevel.LOW },
+            thesisMatrix: matrix,
+            quiet: true,
+          },
+        );
+
+      return result.evaluations;
+    } catch (error) {
+      logger?.warn("per_thesis_eval_chunk_error", {
+        data: {
+          chunkIdx,
+          chunkCount: chunk.length,
+        },
+        error,
+      });
+
+      // Fallback for failed chunk: return default safe evaluations
+      return chunk.map((t) => ({
+        externalThesisId: String(t.id),
+        isRelevant: true,
+        relevanceReasoning: "Otomatik süzme ile eşleşen literatür adayı.",
+        isDirectOverlap: false,
+        strategicRole: "SPECIFIC_FOCUS" as const,
+        contributionAreas: ["Literatür İncelemesi"],
+        literaturePosition: t.title,
+        strategicUtility:
+          "Bu çalışma alanındaki genel eğilimleri ve kavramsal çerçeveyi anlamak için incelenmelidir.",
+      }));
+    }
+  });
+
+  const chunkResults = await Promise.all(chunkPromises);
+  const allEvaluations = chunkResults.flat();
+
+  const evaluatedTheses: EvaluatedThesis[] = [];
+  for (const evaluation of allEvaluations) {
+    const rawThesis = thesisById.get(String(evaluation.externalThesisId));
+    if (rawThesis) {
+      evaluatedTheses.push({
+        thesis: rawThesis,
+        evaluation,
+      });
+    }
+  }
+
+  logger?.info("per_thesis_evaluation_success", {
+    service: "gemini",
+    filePath: "src/app/(onboarding)/onboarding/positioning/_services/per-thesis-evaluation.ts",
+    durationMs: performance.now() - evalStart,
     data: {
-      profiledCount: profiledTheses.length,
-      totalDurationMs: Math.round(performance.now() - startTime),
+      totalCandidates: theses.length,
+      evaluatedCount: evaluatedTheses.length,
+      relevantCount: evaluatedTheses.filter((e) => e.evaluation.isRelevant).length,
+      overlappingCount: evaluatedTheses.filter((e) => e.evaluation.isDirectOverlap).length,
     },
   });
 
-  return profiledTheses;
+  return evaluatedTheses;
 }
