@@ -15,21 +15,21 @@ export type ThesisBoxType =
   | "PRIMARY_MATERIAL"
   | "RELATED_THESES";
 
-/** Canonical display ordering: SUBJECT_PROBLEM → THEORETICAL_FRAMEWORK → METHODOLOGY → PRIMARY_MATERIAL. */
+/** Canonical display ordering: SUBJECT_PROBLEM → THEORETICAL_FRAMEWORK → METHODOLOGY → PRIMARY_MATERIAL → RELATED_THESES. */
 export const BOX_ORDER_WEIGHT: Record<ThesisBoxType, number> = {
   SUBJECT_PROBLEM: 1,
   THEORETICAL_FRAMEWORK: 2,
   METHODOLOGY: 3,
-  RELATED_THESES: 4,
-  PRIMARY_MATERIAL: 5,
+  PRIMARY_MATERIAL: 4,
+  RELATED_THESES: 5,
 };
 
 /** Canonical full (long) Turkish labels. */
 export const BOX_TYPE_LABELS: Record<ThesisBoxType, string> = {
   SUBJECT_PROBLEM: "Araştırma Problemi",
   THEORETICAL_FRAMEWORK: "Teorik Çerçeve",
-  PRIMARY_MATERIAL: "Birincil Kaynak",
   METHODOLOGY: "Yöntem",
+  PRIMARY_MATERIAL: "Birincil Kaynak",
   RELATED_THESES: "İlgili Tezler",
 };
 

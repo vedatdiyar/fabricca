@@ -5089,145 +5089,6 @@ export default function BoxesLoading() {
 }
 </file>
 
-<file path="src/app/(onboarding)/onboarding/literature-review/_prompts/batch-jury.prompt.ts">
-import {
-  buildPromptPayload,
-  type PromptPayload,
-} from "@/lib/ai/prompt-builder";
-
-function buildQuadrantSpecificInstruction(boxType: string): string {
-  switch (boxType) {
-    case "SUBJECT_PROBLEM":
-      return `\n\n═══════════════════════════════════════════════════════════════════════════════\nKUTU TÜRE ÖZGÜ DEĞERLENDİRME REHBERİ — VAKA / KONU KUTUSU (SUBJECT_PROBLEM)\n═══════════════════════════════════════════════════════════════════════════════\n\nAmaç: Bu kutu tezin doğrudan incelediği ampirik vakaya, spesifik tarihsel döneme ve aktörlere odaklanır.\n\n## KABUL KRİTERİ\nTezin kapsadığı tarihsel dönemi ve vaka alanını doğrudan işleyen ampirik monografiler, saha araştırmaları ve vaka analizleri yüksek puan (80-95+) almalıdır.\n\n## DEĞERLENDİRME VE ELEME KRİTERLERİ\n1. Tezin kapsadığı olgusal/tarihsel dönemin DIŞINDAKİ başka bir döneme veya olaya odaklanan çalışmalar düşük puanlandırılmalıdır.\n2. Soyut, genel ve zamansız teorik/kuramsal eserler ve metodoloji el kitapları Vaka/Konu Kutusu için ayrı tutulmalıdır.`;
-
-    case "THEORETICAL_FRAMEWORK":
-      return `\n\n═══════════════════════════════════════════════════════════════════════════════\nKUTU TÜRE ÖZGÜ DEĞERLENDİRME REHBERİ — TEORİK ÇERÇEVE KUTUSU (THEORETICAL_FRAMEWORK)\n═══════════════════════════════════════════════════════════════════════════════\n\nAmaç: Bu kutu tezin ampirik vakasını anlamlandırmada kullanılan soyut kuramlar, teorik kavramlar ve modellemelere odaklanır.\n\n## KABUL KRİTERİ\nİlgili kuramcıların birincil kuramsal metinleri ve bu teorileri tartışan literatür yüksek puan almalıdır.`;
-
-    case "METHODOLOGY":
-      return `\n\n═══════════════════════════════════════════════════════════════════════════════\nKUTU TÜRE ÖZGÜ DEĞERLENDİRME REHBERİ — YÖNTEM KUTUSU (METHODOLOGY)\n═══════════════════════════════════════════════════════════════════════════════\n\nAmaç: Bu kutu tezin benimsediği araştırma deseni, veri toplama ve analiz tekniklerine yönelik metodolojik eserlere odaklanır.\n\n## KABUL KRİTERİ\n1. **Metodolojik Uyum:** Eserin sunduğu veya uyguladığı analiz yöntemi, alt kutu açıklamasında (description) tanımlanan araştırma deseni ve yöntemsel yaklaşımla doğrudan örtüşmelidir (80-100 puan).\n2. **Emsal Uygulama:** Kutu açıklamasında belirtilen yöntemin benzer araştırma alanlarına başarıyla uygulandığı emsal çalışmalar kabul edilebilir (60-79 puan).\n\n## DEĞERLENDİRME VE ELEME KRİTERLERİ\n1. **Yöntemsel Uyuşmazlık:** Alt kutu açıklamasında tanımlanan metodolojik yaklaşımdan sapan veya zıt bir analitik tasarım benimseyen çalışmaları düşük puanla (0-40 puan).\n2. Soyut genel felsefi tartışmalar veya yöntemsel kılavuz niteliği taşımayan kuramsal metinleri Yöntem Kutusu için ayrı tut.`;
-
-    case "PRIMARY_MATERIAL":
-      return `\n\n═══════════════════════════════════════════════════════════════════════════════\nKUTU TÜRE ÖZGÜ DEĞERLENDİRME REHBERİ — BİRİNCİL MATERYAL KUTUSU (PRIMARY_MATERIAL)\n═══════════════════════════════════════════════════════════════════════════════\n\nAmaç: Bu kutu tezin doğrudan analiz ettiği birincil kaynaklara, belgesel arşivlere veya kanun/karar külliyatına odaklanır.`;
-
-    default:
-      return "";
-  }
-}
-
-export interface JuryBatchPromptInput {
-  thesisSubject: string;
-  thesisBoxId: number;
-  subBoxTitle: string;
-  boxType: string;
-  description: string;
-  articlesText: string;
-  articleCount: number;
-}
-
-/**
- * Builds the standardized PromptPayload for literature review batch jury evaluation.
- *
- * @param params - Jury prompt inputs.
- * @returns Standardized PromptPayload containing systemInstruction and userPrompt.
- */
-export function buildJuryPromptPayload(
-  params: JuryBatchPromptInput,
-): PromptPayload {
-  const {
-    thesisSubject,
-    thesisBoxId,
-    subBoxTitle,
-    boxType,
-    description,
-    articlesText,
-    articleCount,
-  } = params;
-
-  const quadrantBlock = buildQuadrantSpecificInstruction(boxType);
-
-  return buildPromptPayload({
-    roleAndExpertise:
-      "Sen, akademik makaleleri belirli bir tez alt kutusu bağlamında değerlendiren uzman bir akademik jüri üyesisin.",
-
-    primaryTask:
-      "Her bir makaleyi, sana verilen alt kutunun türü, başlığı ve açıklaması ile karşılaştırarak değerlendir. Makalenin kutu bağlamıyla doğrudan alakalı olup olmadığına karar ver, 0-100 arası alaka skoru belirle ve 1 cümlelik Türkçe gerekçe yaz.",
-
-    rulesAndConstraints: `1. **Dil Uygunluğu:** Yalnızca Türkçe veya İngilizce dilindeki akademik çalışmaları kabul et. Başlığı veya içeriği bu iki dilin dışındaki (İspanyolca, Fransızca, Almanca, İtalyanca vb.) herhangi bir dilde olan kaynakları doğrudan uygunsuz olarak ele (isRelevant: false, relevanceScore: 0, gerekçede dil uyuşmazlığını belirt).
-2. **Yayın Türü Filtresi (Book Review / Tanıtım Yasağı):** Yalnızca orijinal araştırma makalelerini, monografileri ve metodolojik eserleri kabul et. Bir kitabın 1-3 sayfalık kitap incelemesi/tanıtımı (Book Review), editör notu, konferans duyurusu gibi ikincil tanıtım yazılarını doğrudan uygunsuz olarak ele (isRelevant: false, relevanceScore: 0, gerekçede "Bağımsız araştırma makalesi olmayıp kitap incelemesidir" şeklinde belirt).
-3. **Bütünsel Örtüşme ve Alan/Ölçek Uyumu:** Soyut kavram benzerliklerine aldanma. Makalenin incelediği olgu ve ölçek tezin ve alt kutunun araştırma çerçevesiyle uyumlu olmalıdır. Örneğin makro-tarihsel kurumsal süreçleri inceleyen bir tez için anlık sokak protestolarındaki mikro-etkileşim duygu modellerini veya genel uluslararası ilişkiler dünya düzeni teorilerini teğetsel/uygunsuz olarak ele.
-4. **Metodolojik ve Epistemolojik Tutarlılık:** Yöntem kutusunda, tezin benimsediği araştırma deseniyle (nitel tarihsel-söylemsel analiz, çerçeveleme kodlaması vb.) taban tabana zıt olan katı nicel modelleri (örn. CMP frekans sayımı ve salience modelleri) yöntemsel uyuşmazlık nedeniyle düşük puanlandır veya ele.
-5. **Dönemsel Uygunluk:** Tezin ve kutunun kapsadığı tarihsel/olgusal dönemin dışındaki başka bir döneme veya olaya odaklanan çalışmalar düşük puanlandırılmalıdır.
-6. **Temel Monografiler:** Tezin kapsadığı tarihsel dönemi ve vaka alanını doğrudan işleyen kapsayıcı temel monografilere ve saha araştırmalarına yüksek relevans puanı (80-95+) ver.${quadrantBlock}`,
-
-    outputFormat: `Her değerlendirme için aşağıdaki alanları içeren JSON nesneleri dizisi döndürün:
-- thesisBoxId: (girdide verilen box id)
-- subBoxTitle: (girdide verilen sub box başlığı)
-- articleTitle: makale başlığı (aynen)
-- isRelevant: boolean
-- relevanceScore: 0-100 arası tam sayı
-- reasoning: Türkçe 1 cümlelik gerekçe`,
-
-    examples: `<example>
-<input>
-Tez Konusu: 1991-1999 döneminde Kürt siyasal hareketinin taleplerindeki niteliksel dönüşümü
-Kutu Bağlamı:
-- Kutu ID: [Box 1]
-- Kutu Türü: SUBJECT_PROBLEM
-- Kutu Başlığı: "Yasal Kürt Partileri ve Meclis Siyaseti"
-- Kutu Açıklaması: "1990'larda HEP, DEP ve HADEP çizgisinin meclis içi ve dışı siyasal söylemleri."
-
-Makaleler:
-Makale 1: "The Kurdish Political Movement in Turkey (1990-2000): From HEP to DEHAP"
-Authors: Cengiz Gunes
-Abstract: Examines the mobilization and discourse of pro-Kurdish political parties in 1990s Turkey.
-
-Makale 2: "Agricultural Policies and Cotton Production in South America"
-Authors: John Doe
-Abstract: Analyzes soybean and cotton export economics in Brazil during the 1990s.
-</input>
-<output>
-{
-  "evaluations": [
-    {
-      "thesisBoxId": 1,
-      "subBoxTitle": "Yasal Kürt Partileri ve Meclis Siyaseti",
-      "articleTitle": "The Kurdish Political Movement in Turkey (1990-2000): From HEP to DEHAP",
-      "openAlexId": null,
-      "isRelevant": true,
-      "relevanceScore": 92,
-      "reasoning": "Tezin ve alt kutunun odaklandığı 1990'lar yasal Kürt partileri ve meclis siyaseti konusunu doğrudan ve kapsamlı bir biçimde incelemektedir."
-    },
-    {
-      "thesisBoxId": 1,
-      "subBoxTitle": "Yasal Kürt Partileri ve Meclis Siyaseti",
-      "articleTitle": "Agricultural Policies and Cotton Production in South America",
-      "openAlexId": null,
-      "isRelevant": false,
-      "relevanceScore": 0,
-      "reasoning": "Makalenin konusu ve araştırma alanı tez ve alt kutu bağlamıyla tamamen ilgisizdir."
-    }
-  ]
-}
-</output>
-</example>`,
-
-    inputContext: `### Tez Konusu (Subject Problem):
-${thesisSubject}
-
-### Kutu Bağlamı:
-- Kutu ID: [Box ${thesisBoxId}]
-- Kutu Türü: ${boxType}
-- Kutu Başlığı: "${subBoxTitle}"
-- Kutu Açıklaması: ${description}
-
-### Değerlendirilecek Makaleler (${articleCount} Adet):
-${articlesText}`,
-
-    taskTrigger: `Yukarıdaki <context> içinde listelenen ${articleCount} makaleyi <instructions> kurallarına göre değerlendirerek her biri için thesisBoxId (${thesisBoxId}), subBoxTitle ("${subBoxTitle}"), articleTitle, isRelevant, relevanceScore (0-100), reasoning (Türkçe) alanlarını içeren JSON çıktısını üret.`,
-  });
-}
-</file>
-
 <file path="src/app/(onboarding)/onboarding/literature-review/_prompts/sanitize.prompt.ts">
 import {
   buildPromptPayload,
@@ -21078,8 +20939,8 @@ export async function getCachedBoxes(thesisMatrixId: number) {
           WHEN 'SUBJECT_PROBLEM' THEN 1
           WHEN 'THEORETICAL_FRAMEWORK' THEN 2
           WHEN 'METHODOLOGY' THEN 3
-          WHEN 'RELATED_THESES' THEN 4
-          WHEN 'PRIMARY_MATERIAL' THEN 5
+          WHEN 'PRIMARY_MATERIAL' THEN 4
+          WHEN 'RELATED_THESES' THEN 5
           ELSE 99
         END`,
       );
@@ -21167,8 +21028,8 @@ export async function fetchUncachedBoxesWithFullShape(): Promise<
           WHEN 'SUBJECT_PROBLEM' THEN 1
           WHEN 'THEORETICAL_FRAMEWORK' THEN 2
           WHEN 'METHODOLOGY' THEN 3
-          WHEN 'RELATED_THESES' THEN 4
-          WHEN 'PRIMARY_MATERIAL' THEN 5
+          WHEN 'PRIMARY_MATERIAL' THEN 4
+          WHEN 'RELATED_THESES' THEN 5
           ELSE 99
         END`,
       );
@@ -21505,6 +21366,145 @@ export async function checkStepsDataAction(): Promise<Record<
   } catch (err) {
     rethrowAsDatabaseError(err, "Failed to check onboarding step data.");
   }
+}
+</file>
+
+<file path="src/app/(onboarding)/onboarding/literature-review/_prompts/batch-jury.prompt.ts">
+import {
+  buildPromptPayload,
+  type PromptPayload,
+} from "@/lib/ai/prompt-builder";
+
+function buildQuadrantSpecificInstruction(boxType: string): string {
+  switch (boxType) {
+    case "SUBJECT_PROBLEM":
+      return `\n\n═══════════════════════════════════════════════════════════════════════════════\nKUTU TÜRE ÖZGÜ DEĞERLENDİRME REHBERİ — VAKA / KONU KUTUSU (SUBJECT_PROBLEM)\n═══════════════════════════════════════════════════════════════════════════════\n\nAmaç: Bu kutu tezin doğrudan incelediği ampirik vakaya, spesifik tarihsel döneme ve aktörlere odaklanır.\n\n## KABUL KRİTERİ\nTezin kapsadığı tarihsel dönemi ve vaka alanını doğrudan işleyen ampirik monografiler, saha araştırmaları ve vaka analizleri yüksek puan (80-95+) almalıdır.\n\n## DEĞERLENDİRME VE ELEME KRİTERLERİ\n1. Tezin kapsadığı olgusal/tarihsel dönemin DIŞINDAKİ başka bir döneme veya olaya odaklanan çalışmalar düşük puanlandırılmalıdır.\n2. Soyut, genel ve zamansız teorik/kuramsal eserler ve metodoloji el kitapları Vaka/Konu Kutusu için ayrı tutulmalıdır.`;
+
+    case "THEORETICAL_FRAMEWORK":
+      return `\n\n═══════════════════════════════════════════════════════════════════════════════\nKUTU TÜRE ÖZGÜ DEĞERLENDİRME REHBERİ — TEORİK ÇERÇEVE KUTUSU (THEORETICAL_FRAMEWORK)\n═══════════════════════════════════════════════════════════════════════════════\n\nAmaç: Bu kutu tezin ampirik vakasını anlamlandırmada kullanılan soyut kuramlar, teorik kavramlar ve modellemelere odaklanır.\n\n## KABUL KRİTERİ\nİlgili kuramcıların birincil kuramsal metinleri ve bu teorileri tartışan literatür yüksek puan almalıdır.`;
+
+    case "METHODOLOGY":
+      return `\n\n═══════════════════════════════════════════════════════════════════════════════\nKUTU TÜRE ÖZGÜ DEĞERLENDİRME REHBERİ — YÖNTEM KUTUSU (METHODOLOGY)\n═══════════════════════════════════════════════════════════════════════════════\n\nAmaç: Bu kutu tezin benimsediği araştırma deseni, veri toplama ve analiz tekniklerine yönelik metodolojik eserlere odaklanır.\n\n## KABUL KRİTERİ\n1. **Metodolojik Uyum:** Eserin sunduğu veya uyguladığı analiz yöntemi, alt kutu açıklamasında (description) tanımlanan araştırma deseni ve yöntemsel yaklaşımla doğrudan örtüşmelidir (80-100 puan).\n2. **Emsal Uygulama:** Kutu açıklamasında belirtilen yöntemin benzer araştırma alanlarına başarıyla uygulandığı emsal çalışmalar kabul edilebilir (60-79 puan).\n\n## DEĞERLENDİRME VE ELEME KRİTERLERİ\n1. **Yöntemsel Uyuşmazlık:** Alt kutu açıklamasında tanımlanan metodolojik yaklaşımdan sapan veya zıt bir analitik tasarım benimseyen çalışmaları düşük puanla (0-40 puan).\n2. Soyut genel felsefi tartışmalar veya yöntemsel kılavuz niteliği taşımayan kuramsal metinleri Yöntem Kutusu için ayrı tut.`;
+
+    case "PRIMARY_MATERIAL":
+      return `\n\n═══════════════════════════════════════════════════════════════════════════════\nKUTU TÜRE ÖZGÜ DEĞERLENDİRME REHBERİ — BİRİNCİL MATERYAL KUTUSU (PRIMARY_MATERIAL)\n═══════════════════════════════════════════════════════════════════════════════\n\nAmaç: Bu kutu tezin doğrudan analiz ettiği birincil kaynaklara, belgesel arşivlere veya kanun/karar külliyatına odaklanır.`;
+
+    default:
+      return "";
+  }
+}
+
+export interface JuryBatchPromptInput {
+  thesisSubject: string;
+  thesisBoxId: number;
+  subBoxTitle: string;
+  boxType: string;
+  description: string;
+  articlesText: string;
+  articleCount: number;
+}
+
+/**
+ * Builds the standardized PromptPayload for literature review batch jury evaluation.
+ *
+ * @param params - Jury prompt inputs.
+ * @returns Standardized PromptPayload containing systemInstruction and userPrompt.
+ */
+export function buildJuryPromptPayload(
+  params: JuryBatchPromptInput,
+): PromptPayload {
+  const {
+    thesisSubject,
+    thesisBoxId,
+    subBoxTitle,
+    boxType,
+    description,
+    articlesText,
+    articleCount,
+  } = params;
+
+  const quadrantBlock = buildQuadrantSpecificInstruction(boxType);
+
+  return buildPromptPayload({
+    roleAndExpertise:
+      "Sen, akademik makaleleri belirli bir tez alt kutusu bağlamında değerlendiren uzman bir akademik jüri üyesisin.",
+
+    primaryTask:
+      "Her bir makaleyi, sana verilen alt kutunun türü, başlığı ve açıklaması ile karşılaştırarak değerlendir. Makalenin kutu bağlamıyla doğrudan alakalı olup olmadığına karar ver, 0-100 arası alaka skoru belirle ve 1 cümlelik Türkçe gerekçe yaz.",
+
+    rulesAndConstraints: `1. **Dil Uygunluğu:** Yalnızca Türkçe veya İngilizce dilindeki akademik çalışmaları kabul et. Başlığı veya içeriği bu iki dilin dışındaki (İspanyolca, Fransızca, Almanca, İtalyanca vb.) herhangi bir dilde olan kaynakları doğrudan uygunsuz olarak ele (isRelevant: false, relevanceScore: 0, gerekçede dil uyuşmazlığını belirt).
+2. **Yayın Türü Filtresi (Book Review / Tanıtım Yasağı):** Yalnızca orijinal araştırma makalelerini, monografileri ve metodolojik eserleri kabul et. Bir kitabın 1-3 sayfalık kitap incelemesi/tanıtımı (Book Review), editör notu, konferans duyurusu gibi ikincil tanıtım yazılarını doğrudan uygunsuz olarak ele (isRelevant: false, relevanceScore: 0, gerekçede "Bağımsız araştırma makalesi olmayıp kitap incelemesidir" şeklinde belirt).
+3. **Bütünsel Örtüşme ve Alan/Ölçek Uyumu:** Soyut kavram benzerliklerine aldanma. Makalenin incelediği olgu ve ölçek tezin ve alt kutunun araştırma çerçevesiyle uyumlu olmalıdır. Örneğin makro-tarihsel kurumsal süreçleri inceleyen bir tez için anlık sokak protestolarındaki mikro-etkileşim duygu modellerini veya genel uluslararası ilişkiler dünya düzeni teorilerini teğetsel/uygunsuz olarak ele.
+4. **Metodolojik ve Epistemolojik Tutarlılık:** Yöntem kutusunda, tezin benimsediği araştırma deseniyle (nitel tarihsel-söylemsel analiz, çerçeveleme kodlaması vb.) taban tabana zıt olan katı nicel modelleri (örn. CMP frekans sayımı ve salience modelleri) yöntemsel uyuşmazlık nedeniyle düşük puanlandır veya ele.
+5. **Dönemsel Uygunluk:** Tezin ve kutunun kapsadığı tarihsel/olgusal dönemin dışındaki başka bir döneme veya olaya odaklanan çalışmalar düşük puanlandırılmalıdır.
+6. **Temel Monografiler:** Tezin kapsadığı tarihsel dönemi ve vaka alanını doğrudan işleyen kapsayıcı temel monografilere ve saha araştırmalarına yüksek relevans puanı (80-95+) ver.${quadrantBlock}`,
+
+    outputFormat: `Her değerlendirme için aşağıdaki alanları içeren JSON nesneleri dizisi döndürün:
+- thesisBoxId: (girdide verilen box id)
+- subBoxTitle: (girdide verilen sub box başlığı)
+- articleTitle: makale başlığı (aynen)
+- isRelevant: boolean
+- relevanceScore: 0-100 arası tam sayı
+- reasoning: Türkçe 1 cümlelik gerekçe`,
+
+    examples: `<example>
+<input>
+Tez Konusu: 1991-1999 döneminde Kürt siyasal hareketinin taleplerindeki niteliksel dönüşümü
+Kutu Bağlamı:
+- Kutu ID: [Box 1]
+- Kutu Türü: SUBJECT_PROBLEM
+- Kutu Başlığı: "Yasal Kürt Partileri ve Meclis Siyaseti"
+- Kutu Açıklaması: "1990'larda HEP, DEP ve HADEP çizgisinin meclis içi ve dışı siyasal söylemleri."
+
+Makaleler:
+Makale 1: "The Kurdish Political Movement in Turkey (1990-2000): From HEP to DEHAP"
+Authors: Cengiz Gunes
+Abstract: Examines the mobilization and discourse of pro-Kurdish political parties in 1990s Turkey.
+
+Makale 2: "Agricultural Policies and Cotton Production in South America"
+Authors: John Doe
+Abstract: Analyzes soybean and cotton export economics in Brazil during the 1990s.
+</input>
+<output>
+{
+  "evaluations": [
+    {
+      "thesisBoxId": 1,
+      "subBoxTitle": "Yasal Kürt Partileri ve Meclis Siyaseti",
+      "articleTitle": "The Kurdish Political Movement in Turkey (1990-2000): From HEP to DEHAP",
+      "openAlexId": null,
+      "isRelevant": true,
+      "relevanceScore": 92,
+      "reasoning": "Tezin ve alt kutunun odaklandığı 1990'lar yasal Kürt partileri ve meclis siyaseti konusunu doğrudan ve kapsamlı bir biçimde incelemektedir."
+    },
+    {
+      "thesisBoxId": 1,
+      "subBoxTitle": "Yasal Kürt Partileri ve Meclis Siyaseti",
+      "articleTitle": "Agricultural Policies and Cotton Production in South America",
+      "openAlexId": null,
+      "isRelevant": false,
+      "relevanceScore": 0,
+      "reasoning": "Makalenin konusu ve araştırma alanı tez ve alt kutu bağlamıyla tamamen ilgisizdir."
+    }
+  ]
+}
+</output>
+</example>`,
+
+    inputContext: `### Tez Konusu (Subject Problem):
+${thesisSubject}
+
+### Kutu Bağlamı:
+- Kutu ID: [Box ${thesisBoxId}]
+- Kutu Türü: ${boxType}
+- Kutu Başlığı: "${subBoxTitle}"
+- Kutu Açıklaması: ${description}
+
+### Değerlendirilecek Makaleler (${articleCount} Adet):
+${articlesText}`,
+
+    taskTrigger: `Yukarıdaki <context> içinde listelenen ${articleCount} makaleyi <instructions> kurallarına göre değerlendirerek her biri için thesisBoxId (${thesisBoxId}), subBoxTitle ("${subBoxTitle}"), articleTitle, isRelevant, relevanceScore (0-100), reasoning (Türkçe) alanlarını içeren JSON çıktısını üret.`,
+  });
 }
 </file>
 
@@ -21952,85 +21952,6 @@ export async function persistLiteraturePool(
 }
 </file>
 
-<file path="src/app/(onboarding)/onboarding/literature-review/_services/pool-queries.ts">
-import { eq } from "drizzle-orm";
-import { db } from "@/core/db";
-import { boxes, sources } from "@/core/db/schema";
-import type { LiteraturePoolEntry, JuryArticle } from "@/lib/types";
-
-/**
- * Loads previously saved library resources in pool format.
- *
- * @param thesisMatrixId - The thesis matrix ID to load resources for.
- * @returns The literature pool entries grouped by thesis box.
- */
-export async function fetchPreloadedPool(
-  thesisMatrixId: number,
-): Promise<LiteraturePoolEntry[]> {
-  const rows = await db
-    .select({
-      thesisBoxId: sources.boxId,
-      boxTitle: boxes.title,
-      boxType: boxes.boxType,
-      title: sources.title,
-      comparisonNote: sources.comparisonNote,
-      openalexId: sources.openalexId,
-      doi: sources.doi,
-      publisher: sources.publisher,
-      thesisType: sources.thesisType,
-      publicationYear: sources.publicationYear,
-      authors: sources.authors,
-      relevanceScore: sources.relevanceScore,
-    })
-    .from(sources)
-    .innerJoin(boxes, eq(sources.boxId, boxes.id))
-    .where(eq(boxes.matrixId, thesisMatrixId));
-
-  const grouped = new Map<
-    number,
-    { boxTitle: string; boxType: string | null; articles: JuryArticle[] }
-  >();
-  for (const row of rows) {
-    const existing = grouped.get(row.thesisBoxId);
-    const list = existing?.articles ?? [];
-    list.push({
-      title: row.title,
-      comparisonNote: row.comparisonNote ?? null,
-      openalexId: row.openalexId ?? null,
-      doi: row.doi,
-      publisher: row.publisher ?? "",
-      thesisType: row.thesisType ?? null,
-      publicationYear: row.publicationYear ?? 0,
-      authors: (row.authors as string[]) ?? [],
-      relevanceScore: row.relevanceScore ?? 0,
-    });
-    grouped.set(row.thesisBoxId, {
-      boxTitle: row.boxTitle,
-      boxType: row.boxType,
-      articles: list,
-    });
-  }
-
-  for (const [, group] of grouped) {
-    group.articles.sort((a, b) => b.relevanceScore - a.relevanceScore);
-    if (group.boxType !== "RELATED_THESES" && group.articles.length > 4) {
-      group.articles.length = 4;
-    }
-  }
-
-  const pool: LiteraturePoolEntry[] = [];
-  for (const [thesisBoxId, group] of grouped) {
-    pool.push({
-      subBoxTitle: group.boxTitle,
-      thesisBoxId,
-      articles: group.articles,
-    });
-  }
-
-  return pool;
-}
-</file>
-
 <file path="src/app/(onboarding)/onboarding/literature-review/_services/process-boxes-data.ts">
 import { eq } from "drizzle-orm";
 import { db } from "@/core/db";
@@ -22065,126 +21986,6 @@ export async function loadThesisMatrixAndBoxes(userId: number): Promise<{
     .where(eq(matrices.userId, userId));
 
   return { matrix };
-}
-</file>
-
-<file path="src/app/(onboarding)/onboarding/literature-review/_services/related-theses.ts">
-import { and, eq } from "drizzle-orm";
-import { db } from "@/core/db";
-import { boxes, matrices, positioning, sources } from "@/core/db/schema";
-import { BOX_TYPE_DESCRIPTIONS } from "@/lib/box-constants";
-import type { RecommendedThesisItem } from "@/app/(onboarding)/onboarding/positioning/_services/validation";
-
-/** Display title of the parent box holding strategic guide theses. */
-const RELATED_THESES_TITLE = "İlgili Tezler";
-
-/**
- * Returns only the primary language portion of a thesis title by cutting it at
- * the " / " separator (YÖK stores titles as "Türkçe / English").
- *
- * @param title - The raw thesis title to clean.
- * @returns The primary (Turkish) title fragment, or the raw title when unchanged.
- */
-function cleanThesisTitle(title: string): string {
-  const separatorIndex = title.indexOf(" / ");
-  return separatorIndex === -1 ? title : title.slice(0, separatorIndex).trim();
-}
-
-/**
- * Persists the strategic guide theses from the positioning report into the
- * sources table under a dedicated RELATED_THESES box, creating the box on
- * demand and replacing any prior entries. Runs together with the literature
- * review so the sources pool only fills once the review is performed.
- *
- * @param userId - The id of the user owning the theses.
- */
-export async function persistRelatedTheses(userId: number): Promise<void> {
-  const [matrix] = await db
-    .select({ id: matrices.id })
-    .from(matrices)
-    .where(eq(matrices.userId, userId))
-    .limit(1);
-
-  if (!matrix) {
-    return;
-  }
-
-  const [positioningRow] = await db
-    .select({ recommendedTheses: positioning.recommendedTheses })
-    .from(positioning)
-    .where(eq(positioning.userId, userId))
-    .limit(1);
-
-  const theses = (positioningRow?.recommendedTheses ??
-    []) as RecommendedThesisItem[];
-  if (theses.length === 0) {
-    return;
-  }
-
-  await db.transaction(async (tx) => {
-    let [relatedBox] = await tx
-      .select({ id: boxes.id })
-      .from(boxes)
-      .where(
-        and(eq(boxes.matrixId, matrix.id), eq(boxes.boxType, "RELATED_THESES")),
-      )
-      .limit(1);
-
-    if (!relatedBox) {
-      const [inserted] = await tx
-        .insert(boxes)
-        .values({
-          matrixId: matrix.id,
-          title: RELATED_THESES_TITLE,
-          boxType: "RELATED_THESES",
-          description:
-            BOX_TYPE_DESCRIPTIONS.RELATED_THESES ??
-            "Tez konunuz ve konumlandırmanız ile doğrudan ilişkili, incelenmesi önerilen YÖK ve akademik tez çalışmaları.",
-          parentId: null,
-          concepts: [],
-        })
-        .returning({ id: boxes.id });
-      relatedBox = inserted;
-    }
-
-    if (!relatedBox) return;
-
-    // Delete existing sources for this RELATED_THESES box to prevent duplicates
-    await tx.delete(sources).where(eq(sources.boxId, relatedBox.id));
-
-    const toInsert = theses.map((t) => {
-      const thesisUrl =
-        t.doi ||
-        t.tezaraUrl ||
-        (t.externalThesisId
-          ? `https://tez.yok.gov.tr/UlusalTezMerkezi/tezDetay.jsp?id=${t.externalThesisId}`
-          : null);
-
-      const noteSections = [
-        t.abstract ? `ÖZET: ${t.abstract}` : null,
-        t.contributionArea ? `KATKI ALANI: ${t.contributionArea}` : null,
-        t.relevanceReason ? `STRATEJİK KULLANIM: ${t.relevanceReason}` : null,
-      ].filter((s): s is string => !!s && s.trim().length > 0);
-
-      return {
-        boxId: relatedBox.id,
-        title: cleanThesisTitle(t.title),
-        authors: [t.author].filter((a) => a && a.length > 0),
-        publisher: t.university || null,
-        thesisType: t.thesisType || null,
-        publicationYear: t.year,
-        doi: thesisUrl,
-        comparisonNote:
-          noteSections.length > 0 ? noteSections.join("\n\n") : null,
-        isRead: false,
-        relevanceScore: 100,
-      };
-    });
-
-    if (toInsert.length > 0) {
-      await tx.insert(sources).values(toInsert);
-    }
-  });
 }
 </file>
 
@@ -22710,213 +22511,6 @@ export function useOutlineSectionCard(
     handleStartSubEdit,
     handleSaveSubEdit,
   };
-}
-</file>
-
-<file path="src/app/(onboarding)/onboarding/outline/_services/generator.ts">
-"use server";
-
-import { eq } from "drizzle-orm";
-import { db } from "@/core/db";
-import { matrices, outlines } from "@/core/db/schema";
-import { getSession, SESSION_ERROR_MSG } from "@/lib/session";
-import { invalidateOnboardingStepCache } from "@/lib/cache-tags";
-import { generateGeminiStructuredContent } from "@/core/services/ai";
-import { FLASH_LITE_35, GEMINI_SEED } from "@/lib/constants";
-import { ThinkingLevel } from "@google/genai";
-import { createFlowId, Logger } from "@/lib/logger";
-import {
-  outlineGenerationSchema,
-  outlineGenerationJsonSchema,
-  type OutlineGenerationResponse,
-} from "./schema";
-
-import { buildOutlineGenerationPromptPayload } from "../_prompts/outline-generation.prompt";
-
-/**
- * Generates the thesis outline via Gemini without persisting it.
- *
- * @returns The generated outline or an error message.
- */
-export async function generateOutlineAction(): Promise<
-  { success: true; outline: OutlineGenerationResponse } | { error: string }
-> {
-  const flowId = createFlowId();
-  const log = new Logger(flowId);
-  const startTime = performance.now();
-
-  try {
-    const session = await getSession();
-    if (!session) return { error: SESSION_ERROR_MSG };
-
-    const [matrix] = await db
-      .select()
-      .from(matrices)
-      .where(eq(matrices.userId, session.userId));
-
-    if (!matrix) return { error: "Thesis matrix not found." };
-
-    log.info("outline_generation_start", {
-      service: "outline",
-    });
-
-    const payload = buildOutlineGenerationPromptPayload({
-      subjectProblem: matrix.subjectProblem,
-      theoreticalFramework: matrix.theoreticalFramework,
-      primaryMaterial: matrix.primaryMaterial,
-      methodology: matrix.methodology,
-    });
-
-    const result =
-      await generateGeminiStructuredContent<OutlineGenerationResponse>(
-        FLASH_LITE_35,
-        payload.systemInstruction,
-        payload.userPrompt,
-        outlineGenerationJsonSchema,
-        log,
-        {
-          thinkingConfig: { thinkingLevel: ThinkingLevel.LOW },
-          zodSchema: outlineGenerationSchema,
-          seed: GEMINI_SEED,
-          thesisMatrix: matrix,
-          payloadStage: "outline_generation",
-          quiet: true,
-        },
-      );
-
-    log.info("outline_generation_success", {
-      service: "outline",
-      durationMs: Math.round(performance.now() - startTime),
-    });
-
-    return { success: true, outline: result };
-  } catch (err) {
-    log.error("outline_generation_failed", {
-      service: "outline",
-      error: err instanceof Error ? err : new Error(String(err)),
-    });
-    return {
-      error: "Tez planı oluşturulurken beklenmeyen bir hata oluştu.",
-    };
-  }
-}
-
-/**
- * Persists a generated thesis outline to the database.
- *
- * @param outline - The generated outline data from Gemini.
- * @returns A success flag or an error message.
- */
-export async function persistOutlineAction(
-  outline: OutlineGenerationResponse,
-): Promise<{ success: true } | { error: string }> {
-  const flowId = createFlowId();
-  const log = new Logger(flowId);
-
-  try {
-    const session = await getSession();
-    if (!session) return { error: SESSION_ERROR_MSG };
-
-    const [matrix] = await db
-      .select()
-      .from(matrices)
-      .where(eq(matrices.userId, session.userId));
-
-    if (!matrix) return { error: "Thesis matrix not found." };
-
-    await persistOutlines(session.userId, matrix.id, outline);
-
-    invalidateOnboardingStepCache("outline");
-
-    return { success: true };
-  } catch (err) {
-    log.error("outline_persist_failed", {
-      service: "outline",
-      error: err instanceof Error ? err : new Error(String(err)),
-    });
-    return {
-      error:
-        "Tez planı veritabanına kaydedilirken beklenmeyen bir hata oluştu.",
-    };
-  }
-}
-
-/**
- * Persists the outline hierarchy to the database in a single transaction.
- *
- * @param userId - The current user id.
- * @param matrixId - The thesis matrix id.
- * @param outline - The generated outline data from Gemini.
- */
-async function persistOutlines(
-  userId: number,
-  matrixId: number,
-  outline: OutlineGenerationResponse,
-): Promise<void> {
-  const flowId = createFlowId();
-  const log = new Logger(flowId);
-
-  await db.transaction(async (tx) => {
-    // Delete existing outlines for this matrix (cascade deletes outline_annotations / outline_sources)
-    await tx.delete(outlines).where(eq(outlines.matrixId, matrixId));
-
-    const parentValues: (typeof outlines.$inferInsert)[] = [];
-    for (const section of outline.sections) {
-      parentValues.push({
-        matrixId,
-        parentId: null,
-        title: section.title,
-        description: section.description,
-        sortOrder: section.sortOrder,
-        academicField: outline.academicField,
-      });
-    }
-
-    if (parentValues.length === 0) return;
-
-    const insertedParents = await tx
-      .insert(outlines)
-      .values(parentValues)
-      .returning({ id: outlines.id });
-
-    const dbParentIdMap = new Map<number, number>();
-    for (let i = 0; i < outline.sections.length; i++) {
-      const dbId = insertedParents[i]?.id;
-      if (dbId !== undefined) {
-        dbParentIdMap.set(i, dbId);
-      }
-    }
-
-    // Prepare child subsections
-    const childValues: (typeof outlines.$inferInsert)[] = [];
-    for (let i = 0; i < outline.sections.length; i++) {
-      const section = outline.sections[i];
-      if (!section.subSections || section.subSections.length === 0) continue;
-
-      const mappedParentId = dbParentIdMap.get(i) ?? null;
-      if (mappedParentId === null) continue;
-
-      for (let j = 0; j < section.subSections.length; j++) {
-        const sub = section.subSections[j];
-        childValues.push({
-          matrixId,
-          parentId: mappedParentId,
-          title: sub.title,
-          description: sub.description,
-          sortOrder: sub.sortOrder,
-          academicField: null,
-        });
-      }
-    }
-
-    if (childValues.length > 0) {
-      await tx.insert(outlines).values(childValues);
-    }
-  });
-
-  log.info("outline_persist_transaction_complete", {
-    service: "outline",
-  });
 }
 </file>
 
@@ -31679,154 +31273,202 @@ export function parseOpenAlexMetadataResults(
 }
 </file>
 
-<file path="src/app/(onboarding)/onboarding/literature-review/pool-actions.ts">
-"use server";
-
+<file path="src/app/(onboarding)/onboarding/literature-review/_services/pool-queries.ts">
 import { eq } from "drizzle-orm";
 import { db } from "@/core/db";
-import {
-  revalidateOnboardingPaths,
-  invalidateOnboardingCache,
-} from "@/lib/cache-tags";
-import { matrices } from "@/core/db/schema";
-import { Logger, createFlowId } from "@/lib/logger";
-import { handleActionError } from "@/lib/errors/handle-error";
-import { getSession, SESSION_ERROR_MSG } from "@/lib/session";
-import type { LiteraturePoolEntry, OnboardingActionResult } from "@/lib/types";
-import { persistLiteraturePool } from "@/app/(onboarding)/onboarding/literature-review/_services/pool-persistence";
-import { persistRelatedTheses } from "@/app/(onboarding)/onboarding/literature-review/_services/related-theses";
-import { fetchPreloadedPool } from "@/app/(onboarding)/onboarding/literature-review/_services/pool-queries";
+import { boxes, sources } from "@/core/db/schema";
+import type { LiteraturePoolEntry, JuryArticle } from "@/lib/types";
 
 /**
- * Persists the confirmed literature pool to the database.
+ * Loads previously saved library resources in pool format.
  *
- * @param args - The confirmation payload.
- * @param args.literaturePool - The literature pool entries to persist.
- * @returns The action result indicating success or an error.
+ * @param thesisMatrixId - The thesis matrix ID to load resources for.
+ * @returns The literature pool entries grouped by thesis box.
  */
-export async function confirmLiteratureAction(args: {
-  literaturePool: LiteraturePoolEntry[];
-}): Promise<OnboardingActionResult> {
-  const flowId = createFlowId();
-  const log = new Logger(flowId);
-  const startTime = performance.now();
+export async function fetchPreloadedPool(
+  thesisMatrixId: number,
+): Promise<LiteraturePoolEntry[]> {
+  const rows = await db
+    .select({
+      thesisBoxId: sources.boxId,
+      boxTitle: boxes.title,
+      boxType: boxes.boxType,
+      title: sources.title,
+      comparisonNote: sources.comparisonNote,
+      openalexId: sources.openalexId,
+      doi: sources.doi,
+      publisher: sources.publisher,
+      thesisType: sources.thesisType,
+      publicationYear: sources.publicationYear,
+      authors: sources.authors,
+      relevanceScore: sources.relevanceScore,
+    })
+    .from(sources)
+    .innerJoin(boxes, eq(sources.boxId, boxes.id))
+    .where(eq(boxes.matrixId, thesisMatrixId));
 
-  log.info("confirm_literature_start");
-
-  try {
-    const session = await getSession();
-    if (!session) {
-      return { error: SESSION_ERROR_MSG };
-    }
-
-    const { literaturePool } = args;
-    if (!literaturePool || literaturePool.length === 0) {
-      return { error: "Onaylanacak literatür verisi bulunamadı." };
-    }
-
-    const [matrix] = await db
-      .select({ id: matrices.id })
-      .from(matrices)
-      .where(eq(matrices.userId, session.userId));
-
-    if (!matrix) {
-      return { error: "Tez matrisi bulunamadı." };
-    }
-
-    await persistLiteraturePool(literaturePool);
-    await persistRelatedTheses(session.userId);
-
-    try {
-      revalidateOnboardingPaths();
-    } catch (err) {
-      log.warn("confirm_literature_revalidate_failed", {
-        service: "literature",
-        error: err,
-      });
-    }
-
-    invalidateOnboardingCache();
-
-    log.info("confirm_literature_success", {
-      durationMs: performance.now() - startTime,
+  const grouped = new Map<
+    number,
+    { boxTitle: string; boxType: string | null; articles: JuryArticle[] }
+  >();
+  for (const row of rows) {
+    const existing = grouped.get(row.thesisBoxId);
+    const list = existing?.articles ?? [];
+    list.push({
+      title: row.title,
+      comparisonNote: row.comparisonNote ?? null,
+      openalexId: row.openalexId ?? null,
+      doi: row.doi,
+      publisher: row.publisher ?? "",
+      thesisType: row.thesisType ?? null,
+      publicationYear: row.publicationYear ?? 0,
+      authors: (row.authors as string[]) ?? [],
+      relevanceScore: row.relevanceScore ?? 0,
     });
-
-    return { success: true };
-  } catch (err) {
-    log.error("confirm_literature_failed", {
-      error: err,
+    grouped.set(row.thesisBoxId, {
+      boxTitle: row.boxTitle,
+      boxType: row.boxType,
+      articles: list,
     });
-    return {
-      error:
-        err instanceof Error ? err.message : "An unexpected error occurred.",
-    };
   }
+
+  for (const [, group] of grouped) {
+    group.articles.sort((a, b) => b.relevanceScore - a.relevanceScore);
+    if (group.boxType !== "RELATED_THESES" && group.articles.length > 4) {
+      group.articles.length = 4;
+    }
+  }
+
+  const pool: LiteraturePoolEntry[] = [];
+  for (const [thesisBoxId, group] of grouped) {
+    pool.push({
+      subBoxTitle: group.boxTitle,
+      thesisBoxId,
+      articles: group.articles,
+    });
+  }
+
+  return pool;
+}
+</file>
+
+<file path="src/app/(onboarding)/onboarding/literature-review/_services/related-theses.ts">
+import { and, eq } from "drizzle-orm";
+import { db } from "@/core/db";
+import { boxes, matrices, positioning, sources } from "@/core/db/schema";
+import { BOX_TYPE_DESCRIPTIONS } from "@/lib/box-constants";
+import type { RecommendedThesisItem } from "@/app/(onboarding)/onboarding/positioning/_services/validation";
+
+/** Display title of the parent box holding strategic guide theses. */
+const RELATED_THESES_TITLE = "İlgili Tezler";
+
+/**
+ * Returns only the primary language portion of a thesis title by cutting it at
+ * the " / " separator (YÖK stores titles as "Türkçe / English").
+ *
+ * @param title - The raw thesis title to clean.
+ * @returns The primary (Turkish) title fragment, or the raw title when unchanged.
+ */
+function cleanThesisTitle(title: string): string {
+  const separatorIndex = title.indexOf(" / ");
+  return separatorIndex === -1 ? title : title.slice(0, separatorIndex).trim();
 }
 
 /**
- * Returns the preloaded literature pool for the current user.
+ * Persists the strategic guide theses from the positioning report into the
+ * sources table under a dedicated RELATED_THESES box, creating the box on
+ * demand and replacing any prior entries. Runs together with the literature
+ * review so the sources pool only fills once the review is performed.
  *
- * @returns The preloaded pool entries or an error message.
+ * @param userId - The id of the user owning the theses.
  */
-export async function fetchPreloadedLiteraturePool(): Promise<{
-  data?: LiteraturePoolEntry[];
-  error?: string;
-}> {
-  try {
-    const session = await getSession();
-    if (!session) return { error: SESSION_ERROR_MSG };
+export async function persistRelatedTheses(userId: number): Promise<void> {
+  const [matrix] = await db
+    .select({ id: matrices.id })
+    .from(matrices)
+    .where(eq(matrices.userId, userId))
+    .limit(1);
 
-    const [matrix] = await db
-      .select({ id: matrices.id })
-      .from(matrices)
-      .where(eq(matrices.userId, session.userId));
-
-    if (!matrix) return { error: "Tez matrisi bulunamadı." };
-
-    await persistRelatedTheses(session.userId);
-
-    const pool = await fetchPreloadedPool(matrix.id);
-
-    return { data: pool };
-  } catch (err) {
-    return handleActionError(err);
+  if (!matrix) {
+    return;
   }
-}
 
-/**
- * Checks whether a literature pool already exists for the current user.
- *
- * @returns The existing pool entries and whether a pool exists, or an error.
- */
-export async function checkLiteraturePoolAction(): Promise<{
-  data?: LiteraturePoolEntry[];
-  exists: boolean;
-  error?: string;
-}> {
-  try {
-    const session = await getSession();
-    if (!session) return { exists: false, error: SESSION_ERROR_MSG };
+  const [positioningRow] = await db
+    .select({ recommendedTheses: positioning.recommendedTheses })
+    .from(positioning)
+    .where(eq(positioning.userId, userId))
+    .limit(1);
 
-    const [matrix] = await db
-      .select({ id: matrices.id })
-      .from(matrices)
-      .where(eq(matrices.userId, session.userId));
+  const theses = (positioningRow?.recommendedTheses ??
+    []) as RecommendedThesisItem[];
+  if (theses.length === 0) {
+    return;
+  }
 
-    if (!matrix) return { exists: false, error: "Tez matrisi bulunamadı." };
+  await db.transaction(async (tx) => {
+    let [relatedBox] = await tx
+      .select({ id: boxes.id })
+      .from(boxes)
+      .where(
+        and(eq(boxes.matrixId, matrix.id), eq(boxes.boxType, "RELATED_THESES")),
+      )
+      .limit(1);
 
-    const pool = await fetchPreloadedPool(matrix.id);
-    if (pool && pool.length > 0) {
-      return { data: pool, exists: true };
+    if (!relatedBox) {
+      const [inserted] = await tx
+        .insert(boxes)
+        .values({
+          matrixId: matrix.id,
+          title: RELATED_THESES_TITLE,
+          boxType: "RELATED_THESES",
+          description:
+            BOX_TYPE_DESCRIPTIONS.RELATED_THESES ??
+            "Tez konunuz ve konumlandırmanız ile doğrudan ilişkili, incelenmesi önerilen YÖK ve akademik tez çalışmaları.",
+          parentId: null,
+          concepts: [],
+        })
+        .returning({ id: boxes.id });
+      relatedBox = inserted;
     }
 
-    return { exists: false };
-  } catch (err) {
-    return {
-      exists: false,
-      error:
-        err instanceof Error ? err.message : "Beklenmeyen bir hata oluştu.",
-    };
-  }
+    if (!relatedBox) return;
+
+    // Delete existing sources for this RELATED_THESES box to prevent duplicates
+    await tx.delete(sources).where(eq(sources.boxId, relatedBox.id));
+
+    const toInsert = theses.map((t) => {
+      const thesisUrl =
+        t.doi ||
+        t.tezaraUrl ||
+        (t.externalThesisId
+          ? `https://tez.yok.gov.tr/UlusalTezMerkezi/tezDetay.jsp?id=${t.externalThesisId}`
+          : null);
+
+      const noteSections = [
+        t.abstract ? `ÖZET: ${t.abstract}` : null,
+        t.contributionArea ? `KATKI ALANI: ${t.contributionArea}` : null,
+        t.relevanceReason ? `STRATEJİK KULLANIM: ${t.relevanceReason}` : null,
+      ].filter((s): s is string => !!s && s.trim().length > 0);
+
+      return {
+        boxId: relatedBox.id,
+        title: cleanThesisTitle(t.title),
+        authors: [t.author].filter((a) => a && a.length > 0),
+        publisher: t.university || null,
+        thesisType: t.thesisType || null,
+        publicationYear: t.year,
+        doi: thesisUrl,
+        comparisonNote:
+          noteSections.length > 0 ? noteSections.join("\n\n") : null,
+        isRead: false,
+        relevanceScore: 100,
+      };
+    });
+
+    if (toInsert.length > 0) {
+      await tx.insert(sources).values(toInsert);
+    }
+  });
 }
 </file>
 
@@ -32035,6 +31677,213 @@ export function OutlineStatsBar({
       </div>
     </Card>
   );
+}
+</file>
+
+<file path="src/app/(onboarding)/onboarding/outline/_services/generator.ts">
+"use server";
+
+import { eq } from "drizzle-orm";
+import { db } from "@/core/db";
+import { matrices, outlines } from "@/core/db/schema";
+import { getSession, SESSION_ERROR_MSG } from "@/lib/session";
+import { invalidateOnboardingStepCache } from "@/lib/cache-tags";
+import { generateGeminiStructuredContent } from "@/core/services/ai";
+import { FLASH_LITE_35, GEMINI_SEED } from "@/lib/constants";
+import { ThinkingLevel } from "@google/genai";
+import { createFlowId, Logger } from "@/lib/logger";
+import {
+  outlineGenerationSchema,
+  outlineGenerationJsonSchema,
+  type OutlineGenerationResponse,
+} from "./schema";
+
+import { buildOutlineGenerationPromptPayload } from "../_prompts/outline-generation.prompt";
+
+/**
+ * Generates the thesis outline via Gemini without persisting it.
+ *
+ * @returns The generated outline or an error message.
+ */
+export async function generateOutlineAction(): Promise<
+  { success: true; outline: OutlineGenerationResponse } | { error: string }
+> {
+  const flowId = createFlowId();
+  const log = new Logger(flowId);
+  const startTime = performance.now();
+
+  try {
+    const session = await getSession();
+    if (!session) return { error: SESSION_ERROR_MSG };
+
+    const [matrix] = await db
+      .select()
+      .from(matrices)
+      .where(eq(matrices.userId, session.userId));
+
+    if (!matrix) return { error: "Thesis matrix not found." };
+
+    log.info("outline_generation_start", {
+      service: "outline",
+    });
+
+    const payload = buildOutlineGenerationPromptPayload({
+      subjectProblem: matrix.subjectProblem,
+      theoreticalFramework: matrix.theoreticalFramework,
+      primaryMaterial: matrix.primaryMaterial,
+      methodology: matrix.methodology,
+    });
+
+    const result =
+      await generateGeminiStructuredContent<OutlineGenerationResponse>(
+        FLASH_LITE_35,
+        payload.systemInstruction,
+        payload.userPrompt,
+        outlineGenerationJsonSchema,
+        log,
+        {
+          thinkingConfig: { thinkingLevel: ThinkingLevel.LOW },
+          zodSchema: outlineGenerationSchema,
+          seed: GEMINI_SEED,
+          thesisMatrix: matrix,
+          payloadStage: "outline_generation",
+          quiet: true,
+        },
+      );
+
+    log.info("outline_generation_success", {
+      service: "outline",
+      durationMs: Math.round(performance.now() - startTime),
+    });
+
+    return { success: true, outline: result };
+  } catch (err) {
+    log.error("outline_generation_failed", {
+      service: "outline",
+      error: err instanceof Error ? err : new Error(String(err)),
+    });
+    return {
+      error: "Tez planı oluşturulurken beklenmeyen bir hata oluştu.",
+    };
+  }
+}
+
+/**
+ * Persists a generated thesis outline to the database.
+ *
+ * @param outline - The generated outline data from Gemini.
+ * @returns A success flag or an error message.
+ */
+export async function persistOutlineAction(
+  outline: OutlineGenerationResponse,
+): Promise<{ success: true } | { error: string }> {
+  const flowId = createFlowId();
+  const log = new Logger(flowId);
+
+  try {
+    const session = await getSession();
+    if (!session) return { error: SESSION_ERROR_MSG };
+
+    const [matrix] = await db
+      .select()
+      .from(matrices)
+      .where(eq(matrices.userId, session.userId));
+
+    if (!matrix) return { error: "Thesis matrix not found." };
+
+    await persistOutlines(session.userId, matrix.id, outline);
+
+    invalidateOnboardingStepCache("outline");
+
+    return { success: true };
+  } catch (err) {
+    log.error("outline_persist_failed", {
+      service: "outline",
+      error: err instanceof Error ? err : new Error(String(err)),
+    });
+    return {
+      error:
+        "Tez planı veritabanına kaydedilirken beklenmeyen bir hata oluştu.",
+    };
+  }
+}
+
+/**
+ * Persists the outline hierarchy to the database in a single transaction.
+ *
+ * @param userId - The current user id.
+ * @param matrixId - The thesis matrix id.
+ * @param outline - The generated outline data from Gemini.
+ */
+async function persistOutlines(
+  userId: number,
+  matrixId: number,
+  outline: OutlineGenerationResponse,
+): Promise<void> {
+  const flowId = createFlowId();
+  const log = new Logger(flowId);
+
+  await db.transaction(async (tx) => {
+    // Delete existing outlines for this matrix (cascade deletes outline_annotations / outline_sources)
+    await tx.delete(outlines).where(eq(outlines.matrixId, matrixId));
+
+    const parentValues: (typeof outlines.$inferInsert)[] = [];
+    for (const section of outline.sections) {
+      parentValues.push({
+        matrixId,
+        parentId: null,
+        title: section.title,
+        description: section.description,
+        sortOrder: section.sortOrder,
+        academicField: outline.academicField,
+      });
+    }
+
+    if (parentValues.length === 0) return;
+
+    const insertedParents = await tx
+      .insert(outlines)
+      .values(parentValues)
+      .returning({ id: outlines.id });
+
+    const dbParentIdMap = new Map<number, number>();
+    for (let i = 0; i < outline.sections.length; i++) {
+      const dbId = insertedParents[i]?.id;
+      if (dbId !== undefined) {
+        dbParentIdMap.set(i, dbId);
+      }
+    }
+
+    // Prepare child subsections
+    const childValues: (typeof outlines.$inferInsert)[] = [];
+    for (let i = 0; i < outline.sections.length; i++) {
+      const section = outline.sections[i];
+      if (!section.subSections || section.subSections.length === 0) continue;
+
+      const mappedParentId = dbParentIdMap.get(i) ?? null;
+      if (mappedParentId === null) continue;
+
+      for (let j = 0; j < section.subSections.length; j++) {
+        const sub = section.subSections[j];
+        childValues.push({
+          matrixId,
+          parentId: mappedParentId,
+          title: sub.title,
+          description: sub.description,
+          sortOrder: sub.sortOrder,
+          academicField: null,
+        });
+      }
+    }
+
+    if (childValues.length > 0) {
+      await tx.insert(outlines).values(childValues);
+    }
+  });
+
+  log.info("outline_persist_transaction_complete", {
+    service: "outline",
+  });
 }
 </file>
 
@@ -38546,138 +38395,153 @@ export interface RawPaper {
 }
 </file>
 
-<file path="src/app/(onboarding)/onboarding/literature-review/pipeline-actions.ts">
+<file path="src/app/(onboarding)/onboarding/literature-review/pool-actions.ts">
 "use server";
 
+import { eq } from "drizzle-orm";
+import { db } from "@/core/db";
 import {
   revalidateOnboardingPaths,
   invalidateOnboardingCache,
 } from "@/lib/cache-tags";
+import { matrices } from "@/core/db/schema";
 import { Logger, createFlowId } from "@/lib/logger";
+import { handleActionError } from "@/lib/errors/handle-error";
 import { getSession, SESSION_ERROR_MSG } from "@/lib/session";
-import type { LiteraturePoolEntry } from "@/lib/types";
-import type { SubBoxInput } from "@/app/(onboarding)/onboarding/literature-review/_services/literature-review-papers";
-import { orchestrateBatchProcess } from "@/app/(onboarding)/onboarding/literature-review/_services/batch-orchestrator";
-import {
-  persistLiteraturePool,
-  persistSubBoxEntry,
-} from "@/app/(onboarding)/onboarding/literature-review/_services/pool-persistence";
+import type { LiteraturePoolEntry, OnboardingActionResult } from "@/lib/types";
+import { persistLiteraturePool } from "@/app/(onboarding)/onboarding/literature-review/_services/pool-persistence";
 import { persistRelatedTheses } from "@/app/(onboarding)/onboarding/literature-review/_services/related-theses";
-import { loadThesisMatrixAndBoxes } from "@/app/(onboarding)/onboarding/literature-review/_services/process-boxes-data";
-import { isLiteratureCancelled } from "./cancel-state";
-import { resetLiteratureCancelledAction } from "./cancel-actions";
+import { fetchPreloadedPool } from "@/app/(onboarding)/onboarding/literature-review/_services/pool-queries";
 
 /**
- * Processes all sub-boxes through the batch literature pipeline.
+ * Persists the confirmed literature pool to the database.
  *
- * @param boxes - The sub-box inputs to process.
- * @returns The persisted literature pool entries or an error message.
+ * @param args - The confirmation payload.
+ * @param args.literaturePool - The literature pool entries to persist.
+ * @returns The action result indicating success or an error.
  */
-export async function processAllBoxesAction(
-  boxes: SubBoxInput[],
-): Promise<{ data?: LiteraturePoolEntry[]; error?: string }> {
-  const logger = new Logger(createFlowId());
+export async function confirmLiteratureAction(args: {
+  literaturePool: LiteraturePoolEntry[];
+}): Promise<OnboardingActionResult> {
+  const flowId = createFlowId();
+  const log = new Logger(flowId);
+  const startTime = performance.now();
+
+  log.info("confirm_literature_start");
 
   try {
     const session = await getSession();
-    if (!session) return { error: SESSION_ERROR_MSG };
+    if (!session) {
+      return { error: SESSION_ERROR_MSG };
+    }
 
-    const userId = session.userId;
-    await resetLiteratureCancelledAction();
+    const { literaturePool } = args;
+    if (!literaturePool || literaturePool.length === 0) {
+      return { error: "Onaylanacak literatür verisi bulunamadı." };
+    }
 
-    if (isLiteratureCancelled(userId)) return { error: "cancelled" };
+    const [matrix] = await db
+      .select({ id: matrices.id })
+      .from(matrices)
+      .where(eq(matrices.userId, session.userId));
 
-    const { matrix } = await loadThesisMatrixAndBoxes(userId);
-    if (!matrix) return { error: "Tez matrisi bulunamadı." };
-    if (isLiteratureCancelled(userId)) return { error: "cancelled" };
+    if (!matrix) {
+      return { error: "Tez matrisi bulunamadı." };
+    }
 
-    const { poolEntries } = await orchestrateBatchProcess(
-      boxes,
-      logger,
-      matrix.subjectProblem,
-      () => isLiteratureCancelled(userId),
-      async (thesisBoxId, articles) => {
-        await persistSubBoxEntry(thesisBoxId, articles);
-      },
-    );
-
-    if (isLiteratureCancelled(userId)) return { error: "cancelled" };
-
-    return { data: poolEntries };
-  } catch (err) {
-    const message =
-      err instanceof Error ? err.message : "Beklenmeyen bir hata oluştu.";
-    logger.error("literature_batch_process_failed", {
-      error: err,
-    });
-    return { error: message };
-  }
-}
-
-/**
- * Runs the full literature pipeline (search, jury, selection, persistence) and returns the pool.
- *
- * @param boxes - The sub-box inputs to process.
- * @returns The persisted literature pool entries or an error message.
- */
-export async function runLiteraturePipelineAction(
-  boxes: SubBoxInput[],
-): Promise<{ data?: LiteraturePoolEntry[]; error?: string }> {
-  const logger = new Logger(createFlowId());
-  const pipelineStart = performance.now();
-
-  try {
-    const session = await getSession();
-    if (!session) return { error: SESSION_ERROR_MSG };
-
-    const userId = session.userId;
-    await resetLiteratureCancelledAction();
-
-    if (isLiteratureCancelled(userId)) return { error: "cancelled" };
-
-    const { matrix } = await loadThesisMatrixAndBoxes(userId);
-    const subjectProblem = matrix?.subjectProblem ?? "";
-
-    const { poolEntries } = await orchestrateBatchProcess(
-      boxes,
-      logger,
-      subjectProblem,
-      () => isLiteratureCancelled(userId),
-      async (thesisBoxId, articles) => {
-        await persistSubBoxEntry(thesisBoxId, articles);
-      },
-    );
-
-    if (isLiteratureCancelled(userId)) return { error: "cancelled" };
-
-    logger.info("literature_pool_persist_start");
-    await persistLiteraturePool(poolEntries);
-    logger.info("literature_pool_persist_success");
-
-    await persistRelatedTheses(userId);
+    await persistLiteraturePool(literaturePool);
+    await persistRelatedTheses(session.userId);
 
     try {
       revalidateOnboardingPaths();
     } catch (err) {
-      logger.warn("literature_pipeline_revalidate_failed", {
+      log.warn("confirm_literature_revalidate_failed", {
         service: "literature",
         error: err,
       });
     }
+
     invalidateOnboardingCache();
 
-    logger.info("literature_pipeline_success", {
-      data: { durationMs: Math.round(performance.now() - pipelineStart) },
+    log.info("confirm_literature_success", {
+      durationMs: performance.now() - startTime,
     });
 
-    return { data: poolEntries };
+    return { success: true };
   } catch (err) {
-    const message =
-      err instanceof Error ? err.message : "Beklenmeyen bir hata oluştu.";
-    logger.error("literature_pipeline_failed", {
+    log.error("confirm_literature_failed", {
       error: err,
     });
-    return { error: message };
+    return {
+      error:
+        err instanceof Error ? err.message : "An unexpected error occurred.",
+    };
+  }
+}
+
+/**
+ * Returns the preloaded literature pool for the current user.
+ *
+ * @returns The preloaded pool entries or an error message.
+ */
+export async function fetchPreloadedLiteraturePool(): Promise<{
+  data?: LiteraturePoolEntry[];
+  error?: string;
+}> {
+  try {
+    const session = await getSession();
+    if (!session) return { error: SESSION_ERROR_MSG };
+
+    const [matrix] = await db
+      .select({ id: matrices.id })
+      .from(matrices)
+      .where(eq(matrices.userId, session.userId));
+
+    if (!matrix) return { error: "Tez matrisi bulunamadı." };
+
+    await persistRelatedTheses(session.userId);
+
+    const pool = await fetchPreloadedPool(matrix.id);
+
+    return { data: pool };
+  } catch (err) {
+    return handleActionError(err);
+  }
+}
+
+/**
+ * Checks whether a literature pool already exists for the current user.
+ *
+ * @returns The existing pool entries and whether a pool exists, or an error.
+ */
+export async function checkLiteraturePoolAction(): Promise<{
+  data?: LiteraturePoolEntry[];
+  exists: boolean;
+  error?: string;
+}> {
+  try {
+    const session = await getSession();
+    if (!session) return { exists: false, error: SESSION_ERROR_MSG };
+
+    const [matrix] = await db
+      .select({ id: matrices.id })
+      .from(matrices)
+      .where(eq(matrices.userId, session.userId));
+
+    if (!matrix) return { exists: false, error: "Tez matrisi bulunamadı." };
+
+    const pool = await fetchPreloadedPool(matrix.id);
+    if (pool && pool.length > 0) {
+      return { data: pool, exists: true };
+    }
+
+    return { exists: false };
+  } catch (err) {
+    return {
+      exists: false,
+      error:
+        err instanceof Error ? err.message : "Beklenmeyen bir hata oluştu.",
+    };
   }
 }
 </file>
@@ -42743,186 +42607,6 @@ export async function checkStepsDataAction() {
 }
 </file>
 
-<file path="src/app/(onboarding)/onboarding/boxes/_services/persist-boxes.ts">
-"use server";
-
-import { and, eq, ne } from "drizzle-orm";
-import { z } from "zod";
-import { db } from "@/core/db";
-import { boxes as boxRows } from "@/core/db/schema";
-import { getSession, SESSION_ERROR_MSG } from "@/lib/session";
-import { createFlowId, Logger } from "@/lib/logger";
-import { updateTag } from "next/cache";
-import { CACHE_TAGS, revalidateOnboardingPaths } from "@/lib/cache-tags";
-import { type OnboardingActionResult } from "@/lib/types";
-import { fetchThesisMatrix } from "@/app/(onboarding)/onboarding/_services/fetch-actions";
-import { persistRelatedTheses } from "@/app/(onboarding)/onboarding/literature-review/_services/related-theses";
-
-const confirmBoxSchema: z.ZodType<{
-  title: string;
-  boxType:
-    | "SUBJECT_PROBLEM"
-    | "THEORETICAL_FRAMEWORK"
-    | "METHODOLOGY"
-    | "PRIMARY_MATERIAL";
-  description?: string;
-  parentId: number | null;
-  semanticQuery: string | null;
-  subBoxes?: unknown;
-  concepts?: string[];
-}> = z.lazy(() =>
-  z.object({
-    title: z.string().min(1),
-    boxType: z.enum([
-      "SUBJECT_PROBLEM",
-      "THEORETICAL_FRAMEWORK",
-      "METHODOLOGY",
-      "PRIMARY_MATERIAL",
-    ]),
-    description: z.string().optional().default(""),
-    parentId: z.number().nullable(),
-    semanticQuery: z.string().nullable(),
-    subBoxes: z.array(confirmBoxSchema).optional(),
-    concepts: z.array(z.string()).optional().default([]),
-  }),
-);
-
-const confirmBoxesSchema = z.array(confirmBoxSchema);
-
-/**
- * Persists the boxes to the database in a single transaction and invalidates caches.
- *
- * @param boxes - The boxes payload to validate and persist.
- * @returns An onboarding action result with a success flag or an error message.
- */
-export async function persistBoxesAction(
-  boxes: unknown,
-): Promise<OnboardingActionResult> {
-  const flowId = createFlowId();
-  const log = new Logger(flowId);
-  const startTime = performance.now();
-
-  try {
-    const session = await getSession();
-    if (!session) return { error: SESSION_ERROR_MSG };
-
-    const matrix = await fetchThesisMatrix();
-    if (!matrix) return { error: "Tez matrisi bulunamadı." };
-
-    log.info("boxes_persist_start", {
-      service: "boxes",
-      filePath: "src/features/boxes/persist-boxes.ts",
-    });
-
-    const parsed = confirmBoxesSchema.safeParse(boxes);
-    if (!parsed.success) {
-      log.error("boxes_persist_validation_failed", {
-        service: "boxes",
-        error: parsed.error,
-      });
-      return { error: "Geçersiz konu kutusu verisi alındı." };
-    }
-
-    const validBoxes = parsed.data;
-    const thesisMatrixId = matrix.id;
-
-    await db.transaction(async (tx) => {
-      await tx
-        .delete(boxRows)
-        .where(
-          and(
-            eq(boxRows.matrixId, thesisMatrixId),
-            ne(boxRows.boxType, "RELATED_THESES"),
-          ),
-        );
-
-      const parentFlatIndices: number[] = [];
-      for (let i = 0; i < validBoxes.length; i++) {
-        if (validBoxes[i].parentId === null) {
-          parentFlatIndices.push(i);
-        }
-      }
-
-      const parentValues = parentFlatIndices.map((i) => ({
-        matrixId: thesisMatrixId,
-        title: validBoxes[i].title,
-        boxType: validBoxes[i].boxType,
-        description: validBoxes[i].description || "",
-        parentId: null,
-        semanticQuery: null,
-        concepts: validBoxes[i].concepts || [],
-      }));
-
-      let insertedParents: { id: number }[] = [];
-      if (parentValues.length > 0) {
-        insertedParents = await tx
-          .insert(boxRows)
-          .values(parentValues)
-          .returning({ id: boxRows.id });
-      }
-
-      const dbParentIdMap = new Map<number, number>();
-      for (let j = 0; j < parentFlatIndices.length; j++) {
-        const dbId = insertedParents[j]?.id;
-        if (dbId !== undefined) {
-          dbParentIdMap.set(parentFlatIndices[j], dbId);
-        }
-      }
-
-      const childValues: (typeof boxRows.$inferInsert)[] = [];
-      for (let i = 0; i < validBoxes.length; i++) {
-        const box = validBoxes[i];
-        if (box.parentId === null) continue;
-        const mappedParentId = dbParentIdMap.get(box.parentId) ?? null;
-        childValues.push({
-          matrixId: thesisMatrixId,
-          title: box.title,
-          boxType: box.boxType,
-          description: box.description || "",
-          parentId: mappedParentId,
-          semanticQuery: box.semanticQuery || "",
-          concepts: box.concepts ?? [],
-        });
-      }
-
-      if (childValues.length > 0) {
-        await tx.insert(boxRows).values(childValues);
-      }
-    });
-
-    await persistRelatedTheses(session.userId);
-
-    try {
-      revalidateOnboardingPaths();
-      updateTag(CACHE_TAGS.thesisBoxes);
-    } catch (err) {
-      log.warn("boxes_revalidate_failed", {
-        service: "boxes",
-        error: err,
-      });
-    }
-
-    log.info("boxes_persist_success", {
-      service: "boxes",
-      durationMs: Math.round(performance.now() - startTime),
-    });
-
-    return { success: true };
-  } catch (err) {
-    log.error("boxes_persist_failed", {
-      service: "boxes",
-      error: err instanceof Error ? err : new Error(String(err)),
-    });
-    return { error: "Konu kutuları veritabanına kaydedilemedi." };
-  }
-}
-
-/**
- * Legacy alias for persistBoxesAction.
- */
-export const confirmBoxesAction = persistBoxesAction;
-</file>
-
 <file path="src/app/(onboarding)/onboarding/boxes/_services/schemas.ts">
 import { z } from "zod";
 import type { JsonSchema, JsonSchemaProperty } from "@/core/services/ai";
@@ -43458,184 +43142,139 @@ export async function executePhase3Selection(
 }
 </file>
 
-<file path="src/app/(onboarding)/onboarding/literature-review/_services/batch-jury.ts">
+<file path="src/app/(onboarding)/onboarding/literature-review/pipeline-actions.ts">
+"use server";
+
 import {
-  generateGeminiStructuredContent,
-  type JsonSchema,
-} from "@/core/services/ai";
-import { FLASH_LITE_35, GEMINI_SEED } from "@/lib/constants";
-import { buildJuryPromptPayload } from "../_prompts/batch-jury.prompt";
-import { ThinkingLevel, HarmCategory, HarmBlockThreshold } from "@google/genai";
-import { Logger } from "@/lib/logger";
-import { extractOpenAlexId } from "@/lib/academic/utils";
-import { z } from "zod";
-import type { RawPaper } from "./literature-review-papers";
-
-export interface JuryBoxContext {
-  thesisBoxId: number;
-  subBoxTitle: string;
-  boxType: string;
-  description: string;
-}
-
-export interface JuryInputItem {
-  box: JuryBoxContext;
-  articles: RawPaper[];
-}
-
-export interface JuryEvaluation {
-  thesisBoxId: number;
-  subBoxTitle: string;
-  articleTitle: string;
-  openAlexId: string | null;
-  isRelevant: boolean;
-  relevanceScore: number;
-  reasoning: string;
-}
-
-export interface SingleBoxJuryResult {
-  thesisBoxId: number;
-  evaluations: JuryEvaluation[];
-}
-
-const juryEvaluationSchema = z.object({
-  thesisBoxId: z.number().int().min(0),
-  subBoxTitle: z.string().min(1),
-  articleTitle: z.string().min(1),
-  openAlexId: z
-    .string()
-    .nullable()
-    .transform((v) => extractOpenAlexId(v)),
-  isRelevant: z.boolean(),
-  relevanceScore: z.number().int().min(0).max(100),
-  reasoning: z.string().min(1),
-});
-
-const singleBoxJuryOutputSchema = z.object({
-  evaluations: z.array(juryEvaluationSchema),
-});
-
-const juryJsonSchema: JsonSchema = {
-  type: "object",
-  properties: {
-    evaluations: {
-      type: "array",
-      items: {
-        type: "object",
-        properties: {
-          thesisBoxId: { type: "integer", description: "Tez kutusu ID" },
-          subBoxTitle: { type: "string", description: "Alt kutu başlığı" },
-          articleTitle: { type: "string", description: "Makale başlığı" },
-          openAlexId: {
-            type: "string",
-            description:
-              "Makalenin gerçek OpenAlex ID'si (W... formatında). Bilinmiyorsa string 'null' değil, JSON null gönder.",
-          },
-          isRelevant: {
-            type: "boolean",
-            description: "Makale box bağlamıyla alakalı mı?",
-          },
-          relevanceScore: {
-            type: "integer",
-            minimum: 0,
-            maximum: 100,
-            description: "0-100 arası alaka skoru",
-          },
-          reasoning: {
-            type: "string",
-            description: "Türkçe 1 cümlelik kabul/ret gerekçesi",
-          },
-        },
-        required: [
-          "thesisBoxId",
-          "subBoxTitle",
-          "articleTitle",
-          "openAlexId",
-          "isRelevant",
-          "relevanceScore",
-          "reasoning",
-        ],
-      },
-    },
-  },
-  required: ["evaluations"],
-};
+  revalidateOnboardingPaths,
+  invalidateOnboardingCache,
+} from "@/lib/cache-tags";
+import { Logger, createFlowId } from "@/lib/logger";
+import { getSession, SESSION_ERROR_MSG } from "@/lib/session";
+import type { LiteraturePoolEntry } from "@/lib/types";
+import type { SubBoxInput } from "@/app/(onboarding)/onboarding/literature-review/_services/literature-review-papers";
+import { orchestrateBatchProcess } from "@/app/(onboarding)/onboarding/literature-review/_services/batch-orchestrator";
+import {
+  persistLiteraturePool,
+  persistSubBoxEntry,
+} from "@/app/(onboarding)/onboarding/literature-review/_services/pool-persistence";
+import { persistRelatedTheses } from "@/app/(onboarding)/onboarding/literature-review/_services/related-theses";
+import { loadThesisMatrixAndBoxes } from "@/app/(onboarding)/onboarding/literature-review/_services/process-boxes-data";
+import { isLiteratureCancelled } from "./cancel-state";
+import { resetLiteratureCancelledAction } from "./cancel-actions";
 
 /**
- * Runs a jury evaluation for a single sub-box with a box-type-specific prompt.
+ * Processes all sub-boxes through the batch literature pipeline.
  *
- * @param thesisSubject - The thesis subject problem statement.
- * @param input - The sub-box context and raw articles to evaluate.
- * @param logger - Optional logger for pipeline events.
- * @returns The jury evaluation results for the sub-box.
+ * @param boxes - The sub-box inputs to process.
+ * @returns The persisted literature pool entries or an error message.
  */
-export async function evaluateSingleBoxJury(
-  thesisSubject: string,
-  input: JuryInputItem,
-  logger?: Logger,
-): Promise<SingleBoxJuryResult> {
-  const { box, articles } = input;
+export async function processAllBoxesAction(
+  boxes: SubBoxInput[],
+): Promise<{ data?: LiteraturePoolEntry[]; error?: string }> {
+  const logger = new Logger(createFlowId());
 
-  if (articles.length === 0) {
-    return { thesisBoxId: box.thesisBoxId, evaluations: [] };
+  try {
+    const session = await getSession();
+    if (!session) return { error: SESSION_ERROR_MSG };
+
+    const userId = session.userId;
+    await resetLiteratureCancelledAction();
+
+    if (isLiteratureCancelled(userId)) return { error: "cancelled" };
+
+    const { matrix } = await loadThesisMatrixAndBoxes(userId);
+    if (!matrix) return { error: "Tez matrisi bulunamadı." };
+    if (isLiteratureCancelled(userId)) return { error: "cancelled" };
+
+    const { poolEntries } = await orchestrateBatchProcess(
+      boxes,
+      logger,
+      matrix.subjectProblem,
+      () => isLiteratureCancelled(userId),
+      async (thesisBoxId, articles) => {
+        await persistSubBoxEntry(thesisBoxId, articles);
+      },
+    );
+
+    if (isLiteratureCancelled(userId)) return { error: "cancelled" };
+
+    return { data: poolEntries };
+  } catch (err) {
+    const message =
+      err instanceof Error ? err.message : "Beklenmeyen bir hata oluştu.";
+    logger.error("literature_batch_process_failed", {
+      error: err,
+    });
+    return { error: message };
   }
+}
 
-  const articlesText = articles
-    .map(
-      (a, idx) =>
-        `  Makale ${idx + 1}: "${a.title ?? "(başlık yok)"}"\n` +
-        `     Authors: ${a.authors.slice(0, 3).join(", ") || "(bilinmiyor)"}${a.authors.length > 3 ? " et al." : ""}\n` +
-        `     Abstract: ${a.abstract ?? "(özet yok)"}\n` +
-        `     OpenAlex Relevance Score: ${(a.relevanceScore ?? 0).toFixed(4)}`,
-    )
-    .join("\n\n");
+/**
+ * Runs the full literature pipeline (search, jury, selection, persistence) and returns the pool.
+ *
+ * @param boxes - The sub-box inputs to process.
+ * @returns The persisted literature pool entries or an error message.
+ */
+export async function runLiteraturePipelineAction(
+  boxes: SubBoxInput[],
+): Promise<{ data?: LiteraturePoolEntry[]; error?: string }> {
+  const logger = new Logger(createFlowId());
+  const pipelineStart = performance.now();
 
-  const payload = buildJuryPromptPayload({
-    thesisSubject,
-    thesisBoxId: box.thesisBoxId,
-    subBoxTitle: box.subBoxTitle,
-    boxType: box.boxType,
-    description: box.description,
-    articlesText,
-    articleCount: articles.length,
-  });
+  try {
+    const session = await getSession();
+    if (!session) return { error: SESSION_ERROR_MSG };
 
-  const raw = await generateGeminiStructuredContent<{
-    evaluations: JuryEvaluation[];
-  }>(
-    FLASH_LITE_35,
-    payload.systemInstruction,
-    payload.userPrompt,
-    juryJsonSchema,
-    logger,
-    {
-      thinkingConfig: { thinkingLevel: ThinkingLevel.MEDIUM },
-      zodSchema: singleBoxJuryOutputSchema,
-      seed: GEMINI_SEED,
-      safetySettings: [
-        {
-          category: HarmCategory.HARM_CATEGORY_HATE_SPEECH,
-          threshold: HarmBlockThreshold.BLOCK_ONLY_HIGH,
-        },
-        {
-          category: HarmCategory.HARM_CATEGORY_HARASSMENT,
-          threshold: HarmBlockThreshold.BLOCK_ONLY_HIGH,
-        },
-        {
-          category: HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT,
-          threshold: HarmBlockThreshold.BLOCK_ONLY_HIGH,
-        },
-        {
-          category: HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT,
-          threshold: HarmBlockThreshold.BLOCK_ONLY_HIGH,
-        },
-      ],
-      payloadStage: "literature_single_box_jury",
-      quiet: true,
-    },
-  );
+    const userId = session.userId;
+    await resetLiteratureCancelledAction();
 
-  return { thesisBoxId: box.thesisBoxId, evaluations: raw.evaluations ?? [] };
+    if (isLiteratureCancelled(userId)) return { error: "cancelled" };
+
+    const { matrix } = await loadThesisMatrixAndBoxes(userId);
+    const subjectProblem = matrix?.subjectProblem ?? "";
+
+    const { poolEntries } = await orchestrateBatchProcess(
+      boxes,
+      logger,
+      subjectProblem,
+      () => isLiteratureCancelled(userId),
+      async (thesisBoxId, articles) => {
+        await persistSubBoxEntry(thesisBoxId, articles);
+      },
+    );
+
+    if (isLiteratureCancelled(userId)) return { error: "cancelled" };
+
+    logger.info("literature_pool_persist_start");
+    await persistLiteraturePool(poolEntries);
+    logger.info("literature_pool_persist_success");
+
+    await persistRelatedTheses(userId);
+
+    try {
+      revalidateOnboardingPaths();
+    } catch (err) {
+      logger.warn("literature_pipeline_revalidate_failed", {
+        service: "literature",
+        error: err,
+      });
+    }
+    invalidateOnboardingCache();
+
+    logger.info("literature_pipeline_success", {
+      data: { durationMs: Math.round(performance.now() - pipelineStart) },
+    });
+
+    return { data: poolEntries };
+  } catch (err) {
+    const message =
+      err instanceof Error ? err.message : "Beklenmeyen bir hata oluştu.";
+    logger.error("literature_pipeline_failed", {
+      error: err,
+    });
+    return { error: message };
+  }
 }
 </file>
 
@@ -43779,21 +43418,21 @@ export type ThesisBoxType =
   | "PRIMARY_MATERIAL"
   | "RELATED_THESES";
 
-/** Canonical display ordering: SUBJECT_PROBLEM → THEORETICAL_FRAMEWORK → METHODOLOGY → PRIMARY_MATERIAL. */
+/** Canonical display ordering: SUBJECT_PROBLEM → THEORETICAL_FRAMEWORK → METHODOLOGY → PRIMARY_MATERIAL → RELATED_THESES. */
 export const BOX_ORDER_WEIGHT: Record<ThesisBoxType, number> = {
   SUBJECT_PROBLEM: 1,
   THEORETICAL_FRAMEWORK: 2,
   METHODOLOGY: 3,
-  RELATED_THESES: 4,
-  PRIMARY_MATERIAL: 5,
+  PRIMARY_MATERIAL: 4,
+  RELATED_THESES: 5,
 };
 
 /** Canonical full (long) Turkish labels. */
 export const BOX_TYPE_LABELS: Record<ThesisBoxType, string> = {
   SUBJECT_PROBLEM: "Araştırma Problemi",
   THEORETICAL_FRAMEWORK: "Teorik Çerçeve",
-  PRIMARY_MATERIAL: "Birincil Kaynak",
   METHODOLOGY: "Yöntem",
+  PRIMARY_MATERIAL: "Birincil Kaynak",
   RELATED_THESES: "İlgili Tezler",
 };
 
@@ -45261,6 +44900,186 @@ export async function unlinkSourceFromOutlineAction(
 }
 </file>
 
+<file path="src/app/(onboarding)/onboarding/boxes/_services/persist-boxes.ts">
+"use server";
+
+import { and, eq, ne } from "drizzle-orm";
+import { z } from "zod";
+import { db } from "@/core/db";
+import { boxes as boxRows } from "@/core/db/schema";
+import { getSession, SESSION_ERROR_MSG } from "@/lib/session";
+import { createFlowId, Logger } from "@/lib/logger";
+import { updateTag } from "next/cache";
+import { CACHE_TAGS, revalidateOnboardingPaths } from "@/lib/cache-tags";
+import { type OnboardingActionResult } from "@/lib/types";
+import { fetchThesisMatrix } from "@/app/(onboarding)/onboarding/_services/fetch-actions";
+import { persistRelatedTheses } from "@/app/(onboarding)/onboarding/literature-review/_services/related-theses";
+
+const confirmBoxSchema: z.ZodType<{
+  title: string;
+  boxType:
+    | "SUBJECT_PROBLEM"
+    | "THEORETICAL_FRAMEWORK"
+    | "METHODOLOGY"
+    | "PRIMARY_MATERIAL";
+  description?: string;
+  parentId: number | null;
+  semanticQuery: string | null;
+  subBoxes?: unknown;
+  concepts?: string[];
+}> = z.lazy(() =>
+  z.object({
+    title: z.string().min(1),
+    boxType: z.enum([
+      "SUBJECT_PROBLEM",
+      "THEORETICAL_FRAMEWORK",
+      "METHODOLOGY",
+      "PRIMARY_MATERIAL",
+    ]),
+    description: z.string().optional().default(""),
+    parentId: z.number().nullable(),
+    semanticQuery: z.string().nullable(),
+    subBoxes: z.array(confirmBoxSchema).optional(),
+    concepts: z.array(z.string()).optional().default([]),
+  }),
+);
+
+const confirmBoxesSchema = z.array(confirmBoxSchema);
+
+/**
+ * Persists the boxes to the database in a single transaction and invalidates caches.
+ *
+ * @param boxes - The boxes payload to validate and persist.
+ * @returns An onboarding action result with a success flag or an error message.
+ */
+export async function persistBoxesAction(
+  boxes: unknown,
+): Promise<OnboardingActionResult> {
+  const flowId = createFlowId();
+  const log = new Logger(flowId);
+  const startTime = performance.now();
+
+  try {
+    const session = await getSession();
+    if (!session) return { error: SESSION_ERROR_MSG };
+
+    const matrix = await fetchThesisMatrix();
+    if (!matrix) return { error: "Tez matrisi bulunamadı." };
+
+    log.info("boxes_persist_start", {
+      service: "boxes",
+      filePath: "src/features/boxes/persist-boxes.ts",
+    });
+
+    const parsed = confirmBoxesSchema.safeParse(boxes);
+    if (!parsed.success) {
+      log.error("boxes_persist_validation_failed", {
+        service: "boxes",
+        error: parsed.error,
+      });
+      return { error: "Geçersiz konu kutusu verisi alındı." };
+    }
+
+    const validBoxes = parsed.data;
+    const thesisMatrixId = matrix.id;
+
+    await db.transaction(async (tx) => {
+      await tx
+        .delete(boxRows)
+        .where(
+          and(
+            eq(boxRows.matrixId, thesisMatrixId),
+            ne(boxRows.boxType, "RELATED_THESES"),
+          ),
+        );
+
+      const parentFlatIndices: number[] = [];
+      for (let i = 0; i < validBoxes.length; i++) {
+        if (validBoxes[i].parentId === null) {
+          parentFlatIndices.push(i);
+        }
+      }
+
+      const parentValues = parentFlatIndices.map((i) => ({
+        matrixId: thesisMatrixId,
+        title: validBoxes[i].title,
+        boxType: validBoxes[i].boxType,
+        description: validBoxes[i].description || "",
+        parentId: null,
+        semanticQuery: null,
+        concepts: validBoxes[i].concepts || [],
+      }));
+
+      let insertedParents: { id: number }[] = [];
+      if (parentValues.length > 0) {
+        insertedParents = await tx
+          .insert(boxRows)
+          .values(parentValues)
+          .returning({ id: boxRows.id });
+      }
+
+      const dbParentIdMap = new Map<number, number>();
+      for (let j = 0; j < parentFlatIndices.length; j++) {
+        const dbId = insertedParents[j]?.id;
+        if (dbId !== undefined) {
+          dbParentIdMap.set(parentFlatIndices[j], dbId);
+        }
+      }
+
+      const childValues: (typeof boxRows.$inferInsert)[] = [];
+      for (let i = 0; i < validBoxes.length; i++) {
+        const box = validBoxes[i];
+        if (box.parentId === null) continue;
+        const mappedParentId = dbParentIdMap.get(box.parentId) ?? null;
+        childValues.push({
+          matrixId: thesisMatrixId,
+          title: box.title,
+          boxType: box.boxType,
+          description: box.description || "",
+          parentId: mappedParentId,
+          semanticQuery: box.semanticQuery || "",
+          concepts: box.concepts ?? [],
+        });
+      }
+
+      if (childValues.length > 0) {
+        await tx.insert(boxRows).values(childValues);
+      }
+    });
+
+    await persistRelatedTheses(session.userId);
+
+    try {
+      revalidateOnboardingPaths();
+      updateTag(CACHE_TAGS.thesisBoxes);
+    } catch (err) {
+      log.warn("boxes_revalidate_failed", {
+        service: "boxes",
+        error: err,
+      });
+    }
+
+    log.info("boxes_persist_success", {
+      service: "boxes",
+      durationMs: Math.round(performance.now() - startTime),
+    });
+
+    return { success: true };
+  } catch (err) {
+    log.error("boxes_persist_failed", {
+      service: "boxes",
+      error: err instanceof Error ? err : new Error(String(err)),
+    });
+    return { error: "Konu kutuları veritabanına kaydedilemedi." };
+  }
+}
+
+/**
+ * Legacy alias for persistBoxesAction.
+ */
+export const confirmBoxesAction = persistBoxesAction;
+</file>
+
 <file path="src/app/(onboarding)/onboarding/literature-review/_components/literature-article-card.tsx">
 "use client";
 
@@ -45415,65 +45234,184 @@ export async function executePhase1Search(
 }
 </file>
 
-<file path="src/app/(onboarding)/onboarding/literature-review/page.tsx">
-export const maxDuration = 300;
-export const instant = false;
+<file path="src/app/(onboarding)/onboarding/literature-review/_services/batch-jury.ts">
+import {
+  generateGeminiStructuredContent,
+  type JsonSchema,
+} from "@/core/services/ai";
+import { FLASH_LITE_35, GEMINI_SEED } from "@/lib/constants";
+import { buildJuryPromptPayload } from "../_prompts/batch-jury.prompt";
+import { ThinkingLevel, HarmCategory, HarmBlockThreshold } from "@google/genai";
+import { Logger } from "@/lib/logger";
+import { extractOpenAlexId } from "@/lib/academic/utils";
+import { z } from "zod";
+import type { RawPaper } from "./literature-review-papers";
 
-import { redirect } from "next/navigation";
-import { getProfile } from "@/lib/session";
-import { eq } from "drizzle-orm";
-import { db } from "@/core/db";
-import { matrices } from "@/core/db/schema";
-import { LiteratureReviewContent } from "./_components/literature-review-content";
-import { StartOverButton } from "../_components/start-over-button";
-import { fetchBoxesWithFullShape } from "@/app/(onboarding)/onboarding/_services/fetch-actions";
-import { persistRelatedTheses } from "./_services/related-theses";
+export interface JuryBoxContext {
+  thesisBoxId: number;
+  subBoxTitle: string;
+  boxType: string;
+  description: string;
+}
+
+export interface JuryInputItem {
+  box: JuryBoxContext;
+  articles: RawPaper[];
+}
+
+export interface JuryEvaluation {
+  thesisBoxId: number;
+  subBoxTitle: string;
+  articleTitle: string;
+  openAlexId: string | null;
+  isRelevant: boolean;
+  relevanceScore: number;
+  reasoning: string;
+}
+
+export interface SingleBoxJuryResult {
+  thesisBoxId: number;
+  evaluations: JuryEvaluation[];
+}
+
+const juryEvaluationSchema = z.object({
+  thesisBoxId: z.number().int().min(0),
+  subBoxTitle: z.string().min(1),
+  articleTitle: z.string().min(1),
+  openAlexId: z
+    .string()
+    .nullable()
+    .transform((v) => extractOpenAlexId(v)),
+  isRelevant: z.boolean(),
+  relevanceScore: z.number().int().min(0).max(100),
+  reasoning: z.string().min(1),
+});
+
+const singleBoxJuryOutputSchema = z.object({
+  evaluations: z.array(juryEvaluationSchema),
+});
+
+const juryJsonSchema: JsonSchema = {
+  type: "object",
+  properties: {
+    evaluations: {
+      type: "array",
+      items: {
+        type: "object",
+        properties: {
+          thesisBoxId: { type: "integer", description: "Tez kutusu ID" },
+          subBoxTitle: { type: "string", description: "Alt kutu başlığı" },
+          articleTitle: { type: "string", description: "Makale başlığı" },
+          openAlexId: {
+            type: "string",
+            description:
+              "Makalenin gerçek OpenAlex ID'si (W... formatında). Bilinmiyorsa string 'null' değil, JSON null gönder.",
+          },
+          isRelevant: {
+            type: "boolean",
+            description: "Makale box bağlamıyla alakalı mı?",
+          },
+          relevanceScore: {
+            type: "integer",
+            minimum: 0,
+            maximum: 100,
+            description: "0-100 arası alaka skoru",
+          },
+          reasoning: {
+            type: "string",
+            description: "Türkçe 1 cümlelik kabul/ret gerekçesi",
+          },
+        },
+        required: [
+          "thesisBoxId",
+          "subBoxTitle",
+          "articleTitle",
+          "openAlexId",
+          "isRelevant",
+          "relevanceScore",
+          "reasoning",
+        ],
+      },
+    },
+  },
+  required: ["evaluations"],
+};
 
 /**
- * Renders the literature review onboarding step for the authenticated user.
+ * Runs a jury evaluation for a single sub-box with a box-type-specific prompt.
  *
- * @returns The literature review page UI.
+ * @param thesisSubject - The thesis subject problem statement.
+ * @param input - The sub-box context and raw articles to evaluate.
+ * @param logger - Optional logger for pipeline events.
+ * @returns The jury evaluation results for the sub-box.
  */
-export default async function LiteratureReviewPage() {
-  const profile = await getProfile();
+export async function evaluateSingleBoxJury(
+  thesisSubject: string,
+  input: JuryInputItem,
+  logger?: Logger,
+): Promise<SingleBoxJuryResult> {
+  const { box, articles } = input;
 
-  const [matrix] = await db
-    .select({ id: matrices.id })
-    .from(matrices)
-    .where(eq(matrices.userId, profile.id));
-
-  if (!matrix) {
-    redirect("/onboarding/matrix");
+  if (articles.length === 0) {
+    return { thesisBoxId: box.thesisBoxId, evaluations: [] };
   }
 
-  await persistRelatedTheses(profile.id);
+  const articlesText = articles
+    .map(
+      (a, idx) =>
+        `  Makale ${idx + 1}: "${a.title ?? "(başlık yok)"}"\n` +
+        `     Authors: ${a.authors.slice(0, 3).join(", ") || "(bilinmiyor)"}${a.authors.length > 3 ? " et al." : ""}\n` +
+        `     Abstract: ${a.abstract ?? "(özet yok)"}\n` +
+        `     OpenAlex Relevance Score: ${(a.relevanceScore ?? 0).toFixed(4)}`,
+    )
+    .join("\n\n");
 
-  const boxes = await fetchBoxesWithFullShape();
-  if (!boxes || boxes.length === 0) {
-    redirect("/onboarding/positioning");
-  }
+  const payload = buildJuryPromptPayload({
+    thesisSubject,
+    thesisBoxId: box.thesisBoxId,
+    subBoxTitle: box.subBoxTitle,
+    boxType: box.boxType,
+    description: box.description,
+    articlesText,
+    articleCount: articles.length,
+  });
 
-  return (
-    <div className="flex flex-col items-center justify-center p-4 pt-10 pb-4">
-      <div className="flex w-full max-w-5xl flex-col items-center space-y-4">
-        <div className="flex w-full flex-col sm:flex-row justify-between items-start sm:items-center gap-4 pb-6 border-b border-border">
-          <div className="flex flex-col space-y-1 text-left">
-            <h1 className="font-serif text-2xl font-bold tracking-tight text-foreground">
-              Literatür Taraması
-            </h1>
-            <p className="text-sm leading-relaxed text-muted-foreground">
-              Her bir konu kutusu için akademik kaynaklar taranıyor.
-            </p>
-          </div>
-          <div className="flex items-center self-end sm:self-center">
-            <StartOverButton />
-          </div>
-        </div>
-
-        <LiteratureReviewContent />
-      </div>
-    </div>
+  const raw = await generateGeminiStructuredContent<{
+    evaluations: JuryEvaluation[];
+  }>(
+    FLASH_LITE_35,
+    payload.systemInstruction,
+    payload.userPrompt,
+    juryJsonSchema,
+    logger,
+    {
+      thinkingConfig: { thinkingLevel: ThinkingLevel.MEDIUM },
+      zodSchema: singleBoxJuryOutputSchema,
+      seed: GEMINI_SEED,
+      safetySettings: [
+        {
+          category: HarmCategory.HARM_CATEGORY_HATE_SPEECH,
+          threshold: HarmBlockThreshold.BLOCK_ONLY_HIGH,
+        },
+        {
+          category: HarmCategory.HARM_CATEGORY_HARASSMENT,
+          threshold: HarmBlockThreshold.BLOCK_ONLY_HIGH,
+        },
+        {
+          category: HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT,
+          threshold: HarmBlockThreshold.BLOCK_ONLY_HIGH,
+        },
+        {
+          category: HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT,
+          threshold: HarmBlockThreshold.BLOCK_ONLY_HIGH,
+        },
+      ],
+      payloadStage: "literature_single_box_jury",
+      quiet: true,
+    },
   );
+
+  return { thesisBoxId: box.thesisBoxId, evaluations: raw.evaluations ?? [] };
 }
 </file>
 
@@ -48153,156 +48091,65 @@ export async function resetOnboardingAction() {
 }
 </file>
 
-<file path="src/app/(onboarding)/onboarding/positioning/_services/analysis.ts">
-import { ThinkingLevel } from "@google/genai";
-import { FLASH_LITE_35, GEMINI_SEED } from "@/lib/constants";
-import { generateGeminiStructuredContent } from "@/core/services/ai";
-import type { Logger } from "@/lib/logger";
-import { buildPositioningJuryPromptPayload } from "../_prompts/jury-analysis.prompt";
-import type { EvaluatedThesis } from "./per-thesis-evaluation";
-import type { PositioningMatrixInput, RecommendedThesisItem } from "./validation";
-import {
-  jurySynthesisResultSchema,
-  jurySynthesisResultJsonSchema,
-  type JuryAnalysisResult,
-  type JurySynthesisResult,
-} from "./analysis-schemas";
+<file path="src/app/(onboarding)/onboarding/literature-review/page.tsx">
+export const maxDuration = 300;
+export const instant = false;
 
-export {
-  jurySynthesisResultSchema,
-  jurySynthesisResultJsonSchema,
-  type JuryAnalysisResult,
-  type JurySynthesisResult,
-};
+import { redirect } from "next/navigation";
+import { getProfile } from "@/lib/session";
+import { eq } from "drizzle-orm";
+import { db } from "@/core/db";
+import { matrices } from "@/core/db/schema";
+import { LiteratureReviewContent } from "./_components/literature-review-content";
+import { StartOverButton } from "../_components/start-over-button";
+import { fetchBoxesWithFullShape } from "@/app/(onboarding)/onboarding/_services/fetch-actions";
+import { persistRelatedTheses } from "./_services/related-theses";
 
 /**
- * Runs the final synthesis jury LLM over the relevant evaluated theses using FLASH_LITE_35.
- * Assembles the globalStatus, 3-dimensional gapAnalysisSummary, and recommended guiding theses.
+ * Renders the literature review onboarding step for the authenticated user.
  *
- * @param input - The validated positioning matrix.
- * @param evaluatedTheses - The relevant evaluated theses.
- * @param logger - Optional structured logger.
- * @returns The complete jury analysis result.
+ * @returns The literature review page UI.
  */
-export async function analyzePositioningJury(
-  input: PositioningMatrixInput,
-  evaluatedTheses: EvaluatedThesis[],
-  logger?: Logger,
-): Promise<JuryAnalysisResult> {
-  const overlapping = evaluatedTheses.some(
-    (ev) => ev.evaluation.isDirectOverlap,
-  );
+export default async function LiteratureReviewPage() {
+  const profile = await getProfile();
 
-  // 0 Results Scenario: Return clean NO_RELATED_LITERATURE fallback
-  if (evaluatedTheses.length === 0) {
-    logger?.info("positioning_jury_no_theses", {
-      service: "positioning",
-      filePath: "src/app/(onboarding)/onboarding/positioning/_services/analysis.ts",
-      data: { inputSubject: input.subjectProblem },
-    });
+  const [matrix] = await db
+    .select({ id: matrices.id })
+    .from(matrices)
+    .where(eq(matrices.userId, profile.id));
 
-    return {
-      globalStatus: "NO_RELATED_LITERATURE",
-      gapAnalysisSummary: {
-        literatureMapping:
-          "Ulusal tez merkezinde ve veri tabanında girilen tez matrisiyle (sorun, kuram, yöntem) doğrudan örtüşen veya aynı eksende konumlanan tamamlanmış bir akademik teze rastlanmamıştır.",
-        academicGap:
-          "Doğrudan eşleşen bir çalışma bulunmadığı için mevcut literatürde tespit edilmiş bir doymuşluk veya çakışma alanı tespit edilmemiştir.",
-        originalContribution:
-          "Çalışmanız literatürde henüz yeterince işlenmemiş, son derece bakir ve yüksek özgünlük potansiyeline sahip öncü bir alanda konumlanmaktadır.",
-      },
-      recommendedTheses: [],
-    };
+  if (!matrix) {
+    redirect("/onboarding/matrix");
   }
 
-  const thesisListText = evaluatedTheses
-    .map((ev, idx) => {
-      const t = ev.thesis;
-      const e = ev.evaluation;
-      return `[Tez #${idx + 1}] ID: "${t.id}"
-Başlık: ${t.title}
-Yazar: ${t.author || "Bilinmiyor"} (${t.year || "N/A"})
-Üniversite/Bölüm: ${t.university || "N/A"} - ${t.department || "N/A"}
-Tür: ${t.thesisType || "N/A"}
-Dil: ${t.language || "Türkçe"}
-Birebir Çakışma: ${e.isDirectOverlap ? "EVET" : "HAYIR"}
-Stratejik Rol: ${e.strategicRole || "SPECIFIC_FOCUS"}
-Literatürdeki Yeri: ${e.literaturePosition || "N/A"}
-Stratejik Kullanım / Boşluk Doldurma: ${e.strategicUtility || "N/A"}
-Katkı/Odak Alanları: ${e.contributionAreas.join(", ") || "Yok"}`;
-    })
-    .join("\n\n---\n\n");
+  await persistRelatedTheses(profile.id);
 
-  const payload = buildPositioningJuryPromptPayload({
-    input,
-    thesisListText,
-    evaluatedCount: evaluatedTheses.length,
-  });
-
-  const synthesis = await generateGeminiStructuredContent<JurySynthesisResult>(
-    FLASH_LITE_35,
-    payload.systemInstruction,
-    payload.userPrompt,
-    jurySynthesisResultJsonSchema,
-    logger,
-    {
-      zodSchema: jurySynthesisResultSchema,
-      payloadStage: "positioning_jury_synthesis",
-      seed: GEMINI_SEED,
-      thinkingConfig: { thinkingLevel: ThinkingLevel.LOW },
-      thesisMatrix: input,
-      quiet: true,
-    },
-  );
-
-  // Map selected theses into RecommendedThesisItem[] strictly respecting the Jury's natural decision
-  const evalByThesisId = new Map(
-    evaluatedTheses.map((ev) => [String(ev.thesis.id), ev]),
-  );
-
-  let selectedItems: EvaluatedThesis[] = [];
-
-  if (synthesis.selectedThesisIds && synthesis.selectedThesisIds.length > 0) {
-    for (const id of synthesis.selectedThesisIds) {
-      const found = evalByThesisId.get(String(id));
-      if (found && !selectedItems.some((s) => s.thesis.id === found.thesis.id)) {
-        selectedItems.push(found);
-      }
-    }
+  const boxes = await fetchBoxesWithFullShape();
+  if (!boxes || boxes.length === 0) {
+    redirect("/onboarding/positioning");
   }
 
-  // Cap at 8 max recommended theses without artificial padding
-  selectedItems = selectedItems.slice(0, 8);
+  return (
+    <div className="flex flex-col items-center justify-center p-4 pt-10 pb-4">
+      <div className="flex w-full max-w-5xl flex-col items-center space-y-4">
+        <div className="flex w-full flex-col sm:flex-row justify-between items-start sm:items-center gap-4 pb-6 border-b border-border">
+          <div className="flex flex-col space-y-1 text-left">
+            <h1 className="font-serif text-2xl font-bold tracking-tight text-foreground">
+              Literatür Taraması
+            </h1>
+            <p className="text-sm leading-relaxed text-muted-foreground">
+              Her bir konu kutusu için akademik kaynaklar taranıyor.
+            </p>
+          </div>
+          <div className="flex items-center self-end sm:self-center">
+            <StartOverButton />
+          </div>
+        </div>
 
-  const recommendedTheses: RecommendedThesisItem[] = selectedItems.map((ev) => {
-    const t = ev.thesis;
-    const e = ev.evaluation;
-    return {
-      id: String(t.id),
-      externalThesisId: String(t.id),
-      title: t.title,
-      author: t.author || "Bilinmiyor",
-      year: t.year || new Date().getFullYear(),
-      university: t.university || "Bilinmiyor",
-      strategicRole: e.strategicRole || "SPECIFIC_FOCUS",
-      literaturePosition: e.literaturePosition,
-      contributionArea: e.contributionAreas.join(", ") || "Literatür İncelemesi",
-      relevanceReason: e.strategicUtility || e.relevanceReasoning || "",
-      thesisType: t.thesisType,
-      abstract: t.abstract,
-      tezaraUrl: `https://tez.yok.gov.tr/UlusalTezMerkezi/tezDetay.jsp?id=${t.id}`,
-    };
-  });
-
-  const finalGlobalStatus = overlapping
-    ? "DIRECT_OVERLAP"
-    : synthesis.globalStatus;
-
-  return {
-    globalStatus: finalGlobalStatus,
-    gapAnalysisSummary: synthesis.gapAnalysisSummary,
-    recommendedTheses,
-  };
+        <LiteratureReviewContent />
+      </div>
+    </div>
+  );
 }
 </file>
 
@@ -48622,6 +48469,287 @@ npm run lint
 ## Lisans
 
 Özel (Private) — Tüm hakları saklıdır.
+</file>
+
+<file path="src/app/(app)/advisor/_components/markdown-renderer.tsx">
+"use client";
+
+import { useCallback, type MouseEvent } from "react";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
+import rehypeRaw from "rehype-raw";
+import type { Components } from "react-markdown";
+import type { RagSearchResultItem } from "@/core/services/search/rag-search";
+import { CITATION_ATTR, formatContent } from "../_lib/citation-matching";
+
+const components: Components = {
+  h1: ({ children, ...props }) => (
+    <h1
+      className="font-serif text-2xl font-bold tracking-tight text-foreground mt-4 mb-2"
+      {...props}
+    >
+      {children}
+    </h1>
+  ),
+  h2: ({ children, ...props }) => (
+    <h2
+      className="font-serif text-xl font-semibold tracking-tight text-foreground mt-4 mb-2"
+      {...props}
+    >
+      {children}
+    </h2>
+  ),
+  h3: ({ children, ...props }) => (
+    <h3
+      className="font-serif text-[15px] font-medium text-foreground mt-3 mb-1.5"
+      {...props}
+    >
+      {children}
+    </h3>
+  ),
+  p: ({ children, ...props }) => (
+    <p
+      className="text-[15px] leading-relaxed text-card-foreground font-light mb-3"
+      {...props}
+    >
+      {children}
+    </p>
+  ),
+  ul: ({ children, ...props }) => (
+    <ul
+      className="list-disc list-outside pl-5 space-y-2 text-[15px] text-card-foreground font-light mb-3"
+      {...props}
+    >
+      {children}
+    </ul>
+  ),
+  ol: ({ children, ...props }) => (
+    <ol
+      className="list-decimal list-outside pl-5 space-y-2 text-[15px] text-card-foreground font-light mb-3"
+      {...props}
+    >
+      {children}
+    </ol>
+  ),
+  li: ({ children, ...props }) => (
+    <li
+      className="text-[15px] leading-relaxed text-card-foreground font-light [&>p]:inline [&>p]:mb-0"
+      {...props}
+    >
+      {children}
+    </li>
+  ),
+  strong: ({ children, ...props }) => (
+    <strong className="font-medium text-foreground" {...props}>
+      {children}
+    </strong>
+  ),
+  em: ({ children, ...props }) => (
+    <em className="italic text-muted-foreground" {...props}>
+      {children}
+    </em>
+  ),
+  del: ({ children, ...props }) => (
+    <del className="line-through text-muted-foreground" {...props}>
+      {children}
+    </del>
+  ),
+  code: ({ className, children, ...props }) => {
+    const isBlock = className?.includes("language-");
+    if (isBlock) {
+      return (
+        <pre className="bg-muted/20 border border-border/40 rounded-lg p-3 text-xs font-mono overflow-x-auto whitespace-pre my-2">
+          <code className={className} {...props}>
+            {children}
+          </code>
+        </pre>
+      );
+    }
+    return (
+      <code
+        className="bg-muted px-2 py-1 rounded text-xs font-mono text-primary"
+        {...props}
+      >
+        {children}
+      </code>
+    );
+  },
+  a: ({ href, children, ...props }) => (
+    <a
+      href={href}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="text-primary underline underline-offset-2 transition-colors"
+      {...props}
+    >
+      {children}
+    </a>
+  ),
+  blockquote: ({ children, ...props }) => (
+    <blockquote
+      className="border-l-2 border-primary/20 pl-3 italic text-muted-foreground my-3"
+      {...props}
+    >
+      {children}
+    </blockquote>
+  ),
+  table: ({ children, ...props }) => (
+    <div className="overflow-x-auto my-3">
+      <table className="w-full text-xs border-collapse" {...props}>
+        {children}
+      </table>
+    </div>
+  ),
+  thead: ({ children, ...props }) => (
+    <thead className="bg-muted/20" {...props}>
+      {children}
+    </thead>
+  ),
+  th: ({ children, ...props }) => (
+    <th className="font-medium text-left p-2 border border-border" {...props}>
+      {children}
+    </th>
+  ),
+  td: ({ children, ...props }) => (
+    <td className="p-2 border border-border" {...props}>
+      {children}
+    </td>
+  ),
+  hr: (props) => <hr className="my-3 border-border/40" {...props} />,
+  input: (props) => (
+    <input
+      type="checkbox"
+      checked={props.checked}
+      readOnly
+      aria-label="İşaretli onay kutusu"
+      className="mr-1 accent-primary"
+    />
+  ),
+};
+
+interface MarkdownRendererProps {
+  content: string;
+  sources?: RagSearchResultItem[];
+  onCitationClick?: (sourceIndex: number) => void;
+}
+
+/**
+ * Renders markdown content as styled React elements with clickable citation badges.
+ *
+ * @param root0 - Component props.
+ * @param root0.content - Markdown string to render.
+ * @param root0.sources - RAG source items for citation matching.
+ * @param root0.onCitationClick - Callback when a citation badge is clicked.
+ * @returns The rendered markdown output.
+ */
+export function MarkdownRenderer({
+  content,
+  sources = [],
+  onCitationClick,
+}: MarkdownRendererProps) {
+  const handleClick = useCallback(
+    (e: MouseEvent<HTMLDivElement>) => {
+      const target = e.target as HTMLElement;
+      const badge = target.closest(`[${CITATION_ATTR}]`);
+      if (badge) {
+        const idx = parseInt(badge.getAttribute(CITATION_ATTR) ?? "-1", 10);
+        if (idx >= 0 && onCitationClick) {
+          onCitationClick(idx);
+        }
+      }
+    },
+    [onCitationClick],
+  );
+
+  const handleKeyDown = useCallback(
+    (e: React.KeyboardEvent<HTMLDivElement>) => {
+      if (e.key !== "Enter" && e.key !== " ") return;
+      const target = e.target as HTMLElement;
+      const badge = target.closest(`[${CITATION_ATTR}]`);
+      if (badge) {
+        e.preventDefault();
+        const idx = parseInt(badge.getAttribute(CITATION_ATTR) ?? "-1", 10);
+        if (idx >= 0 && onCitationClick) {
+          onCitationClick(idx);
+        }
+      }
+    },
+    [onCitationClick],
+  );
+
+  return (
+    <div role="presentation" onClick={handleClick} onKeyDown={handleKeyDown}>
+      <ReactMarkdown
+        remarkPlugins={[remarkGfm]}
+        rehypePlugins={[rehypeRaw]}
+        components={components}
+      >
+        {formatContent(content, sources)}
+      </ReactMarkdown>
+    </div>
+  );
+}
+</file>
+
+<file path="src/app/(app)/advisor/actions.ts">
+"use server";
+
+import {
+  getChatSessions as _getChatSessions,
+  createChatSession as _createChatSession,
+  renameChatSession as _renameChatSession,
+  deleteChatSession as _deleteChatSession,
+} from "./session-actions";
+import {
+  getChatMessages as _getChatMessages,
+  saveChatMessage as _saveChatMessage,
+  updateChatMessageToolCalls as _updateChatMessageToolCalls,
+} from "./message-actions";
+import { generateChatTitleAction as _generateChatTitleAction } from "./title-actions";
+
+export type {
+  ChatSessionListItem,
+  ChatSessionsResult,
+} from "./session-actions";
+
+export async function getChatSessions() {
+  return _getChatSessions();
+}
+
+export async function createChatSession(title: string) {
+  return _createChatSession(title);
+}
+
+export async function renameChatSession(sessionId: number, newTitle: string) {
+  return _renameChatSession(sessionId, newTitle);
+}
+
+export async function deleteChatSession(sessionId: number) {
+  return _deleteChatSession(sessionId);
+}
+
+export async function getChatMessages(sessionId: number) {
+  return _getChatMessages(sessionId);
+}
+
+export async function saveChatMessage(
+  ...args: Parameters<typeof _saveChatMessage>
+) {
+  return _saveChatMessage(...args);
+}
+
+export async function updateChatMessageToolCalls(
+  ...args: Parameters<typeof _updateChatMessageToolCalls>
+) {
+  return _updateChatMessageToolCalls(...args);
+}
+
+export async function generateChatTitleAction(
+  sessionId: number,
+  firstUserMessage: string,
+) {
+  return _generateChatTitleAction(sessionId, firstUserMessage);
+}
 </file>
 
 <file path="src/app/(app)/citation-cards/_components/citation-card-dialog.tsx">
@@ -49891,223 +50019,156 @@ Yukarıdaki <context> içinde yer alan ${candidateTheses.length} adet aday tezi 
 }
 </file>
 
-<file path="src/app/(app)/advisor/_components/markdown-renderer.tsx">
-"use client";
+<file path="src/app/(onboarding)/onboarding/positioning/_services/analysis.ts">
+import { ThinkingLevel } from "@google/genai";
+import { FLASH_LITE_35, GEMINI_SEED } from "@/lib/constants";
+import { generateGeminiStructuredContent } from "@/core/services/ai";
+import type { Logger } from "@/lib/logger";
+import { buildPositioningJuryPromptPayload } from "../_prompts/jury-analysis.prompt";
+import type { EvaluatedThesis } from "./per-thesis-evaluation";
+import type { PositioningMatrixInput, RecommendedThesisItem } from "./validation";
+import {
+  jurySynthesisResultSchema,
+  jurySynthesisResultJsonSchema,
+  type JuryAnalysisResult,
+  type JurySynthesisResult,
+} from "./analysis-schemas";
 
-import { useCallback, type MouseEvent } from "react";
-import ReactMarkdown from "react-markdown";
-import remarkGfm from "remark-gfm";
-import rehypeRaw from "rehype-raw";
-import type { Components } from "react-markdown";
-import type { RagSearchResultItem } from "@/core/services/search/rag-search";
-import { CITATION_ATTR, formatContent } from "../_lib/citation-matching";
-
-const components: Components = {
-  h1: ({ children, ...props }) => (
-    <h1
-      className="font-serif text-2xl font-bold tracking-tight text-foreground mt-4 mb-2"
-      {...props}
-    >
-      {children}
-    </h1>
-  ),
-  h2: ({ children, ...props }) => (
-    <h2
-      className="font-serif text-xl font-semibold tracking-tight text-foreground mt-4 mb-2"
-      {...props}
-    >
-      {children}
-    </h2>
-  ),
-  h3: ({ children, ...props }) => (
-    <h3
-      className="font-serif text-[15px] font-medium text-foreground mt-3 mb-1.5"
-      {...props}
-    >
-      {children}
-    </h3>
-  ),
-  p: ({ children, ...props }) => (
-    <p
-      className="text-[15px] leading-relaxed text-card-foreground font-light mb-3"
-      {...props}
-    >
-      {children}
-    </p>
-  ),
-  ul: ({ children, ...props }) => (
-    <ul
-      className="list-disc list-outside pl-5 space-y-2 text-[15px] text-card-foreground font-light mb-3"
-      {...props}
-    >
-      {children}
-    </ul>
-  ),
-  ol: ({ children, ...props }) => (
-    <ol
-      className="list-decimal list-outside pl-5 space-y-2 text-[15px] text-card-foreground font-light mb-3"
-      {...props}
-    >
-      {children}
-    </ol>
-  ),
-  li: ({ children, ...props }) => (
-    <li
-      className="text-[15px] leading-relaxed text-card-foreground font-light [&>p]:inline [&>p]:mb-0"
-      {...props}
-    >
-      {children}
-    </li>
-  ),
-  strong: ({ children, ...props }) => (
-    <strong className="font-medium text-foreground" {...props}>
-      {children}
-    </strong>
-  ),
-  em: ({ children, ...props }) => (
-    <em className="italic text-muted-foreground" {...props}>
-      {children}
-    </em>
-  ),
-  del: ({ children, ...props }) => (
-    <del className="line-through text-muted-foreground" {...props}>
-      {children}
-    </del>
-  ),
-  code: ({ className, children, ...props }) => {
-    const isBlock = className?.includes("language-");
-    if (isBlock) {
-      return (
-        <pre className="bg-muted/20 border border-border/40 rounded-lg p-3 text-xs font-mono overflow-x-auto whitespace-pre my-2">
-          <code className={className} {...props}>
-            {children}
-          </code>
-        </pre>
-      );
-    }
-    return (
-      <code
-        className="bg-muted px-2 py-1 rounded text-xs font-mono text-primary"
-        {...props}
-      >
-        {children}
-      </code>
-    );
-  },
-  a: ({ href, children, ...props }) => (
-    <a
-      href={href}
-      target="_blank"
-      rel="noopener noreferrer"
-      className="text-primary underline underline-offset-2 transition-colors"
-      {...props}
-    >
-      {children}
-    </a>
-  ),
-  blockquote: ({ children, ...props }) => (
-    <blockquote
-      className="border-l-2 border-primary/20 pl-3 italic text-muted-foreground my-3"
-      {...props}
-    >
-      {children}
-    </blockquote>
-  ),
-  table: ({ children, ...props }) => (
-    <div className="overflow-x-auto my-3">
-      <table className="w-full text-xs border-collapse" {...props}>
-        {children}
-      </table>
-    </div>
-  ),
-  thead: ({ children, ...props }) => (
-    <thead className="bg-muted/20" {...props}>
-      {children}
-    </thead>
-  ),
-  th: ({ children, ...props }) => (
-    <th className="font-medium text-left p-2 border border-border" {...props}>
-      {children}
-    </th>
-  ),
-  td: ({ children, ...props }) => (
-    <td className="p-2 border border-border" {...props}>
-      {children}
-    </td>
-  ),
-  hr: (props) => <hr className="my-3 border-border/40" {...props} />,
-  input: (props) => (
-    <input
-      type="checkbox"
-      checked={props.checked}
-      readOnly
-      aria-label="İşaretli onay kutusu"
-      className="mr-1 accent-primary"
-    />
-  ),
+export {
+  jurySynthesisResultSchema,
+  jurySynthesisResultJsonSchema,
+  type JuryAnalysisResult,
+  type JurySynthesisResult,
 };
 
-interface MarkdownRendererProps {
-  content: string;
-  sources?: RagSearchResultItem[];
-  onCitationClick?: (sourceIndex: number) => void;
-}
-
 /**
- * Renders markdown content as styled React elements with clickable citation badges.
+ * Runs the final synthesis jury LLM over the relevant evaluated theses using FLASH_LITE_35.
+ * Assembles the globalStatus, 3-dimensional gapAnalysisSummary, and recommended guiding theses.
  *
- * @param root0 - Component props.
- * @param root0.content - Markdown string to render.
- * @param root0.sources - RAG source items for citation matching.
- * @param root0.onCitationClick - Callback when a citation badge is clicked.
- * @returns The rendered markdown output.
+ * @param input - The validated positioning matrix.
+ * @param evaluatedTheses - The relevant evaluated theses.
+ * @param logger - Optional structured logger.
+ * @returns The complete jury analysis result.
  */
-export function MarkdownRenderer({
-  content,
-  sources = [],
-  onCitationClick,
-}: MarkdownRendererProps) {
-  const handleClick = useCallback(
-    (e: MouseEvent<HTMLDivElement>) => {
-      const target = e.target as HTMLElement;
-      const badge = target.closest(`[${CITATION_ATTR}]`);
-      if (badge) {
-        const idx = parseInt(badge.getAttribute(CITATION_ATTR) ?? "-1", 10);
-        if (idx >= 0 && onCitationClick) {
-          onCitationClick(idx);
-        }
-      }
-    },
-    [onCitationClick],
+export async function analyzePositioningJury(
+  input: PositioningMatrixInput,
+  evaluatedTheses: EvaluatedThesis[],
+  logger?: Logger,
+): Promise<JuryAnalysisResult> {
+  const overlapping = evaluatedTheses.some(
+    (ev) => ev.evaluation.isDirectOverlap,
   );
 
-  const handleKeyDown = useCallback(
-    (e: React.KeyboardEvent<HTMLDivElement>) => {
-      if (e.key !== "Enter" && e.key !== " ") return;
-      const target = e.target as HTMLElement;
-      const badge = target.closest(`[${CITATION_ATTR}]`);
-      if (badge) {
-        e.preventDefault();
-        const idx = parseInt(badge.getAttribute(CITATION_ATTR) ?? "-1", 10);
-        if (idx >= 0 && onCitationClick) {
-          onCitationClick(idx);
-        }
-      }
+  // 0 Results Scenario: Return clean NO_RELATED_LITERATURE fallback
+  if (evaluatedTheses.length === 0) {
+    logger?.info("positioning_jury_no_theses", {
+      service: "positioning",
+      filePath: "src/app/(onboarding)/onboarding/positioning/_services/analysis.ts",
+      data: { inputSubject: input.subjectProblem },
+    });
+
+    return {
+      globalStatus: "NO_RELATED_LITERATURE",
+      gapAnalysisSummary: {
+        literatureMapping:
+          "Ulusal tez merkezinde ve veri tabanında girilen tez matrisiyle (sorun, kuram, yöntem) doğrudan örtüşen veya aynı eksende konumlanan tamamlanmış bir akademik teze rastlanmamıştır.",
+        academicGap:
+          "Doğrudan eşleşen bir çalışma bulunmadığı için mevcut literatürde tespit edilmiş bir doymuşluk veya çakışma alanı tespit edilmemiştir.",
+        originalContribution:
+          "Çalışmanız literatürde henüz yeterince işlenmemiş, son derece bakir ve yüksek özgünlük potansiyeline sahip öncü bir alanda konumlanmaktadır.",
+      },
+      recommendedTheses: [],
+    };
+  }
+
+  const thesisListText = evaluatedTheses
+    .map((ev, idx) => {
+      const t = ev.thesis;
+      const e = ev.evaluation;
+      return `[Tez #${idx + 1}] ID: "${t.id}"
+Başlık: ${t.title}
+Yazar: ${t.author || "Bilinmiyor"} (${t.year || "N/A"})
+Üniversite/Bölüm: ${t.university || "N/A"} - ${t.department || "N/A"}
+Tür: ${t.thesisType || "N/A"}
+Dil: ${t.language || "Türkçe"}
+Birebir Çakışma: ${e.isDirectOverlap ? "EVET" : "HAYIR"}
+Stratejik Rol: ${e.strategicRole || "SPECIFIC_FOCUS"}
+Literatürdeki Yeri: ${e.literaturePosition || "N/A"}
+Stratejik Kullanım / Boşluk Doldurma: ${e.strategicUtility || "N/A"}
+Katkı/Odak Alanları: ${e.contributionAreas.join(", ") || "Yok"}`;
+    })
+    .join("\n\n---\n\n");
+
+  const payload = buildPositioningJuryPromptPayload({
+    input,
+    thesisListText,
+    evaluatedCount: evaluatedTheses.length,
+  });
+
+  const synthesis = await generateGeminiStructuredContent<JurySynthesisResult>(
+    FLASH_LITE_35,
+    payload.systemInstruction,
+    payload.userPrompt,
+    jurySynthesisResultJsonSchema,
+    logger,
+    {
+      zodSchema: jurySynthesisResultSchema,
+      payloadStage: "positioning_jury_synthesis",
+      seed: GEMINI_SEED,
+      thinkingConfig: { thinkingLevel: ThinkingLevel.LOW },
+      thesisMatrix: input,
+      quiet: true,
     },
-    [onCitationClick],
   );
 
-  return (
-    <div role="presentation" onClick={handleClick} onKeyDown={handleKeyDown}>
-      <ReactMarkdown
-        remarkPlugins={[remarkGfm]}
-        rehypePlugins={[rehypeRaw]}
-        components={components}
-      >
-        {formatContent(content, sources)}
-      </ReactMarkdown>
-    </div>
+  // Map selected theses into RecommendedThesisItem[] strictly respecting the Jury's natural decision
+  const evalByThesisId = new Map(
+    evaluatedTheses.map((ev) => [String(ev.thesis.id), ev]),
   );
+
+  let selectedItems: EvaluatedThesis[] = [];
+
+  if (synthesis.selectedThesisIds && synthesis.selectedThesisIds.length > 0) {
+    for (const id of synthesis.selectedThesisIds) {
+      const found = evalByThesisId.get(String(id));
+      if (found && !selectedItems.some((s) => s.thesis.id === found.thesis.id)) {
+        selectedItems.push(found);
+      }
+    }
+  }
+
+  // Cap at 8 max recommended theses without artificial padding
+  selectedItems = selectedItems.slice(0, 8);
+
+  const recommendedTheses: RecommendedThesisItem[] = selectedItems.map((ev) => {
+    const t = ev.thesis;
+    const e = ev.evaluation;
+    return {
+      id: String(t.id),
+      externalThesisId: String(t.id),
+      title: t.title,
+      author: t.author || "Bilinmiyor",
+      year: t.year || new Date().getFullYear(),
+      university: t.university || "Bilinmiyor",
+      strategicRole: e.strategicRole || "SPECIFIC_FOCUS",
+      literaturePosition: e.literaturePosition,
+      contributionArea: e.contributionAreas.join(", ") || "Literatür İncelemesi",
+      relevanceReason: e.strategicUtility || e.relevanceReasoning || "",
+      thesisType: t.thesisType,
+      abstract: t.abstract,
+      tezaraUrl: `https://tez.yok.gov.tr/UlusalTezMerkezi/tezDetay.jsp?id=${t.id}`,
+    };
+  });
+
+  const finalGlobalStatus = overlapping
+    ? "DIRECT_OVERLAP"
+    : synthesis.globalStatus;
+
+  return {
+    globalStatus: finalGlobalStatus,
+    gapAnalysisSummary: synthesis.gapAnalysisSummary,
+    recommendedTheses,
+  };
 }
 </file>
 
@@ -50368,67 +50429,6 @@ export function ToolConfirmationCard({
       )}
     </Card>
   );
-}
-</file>
-
-<file path="src/app/(app)/advisor/actions.ts">
-"use server";
-
-import {
-  getChatSessions as _getChatSessions,
-  createChatSession as _createChatSession,
-  renameChatSession as _renameChatSession,
-  deleteChatSession as _deleteChatSession,
-} from "./session-actions";
-import {
-  getChatMessages as _getChatMessages,
-  saveChatMessage as _saveChatMessage,
-  updateChatMessageToolCalls as _updateChatMessageToolCalls,
-} from "./message-actions";
-import { generateChatTitleAction as _generateChatTitleAction } from "./title-actions";
-
-export type {
-  ChatSessionListItem,
-  ChatSessionsResult,
-} from "./session-actions";
-
-export async function getChatSessions() {
-  return _getChatSessions();
-}
-
-export async function createChatSession(title: string) {
-  return _createChatSession(title);
-}
-
-export async function renameChatSession(sessionId: number, newTitle: string) {
-  return _renameChatSession(sessionId, newTitle);
-}
-
-export async function deleteChatSession(sessionId: number) {
-  return _deleteChatSession(sessionId);
-}
-
-export async function getChatMessages(sessionId: number) {
-  return _getChatMessages(sessionId);
-}
-
-export async function saveChatMessage(
-  ...args: Parameters<typeof _saveChatMessage>
-) {
-  return _saveChatMessage(...args);
-}
-
-export async function updateChatMessageToolCalls(
-  ...args: Parameters<typeof _updateChatMessageToolCalls>
-) {
-  return _updateChatMessageToolCalls(...args);
-}
-
-export async function generateChatTitleAction(
-  sessionId: number,
-  firstUserMessage: string,
-) {
-  return _generateChatTitleAction(sessionId, firstUserMessage);
 }
 </file>
 
@@ -52267,6 +52267,71 @@ export async function evaluateThesesInParallel(
 }
 </file>
 
+<file path="src/app/api/advisor/route.ts">
+import { NextResponse } from "next/server";
+import { z } from "zod";
+import { getSession } from "@/lib/session";
+import { createSseStream } from "@/app/(app)/advisor/_services/stream";
+import { runTurn } from "@/app/(app)/advisor/_services/turn";
+
+const requestSchema = z.object({
+  query: z
+    .string()
+    .min(2, "Sorgu en az 2 karakter olmalıdır.")
+    .max(1000, "Sorgu çok uzun."),
+  history: z
+    .array(
+      z.object({
+        role: z.enum(["user", "model"]),
+        content: z.string(),
+      }),
+    )
+    .optional(),
+});
+
+/**
+ * Handles POST requests for streaming advisor queries via SSE with Function Calling support.
+ *
+ * Delegates all turn orchestration (classification, RAG, tool loop, pipeline flow)
+ * to {@link runTurn} wrapped in a streaming SSE response.
+ *
+ * @param request - The incoming HTTP request with query and optional history.
+ * @returns A streaming SSE response with delta, tool call, and done events.
+ */
+export async function POST(request: Request) {
+  const session = await getSession();
+  if (!session) {
+    return NextResponse.json(
+      { error: "Oturum süreniz dolmuş." },
+      { status: 401 },
+    );
+  }
+
+  const body = await request.json();
+  const parseResult = requestSchema.safeParse(body);
+  if (!parseResult.success) {
+    return NextResponse.json(
+      { error: parseResult.error.issues[0]?.message || "Geçersiz sorgu." },
+      { status: 400 },
+    );
+  }
+
+  const { query, history } = parseResult.data;
+
+  const readable = createSseStream(async ({ writer }) => {
+    await runTurn(writer, { userId: session.userId, query, history });
+  });
+
+  return new Response(readable, {
+    headers: {
+      "Content-Type": "text/event-stream",
+      "Cache-Control": "no-cache",
+      Connection: "keep-alive",
+    },
+  });
+}
+</file>
+
 <file path="src/app/(app)/advisor/_components/use-advisor-chat.ts">
 "use client";
 
@@ -53075,68 +53140,107 @@ export function OutlineSectionCard(props: OutlineSectionCardProps) {
 }
 </file>
 
-<file path="src/app/api/advisor/route.ts">
-import { NextResponse } from "next/server";
-import { z } from "zod";
-import { getSession } from "@/lib/session";
-import { createSseStream } from "@/app/(app)/advisor/_services/stream";
-import { runTurn } from "@/app/(app)/advisor/_services/turn";
+<file path="src/app/(app)/advisor/_components/advisor-chat.tsx">
+"use client";
 
-const requestSchema = z.object({
-  query: z
-    .string()
-    .min(2, "Sorgu en az 2 karakter olmalıdır.")
-    .max(1000, "Sorgu çok uzun."),
-  history: z
-    .array(
-      z.object({
-        role: z.enum(["user", "model"]),
-        content: z.string(),
-      }),
-    )
-    .optional(),
-});
+import { ChatSidebar } from "./chat-sidebar";
+import { ChatMessageList } from "./chat-message-list";
+import { AdvisorChatInput } from "./advisor-chat-input";
+import { AdvisorCitationDialog } from "./advisor-citation-dialog";
+import { useAdvisorChat } from "./use-advisor-chat";
+import type { AdvisorChatProps } from "../_lib/types";
 
 /**
- * Handles POST requests for streaming advisor queries via SSE with Function Calling support.
+ * Interactive Advisor Chat component delivering an academic AI conversation backed by Hybrid RAG & Cohere Rerank with persistent chat history sidebar and Function Calling database tools.
  *
- * Delegates all turn orchestration (classification, RAG, tool loop, pipeline flow)
- * to {@link runTurn} wrapped in a streaming SSE response.
- *
- * @param request - The incoming HTTP request with query and optional history.
- * @returns A streaming SSE response with delta, tool call, and done events.
+ * @param root0 - Component props.
+ * @param root0.initialSessionId - The session id to restore on mount, if any.
+ * @returns The AdvisorChat UI element.
  */
-export async function POST(request: Request) {
-  const session = await getSession();
-  if (!session) {
-    return NextResponse.json(
-      { error: "Oturum süreniz dolmuş." },
-      { status: 401 },
-    );
-  }
+export function AdvisorChat({ initialSessionId }: AdvisorChatProps) {
+  const {
+    messages,
+    isLoading,
+    isLocked,
+    activeCitation,
+    setActiveCitation,
+    sessions,
+    activeSessionId,
+    streamingText,
+    streamingSources,
+    streamingToolCalls,
+    streamingPersona,
+    streamingPipeline,
+    copiedMessageId,
+    setCopiedMessageId,
+    activeSource,
+    handleSelectSession,
+    handleCreateSession,
+    handleDeleteSession,
+    handleApproveToolCall,
+    handleUndoToolCall,
+    handleRejectToolCall,
+    handleApprovePipeline,
+    handleSend,
+    handleCitationPosition,
+  } = useAdvisorChat(initialSessionId);
 
-  const body = await request.json();
-  const parseResult = requestSchema.safeParse(body);
-  if (!parseResult.success) {
-    return NextResponse.json(
-      { error: parseResult.error.issues[0]?.message || "Geçersiz sorgu." },
-      { status: 400 },
-    );
-  }
+  const handleCopyMessage = (messageId: string, content: string) => {
+    void navigator.clipboard.writeText(content);
+    setCopiedMessageId(messageId);
+    setTimeout(() => setCopiedMessageId(null), 1500);
+  };
 
-  const { query, history } = parseResult.data;
+  return (
+    <div className="w-full flex gap-6 min-h-0 h-[calc(100vh-8.5rem)]">
+      {/* Sidebar */}
+      <div className="hidden lg:flex flex-col min-h-0 w-72 shrink-0 h-full">
+        <ChatSidebar
+          sessions={sessions}
+          activeSessionId={activeSessionId}
+          onSelectSession={handleSelectSession}
+          onCreateSession={handleCreateSession}
+          onDeleteSession={handleDeleteSession}
+        />
+      </div>
 
-  const readable = createSseStream(async ({ writer }) => {
-    await runTurn(writer, { userId: session.userId, query, history });
-  });
+      {/* Main Chat Area */}
+      <div className="flex-1 flex flex-col min-h-0 min-w-0">
+        {/* Chat Window */}
+        <ChatMessageList
+          messages={messages}
+          isLoading={isLoading}
+          streamingText={streamingText}
+          streamingSources={streamingSources}
+          streamingToolCalls={streamingToolCalls}
+          streamingPersona={streamingPersona}
+          streamingPipeline={streamingPipeline}
+          activeSessionId={activeSessionId}
+          copiedMessageId={copiedMessageId}
+          onCopyMessage={handleCopyMessage}
+          onCitationPosition={handleCitationPosition}
+          onApproveToolCall={handleApproveToolCall}
+          onRejectToolCall={handleRejectToolCall}
+          onUndoToolCall={handleUndoToolCall}
+          onApprovePipeline={handleApprovePipeline}
+        />
 
-  return new Response(readable, {
-    headers: {
-      "Content-Type": "text/event-stream",
-      "Cache-Control": "no-cache",
-      Connection: "keep-alive",
-    },
-  });
+        {/* Input Box */}
+        <AdvisorChatInput
+          onSend={handleSend}
+          disabled={isLoading}
+          isLocked={isLocked}
+        />
+      </div>
+
+      {/* Citation Dialog */}
+      <AdvisorCitationDialog
+        isOpen={activeCitation !== null}
+        onClose={() => setActiveCitation(null)}
+        source={activeSource}
+      />
+    </div>
+  );
 }
 </file>
 
@@ -53512,375 +53616,6 @@ export function LiteratureReviewContent() {
 }
 </file>
 
-<file path="src/app/(app)/advisor/_components/advisor-chat.tsx">
-"use client";
-
-import { ChatSidebar } from "./chat-sidebar";
-import { ChatMessageList } from "./chat-message-list";
-import { AdvisorChatInput } from "./advisor-chat-input";
-import { AdvisorCitationDialog } from "./advisor-citation-dialog";
-import { useAdvisorChat } from "./use-advisor-chat";
-import type { AdvisorChatProps } from "../_lib/types";
-
-/**
- * Interactive Advisor Chat component delivering an academic AI conversation backed by Hybrid RAG & Cohere Rerank with persistent chat history sidebar and Function Calling database tools.
- *
- * @param root0 - Component props.
- * @param root0.initialSessionId - The session id to restore on mount, if any.
- * @returns The AdvisorChat UI element.
- */
-export function AdvisorChat({ initialSessionId }: AdvisorChatProps) {
-  const {
-    messages,
-    isLoading,
-    isLocked,
-    activeCitation,
-    setActiveCitation,
-    sessions,
-    activeSessionId,
-    streamingText,
-    streamingSources,
-    streamingToolCalls,
-    streamingPersona,
-    streamingPipeline,
-    copiedMessageId,
-    setCopiedMessageId,
-    activeSource,
-    handleSelectSession,
-    handleCreateSession,
-    handleDeleteSession,
-    handleApproveToolCall,
-    handleUndoToolCall,
-    handleRejectToolCall,
-    handleApprovePipeline,
-    handleSend,
-    handleCitationPosition,
-  } = useAdvisorChat(initialSessionId);
-
-  const handleCopyMessage = (messageId: string, content: string) => {
-    void navigator.clipboard.writeText(content);
-    setCopiedMessageId(messageId);
-    setTimeout(() => setCopiedMessageId(null), 1500);
-  };
-
-  return (
-    <div className="w-full flex gap-6 min-h-0 h-[calc(100vh-8.5rem)]">
-      {/* Sidebar */}
-      <div className="hidden lg:flex flex-col min-h-0 w-72 shrink-0 h-full">
-        <ChatSidebar
-          sessions={sessions}
-          activeSessionId={activeSessionId}
-          onSelectSession={handleSelectSession}
-          onCreateSession={handleCreateSession}
-          onDeleteSession={handleDeleteSession}
-        />
-      </div>
-
-      {/* Main Chat Area */}
-      <div className="flex-1 flex flex-col min-h-0 min-w-0">
-        {/* Chat Window */}
-        <ChatMessageList
-          messages={messages}
-          isLoading={isLoading}
-          streamingText={streamingText}
-          streamingSources={streamingSources}
-          streamingToolCalls={streamingToolCalls}
-          streamingPersona={streamingPersona}
-          streamingPipeline={streamingPipeline}
-          activeSessionId={activeSessionId}
-          copiedMessageId={copiedMessageId}
-          onCopyMessage={handleCopyMessage}
-          onCitationPosition={handleCitationPosition}
-          onApproveToolCall={handleApproveToolCall}
-          onRejectToolCall={handleRejectToolCall}
-          onUndoToolCall={handleUndoToolCall}
-          onApprovePipeline={handleApprovePipeline}
-        />
-
-        {/* Input Box */}
-        <AdvisorChatInput
-          onSend={handleSend}
-          disabled={isLoading}
-          isLocked={isLocked}
-        />
-      </div>
-
-      {/* Citation Dialog */}
-      <AdvisorCitationDialog
-        isOpen={activeCitation !== null}
-        onClose={() => setActiveCitation(null)}
-        source={activeSource}
-      />
-    </div>
-  );
-}
-</file>
-
-<file path="src/app/(onboarding)/onboarding/positioning/actions.ts">
-"use server";
-
-import { eq } from "drizzle-orm";
-import { db } from "@/core/db";
-import { positioning, matrices } from "@/core/db/schema";
-import type { Positioning } from "@/core/db/schema";
-import { getSession, SESSION_ERROR_MSG } from "@/lib/session";
-import { Logger } from "@/lib/logger";
-import type { ThesisMatrix } from "@/lib/types";
-import { positioningMatrixSchema } from "./_services/validation";
-import {
-  searchAndSiftTheses,
-  type SiftedThesis,
-} from "./_services/sifting";
-import { evaluateThesesInParallel } from "./_services/per-thesis-evaluation";
-import {
-  analyzePositioningJury,
-  type JuryAnalysisResult,
-} from "./_services/analysis";
-import { savePositioningReportTransaction } from "./_services/decision-engine";
-import { sanitizeAcademicDataBulk } from "@/core/services/academic";
-
-/**
- * 1. Kademe: Çok boyutlu sorgu üretir, Tezara (Qdrant) taraması ve Cohere Rerank v4.0 Pro çalıştırır.
- *
- * @param matrixInput - Kullanıcının sunduğu tez matrisi.
- * @param flowId - Gözlemlenebilirlik log akış kimliği.
- * @returns Başarılıysa filtrelenmiş tez listesi, aksi halde hata mesajı.
- */
-export async function runPositioningSearchAction(
-  matrixInput: ThesisMatrix,
-  flowId: string,
-): Promise<{ success: true; theses: SiftedThesis[] } | { error: string }> {
-  const log = new Logger(flowId);
-  const positioningInput: Record<string, string> = {
-    subjectProblem: matrixInput.subjectProblem ?? "",
-    theoreticalFramework: matrixInput.theoreticalFramework ?? "",
-    methodology: matrixInput.methodology ?? "",
-  };
-
-  const parsed = positioningMatrixSchema.safeParse(positioningInput);
-  if (!parsed.success) {
-    const firstIssue = parsed.error.issues[0];
-    const msg = firstIssue
-      ? `${firstIssue.path.join(".")}: ${firstIssue.message}`
-      : "Form doğrulaması başarısız.";
-    return { error: msg };
-  }
-
-  const validated = parsed.data;
-
-  try {
-    const session = await getSession();
-    if (!session) return { error: SESSION_ERROR_MSG };
-
-    const theses = await searchAndSiftTheses(validated, log);
-
-    return { success: true, theses };
-  } catch (error) {
-    log.error("positioning_search_failed", {
-      error,
-    });
-    return {
-      error:
-        "Akademik arama sorguları üretilirken veya literatür taranırken bir hata oluştu. Lütfen tekrar deneyin.",
-    };
-  }
-}
-
-/**
- * 2. ve 3. Kademe: Aday tezlerin paralel derin değerlendirmesini (FLASH_LITE_35)
- * ve ardından nihai jüri sentez analizini (FLASH_LITE_35) yürütür.
- *
- * @param matrixInput - Kullanıcının tez matrisi.
- * @param theses - Süzülmüş aday tezler.
- * @param flowId - Log akış kimliği.
- * @returns Başarılıysa jüri analiz sonucu, aksi halde hata mesajı.
- */
-export async function runPositioningJuryAction(
-  matrixInput: ThesisMatrix,
-  theses: SiftedThesis[],
-  flowId: string,
-): Promise<
-  { success: true; juryResult: JuryAnalysisResult } | { error: string }
-> {
-  const log = new Logger(flowId);
-  const positioningInput: Record<string, string> = {
-    subjectProblem: matrixInput.subjectProblem ?? "",
-    theoreticalFramework: matrixInput.theoreticalFramework ?? "",
-    methodology: matrixInput.methodology ?? "",
-  };
-
-  const parsed = positioningMatrixSchema.safeParse(positioningInput);
-  if (!parsed.success) {
-    const firstIssue = parsed.error.issues[0];
-    const msg = firstIssue
-      ? `${firstIssue.path.join(".")}: ${firstIssue.message}`
-      : "Form doğrulaması başarısız.";
-    return { error: msg };
-  }
-
-  const validated = parsed.data;
-
-  try {
-    const session = await getSession();
-    if (!session) return { error: SESSION_ERROR_MSG };
-
-    // 2. Kademe: Paralel derin tez değerlendirmesi
-    const evaluatedTheses = await evaluateThesesInParallel(
-      validated,
-      theses,
-      log,
-    );
-
-    const relevantTheses = evaluatedTheses.filter(
-      (ev) => ev.evaluation.isRelevant,
-    );
-
-    log.info("positioning_jury_analysis_start");
-
-    // 3. Kademe: FLASH_LITE_35 Jüri sentezi
-    const juryResult = await analyzePositioningJury(
-      validated,
-      relevantTheses,
-      log,
-    );
-
-    log.info("positioning_jury_analysis_success");
-
-    return { success: true, juryResult };
-  } catch (error) {
-    log.error("positioning_jury_failed", {
-      error,
-    });
-    return {
-      error:
-        "Akademik jüri analizi sentezlenirken bir hata oluştu. Lütfen tekrar deneyin.",
-    };
-  }
-}
-
-/**
- * Cerebras API ile başlık ve yazar verilerini sanitize eder ve raporu veritabanına atomik olarak kaydeder.
- *
- * @param matrixInput - Tez matrisi.
- * @param juryResult - Jüri analiz sonucu.
- * @param flowId - Log akış kimliği.
- * @returns Başarı durumu veya hata mesajı.
- */
-export async function persistPositioningReportAction(
-  matrixInput: ThesisMatrix,
-  juryResult: JuryAnalysisResult,
-  flowId: string,
-): Promise<{ success: true } | { error: string }> {
-  const log = new Logger(flowId);
-  try {
-    const session = await getSession();
-    if (!session) return { error: SESSION_ERROR_MSG };
-
-    const positioningInput: Record<string, string> = {
-      subjectProblem: matrixInput.subjectProblem ?? "",
-      theoreticalFramework: matrixInput.theoreticalFramework ?? "",
-      methodology: matrixInput.methodology ?? "",
-    };
-
-    const parsed = positioningMatrixSchema.safeParse(positioningInput);
-    if (!parsed.success) {
-      return { error: "Form doğrulaması başarısız." };
-    }
-
-    // Cerebras Sanitization for titles and authors
-    if (juryResult.recommendedTheses.length > 0) {
-      const itemsToSanitize = juryResult.recommendedTheses.map((t) => ({
-        title: t.title || "",
-        author: t.author || "",
-      }));
-      const sanitized = await sanitizeAcademicDataBulk(itemsToSanitize, log);
-      juryResult.recommendedTheses = juryResult.recommendedTheses.map(
-        (t, idx) => ({
-          ...t,
-          title: sanitized[idx]?.title || t.title,
-          author: sanitized[idx]?.author || t.author,
-        }),
-      );
-    }
-
-    const [matrix] = await db
-      .select({ id: matrices.id })
-      .from(matrices)
-      .where(eq(matrices.userId, session.userId));
-
-    if (!matrix) {
-      return { error: "Tez matrisi bulunamadı." };
-    }
-
-    log.info("positioning_db_transaction_start");
-    await savePositioningReportTransaction(
-      session.userId,
-      matrix.id,
-      juryResult,
-    );
-    log.info("positioning_db_transaction_success");
-
-    return { success: true };
-  } catch (error) {
-    log.error("positioning_persist_failed", {
-      error,
-    });
-    return {
-      error:
-        "Konumlandırma raporu kaydedilirken bir hata oluştu. Lütfen tekrar deneyin.",
-    };
-  }
-}
-
-/**
- * Toplam pipeline süresini kaydeder.
- *
- * @param flowId - Akış kimliği.
- * @param durationMs - Milisaniye cinsinden toplam süre.
- */
-export async function logPositioningPipelineSuccessAction(
-  flowId: string,
-  durationMs: number,
-): Promise<void> {
-  const log = new Logger(flowId);
-  log.total("positioning_pipeline", Math.round(durationMs), {
-    service: "positioning",
-  });
-}
-
-/**
- * Kullanıcının mevcut tez matrisine bağlı konumlandırma kaydını döner.
- *
- * @returns Konumlandırma kaydı veya null.
- */
-export async function getPositioningAction(): Promise<Positioning | null> {
-  const session = await getSession();
-  if (!session) {
-    return null;
-  }
-
-  try {
-    const [matrix] = await db
-      .select({ id: matrices.id })
-      .from(matrices)
-      .where(eq(matrices.userId, session.userId));
-
-    if (!matrix) {
-      return null;
-    }
-
-    const [record] = await db
-      .select()
-      .from(positioning)
-      .where(eq(positioning.matrixId, matrix.id));
-
-    return record ?? null;
-  } catch {
-    return null;
-  }
-}
-</file>
-
 <file path="src/app/(onboarding)/onboarding/positioning/_components/positioning-report-view.tsx">
 "use client";
 
@@ -54249,6 +53984,271 @@ export function PositioningReportView({
       </div>
     </div>
   );
+}
+</file>
+
+<file path="src/app/(onboarding)/onboarding/positioning/actions.ts">
+"use server";
+
+import { eq } from "drizzle-orm";
+import { db } from "@/core/db";
+import { positioning, matrices } from "@/core/db/schema";
+import type { Positioning } from "@/core/db/schema";
+import { getSession, SESSION_ERROR_MSG } from "@/lib/session";
+import { Logger } from "@/lib/logger";
+import type { ThesisMatrix } from "@/lib/types";
+import { positioningMatrixSchema } from "./_services/validation";
+import {
+  searchAndSiftTheses,
+  type SiftedThesis,
+} from "./_services/sifting";
+import { evaluateThesesInParallel } from "./_services/per-thesis-evaluation";
+import {
+  analyzePositioningJury,
+  type JuryAnalysisResult,
+} from "./_services/analysis";
+import { savePositioningReportTransaction } from "./_services/decision-engine";
+import { sanitizeAcademicDataBulk } from "@/core/services/academic";
+
+/**
+ * 1. Kademe: Çok boyutlu sorgu üretir, Tezara (Qdrant) taraması ve Cohere Rerank v4.0 Pro çalıştırır.
+ *
+ * @param matrixInput - Kullanıcının sunduğu tez matrisi.
+ * @param flowId - Gözlemlenebilirlik log akış kimliği.
+ * @returns Başarılıysa filtrelenmiş tez listesi, aksi halde hata mesajı.
+ */
+export async function runPositioningSearchAction(
+  matrixInput: ThesisMatrix,
+  flowId: string,
+): Promise<{ success: true; theses: SiftedThesis[] } | { error: string }> {
+  const log = new Logger(flowId);
+  const positioningInput: Record<string, string> = {
+    subjectProblem: matrixInput.subjectProblem ?? "",
+    theoreticalFramework: matrixInput.theoreticalFramework ?? "",
+    methodology: matrixInput.methodology ?? "",
+  };
+
+  const parsed = positioningMatrixSchema.safeParse(positioningInput);
+  if (!parsed.success) {
+    const firstIssue = parsed.error.issues[0];
+    const msg = firstIssue
+      ? `${firstIssue.path.join(".")}: ${firstIssue.message}`
+      : "Form doğrulaması başarısız.";
+    return { error: msg };
+  }
+
+  const validated = parsed.data;
+
+  try {
+    const session = await getSession();
+    if (!session) return { error: SESSION_ERROR_MSG };
+
+    const theses = await searchAndSiftTheses(validated, log);
+
+    return { success: true, theses };
+  } catch (error) {
+    log.error("positioning_search_failed", {
+      error,
+    });
+    return {
+      error:
+        "Akademik arama sorguları üretilirken veya literatür taranırken bir hata oluştu. Lütfen tekrar deneyin.",
+    };
+  }
+}
+
+/**
+ * 2. ve 3. Kademe: Aday tezlerin paralel derin değerlendirmesini (FLASH_LITE_35)
+ * ve ardından nihai jüri sentez analizini (FLASH_LITE_35) yürütür.
+ *
+ * @param matrixInput - Kullanıcının tez matrisi.
+ * @param theses - Süzülmüş aday tezler.
+ * @param flowId - Log akış kimliği.
+ * @returns Başarılıysa jüri analiz sonucu, aksi halde hata mesajı.
+ */
+export async function runPositioningJuryAction(
+  matrixInput: ThesisMatrix,
+  theses: SiftedThesis[],
+  flowId: string,
+): Promise<
+  { success: true; juryResult: JuryAnalysisResult } | { error: string }
+> {
+  const log = new Logger(flowId);
+  const positioningInput: Record<string, string> = {
+    subjectProblem: matrixInput.subjectProblem ?? "",
+    theoreticalFramework: matrixInput.theoreticalFramework ?? "",
+    methodology: matrixInput.methodology ?? "",
+  };
+
+  const parsed = positioningMatrixSchema.safeParse(positioningInput);
+  if (!parsed.success) {
+    const firstIssue = parsed.error.issues[0];
+    const msg = firstIssue
+      ? `${firstIssue.path.join(".")}: ${firstIssue.message}`
+      : "Form doğrulaması başarısız.";
+    return { error: msg };
+  }
+
+  const validated = parsed.data;
+
+  try {
+    const session = await getSession();
+    if (!session) return { error: SESSION_ERROR_MSG };
+
+    // 2. Kademe: Paralel derin tez değerlendirmesi
+    const evaluatedTheses = await evaluateThesesInParallel(
+      validated,
+      theses,
+      log,
+    );
+
+    const relevantTheses = evaluatedTheses.filter(
+      (ev) => ev.evaluation.isRelevant,
+    );
+
+    log.info("positioning_jury_analysis_start");
+
+    // 3. Kademe: FLASH_LITE_35 Jüri sentezi
+    const juryResult = await analyzePositioningJury(
+      validated,
+      relevantTheses,
+      log,
+    );
+
+    log.info("positioning_jury_analysis_success");
+
+    return { success: true, juryResult };
+  } catch (error) {
+    log.error("positioning_jury_failed", {
+      error,
+    });
+    return {
+      error:
+        "Akademik jüri analizi sentezlenirken bir hata oluştu. Lütfen tekrar deneyin.",
+    };
+  }
+}
+
+/**
+ * Cerebras API ile başlık ve yazar verilerini sanitize eder ve raporu veritabanına atomik olarak kaydeder.
+ *
+ * @param matrixInput - Tez matrisi.
+ * @param juryResult - Jüri analiz sonucu.
+ * @param flowId - Log akış kimliği.
+ * @returns Başarı durumu veya hata mesajı.
+ */
+export async function persistPositioningReportAction(
+  matrixInput: ThesisMatrix,
+  juryResult: JuryAnalysisResult,
+  flowId: string,
+): Promise<{ success: true } | { error: string }> {
+  const log = new Logger(flowId);
+  try {
+    const session = await getSession();
+    if (!session) return { error: SESSION_ERROR_MSG };
+
+    const positioningInput: Record<string, string> = {
+      subjectProblem: matrixInput.subjectProblem ?? "",
+      theoreticalFramework: matrixInput.theoreticalFramework ?? "",
+      methodology: matrixInput.methodology ?? "",
+    };
+
+    const parsed = positioningMatrixSchema.safeParse(positioningInput);
+    if (!parsed.success) {
+      return { error: "Form doğrulaması başarısız." };
+    }
+
+    // Cerebras Sanitization for titles and authors
+    if (juryResult.recommendedTheses.length > 0) {
+      const itemsToSanitize = juryResult.recommendedTheses.map((t) => ({
+        title: t.title || "",
+        author: t.author || "",
+      }));
+      const sanitized = await sanitizeAcademicDataBulk(itemsToSanitize, log);
+      juryResult.recommendedTheses = juryResult.recommendedTheses.map(
+        (t, idx) => ({
+          ...t,
+          title: sanitized[idx]?.title || t.title,
+          author: sanitized[idx]?.author || t.author,
+        }),
+      );
+    }
+
+    const [matrix] = await db
+      .select({ id: matrices.id })
+      .from(matrices)
+      .where(eq(matrices.userId, session.userId));
+
+    if (!matrix) {
+      return { error: "Tez matrisi bulunamadı." };
+    }
+
+    log.info("positioning_db_transaction_start");
+    await savePositioningReportTransaction(
+      session.userId,
+      matrix.id,
+      juryResult,
+    );
+    log.info("positioning_db_transaction_success");
+
+    return { success: true };
+  } catch (error) {
+    log.error("positioning_persist_failed", {
+      error,
+    });
+    return {
+      error:
+        "Konumlandırma raporu kaydedilirken bir hata oluştu. Lütfen tekrar deneyin.",
+    };
+  }
+}
+
+/**
+ * Toplam pipeline süresini kaydeder.
+ *
+ * @param flowId - Akış kimliği.
+ * @param durationMs - Milisaniye cinsinden toplam süre.
+ */
+export async function logPositioningPipelineSuccessAction(
+  flowId: string,
+  durationMs: number,
+): Promise<void> {
+  const log = new Logger(flowId);
+  log.total("positioning_pipeline", Math.round(durationMs), {
+    service: "positioning",
+  });
+}
+
+/**
+ * Kullanıcının mevcut tez matrisine bağlı konumlandırma kaydını döner.
+ *
+ * @returns Konumlandırma kaydı veya null.
+ */
+export async function getPositioningAction(): Promise<Positioning | null> {
+  const session = await getSession();
+  if (!session) {
+    return null;
+  }
+
+  try {
+    const [matrix] = await db
+      .select({ id: matrices.id })
+      .from(matrices)
+      .where(eq(matrices.userId, session.userId));
+
+    if (!matrix) {
+      return null;
+    }
+
+    const [record] = await db
+      .select()
+      .from(positioning)
+      .where(eq(positioning.matrixId, matrix.id));
+
+    return record ?? null;
+  } catch {
+    return null;
+  }
 }
 </file>
 
