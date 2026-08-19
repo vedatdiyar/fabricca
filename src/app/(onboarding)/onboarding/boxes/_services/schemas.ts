@@ -37,11 +37,6 @@ export const boxStructureSchema = z.object({
       .describe(
         "Kadranlar bazında kuramsal/ampirik/yöntemsel çok kulvarlılık tespiti.",
       ),
-    allocation_rationale: z
-      .string()
-      .describe(
-        "3 kadranın her biri için alt kutu alokasyon kararlarının (N=1 veya N>=2) ve kadran yapılandırmasının Türkçe açıklaması.",
-      ),
   }),
   subjectProblem: structureQuadrantSchema,
   theoreticalFramework: structureQuadrantSchema,
@@ -108,13 +103,9 @@ export const boxStructureJsonSchema: JsonSchema = {
           type: "boolean",
           description: "Kuramsal/ampirik/yöntemsel çok kulvarlılık tespiti",
         },
-        allocation_rationale: {
-          type: "string",
-          description: "Alt kutu alokasyon karar gerekçesi",
-        },
       },
-      required: ["detected_heterogeneity", "allocation_rationale"],
-      description: "Analiz ve alokasyon planlaması",
+      required: ["detected_heterogeneity"],
+      description: "Analiz ve heterojenite tespiti",
     },
     subjectProblem: buildStructureQuadrantJsonSchema(),
     theoreticalFramework: buildStructureQuadrantJsonSchema(),

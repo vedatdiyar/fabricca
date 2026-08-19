@@ -1,6 +1,6 @@
 import { getSession, SESSION_ERROR_MSG } from "@/lib/session";
 import { generateGeminiStructuredContent } from "@/core/services/ai";
-import { FLASH_LITE_31, GEMINI_SEED } from "@/lib/constants";
+import { FLASH_LITE_35, GEMINI_SEED } from "@/lib/constants";
 import { ThinkingLevel } from "@google/genai";
 import { createFlowId, Logger } from "@/lib/logger";
 import { buildSemanticQueryPromptPayload } from "../_prompts/semantic-query.prompt";
@@ -87,13 +87,13 @@ export async function generateSemanticQueriesAction(
 
     const result =
       await generateGeminiStructuredContent<BulkSemanticQueryResponse>(
-        FLASH_LITE_31,
+        FLASH_LITE_35,
         payload.systemInstruction,
         payload.userPrompt,
         bulkSemanticQueryJsonSchema,
         log,
         {
-          thinkingConfig: { thinkingLevel: ThinkingLevel.HIGH },
+          thinkingConfig: { thinkingLevel: ThinkingLevel.LOW },
           zodSchema: bulkSemanticQuerySchema,
           seed: GEMINI_SEED,
           payloadStage: "semantic_query_generation",

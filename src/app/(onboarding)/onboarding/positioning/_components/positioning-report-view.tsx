@@ -300,7 +300,7 @@ export function PositioningReportView({
                     {thesis.literaturePosition && (
                       <div className="rounded-md bg-muted/30 p-3 border border-border/40 space-y-1">
                         <span className="font-semibold text-foreground text-xs block">
-                          Literatürdeki Yeri (Ne Yaptı?):
+                          Literatürdeki Yeri:
                         </span>
                         <p className="text-muted-foreground leading-relaxed">
                           {thesis.literaturePosition}
