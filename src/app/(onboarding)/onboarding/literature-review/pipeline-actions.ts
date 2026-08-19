@@ -13,7 +13,7 @@ import {
   persistLiteraturePool,
   persistSubBoxEntry,
 } from "@/app/(onboarding)/onboarding/literature-review/_services/pool-persistence";
-import { placeEssentialThesesInBoxes } from "@/app/(onboarding)/onboarding/literature-review/_services/essential-thesis-placement";
+import { persistRelatedTheses } from "@/app/(onboarding)/onboarding/literature-review/_services/related-theses";
 import { loadThesisMatrixAndBoxes } from "@/app/(onboarding)/onboarding/literature-review/_services/process-boxes-data";
 import { isLiteratureCancelled } from "./cancel-state";
 import { resetLiteratureCancelledAction } from "./cancel-actions";
@@ -105,7 +105,7 @@ export async function runLiteraturePipelineAction(
     await persistLiteraturePool(poolEntries);
     logger.info("literature_pool_persist_success");
 
-    await placeEssentialThesesInBoxes(userId);
+    await persistRelatedTheses(userId);
 
     try {
       revalidateOnboardingPaths();

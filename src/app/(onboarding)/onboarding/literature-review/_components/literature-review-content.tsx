@@ -297,6 +297,56 @@ export function LiteratureReviewContent() {
             </Card>
           );
         })}
+
+        {(() => {
+          const relatedThesesBox = subBoxes.find(
+            (box) =>
+              box.boxType === "RELATED_THESES" ||
+              box.title === RELATED_THESES_TITLE,
+          );
+          const relatedThesesEntry = literaturePool.find(
+            (e) =>
+              e.subBoxTitle === RELATED_THESES_TITLE ||
+              (relatedThesesBox &&
+                (e.subBoxTitle === relatedThesesBox.title ||
+                  e.thesisBoxId === relatedThesesBox.id)),
+          );
+          const relatedArticles = relatedThesesEntry?.articles ?? [];
+
+          if (relatedArticles.length === 0) return null;
+
+          const title = relatedThesesBox?.title ?? RELATED_THESES_TITLE;
+          const description =
+            relatedThesesBox?.description ??
+            "Tez konunuz ve konumlandırmanız ile doğrudan ilişkili, incelenmesi önerilen YÖK ve akademik tez çalışmaları.";
+          const boxType = relatedThesesBox?.boxType ?? "RELATED_THESES";
+
+          return (
+            <Card className="p-6 space-y-4 rounded-md">
+              <div className="flex items-center gap-2">
+                <h2 className="font-serif text-xl font-semibold tracking-tight text-foreground">
+                  {title}
+                </h2>
+                <span className="inline-flex items-center px-2 py-1 rounded-md text-[10px] font-semibold border bg-primary/10 border-primary/20 text-primary ml-auto">
+                  {getBoxTypeLabel(boxType)}
+                </span>
+              </div>
+              {description && (
+                <p className="text-sm text-muted-foreground leading-relaxed">
+                  {description}
+                </p>
+              )}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-2">
+                {relatedArticles.map((article, idx) => (
+                  <LiteratureArticleCard
+                    key={`${article.title}-${idx}`}
+                    article={article}
+                  />
+                ))}
+              </div>
+            </Card>
+          );
+        })()}
       </div>
 
       <div className="flex justify-end mt-8 pb-8">

@@ -69,7 +69,7 @@ export async function runPositioningSearchAction(
 
 /**
  * 2. ve 3. Kademe: Aday tezlerin paralel derin değerlendirmesini (FLASH_LITE_35)
- * ve ardından nihai jüri sentez analizini (FLASH_36) yürütür.
+ * ve ardından nihai jüri sentez analizini (FLASH_LITE_35) yürütür.
  *
  * @param matrixInput - Kullanıcının tez matrisi.
  * @param theses - Süzülmüş aday tezler.
@@ -118,7 +118,7 @@ export async function runPositioningJuryAction(
 
     log.info("positioning_jury_analysis_start");
 
-    // 3. Kademe: FLASH_36 Jüri sentezi
+    // 3. Kademe: FLASH_LITE_35 Jüri sentezi
     const juryResult = await analyzePositioningJury(
       validated,
       relevantTheses,

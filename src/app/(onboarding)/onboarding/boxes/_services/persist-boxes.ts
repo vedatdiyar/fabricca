@@ -10,6 +10,7 @@ import { updateTag } from "next/cache";
 import { CACHE_TAGS, revalidateOnboardingPaths } from "@/lib/cache-tags";
 import { type OnboardingActionResult } from "@/lib/types";
 import { fetchThesisMatrix } from "@/app/(onboarding)/onboarding/_services/fetch-actions";
+import { persistRelatedTheses } from "@/app/(onboarding)/onboarding/literature-review/_services/related-theses";
 
 const confirmBoxSchema: z.ZodType<{
   title: string;
@@ -142,6 +143,8 @@ export async function persistBoxesAction(
         await tx.insert(boxRows).values(childValues);
       }
     });
+
+    await persistRelatedTheses(session.userId);
 
     try {
       revalidateOnboardingPaths();

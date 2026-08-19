@@ -1,5 +1,5 @@
 import { ThinkingLevel } from "@google/genai";
-import { FLASH_36, GEMINI_SEED } from "@/lib/constants";
+import { FLASH_LITE_35, GEMINI_SEED } from "@/lib/constants";
 import { generateGeminiStructuredContent } from "@/core/services/ai";
 import type { Logger } from "@/lib/logger";
 import { buildPositioningJuryPromptPayload } from "../_prompts/jury-analysis.prompt";
@@ -20,7 +20,7 @@ export {
 };
 
 /**
- * Runs the final synthesis jury LLM over the relevant evaluated theses using FLASH_36.
+ * Runs the final synthesis jury LLM over the relevant evaluated theses using FLASH_LITE_35.
  * Assembles the globalStatus, 3-dimensional gapAnalysisSummary, and recommended guiding theses.
  *
  * @param input - The validated positioning matrix.
@@ -84,7 +84,7 @@ Katkı/Odak Alanları: ${e.contributionAreas.join(", ") || "Yok"}`;
   });
 
   const synthesis = await generateGeminiStructuredContent<JurySynthesisResult>(
-    FLASH_36,
+    FLASH_LITE_35,
     payload.systemInstruction,
     payload.userPrompt,
     jurySynthesisResultJsonSchema,

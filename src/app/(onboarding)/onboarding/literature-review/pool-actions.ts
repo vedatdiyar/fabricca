@@ -101,6 +101,8 @@ export async function fetchPreloadedLiteraturePool(): Promise<{
 
     if (!matrix) return { error: "Tez matrisi bulunamadı." };
 
+    await persistRelatedTheses(session.userId);
+
     const pool = await fetchPreloadedPool(matrix.id);
 
     return { data: pool };

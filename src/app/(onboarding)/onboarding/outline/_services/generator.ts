@@ -6,7 +6,7 @@ import { matrices, outlines } from "@/core/db/schema";
 import { getSession, SESSION_ERROR_MSG } from "@/lib/session";
 import { invalidateOnboardingStepCache } from "@/lib/cache-tags";
 import { generateGeminiStructuredContent } from "@/core/services/ai";
-import { FLASH_36, GEMINI_SEED } from "@/lib/constants";
+import { FLASH_LITE_35, GEMINI_SEED } from "@/lib/constants";
 import { ThinkingLevel } from "@google/genai";
 import { createFlowId, Logger } from "@/lib/logger";
 import {
@@ -53,13 +53,13 @@ export async function generateOutlineAction(): Promise<
 
     const result =
       await generateGeminiStructuredContent<OutlineGenerationResponse>(
-        FLASH_36,
+        FLASH_LITE_35,
         payload.systemInstruction,
         payload.userPrompt,
         outlineGenerationJsonSchema,
         log,
         {
-          thinkingConfig: { thinkingLevel: ThinkingLevel.MEDIUM },
+          thinkingConfig: { thinkingLevel: ThinkingLevel.LOW },
           zodSchema: outlineGenerationSchema,
           seed: GEMINI_SEED,
           thesisMatrix: matrix,

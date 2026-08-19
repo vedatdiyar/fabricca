@@ -58,7 +58,7 @@ export async function fetchPreloadedPool(
 
   for (const [, group] of grouped) {
     group.articles.sort((a, b) => b.relevanceScore - a.relevanceScore);
-    if (group.articles.length > 4) {
+    if (group.boxType !== "RELATED_THESES" && group.articles.length > 4) {
       group.articles.length = 4;
     }
   }

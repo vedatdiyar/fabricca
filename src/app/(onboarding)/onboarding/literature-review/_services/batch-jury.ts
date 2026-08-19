@@ -148,7 +148,7 @@ export async function evaluateSingleBoxJury(
     juryJsonSchema,
     logger,
     {
-      thinkingConfig: { thinkingLevel: ThinkingLevel.LOW },
+      thinkingConfig: { thinkingLevel: ThinkingLevel.MEDIUM },
       zodSchema: singleBoxJuryOutputSchema,
       seed: GEMINI_SEED,
       safetySettings: [

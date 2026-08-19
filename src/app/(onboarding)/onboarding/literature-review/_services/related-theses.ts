@@ -81,21 +81,34 @@ export async function persistRelatedTheses(userId: number): Promise<void> {
     // Delete existing sources for this RELATED_THESES box to prevent duplicates
     await tx.delete(sources).where(eq(sources.boxId, relatedBox.id));
 
-    const toInsert = theses.map((t) => ({
-      boxId: relatedBox.id,
-      title: cleanThesisTitle(t.title),
-      authors: [t.author].filter((a) => a.length > 0),
-      publisher: t.university || null,
-      thesisType: t.thesisType || null,
-      publicationYear: t.year,
-      doi: t.doi || null,
-      comparisonNote:
-        [t.contributionArea, t.relevanceReason]
-          .filter((s) => s && s.trim().length > 0)
-          .join("\n") || null,
-      isRead: false,
-      relevanceScore: 100,
-    }));
+    const toInsert = theses.map((t) => {
+      const thesisUrl =
+        t.doi ||
+        t.tezaraUrl ||
+        (t.externalThesisId
+          ? `https://tez.yok.gov.tr/UlusalTezMerkezi/tezDetay.jsp?id=${t.externalThesisId}`
+          : null);
+
+      const noteSections = [
+        t.abstract ? `ÖZET: ${t.abstract}` : null,
+        t.contributionArea ? `KATKI ALANI: ${t.contributionArea}` : null,
+        t.relevanceReason ? `STRATEJİK KULLANIM: ${t.relevanceReason}` : null,
+      ].filter((s): s is string => !!s && s.trim().length > 0);
+
+      return {
+        boxId: relatedBox.id,
+        title: cleanThesisTitle(t.title),
+        authors: [t.author].filter((a) => a && a.length > 0),
+        publisher: t.university || null,
+        thesisType: t.thesisType || null,
+        publicationYear: t.year,
+        doi: thesisUrl,
+        comparisonNote:
+          noteSections.length > 0 ? noteSections.join("\n\n") : null,
+        isRead: false,
+        relevanceScore: 100,
+      };
+    });
 
     if (toInsert.length > 0) {
       await tx.insert(sources).values(toInsert);

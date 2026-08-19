@@ -73,7 +73,7 @@ export async function evaluateThesesInParallel(
             zodSchema: batchThesisEvaluationSchema,
             payloadStage: `per_thesis_eval_chunk_${chunkIdx + 1}`,
             seed: GEMINI_SEED,
-            thinkingConfig: { thinkingLevel: ThinkingLevel.LOW },
+            thinkingConfig: { thinkingLevel: ThinkingLevel.MEDIUM },
             thesisMatrix: matrix,
             quiet: true,
           },

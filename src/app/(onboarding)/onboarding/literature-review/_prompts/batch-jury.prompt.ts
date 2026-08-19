@@ -61,9 +61,11 @@ export function buildJuryPromptPayload(
       "Her bir makaleyi, sana verilen alt kutunun türü, başlığı ve açıklaması ile karşılaştırarak değerlendir. Makalenin kutu bağlamıyla doğrudan alakalı olup olmadığına karar ver, 0-100 arası alaka skoru belirle ve 1 cümlelik Türkçe gerekçe yaz.",
 
     rulesAndConstraints: `1. **Dil Uygunluğu:** Yalnızca Türkçe veya İngilizce dilindeki akademik çalışmaları kabul et. Başlığı veya içeriği bu iki dilin dışındaki (İspanyolca, Fransızca, Almanca, İtalyanca vb.) herhangi bir dilde olan kaynakları doğrudan uygunsuz olarak ele (isRelevant: false, relevanceScore: 0, gerekçede dil uyuşmazlığını belirt).
-2. **Bütünsel Örtüşme:** Soyut teorik benzerliklerin ötesine geçerek makalenin incelediği spesifik olgunun, aktörlerin ve tarihsel kesitin; Sub-Box bağlamı ve tezin kapsadığı olgusal/tarihsel çerçeve ile bütünsel olarak örtüşüp örtüşmediğini değerlendir.
-3. **Dönemsel Uygunluk:** Tezin ve kutunun kapsadığı tarihsel/olgusal dönemin dışındaki başka bir döneme veya olaya odaklanan çalışmalar düşük puanlandırılmalıdır.
-4. **Temel Monografiler:** Tezin kapsadığı tarihsel dönemi ve vaka alanını doğrudan işleyen kapsayıcı temel monografilere ve saha araştırmalarına yüksek relevans puanı (80-95+) ver.${quadrantBlock}`,
+2. **Yayın Türü Filtresi (Book Review / Tanıtım Yasağı):** Yalnızca orijinal araştırma makalelerini, monografileri ve metodolojik eserleri kabul et. Bir kitabın 1-3 sayfalık kitap incelemesi/tanıtımı (Book Review), editör notu, konferans duyurusu gibi ikincil tanıtım yazılarını doğrudan uygunsuz olarak ele (isRelevant: false, relevanceScore: 0, gerekçede "Bağımsız araştırma makalesi olmayıp kitap incelemesidir" şeklinde belirt).
+3. **Bütünsel Örtüşme ve Alan/Ölçek Uyumu:** Soyut kavram benzerliklerine aldanma. Makalenin incelediği olgu ve ölçek tezin ve alt kutunun araştırma çerçevesiyle uyumlu olmalıdır. Örneğin makro-tarihsel kurumsal süreçleri inceleyen bir tez için anlık sokak protestolarındaki mikro-etkileşim duygu modellerini veya genel uluslararası ilişkiler dünya düzeni teorilerini teğetsel/uygunsuz olarak ele.
+4. **Metodolojik ve Epistemolojik Tutarlılık:** Yöntem kutusunda, tezin benimsediği araştırma deseniyle (nitel tarihsel-söylemsel analiz, çerçeveleme kodlaması vb.) taban tabana zıt olan katı nicel modelleri (örn. CMP frekans sayımı ve salience modelleri) yöntemsel uyuşmazlık nedeniyle düşük puanlandır veya ele.
+5. **Dönemsel Uygunluk:** Tezin ve kutunun kapsadığı tarihsel/olgusal dönemin dışındaki başka bir döneme veya olaya odaklanan çalışmalar düşük puanlandırılmalıdır.
+6. **Temel Monografiler:** Tezin kapsadığı tarihsel dönemi ve vaka alanını doğrudan işleyen kapsayıcı temel monografilere ve saha araştırmalarına yüksek relevans puanı (80-95+) ver.${quadrantBlock}`,
 
     outputFormat: `Her değerlendirme için aşağıdaki alanları içeren JSON nesneleri dizisi döndürün:
 - thesisBoxId: (girdide verilen box id)
