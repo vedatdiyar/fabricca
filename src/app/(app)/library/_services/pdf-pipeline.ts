@@ -39,7 +39,7 @@ export async function processResourcePdfPipeline(options: ProcessPdfOptions) {
 
   let chunks: DocumentChunk[];
 
-  if (options.precomputedChunks && options.precomputedChunks.length > 0) {
+  if (options.precomputedChunks !== undefined) {
     chunks = options.precomputedChunks;
   } else {
     const parsed = await parsePdfToChunks(buffer, fileName, "", log);

@@ -60,14 +60,51 @@ export function ResourceMetadataFields({
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div className="space-y-2">
+          <Label htmlFor="edit-doc-type" className="text-xs font-semibold">
+            Eser Türü
+          </Label>
+          <select
+            id="edit-doc-type"
+            value={fields.documentType}
+            onChange={(e) => onFieldChange("documentType", e.target.value)}
+            className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+          >
+            <option value="">Otomatik / Belirtilmemiş</option>
+            <option value="journal-article">Makale (Dergi)</option>
+            <option value="book-chapter">Kitap Bölümü</option>
+            <option value="book">Müstakil Kitap</option>
+            <option value="thesis">Tez (Yüksek Lisans / Doktora)</option>
+            <option value="report">Rapor / Çalışma Metni</option>
+          </select>
+        </div>
+
+        <div className="space-y-2">
+          <Label
+            htmlFor="edit-container-title"
+            className="text-xs font-semibold"
+          >
+            Üst Kitap / Dergi Adı
+          </Label>
+          <Input
+            id="edit-container-title"
+            value={fields.containerTitle}
+            onChange={(e) => onFieldChange("containerTitle", e.target.value)}
+            placeholder="Örn: Alternatif Politika veya Routledge Handbook"
+            className="text-sm bg-background"
+          />
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div className="space-y-2">
           <Label htmlFor="edit-publisher" className="text-xs font-semibold">
-            Yayıncı / Dergi / Mecra
+            Yayıncı / Yayınevi
           </Label>
           <Input
             id="edit-publisher"
             value={fields.publisher}
             onChange={(e) => onFieldChange("publisher", e.target.value)}
-            placeholder="Örn: Cambridge University Press"
+            placeholder="Örn: Cambridge University Press, İletişim"
             className="text-sm bg-background"
           />
         </div>

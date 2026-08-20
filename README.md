@@ -91,7 +91,7 @@ tabanlı yapay zeka sohbeti:
 - **Yoğun dallar:** pgvector HNSW (cosine) üzerinden dense retrieval.
 - **Leksel dallar:** PostgreSQL `tsvector` (Türkçe + İngilizce) FTS.
 - **Füzyon:** Reciprocal Rank Fusion (RRF) + Cohere Rerank v4.0 Pro.
-- **HyDE:** Cerebras (`gemma-4-31b`) ile çapraz-dil sorgu genişletme.
+- **HyDE:** Gemini Flash Lite 3.5 ile çapraz-dil sorgu genişletme.
 - **Tool calling:** Gemini ile oturumlu arama, alıntı fişleme, okuma durumu
   güncelleme ve undo desteği.
 
@@ -126,8 +126,7 @@ merkezi yönetim ekranı.
 | **Veri Tabanı**        | Neon Serverless PostgreSQL                                                   |
 | **ORM**                | Drizzle ORM (snake_case)                                                     |
 | **Vektör DB (RAG)**    | pgvector (HNSW) + tsvector (FTS), COSINE                                     |
-| **Birincil LLM**       | Google Gemini Flash ailesi (`FLASH_LITE_31`, `FLASH_LITE_35`, `FLASH_36`)    |
-| **İkincil LLM**        | Cerebras (`gemma-4-31b`) — metadata sanitize, HyDE, başlık üretimi           |
+| **LLM Motoru**         | Google Gemini Flash ailesi (`FLASH_LITE_31`, `FLASH_LITE_35`, `FLASH_36`)    |
 | **Embedding**          | Cloudflare Workers AI (`@cf/baai/bge-m3`, **1024 dim**) — tek ve sabit motor |
 | **Rerank**             | Cohere Rerank v4.0 Pro (`rerank-v4.0-pro`)                                   |
 | **Tez Veri Kaynağı**   | Turso LibSQL Vektör Veritabanı (366k+ Tez, E5-Base 768d)                     |
@@ -233,7 +232,6 @@ Gerekli tüm API anahtarları `.env.local` dosyasında tanımlanır:
 | ------------------------ | ------------------------------------------- |
 | `DATABASE_URL`           | Neon PostgreSQL bağlantı dizesi             |
 | `GEMINI_API_KEY_1..3`    | Google Gemini API (en az 1 anahtar gerekli) |
-| `CEREBRAS_API_KEY`       | Cerebras API (gemma-4-31b)                  |
 | `CLOUDFLARE_ACCOUNT_ID`  | Cloudflare Workers AI hesap ID              |
 | `CLOUDFLARE_API_TOKEN`   | Cloudflare Workers AI API token             |
 | `COHERE_API_KEY`         | Cohere Rerank API                           |

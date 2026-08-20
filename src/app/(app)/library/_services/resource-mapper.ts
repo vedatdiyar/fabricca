@@ -20,6 +20,8 @@ export type ResourceFieldOverrides = Partial<
     LibraryResourceItem,
     | "title"
     | "authors"
+    | "containerTitle"
+    | "documentType"
     | "publisher"
     | "publicationYear"
     | "doi"
@@ -49,6 +51,8 @@ export function mapSourceToResource(
     | "boxId"
     | "title"
     | "authors"
+    | "containerTitle"
+    | "documentType"
     | "publisher"
     | "publicationYear"
     | "doi"
@@ -83,6 +87,9 @@ export function mapSourceToResource(
       publisher: rawPublisher,
       boxType,
     }),
+    containerTitle:
+      overrides.containerTitle ?? source.containerTitle ?? undefined,
+    documentType: overrides.documentType ?? source.documentType ?? undefined,
     publisher: rawPublisher ?? "Belirtilmemiş",
     publicationYear:
       overrides.publicationYear !== undefined

@@ -133,6 +133,8 @@ export async function updateLibraryResourceAction(input: {
   resourceId: number;
   title: string;
   authors: string[];
+  containerTitle?: string;
+  documentType?: string;
   publisher?: string;
   publicationYear?: number | null;
   doi?: string;
@@ -174,6 +176,8 @@ export async function updateLibraryResourceAction(input: {
           input.authors.length > 0
             ? input.authors.map((a) => a.trim()).filter(Boolean)
             : null,
+        containerTitle: input.containerTitle?.trim() || null,
+        documentType: input.documentType?.trim() || null,
         publisher: input.publisher?.trim() || "Belirtilmemiş",
         publicationYear: input.publicationYear ?? null,
         doi: input.doi?.trim() || null,

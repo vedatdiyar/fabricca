@@ -1,9 +1,9 @@
 import { rerankWithCohere } from "@/core/services/ai/cohere";
 import type { CandidateSource } from "./types";
 import {
-  selectWithCerebras,
+  selectWithGemini,
   type SuspiciousEntry,
-} from "./cerebras-selection-client";
+} from "./gemini-selection-client";
 import type { filterCandidates } from "./fuzzy-dedup";
 
 /**
@@ -70,7 +70,7 @@ export interface CandidateSelectionParams {
 }
 
 /**
- * Coordinates final candidate selection using Cerebras LLM, reviewing suspicious candidates
+ * Coordinates final candidate selection using Gemini LLM, reviewing suspicious candidates
  * and selecting the optimal pool within thesis context.
  *
  * @param params - Candidates, context, suspicious list, and target count.
@@ -103,7 +103,7 @@ export async function coordinateCandidateSelection(
     authors: s.authors ?? [],
   }));
 
-  return selectWithCerebras(
+  return selectWithGemini(
     {
       thesisContext,
       confirmedCandidates: rerankedPool.map((c, i) => ({

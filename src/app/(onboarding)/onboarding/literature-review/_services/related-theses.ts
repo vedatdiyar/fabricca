@@ -89,24 +89,15 @@ export async function persistRelatedTheses(userId: number): Promise<void> {
           ? `https://tez.yok.gov.tr/UlusalTezMerkezi/tezDetay.jsp?id=${t.externalThesisId}`
           : null);
 
-      const noteSections = [
-        t.abstract ? `ÖZET: ${t.abstract}` : null,
-        t.contributionArea ? `KATKI ALANI: ${t.contributionArea}` : null,
-        t.relevanceReason ? `STRATEJİK KULLANIM: ${t.relevanceReason}` : null,
-      ].filter((s): s is string => !!s && s.trim().length > 0);
-
       return {
         boxId: relatedBox.id,
         title: cleanThesisTitle(t.title),
         authors: [t.author].filter((a) => a && a.length > 0),
         publisher: t.university || null,
-        thesisType: t.thesisType || null,
+        documentType: "thesis",
         publicationYear: t.year,
         doi: thesisUrl,
-        comparisonNote:
-          noteSections.length > 0 ? noteSections.join("\n\n") : null,
         isRead: false,
-        relevanceScore: 100,
       };
     });
 

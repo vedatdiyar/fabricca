@@ -18,14 +18,11 @@ export async function fetchPreloadedPool(
       boxTitle: boxes.title,
       boxType: boxes.boxType,
       title: sources.title,
-      comparisonNote: sources.comparisonNote,
       openalexId: sources.openalexId,
       doi: sources.doi,
       publisher: sources.publisher,
-      thesisType: sources.thesisType,
       publicationYear: sources.publicationYear,
       authors: sources.authors,
-      relevanceScore: sources.relevanceScore,
     })
     .from(sources)
     .innerJoin(boxes, eq(sources.boxId, boxes.id))
@@ -40,14 +37,14 @@ export async function fetchPreloadedPool(
     const list = existing?.articles ?? [];
     list.push({
       title: row.title,
-      comparisonNote: row.comparisonNote ?? null,
+      comparisonNote: null,
       openalexId: row.openalexId ?? null,
       doi: row.doi,
       publisher: row.publisher ?? "",
-      thesisType: row.thesisType ?? null,
+      thesisType: null,
       publicationYear: row.publicationYear ?? 0,
       authors: (row.authors as string[]) ?? [],
-      relevanceScore: row.relevanceScore ?? 0,
+      relevanceScore: 0,
     });
     grouped.set(row.thesisBoxId, {
       boxTitle: row.boxTitle,

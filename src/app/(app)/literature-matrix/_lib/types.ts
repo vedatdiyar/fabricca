@@ -16,10 +16,8 @@ export interface MatrixSourceRow {
   publicationYear: number | null;
   publisher: string | null;
   doi: string | null;
-  thesisType: string | null;
   isRead: boolean;
   pdfStatus: string;
-  comparisonNote: string | null;
   boxId: number;
   boxTitle: string | null;
   boxType: string | null;

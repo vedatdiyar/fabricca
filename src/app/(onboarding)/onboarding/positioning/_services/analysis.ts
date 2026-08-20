@@ -4,7 +4,10 @@ import { generateGeminiStructuredContent } from "@/core/services/ai";
 import type { Logger } from "@/lib/logger";
 import { buildPositioningJuryPromptPayload } from "../_prompts/jury-analysis.prompt";
 import type { EvaluatedThesis } from "./per-thesis-evaluation";
-import type { PositioningMatrixInput, RecommendedThesisItem } from "./validation";
+import type {
+  PositioningMatrixInput,
+  RecommendedThesisItem,
+} from "./validation";
 import {
   jurySynthesisResultSchema,
   jurySynthesisResultJsonSchema,
@@ -41,7 +44,8 @@ export async function analyzePositioningJury(
   if (evaluatedTheses.length === 0) {
     logger?.info("positioning_jury_no_theses", {
       service: "positioning",
-      filePath: "src/app/(onboarding)/onboarding/positioning/_services/analysis.ts",
+      filePath:
+        "src/app/(onboarding)/onboarding/positioning/_services/analysis.ts",
       data: { inputSubject: input.subjectProblem },
     });
 
@@ -109,7 +113,10 @@ Katkı/Odak Alanları: ${e.contributionAreas.join(", ") || "Yok"}`;
   if (synthesis.selectedThesisIds && synthesis.selectedThesisIds.length > 0) {
     for (const id of synthesis.selectedThesisIds) {
       const found = evalByThesisId.get(String(id));
-      if (found && !selectedItems.some((s) => s.thesis.id === found.thesis.id)) {
+      if (
+        found &&
+        !selectedItems.some((s) => s.thesis.id === found.thesis.id)
+      ) {
         selectedItems.push(found);
       }
     }
@@ -130,7 +137,8 @@ Katkı/Odak Alanları: ${e.contributionAreas.join(", ") || "Yok"}`;
       university: t.university || "Bilinmiyor",
       strategicRole: e.strategicRole || "SPECIFIC_FOCUS",
       literaturePosition: e.literaturePosition,
-      contributionArea: e.contributionAreas.join(", ") || "Literatür İncelemesi",
+      contributionArea:
+        e.contributionAreas.join(", ") || "Literatür İncelemesi",
       relevanceReason: e.strategicUtility || e.relevanceReasoning || "",
       thesisType: t.thesisType,
       abstract: t.abstract,

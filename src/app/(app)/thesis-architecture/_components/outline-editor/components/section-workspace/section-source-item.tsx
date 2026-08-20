@@ -32,9 +32,9 @@ export function SectionSourceItem({ source }: SectionSourceItemProps) {
                 {source.publicationYear}
               </Badge>
             )}
-            {source.thesisType && (
+            {source.documentType && (
               <Badge variant="secondary" className="text-[10px] font-sans">
-                {source.thesisType}
+                {source.documentType === "thesis" ? "Tez" : source.documentType}
               </Badge>
             )}
             {source.pdfStatus === "READY" && (
@@ -76,12 +76,6 @@ export function SectionSourceItem({ source }: SectionSourceItemProps) {
           </Button>
         </div>
       </div>
-
-      {source.comparisonNote && (
-        <div className="text-xs text-muted-foreground/90 bg-muted/40 p-2.5 rounded-md border border-border/40 leading-relaxed font-sans italic">
-          &quot;{source.comparisonNote}&quot;
-        </div>
-      )}
     </Card>
   );
 }

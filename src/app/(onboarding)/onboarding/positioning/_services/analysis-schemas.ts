@@ -157,11 +157,7 @@ export const jurySynthesisResultJsonSchema: JsonSchema = {
   properties: {
     globalStatus: {
       type: "string",
-      enum: [
-        "DIRECT_OVERLAP",
-        "NOVEL_GAP_IDENTIFIED",
-        "NO_RELATED_LITERATURE",
-      ],
+      enum: ["DIRECT_OVERLAP", "NOVEL_GAP_IDENTIFIED", "NO_RELATED_LITERATURE"],
       description:
         "Jürinin genel özgünlük kararı: NOVEL_GAP_IDENTIFIED (Özgün Katkı / Boşluk Mevcut), DIRECT_OVERLAP (Birebir Çakışma / Özgünlük Riski), NO_RELATED_LITERATURE (Bakir Alan / İlgili Tez Bulunamadı).",
     },
@@ -184,11 +180,7 @@ export const jurySynthesisResultJsonSchema: JsonSchema = {
             "Çalışmanın Özgün Katkısı: Araştırmacının tezinin bu boşluğu problem, kuram ve yöntem açısından nasıl dolduracağının analizi (Markdown).",
         },
       },
-      required: [
-        "literatureMapping",
-        "academicGap",
-        "originalContribution",
-      ],
+      required: ["literatureMapping", "academicGap", "originalContribution"],
       additionalProperties: false,
     },
     selectedThesisIds: {

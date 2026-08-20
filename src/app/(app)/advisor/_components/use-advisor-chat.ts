@@ -24,13 +24,12 @@ export function useAdvisorChat(initialSessionId?: number) {
     activeSessionId,
     loadSessions,
     handleSelectSession: selectSessionRaw,
-    handleCreateSession,
-    handleDeleteSession,
+    handleCreateSession: createSessionRaw,
+    handleDeleteSession: deleteSessionRaw,
     createChatSessionAndActivate,
   } = useAdvisorSessions({
     initialSessionId,
     isSendingRef,
-    setActiveCitation: () => {}, // Replaced by composed chat state below
   });
 
   // 2. UI, citation, loading, lock, and streaming state
@@ -57,6 +56,20 @@ export function useAdvisorChat(initialSessionId?: number) {
       await selectSessionRaw(sessionId);
     },
     [selectSessionRaw, setIsLocked, setActiveCitation],
+  );
+
+  const handleCreateSession = useCallback(() => {
+    setIsLocked(false);
+    setActiveCitation(null);
+    createSessionRaw();
+  }, [createSessionRaw, setIsLocked, setActiveCitation]);
+
+  const handleDeleteSession = useCallback(
+    async (sessionId: number) => {
+      setActiveCitation(null);
+      await deleteSessionRaw(sessionId);
+    },
+    [deleteSessionRaw, setActiveCitation],
   );
 
   // 3. Tool execution handlers (approve, reject, undo)

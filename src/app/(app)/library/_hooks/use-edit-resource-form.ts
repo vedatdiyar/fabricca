@@ -10,6 +10,8 @@ import type { LibraryResourceItem } from "../_lib/types";
 export interface EditResourceFormFields {
   title: string;
   authorsText: string;
+  containerTitle: string;
+  documentType: string;
   publisher: string;
   publicationYear: number | string;
   doi: string;
@@ -39,6 +41,8 @@ export function useEditResourceForm({
   const [formFields, setFormFields] = useState<EditResourceFormFields>({
     title: resource.title,
     authorsText: resource.authors.join(", "),
+    containerTitle: resource.containerTitle || "",
+    documentType: resource.documentType || "",
     publisher: resource.publisher || "",
     publicationYear: resource.publicationYear ?? "",
     doi: resource.doi || "",
@@ -103,6 +107,8 @@ export function useEditResourceForm({
           resourceId: resource.id,
           title: formFields.title.trim(),
           authors: parsedAuthors,
+          containerTitle: formFields.containerTitle.trim() || undefined,
+          documentType: formFields.documentType.trim() || undefined,
           publisher: formFields.publisher.trim() || undefined,
           publicationYear:
             typeof formFields.publicationYear === "number"

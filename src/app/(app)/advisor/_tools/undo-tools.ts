@@ -132,13 +132,6 @@ export async function undoMutationTool(
         updateData.title = previousState.title;
       if (typeof previousState.isRead === "boolean")
         updateData.isRead = previousState.isRead;
-      if (
-        typeof previousState.comparisonNote === "string" ||
-        previousState.comparisonNote === null
-      ) {
-        updateData.comparisonNote = previousState.comparisonNote as
-          string | null;
-      }
 
       await db.update(sources).set(updateData).where(eq(sources.id, sourceId));
       return { success: true, message: "Kaynak güncellemesi geri alındı." };
@@ -155,8 +148,6 @@ export async function undoMutationTool(
           (previousState.publicationYear as number | null) ?? undefined,
         doi: (previousState.doi as string | null) ?? undefined,
         isRead: previousState.isRead as boolean,
-        comparisonNote:
-          (previousState.comparisonNote as string | null) ?? undefined,
         pdfUrl: (previousState.pdfUrl as string | null) ?? undefined,
         pdfFileName: (previousState.pdfFileName as string | null) ?? undefined,
         pdfFileSize: (previousState.pdfFileSize as number | null) ?? undefined,

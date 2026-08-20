@@ -43,7 +43,8 @@ export async function evaluateThesesInParallel(
   const evalStart = performance.now();
   logger?.info("per_thesis_evaluation_start", {
     service: "gemini",
-    filePath: "src/app/(onboarding)/onboarding/positioning/_services/per-thesis-evaluation.ts",
+    filePath:
+      "src/app/(onboarding)/onboarding/positioning/_services/per-thesis-evaluation.ts",
     data: { candidateCount: theses.length, chunkSize: BATCH_CHUNK_SIZE },
   });
 
@@ -113,13 +114,17 @@ export async function evaluateThesesInParallel(
 
   logger?.info("per_thesis_evaluation_success", {
     service: "gemini",
-    filePath: "src/app/(onboarding)/onboarding/positioning/_services/per-thesis-evaluation.ts",
+    filePath:
+      "src/app/(onboarding)/onboarding/positioning/_services/per-thesis-evaluation.ts",
     durationMs: performance.now() - evalStart,
     data: {
       totalCandidates: theses.length,
       evaluatedCount: evaluatedTheses.length,
-      relevantCount: evaluatedTheses.filter((e) => e.evaluation.isRelevant).length,
-      overlappingCount: evaluatedTheses.filter((e) => e.evaluation.isDirectOverlap).length,
+      relevantCount: evaluatedTheses.filter((e) => e.evaluation.isRelevant)
+        .length,
+      overlappingCount: evaluatedTheses.filter(
+        (e) => e.evaluation.isDirectOverlap,
+      ).length,
     },
   });
 

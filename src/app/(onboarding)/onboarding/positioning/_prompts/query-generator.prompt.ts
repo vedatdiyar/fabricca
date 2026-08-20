@@ -14,7 +14,13 @@ export interface QueryGenerationPromptPayload {
  * @returns The structured prompt payload containing static systemInstruction and dynamic userPrompt.
  */
 export function buildQueryGenerationPromptPayload(
-  matrix: PositioningMatrixInput | { subjectProblem: string; theoreticalFramework?: string; methodology?: string },
+  matrix:
+    | PositioningMatrixInput
+    | {
+        subjectProblem: string;
+        theoreticalFramework?: string;
+        methodology?: string;
+      },
 ): QueryGenerationPromptPayload {
   const systemInstruction = `<role>
 Akademik literatür tarama, konu sınıflandırma ve semantik bilgi erişim (IR) uzmanı.

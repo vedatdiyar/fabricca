@@ -2,9 +2,30 @@ import { z } from "zod";
 import type { JsonSchema } from "@/core/services/ai";
 
 export const DocumentMetadataZodSchema = z.object({
-  title: z.string(),
-  authors: z.array(z.string()),
-  publicationYear: z.number().optional(),
+  title: z.string().default(""),
+  authors: z
+    .array(
+      z.union([
+        z.string(),
+        z.object({ name: z.string() }).transform((a) => a.name),
+      ]),
+    )
+    .default([]),
+  containerTitle: z
+    .string()
+    .nullable()
+    .optional()
+    .transform((v) => v ?? undefined),
+  documentType: z
+    .string()
+    .nullable()
+    .optional()
+    .transform((v) => v ?? undefined),
+  publicationYear: z
+    .number()
+    .nullable()
+    .optional()
+    .transform((v) => v ?? undefined),
   publisher: z
     .string()
     .nullable()
@@ -47,6 +68,8 @@ export interface DocumentAnalysisResult {
   metadata: {
     title: string;
     authors: string[];
+    containerTitle?: string;
+    documentType?: string;
     publicationYear?: number;
     publisher?: string;
     doi?: string;
@@ -91,6 +114,16 @@ export const DocumentAnalysisSchema: JsonSchema = {
           type: "array",
           items: { type: "string" },
           description: "Yazar listesi (ad soyad)",
+        },
+        containerTitle: {
+          type: ["string", "null"],
+          description:
+            "Dergi adı (makaleler için) veya üst kitap adı (kitap bölümleri için). Sayfa üst başlığında veya jenerikte varsa.",
+        },
+        documentType: {
+          type: ["string", "null"],
+          description:
+            "Eser türü: 'journal-article', 'book-chapter', 'book', 'thesis', veya 'report'",
         },
         publicationYear: {
           type: "number",
@@ -209,5 +242,15 @@ export const ReferencesOnlySchema: JsonSchema = {
     references: DocumentAnalysisSchema.properties!.references,
   },
   required: ["references"],
+  additionalProperties: false,
+};
+
+/** JSON Schema for Gemini structured output — metadata extraction only. */
+export const MetadataOnlySchema: JsonSchema = {
+  type: "object",
+  properties: {
+    metadata: DocumentAnalysisSchema.properties!.metadata,
+  },
+  required: ["metadata"],
   additionalProperties: false,
 };

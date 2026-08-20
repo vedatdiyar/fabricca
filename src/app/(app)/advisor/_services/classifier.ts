@@ -1,6 +1,10 @@
 import { z } from "zod";
-import { generateCerebrasStructuredContent } from "@/core/services/ai";
-import { CEREBRAS_MODEL } from "@/lib/constants";
+import { ThinkingLevel } from "@google/genai";
+import {
+  generateGeminiStructuredContent,
+  type JsonSchema,
+} from "@/core/services/ai";
+import { FLASH_LITE_35 } from "@/lib/constants";
 
 export type AdvisorPersona = "SOCRATIC_ADVISOR" | "TEZ_ASSISTANT";
 
@@ -20,7 +24,7 @@ const classifierZodSchema = z.object({
   mode: z.enum(["DIRECT", "PIPELINE"]),
 });
 
-const classifierJsonSchema = {
+const classifierJsonSchema: JsonSchema = {
   type: "object",
   properties: {
     persona: {
@@ -52,7 +56,7 @@ const classifierJsonSchema = {
 import { buildClassifierPromptPayload } from "../_prompts/classifier.prompt";
 
 /**
- * Classifies user intent into SOCRATIC_ADVISOR vs TEZ_ASSISTANT using Cerebras Gemma 4 (gemma-4-31b),
+ * Classifies user intent into SOCRATIC_ADVISOR vs TEZ_ASSISTANT using Gemini Flash Lite 3.5,
  * and decides whether the message is a standalone question (DIRECT) or a draft paragraph (PIPELINE).
  *
  * @param query - The user's current message.
@@ -79,8 +83,8 @@ export async function classifyAdvisorIntent(
       historyText,
     });
 
-    const res = await generateCerebrasStructuredContent<ClassifierResult>(
-      CEREBRAS_MODEL,
+    const res = await generateGeminiStructuredContent<ClassifierResult>(
+      FLASH_LITE_35,
       payload.systemInstruction,
       payload.userPrompt,
       classifierJsonSchema,
@@ -88,13 +92,13 @@ export async function classifyAdvisorIntent(
       {
         zodSchema: classifierZodSchema,
         payloadStage: "advisor_intent_classifier",
-        temperature: 0,
+        thinkingConfig: { thinkingLevel: ThinkingLevel.MINIMAL },
       },
     );
 
     return res;
   } catch (error) {
-    console.error("Cerebras intent classification fallback:", error);
+    console.error("Advisor intent classification fallback:", error);
     // Safe fallback based on simple regex heuristics
     const isAction =
       /\b(ekle\w*|oluştur\w*|sil\w*|güncelle\w*|değiştir\w*|düzenle\w*|tamamla\w*|göster\w*)\b/i.test(

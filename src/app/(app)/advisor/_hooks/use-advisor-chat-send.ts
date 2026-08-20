@@ -126,11 +126,7 @@ export function useAdvisorChatSend(params: UseAdvisorChatSendParams) {
     setIsLocked(false);
 
     if (!sessionId) {
-      const title =
-        queryToSend.length > 60
-          ? queryToSend.slice(0, 60) + "..."
-          : queryToSend;
-      sessionId = await createChatSessionAndActivate(title);
+      sessionId = await createChatSessionAndActivate("Yeni Sohbet");
       if (!sessionId) {
         isSendingRef.current = false;
         return;

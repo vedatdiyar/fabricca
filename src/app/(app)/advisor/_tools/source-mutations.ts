@@ -45,14 +45,11 @@ async function executeUpdateSource(
   const previousState: Record<string, unknown> = {
     title: existingSource.title,
     isRead: existingSource.isRead,
-    comparisonNote: existingSource.comparisonNote,
   };
 
   const updateData: Partial<Source> = {};
   if (typeof args.title === "string") updateData.title = args.title;
   if (typeof args.isRead === "boolean") updateData.isRead = args.isRead;
-  if (typeof args.comparisonNote === "string")
-    updateData.comparisonNote = args.comparisonNote;
 
   await db
     .update(sources)
@@ -69,8 +66,8 @@ async function executeUpdateSource(
 /**
  * Deletes a source from the user's library.
  *
- * @param args - The proposed mutation arguments.
- * @returns The deletion result with the captured previous state.
+ * @param args - Tool arguments containing `sourceId`.
+ * @returns MutationToolResult with previous state for undo capability.
  */
 async function executeDeleteSource(
   args: Record<string, unknown>,
@@ -90,7 +87,6 @@ async function executeDeleteSource(
     publicationYear: existingSource.publicationYear,
     doi: existingSource.doi,
     isRead: existingSource.isRead,
-    comparisonNote: existingSource.comparisonNote,
     pdfUrl: existingSource.pdfUrl,
     pdfFileName: existingSource.pdfFileName,
     pdfFileSize: existingSource.pdfFileSize,

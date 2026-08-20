@@ -199,13 +199,13 @@ src/
         _services/
           expansion/
             backward-expansion.ts
-            cerebras-selection-client.ts
             co-citation.ts
             expansion-context.ts
             expansion-orchestrator.ts
             expansion-persistence.ts
             forward-expansion.ts
             fuzzy-dedup.ts
+            gemini-selection-client.ts
             openalex-expansion-client.ts
             selection-coordinator.ts
             semantic-scholar-client.ts
@@ -511,11 +511,11 @@ src/
       query-provider.tsx
     services/
       academic/
+        crossref-enrichment.ts
         index.ts
         sanitizer.ts
       ai/
         providers/
-          cerebras-provider.ts
           gemini-client.ts
           gemini-config.ts
           gemini-debug-logger.ts
@@ -614,10 +614,12 @@ src/
     utils.ts
 .gitignore
 AGENTS.md
+Cengiz Günes, The rise of the pro-Kurdish democratic movement in Turkey.pdf
 components.json
 drizzle.config.ts
 eslint.config.mjs
 next.config.ts
+Nicole Watts, Allies and Enemies, Pro-Kurdish Parties in Turkish Politics, 1990–94.pdf
 package.json
 postcss.config.mjs
 README.md
@@ -670,6 +672,247 @@ export type TaskRow = {
   createdAt: Date;
   updatedAt: Date;
 };
+</file>
+
+<file path="src/app/(app)/library/_services/expansion/gemini-selection-client.ts">
+/**
+ * Gemini Flash Lite 3.5 selection client for backward expansion.
+ *
+ * Single LLM call that performs two tasks simultaneously:
+ *   1. Cross-language / edition-aware duplicate detection for "suspicious" candidates
+ *      (those that passed the Jaccard/Jaro-Winkler threshold but are not certain duplicates).
+ *   2. Final ranked selection of N sources from the confirmed + cleared-suspicious pool,
+ *      guided by the thesis box context.
+ *
+ * The model receives a Cohere-reranked, co-citation-ordered list and emits a
+ * structured JSON response — no tool use, pure structured output.
+ */
+
+import { z } from "zod";
+import { ThinkingLevel } from "@google/genai";
+import { FLASH_LITE_35 } from "@/lib/constants";
+import {
+  generateGeminiStructuredContent,
+  type JsonSchema,
+} from "@/core/services/ai";
+import { buildPromptPayload } from "@/lib/ai/prompt-builder";
+import type { CandidateSource } from "./types";
+
+/** A suspicious candidate that needs LLM verification. */
+export interface SuspiciousEntry {
+  candidateTitle: string;
+  candidateAuthors: string[];
+  matchedExistingTitle: string;
+  titleScore: number;
+  authorScore: number;
+}
+
+/** Payload sent to the Gemini LLM. */
+export interface GeminiSelectionPayload {
+  /** Thesis box context (title + description + matrix summary). */
+  thesisContext: string;
+  /** All confirmed-unique candidates in priority order (Cohere reranked). */
+  confirmedCandidates: {
+    index: number;
+    title: string;
+    authors: string[];
+    coAuthorCount: number;
+  }[];
+  /** Candidates that may be duplicates — LLM decides. */
+  suspiciousCandidates: SuspiciousEntry[];
+  /** All existing source titles+authors in the user library (for context). */
+  existingSources: { title: string; authors: string[] }[];
+  /** How many final sources to select. */
+  targetCount: number;
+}
+
+/** Structured response from the LLM. */
+const selectionResponseSchema = z.object({
+  /** Indices (from confirmedCandidates) to include in final selection. */
+  selectedIndices: z.array(z.number()),
+  /** Suspicious candidates NOT to add (they are duplicates). */
+  suspiciousDuplicates: z.array(z.string()),
+  /** Suspicious candidates that are NOT duplicates (safe to include). */
+  suspiciousClear: z.array(z.string()),
+});
+
+type GeminiSelectionResponse = z.infer<typeof selectionResponseSchema>;
+
+/** Strict JSON schema constraint for the Gemini structured selection call. */
+const SELECTION_JSON_SCHEMA: JsonSchema = {
+  type: "object",
+  properties: {
+    selectedIndices: {
+      type: "array",
+      items: { type: "number" },
+      description:
+        "Indices from the confirmed candidates list to include in the final selection.",
+    },
+    suspiciousDuplicates: {
+      type: "array",
+      items: { type: "string" },
+      description:
+        "Candidate titles that ARE true duplicates of existing sources.",
+    },
+    suspiciousClear: {
+      type: "array",
+      items: { type: "string" },
+      description:
+        "Candidate titles that are NOT duplicates and safe to include.",
+    },
+  },
+  required: ["selectedIndices", "suspiciousDuplicates", "suspiciousClear"],
+  additionalProperties: false,
+};
+
+function buildSelectionPromptPayload(payload: GeminiSelectionPayload) {
+  const suspiciousSection =
+    payload.suspiciousCandidates.length > 0
+      ? `### Şüpheli Çift Kayıtlar (Suspicious Duplicates - Doğrulama Gerektirenler):
+${payload.suspiciousCandidates
+  .map(
+    (s, i) =>
+      `[SUSPICIOUS_${i}]
+  Aday Başlık: "${s.candidateTitle}" — ${s.candidateAuthors?.[0] ?? "Bilinmiyor"}
+  Eşleşen Mevcut Başlık: "${s.matchedExistingTitle}"
+  Benzerlik Skorları: başlık=${s.titleScore.toFixed(2)}, yazar=${s.authorScore.toFixed(2)}`,
+  )
+  .join("\n\n")}`
+      : "### Şüpheli Çift Kayıtlar:\nYok.";
+
+  return buildPromptPayload({
+    roleAndExpertise:
+      "You are an expert academic librarian and bibliographic deduplication assistant curating high-relevance literature for a thesis.",
+
+    primaryTask:
+      "Verify suspicious duplicate candidates against existing library sources and select the top N unique academic sources that best fit the thesis context.",
+
+    rulesAndConstraints: `1. **Duplicate Detection:**
+   - Examine each candidate in 'Suspicious Duplicates'.
+   - If a candidate represents the SAME intellectual work as an existing source (despite minor edition/language/punctuation variations), classify its title in 'suspiciousDuplicates'.
+   - If a candidate is a genuinely DIFFERENT work that merely shares similar wording or author, classify its title in 'suspiciousClear'.
+
+2. **Ranked Candidate Selection:**
+   - From the confirmed candidates list (and any approved 'suspiciousClear' entries), select exactly the target count (${payload.targetCount}) of most relevant sources.
+   - If fewer candidates exist than the target count, select all confirmed candidates.`,
+
+    outputFormat:
+      "Output strict JSON adhering to the schema without markdown formatting or conversational filler.",
+
+    examples: `<example>
+<input>
+### Tez Bağlamı:
+Kürt siyasal hareketinin 1990'lar meclis ve yasal parti söylemleri.
+
+### Mevcut Kütüphane Kaynakları (1 Adet):
+- "The Kurdish Nationalist Movement: Opportunity, Mobilization and Identity" [David Romano]
+
+### Doğrulanmış Aday Kaynaklar:
+[0] "The Kurdish National Movement in Turkey: From Protest to Resistance" — Cengiz Gunes (cited by 4 seed papers)
+[1] "Kurdish Political Mobilization in Turkey" — Nicole Watts (cited by 3 seed papers)
+
+### Şüpheli Çift Kayıtlar:
+[SUSPICIOUS_0]
+  Aday Başlık: "The Kurdish Nationalist Movement (2006 Edition)" — David Romano
+  Eşleşen Mevcut Başlık: "The Kurdish Nationalist Movement: Opportunity, Mobilization and Identity"
+</input>
+<output>
+{
+  "selectedIndices": [0, 1],
+  "suspiciousDuplicates": ["The Kurdish Nationalist Movement (2006 Edition)"],
+  "suspiciousClear": []
+}
+</output>
+</example>`,
+
+    inputContext: `### Tez Bağlamı (Thesis Context):
+${payload.thesisContext}
+
+### Mevcut Kütüphane Kaynakları (${payload.existingSources.length} Adet):
+${payload.existingSources.map((s) => `- "${s.title}" [${s.authors?.[0] ?? "?"}]`).join("\n")}
+
+### Doğrulanmış Aday Kaynaklar:
+${payload.confirmedCandidates
+  .map(
+    (c) =>
+      `[${c.index}] "${c.title}" — ${c.authors?.[0] ?? "Bilinmiyor"} (cited by ${c.coAuthorCount} seed papers)`,
+  )
+  .join("\n")}
+
+${suspiciousSection}`,
+
+    taskTrigger: `Analyze the candidates in <context> against existing library sources and select exactly ${payload.targetCount} top relevant sources into structured JSON output according to <instructions>.`,
+  });
+}
+
+/**
+ * Calls Gemini Flash Lite 3.5 to deduplicate suspicious candidates and
+ * select the final N sources from the backward expansion candidate pool.
+ *
+ * @param payload - Structured input: context, candidates, suspicious list, target count.
+ * @param allCandidates - Full list of candidate sources.
+ * @returns Selected CandidateSource items (length ≤ targetCount).
+ */
+export async function selectWithGemini(
+  payload: GeminiSelectionPayload,
+  allCandidates: CandidateSource[],
+): Promise<CandidateSource[]> {
+  const fallback = () => allCandidates.slice(0, payload.targetCount);
+
+  const promptPayload = buildSelectionPromptPayload(payload);
+
+  let parsed: GeminiSelectionResponse;
+  try {
+    parsed = await generateGeminiStructuredContent<GeminiSelectionResponse>(
+      FLASH_LITE_35,
+      promptPayload.systemInstruction,
+      promptPayload.userPrompt,
+      SELECTION_JSON_SCHEMA,
+      undefined,
+      {
+        payloadStage: "backward_expansion_selection",
+        zodSchema: selectionResponseSchema,
+        thinkingConfig: { thinkingLevel: ThinkingLevel.LOW },
+      },
+    );
+  } catch {
+    // Network/API failure or malformed/off-schema output: fall back to top-N order
+    return fallback();
+  }
+
+  // Build final selection
+  const selected: CandidateSource[] = [];
+  const duplicateTitleSet = new Set(
+    (parsed.suspiciousDuplicates ?? []).map((t) => t.toLowerCase().trim()),
+  );
+
+  // Add confirmed candidates in the order Gemini selected
+  for (const idx of parsed.selectedIndices ?? []) {
+    if (selected.length >= payload.targetCount) break;
+    const candidate = allCandidates[idx];
+    if (candidate) selected.push(candidate);
+  }
+
+  // Append suspiciousClear candidates that Gemini approved, if still room
+  for (const clearTitle of parsed.suspiciousClear ?? []) {
+    if (selected.length >= payload.targetCount) break;
+    if (duplicateTitleSet.has(clearTitle.toLowerCase().trim())) continue;
+    const match = allCandidates.find(
+      (c) => c.title.toLowerCase().trim() === clearTitle.toLowerCase().trim(),
+    );
+    if (match && !selected.includes(match)) selected.push(match);
+  }
+
+  // Final safety: if LLM returned fewer than target, pad with remaining confirmed
+  if (selected.length < payload.targetCount) {
+    for (const c of allCandidates) {
+      if (selected.length >= payload.targetCount) break;
+      if (!selected.includes(c)) selected.push(c);
+    }
+  }
+
+  return selected.slice(0, payload.targetCount);
+}
 </file>
 
 <file path="src/app/icon.svg">
@@ -1059,6 +1302,196 @@ const Toaster = ({ ...props }: ToasterProps) => {
 };
 
 export { Toaster };
+</file>
+
+<file path="src/core/services/academic/crossref-enrichment.ts">
+import { CROSSREF_USER_AGENT } from "@/lib/api-utils";
+import type { Logger } from "@/lib/logger";
+
+export interface EnrichedBibliographicMetadata {
+  publisher?: string;
+  containerTitle?: string;
+  publicationYear?: number;
+  doi?: string;
+  documentType?: string;
+}
+
+export interface CrossrefEnrichmentParams {
+  title: string;
+  authors?: string[];
+  doi?: string;
+  logger?: Logger;
+}
+
+/**
+ * Calculates word-level Dice similarity between two titles (0.0 to 1.0).
+ *
+ * @param a - First title string.
+ * @param b - Second title string.
+ * @returns Similarity score between 0 and 1.
+ */
+export function calculateTitleSimilarity(a: string, b: string): number {
+  const normA = a
+    .toLowerCase()
+    .replace(/[^\p{L}\p{N}\s]/gu, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+  const normB = b
+    .toLowerCase()
+    .replace(/[^\p{L}\p{N}\s]/gu, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+
+  if (normA === normB) return 1.0;
+
+  const wordsA = new Set(normA.split(" ").filter((w) => w.length > 2));
+  const wordsB = new Set(normB.split(" ").filter((w) => w.length > 2));
+
+  if (wordsA.size === 0 || wordsB.size === 0) return 0;
+
+  let intersection = 0;
+  for (const w of wordsA) {
+    if (wordsB.has(w)) intersection++;
+  }
+
+  return (2 * intersection) / (wordsA.size + wordsB.size);
+}
+
+interface CrossrefPerson {
+  given?: string;
+  family?: string;
+}
+
+interface CrossrefWorkItem {
+  title?: string[];
+  publisher?: string;
+  "container-title"?: string[];
+  issued?: {
+    "date-parts"?: number[][];
+  };
+  DOI?: string;
+  type?: string;
+  author?: CrossrefPerson[];
+}
+
+function parseCrossrefItem(
+  item: CrossrefWorkItem,
+  fallbackDoi?: string,
+): EnrichedBibliographicMetadata {
+  return {
+    publisher: item.publisher?.trim() || undefined,
+    containerTitle: item["container-title"]?.[0]?.trim() || undefined,
+    publicationYear: item.issued?.["date-parts"]?.[0]?.[0] || undefined,
+    doi: item.DOI || fallbackDoi,
+    documentType: item.type || undefined,
+  };
+}
+
+/**
+ * Enriches bibliographic metadata via Crossref API using DOI lookup or title/author fuzzy search.
+ *
+ * @param params - Search parameters (title, authors, optional DOI, logger).
+ * @returns Enriched bibliographic fields if a high-confidence match is found, null otherwise.
+ */
+export async function enrichWithCrossref(
+  params: CrossrefEnrichmentParams,
+): Promise<EnrichedBibliographicMetadata | null> {
+  const { title, authors = [], doi, logger } = params;
+
+  if (!title && !doi) return null;
+
+  const timeoutSignal = AbortSignal.timeout(4000);
+
+  // Case 1: Direct DOI lookup
+  if (doi && doi.trim().length > 0) {
+    try {
+      const cleanDoi = doi.trim().replace(/^https?:\/\/doi\.org\//i, "");
+      const res = await fetch(
+        `https://api.crossref.org/works/${encodeURIComponent(cleanDoi)}`,
+        {
+          headers: { "User-Agent": CROSSREF_USER_AGENT },
+          signal: timeoutSignal,
+        },
+      );
+
+      if (res.ok) {
+        const json = (await res.json()) as { message?: CrossrefWorkItem };
+        const item = json.message;
+        if (item) {
+          const enriched = parseCrossrefItem(item, cleanDoi);
+          logger?.info("crossref_doi_lookup_success", {
+            service: "crossref",
+            data: { doi: cleanDoi, publisher: enriched.publisher },
+          });
+          return enriched;
+        }
+      }
+    } catch (err) {
+      logger?.info("crossref_doi_lookup_failed", {
+        service: "crossref",
+        data: { doi, error: String(err) },
+      });
+    }
+  }
+
+  // Case 2: Bibliographic search by title and author
+  try {
+    const cleanTitle = title.trim();
+    if (cleanTitle.length < 5) return null;
+
+    let authorQuery = "";
+    if (authors.length > 0 && authors[0].trim().length > 0) {
+      const firstAuthor = authors[0].trim();
+      const nameParts = firstAuthor.split(/\s+/).filter(Boolean);
+      const lastName = nameParts[nameParts.length - 1] || firstAuthor;
+      authorQuery = `&query.author=${encodeURIComponent(lastName)}`;
+    }
+
+    const queryUrl = `https://api.crossref.org/works?query.title=${encodeURIComponent(cleanTitle)}${authorQuery}&rows=3`;
+    const res = await fetch(queryUrl, {
+      headers: { "User-Agent": CROSSREF_USER_AGENT },
+      signal: timeoutSignal,
+    });
+
+    if (!res.ok) return null;
+
+    const json = (await res.json()) as {
+      message?: { items?: CrossrefWorkItem[] };
+    };
+    const items = json.message?.items || [];
+
+    for (const item of items) {
+      const itemTitle = item.title?.[0] || "";
+      if (!itemTitle) continue;
+
+      const similarity = calculateTitleSimilarity(cleanTitle, itemTitle);
+      if (similarity >= 0.75) {
+        const enriched = parseCrossrefItem(item);
+
+        logger?.info("crossref_bibliographic_search_matched", {
+          service: "crossref",
+          data: {
+            queriedTitle: cleanTitle,
+            matchedTitle: itemTitle,
+            similarity,
+            publisher: enriched.publisher,
+            containerTitle: enriched.containerTitle,
+            publicationYear: enriched.publicationYear,
+          },
+        });
+
+        return enriched;
+      }
+    }
+  } catch (err) {
+    logger?.info("crossref_bibliographic_search_failed", {
+      service: "crossref",
+      data: { title, error: String(err) },
+    });
+  }
+
+  return null;
+}
 </file>
 
 <file path="src/lib/academic/abstract-cleaner.ts">
@@ -3251,7 +3684,6 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import type { LibraryResourceCritique } from "../../_lib/types";
@@ -3322,7 +3754,7 @@ function toFieldValues(
 }
 
 /**
- * Article analysis (Eser Analizi) form with 5 guiding academic fields and a live completion badge.
+ * Article analysis (Eser Analizi) form with 5 guiding academic fields.
  *
  * @param root0 - Component props.
  * @param root0.critique - The saved analysis for the currently selected resource, when present.
@@ -3342,10 +3774,6 @@ export function CritiqueSection({
     setPrevCritique(critique);
     setValues(toFieldValues(critique));
   }
-
-  const completedCount = CRITIQUE_FIELDS.filter(
-    (field) => values[field.key].trim().length > 0,
-  ).length;
 
   const handleSave = (e: React.FormEvent) => {
     e.preventDefault();
@@ -3368,12 +3796,6 @@ export function CritiqueSection({
               Eser Analizi
             </h3>
           </div>
-          <Badge
-            variant="outline"
-            className="text-xs font-medium border-border"
-          >
-            {completedCount}/5 Tamamlandı
-          </Badge>
         </div>
 
         <form onSubmit={handleSave} className="space-y-4">
@@ -3406,10 +3828,7 @@ export function CritiqueSection({
             );
           })}
 
-          <div className="flex items-center justify-between gap-3 pt-1 border-t border-border/40">
-            <p className="text-[10px] text-muted-foreground">
-              Alanları doldurdukça tamamlanma durumunuz güncellenir.
-            </p>
+          <div className="flex items-center justify-end gap-3 pt-1 border-t border-border/40">
             <Button
               type="submit"
               variant="default"
@@ -3818,6 +4237,8 @@ export function buildCompletionResourceItem(
     boxMeta,
     createMode
       ? {
+          containerTitle: metadata.containerTitle || undefined,
+          documentType: metadata.documentType || undefined,
           isRead: false,
           pdfUrl: pipelineResult.r2Url,
           pdfFileName: pipelineResult.finalFileName,
@@ -3827,6 +4248,12 @@ export function buildCompletionResourceItem(
       : {
           title: metadata.title,
           authors: metadata.authors,
+          containerTitle:
+            metadata.containerTitle ||
+            targetResource.containerTitle ||
+            undefined,
+          documentType:
+            metadata.documentType || targetResource.documentType || undefined,
           publisher: metadata.publisher || "Belirtilmemiş",
           publicationYear: metadata.publicationYear,
           doi: metadata.doi || undefined,
@@ -3871,10 +4298,8 @@ export interface MatrixSourceRow {
   publicationYear: number | null;
   publisher: string | null;
   doi: string | null;
-  thesisType: string | null;
   isRead: boolean;
   pdfStatus: string;
-  comparisonNote: string | null;
   boxId: number;
   boxTitle: string | null;
   boxType: string | null;
@@ -6399,7 +6824,6 @@ export function Skeleton({ className }: SkeletonProps) {
  * - CROSSREF_LIMITS: Saniyede max 10 istek (600 RPM), concurrency 3
  * - SEMANTIC_SCHOLAR_LIMITS: Saniyede max 1 istek (60 RPM, concurrency 1)
  * - COHERE_LIMITS: Dakikada max 10 istek (10 RPM)
- * - CEREBRAS_LIMITS: Dakikada max 5 istek (5 RPM)
  * - CLOUDFLARE_EMBEDDINGS_LIMITS: Dakikada max 3.000 istek (3000 RPM)
  * - GEMINI_MODEL_QUOTAS: Flash Lite modeller 15 RPM, Flash modeller 5 RPM
  */
@@ -6437,12 +6861,6 @@ export const SEMANTIC_SCHOLAR_LIMITS: RateLimiterOptions = {
 export const COHERE_LIMITS: RateLimiterOptions = {
   label: "cohere",
   rpm: 10,
-};
-
-/** Cerebras — dakikada max 5 istek (5 req/min). */
-export const CEREBRAS_LIMITS: RateLimiterOptions = {
-  label: "cerebras",
-  rpm: 5,
 };
 
 /** Cloudflare Workers AI text embeddings — dakikada max 3.000 istek (3000 req/min). */
@@ -7574,15 +7992,12 @@ export * from "./llm-errors";
 export * from "./llm-retry";
 
 export * as geminiProvider from "./providers/gemini-provider";
-export * as cerebrasProvider from "./providers/cerebras-provider";
 
 export {
   generateStructuredContent as generateGeminiStructuredContent,
   getAi,
   logRawLlmCall,
 } from "./providers/gemini-provider";
-
-export { generateStructuredContent as generateCerebrasStructuredContent } from "./providers/cerebras-provider";
 </file>
 
 <file path="src/core/services/ai/llm-errors.ts">
@@ -8193,33 +8608,35 @@ export function buildPdfParserPromptPayload(
       "You are an expert academic PDF parser. Your role is to analyze provided PDF pages and extract grounded structured metadata.",
 
     primaryTask:
-      "Analyze PDF first pages to extract accurate document metadata: title, authors, publication year, publisher, and DOI strictly grounded in the source text.",
+      "Analyze PDF first pages and running headers to extract accurate document metadata: title, authors, containerTitle (journal or edited book name), publication year, publisher, and DOI strictly grounded in the source text.",
 
     rulesAndConstraints: `1. **Grounded Extraction & Verbatim Preservation:**
    - Treat the provided PDF text as the absolute limit of truth. Extract facts strictly printed in the source.
    - Standardize document title into standard Academic Title Case (even if printed in ALL CAPS) and author names into Proper Case, preserving acronyms (NATO, YÖK, PKK, DOI, IMF, etc.) in uppercase.
+   - Extract journal name or edited book title into containerTitle if present in running headers, footers, or title blocks (e.g. "Alternatif Politika", "Routledge Handbook on the Kurds").
    - Output null for missing metadata fields when absent from source text.
 
 2. **Language & Character Normalization:**
    - Ensure all Turkish characters (ç, ğ, ı, ö, ş, ü, İ) are normalized and preserved without corruption.`,
 
     outputFormat:
-      "Return structured JSON adhering strictly to the provided document metadata schema.",
+      "Return structured JSON with a 'metadata' object adhering strictly to the provided document metadata schema.",
 
     examples: `<example>
 <input>
-THE KURDISH NATIONALIST MOVEMENT: OPPORTUNITY, MOBILIZATION AND IDENTITY
-David Romano
-Cambridge University Press, 2006
-DOI: 10.1017/CBO9780511606731
+Alternatif Politika, Cilt. 2, Sayı. 2, 175-194, October 2010
+AYRILIKÇI KÜRT HAREKETİNİN TARİHSEL DİNAMİKLERİNE KISA BİR BAKIŞ
+Maya ARAKON
 </input>
 <output>
 {
-  "title": "The Kurdish Nationalist Movement: Opportunity, Mobilization and Identity",
-  "authors": [{"name": "David Romano", "role": "Author"}],
-  "publicationYear": 2006,
-  "publisher": "Cambridge University Press",
-  "doi": "10.1017/CBO9780511606731"
+  "metadata": {
+    "title": "Ayrılıkçı Kürt Hareketinin Tarihsel Dinamiklerine Kısa Bir Bakış",
+    "authors": ["Maya Arakon"],
+    "containerTitle": "Alternatif Politika",
+    "publicationYear": 2010,
+    "publisher": "Alternatif Politika"
+  }
 }
 </output>
 </example>`,
@@ -10747,12 +11164,12 @@ export function cleanPageNumberInput(raw: string | null | undefined): string {
 
 <file path="src/lib/academic/sorting-utils.ts">
 interface SortableResource {
-  relevanceScore: number | null;
   id: number;
+  publicationYear?: number | null;
 }
 
 /**
- * Sorts academic resources by relevance score, then by id.
+ * Sorts academic resources by publication year (newest first), then by id.
  *
  * @param items - Resources to sort.
  * @returns A new array sorted by the shared academic ordering.
@@ -10761,9 +11178,9 @@ export function sortLibraryResources<T extends SortableResource>(
   items: T[],
 ): T[] {
   return [...items].sort((a, b) => {
-    const scoreA = a.relevanceScore ?? 0;
-    const scoreB = b.relevanceScore ?? 0;
-    if (scoreA !== scoreB) return scoreB - scoreA;
+    const yearA = a.publicationYear ?? 0;
+    const yearB = b.publicationYear ?? 0;
+    if (yearA !== yearB) return yearB - yearA;
 
     return a.id - b.id;
   });
@@ -10805,6 +11222,13 @@ export function invalidateOnboardingStepCache(fromStep: OnboardingStep): void {
   }
   revalidateOnboardingPaths();
 }
+</file>
+
+<file path="src/lib/constants.ts">
+export const FLASH_LITE_31 = "gemini-3.1-flash-lite" as const;
+export const FLASH_LITE_35 = "gemini-3.5-flash-lite" as const;
+export const FLASH_36 = "gemini-3.6-flash" as const;
+export const GEMINI_SEED = 42 as const;
 </file>
 
 <file path="src/lib/logger-format.ts">
@@ -11245,11 +11669,7 @@ export function useAdvisorChatSend(params: UseAdvisorChatSendParams) {
     setIsLocked(false);
 
     if (!sessionId) {
-      const title =
-        queryToSend.length > 60
-          ? queryToSend.slice(0, 60) + "..."
-          : queryToSend;
-      sessionId = await createChatSessionAndActivate(title);
+      sessionId = await createChatSessionAndActivate("Yeni Sohbet");
       if (!sessionId) {
         isSendingRef.current = false;
         return;
@@ -12254,8 +12674,12 @@ export interface PipelineResultData {
 
 <file path="src/app/(app)/advisor/_services/chat-title.ts">
 import { z } from "zod";
-import { generateCerebrasStructuredContent } from "@/core/services/ai";
-import { CEREBRAS_MODEL } from "@/lib/constants";
+import { ThinkingLevel } from "@google/genai";
+import {
+  generateGeminiStructuredContent,
+  type JsonSchema,
+} from "@/core/services/ai";
+import { FLASH_LITE_35 } from "@/lib/constants";
 import { buildChatTitlePromptPayload } from "../_prompts/chat-title.prompt";
 
 const CHAT_TITLE_ZOD_SCHEMA = z.object({
@@ -12266,7 +12690,7 @@ const CHAT_TITLE_ZOD_SCHEMA = z.object({
     ),
 });
 
-const CHAT_TITLE_JSON_SCHEMA = {
+const CHAT_TITLE_JSON_SCHEMA: JsonSchema = {
   type: "object",
   properties: {
     title: {
@@ -12280,7 +12704,7 @@ const CHAT_TITLE_JSON_SCHEMA = {
 };
 
 /**
- * Generates a concise 3-5 word academic topic title using Cerebras Gemma 4 (gemma-4-31b).
+ * Generates a concise 3-5 word academic topic title using Gemini Flash Lite 3.5.
  *
  * @param userQuery - The first user prompt query to derive the title from.
  * @returns The generated title string.
@@ -12289,8 +12713,8 @@ const CHAT_TITLE_JSON_SCHEMA = {
 export async function generateChatTitle(userQuery: string): Promise<string> {
   const payload = buildChatTitlePromptPayload(userQuery);
 
-  const res = await generateCerebrasStructuredContent<{ title: string }>(
-    CEREBRAS_MODEL,
+  const res = await generateGeminiStructuredContent<{ title: string }>(
+    FLASH_LITE_35,
     payload.systemInstruction,
     payload.userPrompt,
     CHAT_TITLE_JSON_SCHEMA,
@@ -12298,6 +12722,7 @@ export async function generateChatTitle(userQuery: string): Promise<string> {
     {
       zodSchema: CHAT_TITLE_ZOD_SCHEMA,
       payloadStage: "advisor_chat_title",
+      thinkingConfig: { thinkingLevel: ThinkingLevel.MINIMAL },
     },
   );
 
@@ -12311,8 +12736,12 @@ export async function generateChatTitle(userQuery: string): Promise<string> {
 
 <file path="src/app/(app)/advisor/_services/classifier.ts">
 import { z } from "zod";
-import { generateCerebrasStructuredContent } from "@/core/services/ai";
-import { CEREBRAS_MODEL } from "@/lib/constants";
+import { ThinkingLevel } from "@google/genai";
+import {
+  generateGeminiStructuredContent,
+  type JsonSchema,
+} from "@/core/services/ai";
+import { FLASH_LITE_35 } from "@/lib/constants";
 
 export type AdvisorPersona = "SOCRATIC_ADVISOR" | "TEZ_ASSISTANT";
 
@@ -12332,7 +12761,7 @@ const classifierZodSchema = z.object({
   mode: z.enum(["DIRECT", "PIPELINE"]),
 });
 
-const classifierJsonSchema = {
+const classifierJsonSchema: JsonSchema = {
   type: "object",
   properties: {
     persona: {
@@ -12364,7 +12793,7 @@ const classifierJsonSchema = {
 import { buildClassifierPromptPayload } from "../_prompts/classifier.prompt";
 
 /**
- * Classifies user intent into SOCRATIC_ADVISOR vs TEZ_ASSISTANT using Cerebras Gemma 4 (gemma-4-31b),
+ * Classifies user intent into SOCRATIC_ADVISOR vs TEZ_ASSISTANT using Gemini Flash Lite 3.5,
  * and decides whether the message is a standalone question (DIRECT) or a draft paragraph (PIPELINE).
  *
  * @param query - The user's current message.
@@ -12391,8 +12820,8 @@ export async function classifyAdvisorIntent(
       historyText,
     });
 
-    const res = await generateCerebrasStructuredContent<ClassifierResult>(
-      CEREBRAS_MODEL,
+    const res = await generateGeminiStructuredContent<ClassifierResult>(
+      FLASH_LITE_35,
       payload.systemInstruction,
       payload.userPrompt,
       classifierJsonSchema,
@@ -12400,13 +12829,13 @@ export async function classifyAdvisorIntent(
       {
         zodSchema: classifierZodSchema,
         payloadStage: "advisor_intent_classifier",
-        temperature: 0,
+        thinkingConfig: { thinkingLevel: ThinkingLevel.MINIMAL },
       },
     );
 
     return res;
   } catch (error) {
-    console.error("Cerebras intent classification fallback:", error);
+    console.error("Advisor intent classification fallback:", error);
     // Safe fallback based on simple regex heuristics
     const isAction =
       /\b(ekle\w*|oluştur\w*|sil\w*|güncelle\w*|değiştir\w*|düzenle\w*|tamamla\w*|göster\w*)\b/i.test(
@@ -13573,14 +14002,11 @@ async function executeUpdateSource(
   const previousState: Record<string, unknown> = {
     title: existingSource.title,
     isRead: existingSource.isRead,
-    comparisonNote: existingSource.comparisonNote,
   };
 
   const updateData: Partial<Source> = {};
   if (typeof args.title === "string") updateData.title = args.title;
   if (typeof args.isRead === "boolean") updateData.isRead = args.isRead;
-  if (typeof args.comparisonNote === "string")
-    updateData.comparisonNote = args.comparisonNote;
 
   await db
     .update(sources)
@@ -13597,8 +14023,8 @@ async function executeUpdateSource(
 /**
  * Deletes a source from the user's library.
  *
- * @param args - The proposed mutation arguments.
- * @returns The deletion result with the captured previous state.
+ * @param args - Tool arguments containing `sourceId`.
+ * @returns MutationToolResult with previous state for undo capability.
  */
 async function executeDeleteSource(
   args: Record<string, unknown>,
@@ -13618,7 +14044,6 @@ async function executeDeleteSource(
     publicationYear: existingSource.publicationYear,
     doi: existingSource.doi,
     isRead: existingSource.isRead,
-    comparisonNote: existingSource.comparisonNote,
     pdfUrl: existingSource.pdfUrl,
     pdfFileName: existingSource.pdfFileName,
     pdfFileSize: existingSource.pdfFileSize,
@@ -13894,13 +14319,6 @@ export async function undoMutationTool(
         updateData.title = previousState.title;
       if (typeof previousState.isRead === "boolean")
         updateData.isRead = previousState.isRead;
-      if (
-        typeof previousState.comparisonNote === "string" ||
-        previousState.comparisonNote === null
-      ) {
-        updateData.comparisonNote = previousState.comparisonNote as
-          string | null;
-      }
 
       await db.update(sources).set(updateData).where(eq(sources.id, sourceId));
       return { success: true, message: "Kaynak güncellemesi geri alındı." };
@@ -13917,8 +14335,6 @@ export async function undoMutationTool(
           (previousState.publicationYear as number | null) ?? undefined,
         doi: (previousState.doi as string | null) ?? undefined,
         isRead: previousState.isRead as boolean,
-        comparisonNote:
-          (previousState.comparisonNote as string | null) ?? undefined,
         pdfUrl: (previousState.pdfUrl as string | null) ?? undefined,
         pdfFileName: (previousState.pdfFileName as string | null) ?? undefined,
         pdfFileSize: (previousState.pdfFileSize as number | null) ?? undefined,
@@ -14288,7 +14704,7 @@ import { handleActionError } from "@/lib/errors/handle-error";
 import { renameChatSession } from "./session-actions";
 
 /**
- * Generates a concise 3-5 word academic topic title using Cerebras Gemma 4 (gemma-4-31b)
+ * Generates a concise 3-5 word academic topic title using Gemini Flash Lite 3.5
  * and updates the chat session title in the database.
  *
  * @param sessionId - The chat session ID to update.
@@ -16048,14 +16464,51 @@ export function ResourceMetadataFields({
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div className="space-y-2">
+          <Label htmlFor="edit-doc-type" className="text-xs font-semibold">
+            Eser Türü
+          </Label>
+          <select
+            id="edit-doc-type"
+            value={fields.documentType}
+            onChange={(e) => onFieldChange("documentType", e.target.value)}
+            className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+          >
+            <option value="">Otomatik / Belirtilmemiş</option>
+            <option value="journal-article">Makale (Dergi)</option>
+            <option value="book-chapter">Kitap Bölümü</option>
+            <option value="book">Müstakil Kitap</option>
+            <option value="thesis">Tez (Yüksek Lisans / Doktora)</option>
+            <option value="report">Rapor / Çalışma Metni</option>
+          </select>
+        </div>
+
+        <div className="space-y-2">
+          <Label
+            htmlFor="edit-container-title"
+            className="text-xs font-semibold"
+          >
+            Üst Kitap / Dergi Adı
+          </Label>
+          <Input
+            id="edit-container-title"
+            value={fields.containerTitle}
+            onChange={(e) => onFieldChange("containerTitle", e.target.value)}
+            placeholder="Örn: Alternatif Politika veya Routledge Handbook"
+            className="text-sm bg-background"
+          />
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div className="space-y-2">
           <Label htmlFor="edit-publisher" className="text-xs font-semibold">
-            Yayıncı / Dergi / Mecra
+            Yayıncı / Yayınevi
           </Label>
           <Input
             id="edit-publisher"
             value={fields.publisher}
             onChange={(e) => onFieldChange("publisher", e.target.value)}
-            placeholder="Örn: Cambridge University Press"
+            placeholder="Örn: Cambridge University Press, İletişim"
             className="text-sm bg-background"
           />
         </div>
@@ -16247,6 +16700,8 @@ import type { LibraryResourceItem } from "../_lib/types";
 export interface EditResourceFormFields {
   title: string;
   authorsText: string;
+  containerTitle: string;
+  documentType: string;
   publisher: string;
   publicationYear: number | string;
   doi: string;
@@ -16276,6 +16731,8 @@ export function useEditResourceForm({
   const [formFields, setFormFields] = useState<EditResourceFormFields>({
     title: resource.title,
     authorsText: resource.authors.join(", "),
+    containerTitle: resource.containerTitle || "",
+    documentType: resource.documentType || "",
     publisher: resource.publisher || "",
     publicationYear: resource.publicationYear ?? "",
     doi: resource.doi || "",
@@ -16340,6 +16797,8 @@ export function useEditResourceForm({
           resourceId: resource.id,
           title: formFields.title.trim(),
           authors: parsedAuthors,
+          containerTitle: formFields.containerTitle.trim() || undefined,
+          documentType: formFields.documentType.trim() || undefined,
           publisher: formFields.publisher.trim() || undefined,
           publicationYear:
             typeof formFields.publicationYear === "number"
@@ -16844,6 +17303,8 @@ export interface LibraryResourceItem {
   subBoxTitle?: string;
   title: string;
   authors: string[];
+  containerTitle?: string;
+  documentType?: string;
   publisher: string;
   publicationYear: number | null;
   doi?: string;
@@ -17020,7 +17481,7 @@ export async function executeBackwardExpansion(
     thesisContext,
   );
 
-  // ── 7. Cerebras single call: dedup suspicious + final selection ───────────
+  // ── 7. Gemini single call: dedup suspicious + final selection ───────────
   const selectedCandidates = await coordinateCandidateSelection({
     thesisContext,
     rerankedPool,
@@ -17048,249 +17509,6 @@ export async function executeBackwardExpansion(
   });
 
   return { selectedCandidates, shortfall };
-}
-</file>
-
-<file path="src/app/(app)/library/_services/expansion/cerebras-selection-client.ts">
-/**
- * Cerebras Gemma-4-31B selection client for backward expansion.
- *
- * Single LLM call that performs two tasks simultaneously:
- *   1. Cross-language / edition-aware duplicate detection for "suspicious" candidates
- *      (those that passed the Jaccard/Jaro-Winkler threshold but are not certain duplicates).
- *   2. Final ranked selection of N sources from the confirmed + cleared-suspicious pool,
- *      guided by the thesis box context.
- *
- * The model receives a Cohere-reranked, co-citation-ordered list and emits a
- * structured JSON response — no tool use, pure structured output.
- */
-
-import { z } from "zod";
-import { CEREBRAS_MODEL } from "@/lib/constants";
-import {
-  generateCerebrasStructuredContent,
-  type JsonSchema,
-} from "@/core/services/ai";
-import { buildPromptPayload } from "@/lib/ai/prompt-builder";
-import type { CandidateSource } from "./types";
-
-/** A suspicious candidate that needs LLM verification. */
-export interface SuspiciousEntry {
-  candidateTitle: string;
-  candidateAuthors: string[];
-  matchedExistingTitle: string;
-  titleScore: number;
-  authorScore: number;
-}
-
-/** Payload sent to the Cerebras LLM. */
-interface CerebrasSelectionPayload {
-  /** Thesis box context (title + description + matrix summary). */
-  thesisContext: string;
-  /** All confirmed-unique candidates in priority order (Cohere reranked). */
-  confirmedCandidates: {
-    index: number;
-    title: string;
-    authors: string[];
-    coAuthorCount: number;
-  }[];
-  /** Candidates that may be duplicates — LLM decides. */
-  suspiciousCandidates: SuspiciousEntry[];
-  /** All existing source titles+authors in the user library (for context). */
-  existingSources: { title: string; authors: string[] }[];
-  /** How many final sources to select. */
-  targetCount: number;
-}
-
-/** Structured response from the LLM. */
-const selectionResponseSchema = z.object({
-  /** Indices (from confirmedCandidates) to include in final selection. */
-  selectedIndices: z.array(z.number()),
-  /** Suspicious candidates NOT to add (they are duplicates). */
-  suspiciousDuplicates: z.array(z.string()),
-  /** Suspicious candidates that are NOT duplicates (safe to include). */
-  suspiciousClear: z.array(z.string()),
-});
-
-type CerebrasSelectionResponse = z.infer<typeof selectionResponseSchema>;
-
-/** Strict JSON schema constraint for the Cerebras structured selection call. */
-const SELECTION_JSON_SCHEMA: JsonSchema = {
-  type: "object",
-  properties: {
-    selectedIndices: {
-      type: "array",
-      items: { type: "number" },
-      description:
-        "Indices from the confirmed candidates list to include in the final selection.",
-    },
-    suspiciousDuplicates: {
-      type: "array",
-      items: { type: "string" },
-      description:
-        "Candidate titles that ARE true duplicates of existing sources.",
-    },
-    suspiciousClear: {
-      type: "array",
-      items: { type: "string" },
-      description:
-        "Candidate titles that are NOT duplicates and safe to include.",
-    },
-  },
-  required: ["selectedIndices", "suspiciousDuplicates", "suspiciousClear"],
-  additionalProperties: false,
-};
-
-function buildSelectionPromptPayload(payload: CerebrasSelectionPayload) {
-  const suspiciousSection =
-    payload.suspiciousCandidates.length > 0
-      ? `### Şüpheli Çift Kayıtlar (Suspicious Duplicates - Doğrulama Gerektirenler):
-${payload.suspiciousCandidates
-  .map(
-    (s, i) =>
-      `[SUSPICIOUS_${i}]
-  Aday Başlık: "${s.candidateTitle}" — ${s.candidateAuthors?.[0] ?? "Bilinmiyor"}
-  Eşleşen Mevcut Başlık: "${s.matchedExistingTitle}"
-  Benzerlik Skorları: başlık=${s.titleScore.toFixed(2)}, yazar=${s.authorScore.toFixed(2)}`,
-  )
-  .join("\n\n")}`
-      : "### Şüpheli Çift Kayıtlar:\nYok.";
-
-  return buildPromptPayload({
-    roleAndExpertise:
-      "You are an expert academic librarian and bibliographic deduplication assistant curating high-relevance literature for a thesis.",
-
-    primaryTask:
-      "Verify suspicious duplicate candidates against existing library sources and select the top N unique academic sources that best fit the thesis context.",
-
-    rulesAndConstraints: `1. **Duplicate Detection:**
-   - Examine each candidate in 'Suspicious Duplicates'.
-   - If a candidate represents the SAME intellectual work as an existing source (despite minor edition/language/punctuation variations), classify its title in 'suspiciousDuplicates'.
-   - If a candidate is a genuinely DIFFERENT work that merely shares similar wording or author, classify its title in 'suspiciousClear'.
-
-2. **Ranked Candidate Selection:**
-   - From the confirmed candidates list (and any approved 'suspiciousClear' entries), select exactly the target count (${payload.targetCount}) of most relevant sources.
-   - If fewer candidates exist than the target count, select all confirmed candidates.`,
-
-    outputFormat:
-      "Output strict JSON adhering to the schema without markdown formatting or conversational filler.",
-
-    examples: `<example>
-<input>
-### Tez Bağlamı:
-Kürt siyasal hareketinin 1990'lar meclis ve yasal parti söylemleri.
-
-### Mevcut Kütüphane Kaynakları (1 Adet):
-- "The Kurdish Nationalist Movement: Opportunity, Mobilization and Identity" [David Romano]
-
-### Doğrulanmış Aday Kaynaklar:
-[0] "The Kurdish National Movement in Turkey: From Protest to Resistance" — Cengiz Gunes (cited by 4 seed papers)
-[1] "Kurdish Political Mobilization in Turkey" — Nicole Watts (cited by 3 seed papers)
-
-### Şüpheli Çift Kayıtlar:
-[SUSPICIOUS_0]
-  Aday Başlık: "The Kurdish Nationalist Movement (2006 Edition)" — David Romano
-  Eşleşen Mevcut Başlık: "The Kurdish Nationalist Movement: Opportunity, Mobilization and Identity"
-</input>
-<output>
-{
-  "selectedIndices": [0, 1],
-  "suspiciousDuplicates": ["The Kurdish Nationalist Movement (2006 Edition)"],
-  "suspiciousClear": []
-}
-</output>
-</example>`,
-
-    inputContext: `### Tez Bağlamı (Thesis Context):
-${payload.thesisContext}
-
-### Mevcut Kütüphane Kaynakları (${payload.existingSources.length} Adet):
-${payload.existingSources.map((s) => `- "${s.title}" [${s.authors?.[0] ?? "?"}]`).join("\n")}
-
-### Doğrulanmış Aday Kaynaklar:
-${payload.confirmedCandidates
-  .map(
-    (c) =>
-      `[${c.index}] "${c.title}" — ${c.authors?.[0] ?? "Bilinmiyor"} (cited by ${c.coAuthorCount} seed papers)`,
-  )
-  .join("\n")}
-
-${suspiciousSection}`,
-
-    taskTrigger: `Analyze the candidates in <context> against existing library sources and select exactly ${payload.targetCount} top relevant sources into structured JSON output according to <instructions>.`,
-  });
-}
-
-/**
- * Calls Cerebras Gemma-4-31B to deduplicate suspicious candidates and
- * select the final N sources from the backward expansion candidate pool.
- *
- * @param payload - Structured input: context, candidates, suspicious list, target count.
- * @param allCandidates - Full list of candidate sources.
- * @returns Selected CandidateSource items (length ≤ targetCount).
- */
-export async function selectWithCerebras(
-  payload: CerebrasSelectionPayload,
-  allCandidates: CandidateSource[],
-): Promise<CandidateSource[]> {
-  const fallback = () => allCandidates.slice(0, payload.targetCount);
-
-  const promptPayload = buildSelectionPromptPayload(payload);
-
-  // Route through the central Cerebras provider (CEREBRAS_MODEL, retries,
-  // structured output + zod validation). Any failure degrades to top-N order.
-  let parsed: CerebrasSelectionResponse;
-  try {
-    parsed = await generateCerebrasStructuredContent<CerebrasSelectionResponse>(
-      CEREBRAS_MODEL,
-      promptPayload.systemInstruction,
-      promptPayload.userPrompt,
-      SELECTION_JSON_SCHEMA,
-      undefined,
-      {
-        payloadStage: "backward_expansion_selection",
-        zodSchema: selectionResponseSchema,
-        temperature: 0,
-        maxTokens: 512,
-      },
-    );
-  } catch {
-    // Network/API failure or malformed/off-schema output: fall back to top-N order
-    return fallback();
-  }
-
-  // Build final selection
-  const selected: CandidateSource[] = [];
-  const duplicateTitleSet = new Set(
-    (parsed.suspiciousDuplicates ?? []).map((t) => t.toLowerCase().trim()),
-  );
-
-  // Add confirmed candidates in the order Gemma selected
-  for (const idx of parsed.selectedIndices ?? []) {
-    if (selected.length >= payload.targetCount) break;
-    const candidate = allCandidates[idx];
-    if (candidate) selected.push(candidate);
-  }
-
-  // Append suspiciousClear candidates that Gemma approved, if still room
-  for (const clearTitle of parsed.suspiciousClear ?? []) {
-    if (selected.length >= payload.targetCount) break;
-    if (duplicateTitleSet.has(clearTitle.toLowerCase().trim())) continue;
-    const match = allCandidates.find(
-      (c) => c.title.toLowerCase().trim() === clearTitle.toLowerCase().trim(),
-    );
-    if (match && !selected.includes(match)) selected.push(match);
-  }
-
-  // Final safety: if LLM returned fewer than target, pad with remaining confirmed
-  if (selected.length < payload.targetCount) {
-    for (const c of allCandidates) {
-      if (selected.length >= payload.targetCount) break;
-      if (!selected.includes(c)) selected.push(c);
-    }
-  }
-
-  return selected.slice(0, payload.targetCount);
 }
 </file>
 
@@ -17994,9 +18212,9 @@ export async function executeForwardExpansion(
 import { rerankWithCohere } from "@/core/services/ai/cohere";
 import type { CandidateSource } from "./types";
 import {
-  selectWithCerebras,
+  selectWithGemini,
   type SuspiciousEntry,
-} from "./cerebras-selection-client";
+} from "./gemini-selection-client";
 import type { filterCandidates } from "./fuzzy-dedup";
 
 /**
@@ -18063,7 +18281,7 @@ export interface CandidateSelectionParams {
 }
 
 /**
- * Coordinates final candidate selection using Cerebras LLM, reviewing suspicious candidates
+ * Coordinates final candidate selection using Gemini LLM, reviewing suspicious candidates
  * and selecting the optimal pool within thesis context.
  *
  * @param params - Candidates, context, suspicious list, and target count.
@@ -18096,7 +18314,7 @@ export async function coordinateCandidateSelection(
     authors: s.authors ?? [],
   }));
 
-  return selectWithCerebras(
+  return selectWithGemini(
     {
       thesisContext,
       confirmedCandidates: rerankedPool.map((c, i) => ({
@@ -18388,6 +18606,8 @@ export async function resolveCreateTarget(
       boxId: targetBox.id,
       title: metadata.title,
       authors: metadata.authors,
+      containerTitle: metadata.containerTitle || null,
+      documentType: metadata.documentType || null,
       publisher: metadata.publisher || "Belirtilmemiş",
       publicationYear: metadata.publicationYear ?? null,
       doi: metadata.doi || null,
@@ -18451,9 +18671,13 @@ export async function resolveUpgradeTarget(
     .set({
       title: metadata.title,
       authors: metadata.authors,
-      publisher: metadata.publisher || "Belirtilmemiş",
-      publicationYear: metadata.publicationYear ?? null,
-      doi: metadata.doi || null,
+      containerTitle:
+        metadata.containerTitle || resource.containerTitle || null,
+      documentType: metadata.documentType || resource.documentType || null,
+      publisher: metadata.publisher || resource.publisher || "Belirtilmemiş",
+      publicationYear:
+        metadata.publicationYear ?? resource.publicationYear ?? null,
+      doi: metadata.doi || resource.doi || null,
     })
     .where(eq(sources.id, resourceId));
 
@@ -18608,6 +18832,8 @@ export async function updateLibraryResourceAction(input: {
   resourceId: number;
   title: string;
   authors: string[];
+  containerTitle?: string;
+  documentType?: string;
   publisher?: string;
   publicationYear?: number | null;
   doi?: string;
@@ -18649,6 +18875,8 @@ export async function updateLibraryResourceAction(input: {
           input.authors.length > 0
             ? input.authors.map((a) => a.trim()).filter(Boolean)
             : null,
+        containerTitle: input.containerTitle?.trim() || null,
+        documentType: input.documentType?.trim() || null,
         publisher: input.publisher?.trim() || "Belirtilmemiş",
         publicationYear: input.publicationYear ?? null,
         doi: input.doi?.trim() || null,
@@ -20878,204 +21106,6 @@ export function StartOverButton({ className, ...props }: ButtonProps) {
 }
 </file>
 
-<file path="src/app/(onboarding)/onboarding/_services/box-fetch.ts">
-import { eq, sql } from "drizzle-orm";
-import { cacheLife, cacheTag } from "next/cache";
-import { db } from "@/core/db";
-import { boxes } from "@/core/db/schema";
-import type { GeminiThesisBox } from "@/lib/types";
-import { getSession } from "@/lib/session";
-import { BOX_ORDER_WEIGHT } from "@/lib/box-constants";
-import { CACHE_TAGS } from "@/lib/cache-tags";
-import { DatabaseError } from "@/lib/errors/app-error";
-import { getCachedThesisMatrix, fetchThesisMatrixFresh } from "./matrix-fetch";
-
-/**
- * Rethrows an already-normalized DatabaseError unchanged, or wraps any other
- * thrown value into a DatabaseError so downstream callers stop the flow.
- *
- * @param err - The thrown value to normalize.
- * @param message - Internal technical message for the wrapped error.
- * @param technicalDetails - Optional diagnostic context for the wrapped error.
- */
-function rethrowAsDatabaseError(
-  err: unknown,
-  message: string,
-  technicalDetails?: Record<string, unknown>,
-): never {
-  if (err instanceof DatabaseError) throw err;
-  throw new DatabaseError({
-    cause: err,
-    message,
-    technicalDetails: technicalDetails ?? {
-      cause:
-        err instanceof Error
-          ? err.message
-          : err === undefined
-            ? "undefined"
-            : String(err),
-    },
-  });
-}
-
-/**
- * Cached DB query fetching boxes for a given thesis matrix.
- *
- * @param thesisMatrixId - The id of the thesis matrix to load boxes for.
- * @returns The ordered box rows for the thesis matrix.
- */
-export async function getCachedBoxes(thesisMatrixId: number) {
-  "use cache";
-  cacheTag(CACHE_TAGS.thesisBoxes);
-  cacheLife("minutes");
-
-  try {
-    return db
-      .select()
-      .from(boxes)
-      .where(eq(boxes.matrixId, thesisMatrixId))
-      .orderBy(
-        sql`CASE ${boxes.boxType}
-          WHEN 'SUBJECT_PROBLEM' THEN 1
-          WHEN 'THEORETICAL_FRAMEWORK' THEN 2
-          WHEN 'METHODOLOGY' THEN 3
-          WHEN 'PRIMARY_MATERIAL' THEN 4
-          WHEN 'RELATED_THESES' THEN 5
-          ELSE 99
-        END`,
-      );
-  } catch (err) {
-    rethrowAsDatabaseError(err, "Failed to load cached boxes.", {
-      thesisMatrixId,
-    });
-  }
-}
-
-/**
- * Fetches boxes mapped to the full GeminiThesisBox shape expected by clients.
- *
- * @returns The current user's boxes in production shape, or an empty array.
- */
-export async function fetchBoxesWithFullShape(): Promise<GeminiThesisBox[]> {
-  try {
-    const session = await getSession();
-    if (!session) return [];
-    const matrix = await getCachedThesisMatrix(session.userId);
-    if (!matrix) return [];
-    const rows = await getCachedBoxes(matrix.id);
-
-    const parentRows = rows.filter((r) => r.parentId === null);
-    const subBoxMap = new Map<number, GeminiThesisBox[]>();
-    for (const r of rows) {
-      if (r.parentId !== null) {
-        const list = subBoxMap.get(r.parentId) ?? [];
-        list.push({
-          id: r.id,
-          title: r.title,
-          boxType:
-            (r.boxType as GeminiThesisBox["boxType"]) ?? "SUBJECT_PROBLEM",
-          description: r.description ?? "",
-          parentId: r.parentId,
-          semanticQuery: r.semanticQuery,
-          subBoxes: undefined,
-          concepts: r.concepts ?? [],
-        });
-        subBoxMap.set(r.parentId, list);
-      }
-    }
-
-    const mappedBoxes: GeminiThesisBox[] = parentRows.map((b) => ({
-      id: b.id,
-      title: b.title,
-      boxType: (b.boxType as GeminiThesisBox["boxType"]) ?? "SUBJECT_PROBLEM",
-      description: b.description ?? "",
-      parentId: null,
-      semanticQuery: null,
-      subBoxes: subBoxMap.get(b.id),
-      concepts: b.concepts ?? [],
-    }));
-
-    return mappedBoxes.sort((a, b) => {
-      const weightA = BOX_ORDER_WEIGHT[a.boxType] ?? 99;
-      const weightB = BOX_ORDER_WEIGHT[b.boxType] ?? 99;
-      return weightA - weightB;
-    });
-  } catch (err) {
-    rethrowAsDatabaseError(err, "Failed to fetch boxes with full shape.");
-  }
-}
-
-/**
- * Fetches boxes mapped to the full GeminiThesisBox shape directly from the database without caching.
- *
- * @returns The current user's boxes in production shape directly from DB, or an empty array.
- */
-export async function fetchUncachedBoxesWithFullShape(): Promise<
-  GeminiThesisBox[]
-> {
-  try {
-    const session = await getSession();
-    if (!session) return [];
-    const matrix = await fetchThesisMatrixFresh();
-    if (!matrix) return [];
-
-    const rows = await db
-      .select()
-      .from(boxes)
-      .where(eq(boxes.matrixId, matrix.id))
-      .orderBy(
-        sql`CASE ${boxes.boxType}
-          WHEN 'SUBJECT_PROBLEM' THEN 1
-          WHEN 'THEORETICAL_FRAMEWORK' THEN 2
-          WHEN 'METHODOLOGY' THEN 3
-          WHEN 'PRIMARY_MATERIAL' THEN 4
-          WHEN 'RELATED_THESES' THEN 5
-          ELSE 99
-        END`,
-      );
-
-    const parentRows = rows.filter((r) => r.parentId === null);
-    const subBoxMap = new Map<number, GeminiThesisBox[]>();
-    for (const r of rows) {
-      if (r.parentId !== null) {
-        const list = subBoxMap.get(r.parentId) ?? [];
-        list.push({
-          id: r.id,
-          title: r.title,
-          boxType:
-            (r.boxType as GeminiThesisBox["boxType"]) ?? "SUBJECT_PROBLEM",
-          description: r.description ?? "",
-          parentId: r.parentId,
-          semanticQuery: r.semanticQuery,
-          subBoxes: undefined,
-          concepts: r.concepts ?? [],
-        });
-        subBoxMap.set(r.parentId, list);
-      }
-    }
-
-    const mappedBoxes: GeminiThesisBox[] = parentRows.map((b) => ({
-      id: b.id,
-      title: b.title,
-      boxType: (b.boxType as GeminiThesisBox["boxType"]) ?? "SUBJECT_PROBLEM",
-      description: b.description ?? "",
-      parentId: null,
-      semanticQuery: null,
-      subBoxes: subBoxMap.get(b.id),
-      concepts: b.concepts ?? [],
-    }));
-
-    return mappedBoxes.sort((a, b) => {
-      const weightA = BOX_ORDER_WEIGHT[a.boxType] ?? 99;
-      const weightB = BOX_ORDER_WEIGHT[b.boxType] ?? 99;
-      return weightA - weightB;
-    });
-  } catch (err) {
-    rethrowAsDatabaseError(err, "Failed to fetch uncached boxes.");
-  }
-}
-</file>
-
 <file path="src/app/(onboarding)/onboarding/_services/matrix-fetch.ts">
 import { eq } from "drizzle-orm";
 import { cacheLife, cacheTag } from "next/cache";
@@ -21737,12 +21767,10 @@ export async function placeEssentialThesesInBoxes(
     title: string;
     authors: string[];
     publisher: string | null;
-    thesisType: string | null;
+    documentType: string | null;
     publicationYear: number;
     doi: string | null;
-    comparisonNote: string | null;
     isRead: boolean;
-    relevanceScore: number;
   }> = [];
 
   for (const thesis of theses) {
@@ -21765,7 +21793,7 @@ export async function placeEssentialThesesInBoxes(
       thesis.doi ||
       thesis.tezaraUrl ||
       (thesis.externalThesisId
-        ? `https://tezara.org/theses/${thesis.externalThesisId}`
+        ? `https://tez.yok.gov.tr/UlusalTezMerkezi/tezDetay.jsp?id=${thesis.externalThesisId}`
         : null);
     const doiKey = thesisUrl?.toLowerCase().trim() ?? null;
 
@@ -21779,25 +21807,15 @@ export async function placeEssentialThesesInBoxes(
     if (titleKey) existingTitles.add(titleKey);
     if (doiKey) existingDois.add(doiKey);
 
-    const noteSections = [
-      thesis.abstract ? `ÖZET: ${thesis.abstract}` : null,
-      thesis.contributionArea ? `KATKI ALANI: ${thesis.contributionArea}` : null,
-      thesis.relevanceReason
-        ? `STRATEJİK KULLANIM: ${thesis.relevanceReason}`
-        : null,
-    ].filter((s): s is string => !!s && s.trim().length > 0);
-
     toInsert.push({
       boxId: targetBoxId,
       title: cleanedTitle,
       authors: [thesis.author].filter((a) => a && a.length > 0),
       publisher: thesis.university || null,
-      thesisType: thesis.thesisType || null,
+      documentType: "thesis",
       publicationYear: thesis.year,
       doi: thesisUrl,
-      comparisonNote: noteSections.length > 0 ? noteSections.join("\n\n") : null,
       isRead: false,
-      relevanceScore: 100,
     });
   }
 
@@ -21866,14 +21884,12 @@ export async function insertLiteratureBatch(
     toInsert.push({
       boxId: thesisBoxId,
       title: article.title,
-      comparisonNote: article.comparisonNote ?? null,
       openalexId: article.openalexId ?? null,
       doi: article.doi?.trim() || null,
       publisher: article.publisher ?? null,
       publicationYear: article.publicationYear ?? null,
       authors: article.authors.filter(Boolean) as string[],
       isRead: false,
-      relevanceScore: article.relevanceScore ?? 0,
     });
   }
 
@@ -22669,7 +22685,13 @@ export interface QueryGenerationPromptPayload {
  * @returns The structured prompt payload containing static systemInstruction and dynamic userPrompt.
  */
 export function buildQueryGenerationPromptPayload(
-  matrix: PositioningMatrixInput | { subjectProblem: string; theoreticalFramework?: string; methodology?: string },
+  matrix:
+    | PositioningMatrixInput
+    | {
+        subjectProblem: string;
+        theoreticalFramework?: string;
+        methodology?: string;
+      },
 ): QueryGenerationPromptPayload {
   const systemInstruction = `<role>
 Akademik literatür tarama, konu sınıflandırma ve semantik bilgi erişim (IR) uzmanı.
@@ -22759,7 +22781,10 @@ export function reciprocalRankFusion(
   searchLists: TezaraThesisDetails[][],
   k = RRF_K,
 ): TezaraThesisDetails[] {
-  const scoreMap = new Map<number, { thesis: TezaraThesisDetails; score: number }>();
+  const scoreMap = new Map<
+    number,
+    { thesis: TezaraThesisDetails; score: number }
+  >();
 
   for (const list of searchLists) {
     for (let rank = 0; rank < list.length; rank++) {
@@ -23075,212 +23100,11 @@ export {
   sanitizeAcademicDataBulk,
   sanitizeTargetedArticles,
 } from "./sanitizer";
-</file>
-
-<file path="src/core/services/ai/providers/cerebras-provider.ts">
-"use server";
-
-import type { Logger } from "@/lib/logger";
-import { createRateLimiter } from "@/lib/rate-limiter";
-import { CEREBRAS_LIMITS } from "@/core/config/rate-limits";
-import { CEREBRAS_SEED } from "@/lib/constants";
-import { HttpError, withRetry, DEFAULT_MAX_DELAY } from "../llm-retry";
-import { validateStructuredOutput } from "../llm-json";
-import { SchemaValidationError, toAiProviderError } from "../llm-errors";
-import type { StructuredGenerationOptions } from "../llm-types";
-
-const CEREBRAS_BASE_URL = "https://api.cerebras.ai/v1";
-
-/** Global Cerebras limiter (free trial: 5 RPM) shared by every consumer. */
-const cerebrasRequestQueue = createRateLimiter(CEREBRAS_LIMITS);
-
-const CEREBRAS_RETRY_CONFIG = {
-  maxRetries: 5,
-  baseDelay: 500,
-  maxDelay: DEFAULT_MAX_DELAY,
-  isRetryable: (error: unknown) => {
-    if (error instanceof HttpError) {
-      if (error.status === 429) return true;
-      if (error.status >= 500) return true;
-      return false;
-    }
-    return true;
-  },
-  getRetryAfter: (error: unknown) => {
-    if (error instanceof HttpError) return error.retryAfter;
-    return null;
-  },
-};
-
-/**
- * Sends a chat completion to Cerebras with strict json_schema output, Full Jitter retry on 429/5xx,
- * and global per-minute rate limiting shared across all consumers.
- *
- * @param modelName - The Cerebras model identifier to call.
- * @param systemInstruction - The system-level instructions for the model.
- * @param prompt - The user prompt to send to the model.
- * @param jsonSchema - The JSON schema constraining the structured response.
- * @param log - Optional logger for structured output and error events.
- * @param options - Optional settings for the request.
- * @returns The parsed and validated structured output of type T.
- */
-export async function generateStructuredContent<T>(
-  modelName: string,
-  systemInstruction: string,
-  prompt: string,
-  jsonSchema: object,
-  log?: Logger,
-  options?: StructuredGenerationOptions<T>,
-): Promise<T> {
-  const apiKey = process.env.CEREBRAS_API_KEY;
-  if (!apiKey) {
-    throw new Error("CEREBRAS_API_KEY environment variable is not defined");
-  }
-
-  const stage = options?.payloadStage || "cerebras";
-
-  const temperature = options?.temperature ?? 0;
-  const seed = options?.seed ?? CEREBRAS_SEED;
-  const maxTokens = options?.maxTokens ?? 1024;
-  const topP = options?.topP;
-
-  log?.info(`${stage}_start`, {
-    service: "cerebras",
-    data: {
-      model: modelName,
-      promptLength: prompt.length,
-      temperature,
-      seed,
-      maxTokens,
-    },
-  });
-
-  let attempts = 0;
-
-  let result: T;
-  try {
-    result = await withRetry<T>(
-      async () => {
-        attempts++;
-
-        const response = await cerebrasRequestQueue.exec(() =>
-          fetch(`${CEREBRAS_BASE_URL}/chat/completions`, {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              Authorization: `Bearer ${apiKey}`,
-            },
-            body: JSON.stringify({
-              model: modelName,
-              messages: [
-                { role: "system", content: systemInstruction },
-                { role: "user", content: prompt },
-              ],
-              response_format: {
-                type: "json_schema",
-                json_schema: {
-                  name: stage,
-                  strict: true,
-                  schema: jsonSchema,
-                },
-              },
-              temperature,
-              max_tokens: maxTokens,
-              seed,
-              top_p: topP,
-            }),
-          }),
-        );
-
-        if (!response.ok) {
-          const errorBody = await response.text().catch(() => "");
-          const retryAfter = parseRetryAfter(response);
-          throw new HttpError(response.status, errorBody, retryAfter);
-        }
-
-        const data = (await response.json()) as {
-          choices?: { message?: { content?: string } }[];
-        };
-        const content = data?.choices?.[0]?.message?.content;
-        if (!content) {
-          throw new Error("Cerebras returned an empty response.");
-        }
-
-        const parsed = JSON.parse(content) as T;
-
-        try {
-          validateStructuredOutput(parsed, options?.zodSchema);
-        } catch (err) {
-          if (err instanceof SchemaValidationError) {
-            log?.error(`${stage}_schema_validation_failed`, {
-              service: "cerebras",
-              data: {
-                issues: err.zodError.issues.map((i) => ({
-                  path: i.path.join("."),
-                  message: i.message,
-                })),
-              },
-            });
-            throw new Error(
-              "Cerebras response did not match the expected structural schema.",
-            );
-          }
-          throw err;
-        }
-
-        return parsed;
-      },
-      {
-        ...CEREBRAS_RETRY_CONFIG,
-        onRetry(attempt, delay, error) {
-          const httpStatus =
-            error instanceof HttpError ? error.status : undefined;
-          const retryAfter =
-            error instanceof HttpError ? error.retryAfter : undefined;
-          log?.info(`${stage}_retry`, {
-            service: "cerebras",
-            data: {
-              attempt,
-              maxRetries: CEREBRAS_RETRY_CONFIG.maxRetries,
-              delayMs: Math.round(delay),
-              httpStatus,
-              retryAfter,
-              errorMessage:
-                error instanceof Error ? error.message : String(error),
-            },
-          });
-        },
-      },
-    );
-  } catch (error) {
-    throw toAiProviderError(error, "cerebras");
-  }
-
-  log?.info(`${stage}_success`, {
-    service: "cerebras",
-    data: { model: modelName, attempts },
-  });
-
-  return result;
-}
-
-/**
- * Parses the `Retry-After` header into milliseconds, or null when absent or in HTTP-date format.
- *
- * @param response - The HTTP response whose Retry-After header is read.
- * @returns The retry delay in milliseconds, or null when the header is absent or unusable.
- */
-function parseRetryAfter(response: Response): number | null {
-  const header = response.headers.get("Retry-After");
-  if (!header) return null;
-
-  const seconds = parseInt(header, 10);
-  if (!isNaN(seconds) && seconds > 0) {
-    return seconds * 1000;
-  }
-
-  return null;
-}
+export {
+  enrichWithCrossref,
+  type EnrichedBibliographicMetadata,
+  type CrossrefEnrichmentParams,
+} from "./crossref-enrichment";
 </file>
 
 <file path="src/core/services/ai/gemini-scheduler.ts">
@@ -23634,7 +23458,11 @@ import { parseScannedPdf } from "./scanned-parser";
 import { parseBornDigitalPdf } from "./born-digital-parser";
 
 export type { DocumentAnalysisResult, PageAnalysis };
-export { DocumentAnalysisSchema, ReferencesOnlySchema } from "./schema";
+export {
+  DocumentAnalysisSchema,
+  ReferencesOnlySchema,
+  MetadataOnlySchema,
+} from "./schema";
 export type { PdfParseOptions, PdfChunkParseResult };
 export {
   detectPrintedPageNumbers,
@@ -23653,15 +23481,16 @@ export {
 /**
  * Parses a PDF document into structured page-level markdown, metadata, and references.
  *
- * - **Scanned PDF:** Markdown extracted via Mistral OCR (R2 presigned URL → server-to-server fetch).
+ * - **Scanned / Image-based PDF:** Markdown extracted via Mistral OCR (R2 presigned URL → server-to-server fetch).
  *   Metadata and references are then extracted via Gemini Flash-Lite.
- * - **Born-digital PDF:** Text extracted locally via pdf-inspector (<100 ms).
+ * - **Born-digital / Mixed PDF:** Text extracted locally via pdf-inspector (<100 ms).
+ *   If extracted text is insufficient (<100 chars) and r2Key is present, seamlessly falls back to Mistral OCR.
  *   Metadata and references are extracted in parallel via Gemini Flash-Lite.
  *
  * @param pdfBuffer - Raw PDF file content buffer.
  * @param fileName - Original file name (used for logging and fallback title).
  * @param r2Key - R2 object key of the PDF. Required for scanned PDFs (Mistral OCR fetches from R2).
- *   Ignored for born-digital PDFs.
+ *   Ignored for born-digital PDFs unless fallback to OCR is needed.
  * @param options - Optional driver settings (page range).
  * @param logger - Optional logger instance.
  * @returns Merged DocumentAnalysisResult with metadata, pages, and references.
@@ -23674,13 +23503,45 @@ export async function parsePdfToDocumentAnalysis(
   logger?: Logger,
 ): Promise<DocumentAnalysisResult> {
   const inspection = processPdfInspector(pdfBuffer);
-  const isScanned = inspection.pdfType === "Scanned";
+  const isImageOrScanned =
+    inspection.pdfType === "Scanned" || inspection.pdfType === "ImageBased";
 
-  if (isScanned) {
+  if (isImageOrScanned) {
+    logger?.info("pdf_parse_scanned_routed", {
+      service: "pdf-parser",
+      data: { fileName, pdfType: inspection.pdfType },
+    });
     return parseScannedPdf(fileName, r2Key, options, logger);
   }
 
-  return parseBornDigitalPdf(pdfBuffer, fileName, options, logger);
+  const bornDigitalResult = await parseBornDigitalPdf(
+    pdfBuffer,
+    fileName,
+    options,
+    logger,
+  );
+
+  // Safety net: If born-digital extraction produced virtually no text (e.g. corrupt font/CMap or hidden scan)
+  // and an R2 key is available for Mistral OCR, fall back to scanned OCR processing.
+  const totalExtractedChars = bornDigitalResult.pages.reduce(
+    (sum, p) => sum + p.markdownContent.trim().length,
+    0,
+  );
+
+  if (totalExtractedChars < 100 && r2Key) {
+    logger?.info("pdf_parse_insufficient_text_fallback_to_ocr", {
+      service: "pdf-parser",
+      data: {
+        fileName,
+        pdfType: inspection.pdfType,
+        totalExtractedChars,
+        pageCount: bornDigitalResult.pages.length,
+      },
+    });
+    return parseScannedPdf(fileName, r2Key, options, logger);
+  }
+
+  return bornDigitalResult;
 }
 
 /**
@@ -23708,17 +23569,6 @@ export async function parsePdfToChunks(
 
   const chunks = await buildChunksFromPageAnalysis(analysis.pages);
 
-  logger?.info("pdf_parse_content_success", {
-    service: "pdf-parser",
-    data: {
-      fileName,
-      pagesParsed: analysis.pages.length,
-      chunkCount: chunks.length,
-      referencesCount: analysis.references.length,
-      metadataTitle: analysis.metadata.title,
-    },
-  });
-
   return {
     chunks,
     references: analysis.references,
@@ -23737,9 +23587,9 @@ import {
   buildPdfReferencesPromptPayload,
 } from "./prompts/pdf-parser.prompt";
 import {
-  DocumentAnalysisSchema,
   DocumentMetadataZodSchema,
   DocumentReferencesZodSchema,
+  MetadataOnlySchema,
   ReferencesOnlySchema,
   type DocumentAnalysisResult,
 } from "./schema";
@@ -23793,7 +23643,7 @@ export async function extractDocumentMetadata(
       FLASH_LITE_35,
       payload.systemInstruction,
       payload.userPrompt,
-      DocumentAnalysisSchema,
+      MetadataOnlySchema,
       logger,
       {
         thinkingConfig: { thinkingLevel: ThinkingLevel.LOW },
@@ -23909,9 +23759,30 @@ import { z } from "zod";
 import type { JsonSchema } from "@/core/services/ai";
 
 export const DocumentMetadataZodSchema = z.object({
-  title: z.string(),
-  authors: z.array(z.string()),
-  publicationYear: z.number().optional(),
+  title: z.string().default(""),
+  authors: z
+    .array(
+      z.union([
+        z.string(),
+        z.object({ name: z.string() }).transform((a) => a.name),
+      ]),
+    )
+    .default([]),
+  containerTitle: z
+    .string()
+    .nullable()
+    .optional()
+    .transform((v) => v ?? undefined),
+  documentType: z
+    .string()
+    .nullable()
+    .optional()
+    .transform((v) => v ?? undefined),
+  publicationYear: z
+    .number()
+    .nullable()
+    .optional()
+    .transform((v) => v ?? undefined),
   publisher: z
     .string()
     .nullable()
@@ -23954,6 +23825,8 @@ export interface DocumentAnalysisResult {
   metadata: {
     title: string;
     authors: string[];
+    containerTitle?: string;
+    documentType?: string;
     publicationYear?: number;
     publisher?: string;
     doi?: string;
@@ -23998,6 +23871,16 @@ export const DocumentAnalysisSchema: JsonSchema = {
           type: "array",
           items: { type: "string" },
           description: "Yazar listesi (ad soyad)",
+        },
+        containerTitle: {
+          type: ["string", "null"],
+          description:
+            "Dergi adı (makaleler için) veya üst kitap adı (kitap bölümleri için). Sayfa üst başlığında veya jenerikte varsa.",
+        },
+        documentType: {
+          type: ["string", "null"],
+          description:
+            "Eser türü: 'journal-article', 'book-chapter', 'book', 'thesis', veya 'report'",
         },
         publicationYear: {
           type: "number",
@@ -24116,6 +23999,16 @@ export const ReferencesOnlySchema: JsonSchema = {
     references: DocumentAnalysisSchema.properties!.references,
   },
   required: ["references"],
+  additionalProperties: false,
+};
+
+/** JSON Schema for Gemini structured output — metadata extraction only. */
+export const MetadataOnlySchema: JsonSchema = {
+  type: "object",
+  properties: {
+    metadata: DocumentAnalysisSchema.properties!.metadata,
+  },
+  required: ["metadata"],
   additionalProperties: false,
 };
 </file>
@@ -24392,8 +24285,12 @@ export async function fuseAndRerank(
 
 <file path="src/core/services/search/rag/hyde.ts">
 import { z } from "zod";
-import { generateCerebrasStructuredContent } from "@/core/services/ai";
-import { CEREBRAS_MODEL } from "@/lib/constants";
+import { ThinkingLevel } from "@google/genai";
+import {
+  generateGeminiStructuredContent,
+  type JsonSchema,
+} from "@/core/services/ai";
+import { FLASH_LITE_35 } from "@/lib/constants";
 import type { Logger } from "@/lib/logger";
 import { buildHyDePromptPayload } from "./prompts/hyde.prompt";
 
@@ -24419,7 +24316,7 @@ export const HyDeExpansionSchema = z.object({
 
 export type HyDeExpansionResult = z.infer<typeof HyDeExpansionSchema>;
 
-const JSON_SCHEMA_SPEC = {
+const JSON_SCHEMA_SPEC: JsonSchema = {
   type: "object",
   properties: {
     detectedLanguage: {
@@ -24453,7 +24350,7 @@ const JSON_SCHEMA_SPEC = {
 };
 
 /**
- * Expands and translates a user query using Cerebras Gemma 4 (31B) for bidirectional cross-lingual HyDE retrieval.
+ * Expands and translates a user query using Gemini Flash Lite 3.5 for bidirectional cross-lingual HyDE retrieval.
  *
  * @param query - The raw user search query.
  * @param logger - Optional logger for structured event tracking.
@@ -24469,8 +24366,8 @@ export async function expandAndTranslateQuery(
   const payload = buildHyDePromptPayload(trimmed);
 
   try {
-    const result = await generateCerebrasStructuredContent<HyDeExpansionResult>(
-      CEREBRAS_MODEL,
+    const result = await generateGeminiStructuredContent<HyDeExpansionResult>(
+      FLASH_LITE_35,
       payload.systemInstruction,
       payload.userPrompt,
       JSON_SCHEMA_SPEC,
@@ -24478,6 +24375,7 @@ export async function expandAndTranslateQuery(
       {
         payloadStage: "rag_hyde_expansion",
         zodSchema: HyDeExpansionSchema,
+        thinkingConfig: { thinkingLevel: ThinkingLevel.LOW },
       },
     );
     return result;
@@ -24592,7 +24490,7 @@ export type { RagSearchDebug, RagSearchResultItem, RagSearchOptions };
 
 /**
  * Runs hybrid RAG retrieval by fusing dense (pgvector HNSW) and lexical (tsvector GIN) branches via RRF and reranking with Cohere.
- * Utilizes Cerebras Gemma 4 (31B) for bidirectional cross-lingual HyDE query expansion.
+ * Utilizes Gemini Flash Lite 3.5 for bidirectional cross-lingual HyDE query expansion.
  *
  * @param options - Hybrid search options (query, filters, and debug flags).
  * @returns Ranked RAG result items (Top 5 by default).
@@ -24726,7 +24624,7 @@ export async function searchTezara(
     const searchRes = await client.query("theses", {
       query: embedding,
       limit,
-      score_threshold: options?.rankingScoreThreshold ?? 0.80,
+      score_threshold: options?.rankingScoreThreshold ?? 0.8,
       with_payload: true,
     });
 
@@ -24832,7 +24730,12 @@ export function splitBilingualTitle(rawTitle: string | null | undefined): {
     const words1 = part1.split(/\s+/).filter(Boolean);
     const words2 = part2.split(/\s+/).filter(Boolean);
 
-    if (words1.length >= 2 && words2.length >= 2 && part1.length >= 8 && part2.length >= 8) {
+    if (
+      words1.length >= 2 &&
+      words2.length >= 2 &&
+      part1.length >= 8 &&
+      part2.length >= 8
+    ) {
       splitPoints.push(splitIndex);
     }
   }
@@ -25269,16 +25172,6 @@ export function handleActionError(
 }
 </file>
 
-<file path="src/lib/constants.ts">
-export const FLASH_LITE_31 = "gemini-3.1-flash-lite" as const;
-export const FLASH_LITE_35 = "gemini-3.5-flash-lite" as const;
-export const FLASH_36 = "gemini-3.6-flash" as const;
-export const GEMINI_SEED = 42 as const;
-
-export const CEREBRAS_MODEL = "gemma-4-31b" as const;
-export const CEREBRAS_SEED = 42 as const;
-</file>
-
 <file path="src/lib/error-utils.ts">
 import { classifyError } from "@/core/services/ai/llm-errors";
 import type { ErrorScenario } from "@/core/services/ai/llm-errors";
@@ -25500,17 +25393,41 @@ import { Card } from "@/components/ui/card";
 export function AdvisorSkeleton() {
   return (
     <div className="flex w-full min-h-0 gap-6 h-[calc(100vh-8.5rem)]">
-      <div className="hidden h-full w-72 min-h-0 shrink-0 flex-col lg:flex">
-        <Card className="flex h-full w-full min-h-0 flex-col space-y-4 rounded-md p-4">
-          <Skeleton className="h-10 w-full rounded-md" />
-          <div className="min-h-0 flex-1 space-y-3 overflow-hidden">
-            {Array.from({ length: 6 }).map((_, index) => (
+      <div className="hidden h-full w-80 min-h-0 shrink-0 flex-col lg:flex">
+        <Card className="flex h-full w-full min-h-0 flex-col space-y-3.5 rounded-md p-4 border-border">
+          {/* Header Skeleton */}
+          <div className="flex items-center justify-between pb-3 border-b border-border shrink-0">
+            <div className="flex items-center gap-2">
+              <Skeleton className="h-7 w-7 rounded-md bg-border/40" />
+              <div className="space-y-1">
+                <Skeleton className="h-3.5 w-24 bg-border/40" />
+                <Skeleton className="h-2.5 w-32 bg-border/20" />
+              </div>
+            </div>
+            <Skeleton className="h-6 w-6 rounded-md bg-border/20" />
+          </div>
+
+          {/* New Chat Button Skeleton */}
+          <Skeleton className="h-8 w-full rounded-md bg-border/30 shrink-0" />
+
+          {/* Search Skeleton */}
+          <Skeleton className="h-8 w-full rounded-md bg-border/30 shrink-0" />
+
+          {/* Session List Skeleton */}
+          <div className="min-h-0 flex-1 space-y-2 overflow-hidden">
+            {Array.from({ length: 5 }).map((_, index) => (
               <div
                 key={`advisor-session-skel-${index}`}
-                className="space-y-2 rounded-md border border-border bg-background p-3"
+                className="space-y-2 rounded-md border border-border/40 bg-card p-3"
               >
-                <Skeleton className="h-3.5 w-4/5" />
-                <Skeleton className="h-3 w-2/3 bg-border/20" />
+                <div className="flex items-center gap-2">
+                  <Skeleton className="h-3.5 w-3.5 rounded-xs bg-border/30" />
+                  <Skeleton className="h-3 w-4/5 bg-border/40" />
+                </div>
+                <div className="flex items-center justify-between pt-1 border-t border-border/20">
+                  <Skeleton className="h-2.5 w-12 bg-border/20" />
+                  <Skeleton className="h-2.5 w-16 bg-border/20" />
+                </div>
               </div>
             ))}
           </div>
@@ -25552,10 +25469,12 @@ export function AdvisorSkeleton() {
 "use client";
 
 import React, { useState } from "react";
-import { Search, MessageSquare, Trash2, Plus } from "lucide-react";
+import { Search, MessageSquare, Trash2, Plus, X } from "lucide-react";
 import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
 import {
   AlertDialog,
@@ -25612,102 +25531,150 @@ export function ChatSidebar({
   };
 
   return (
-    <Card className="flex h-full w-full flex-col min-h-0 space-y-4 rounded-md p-4">
-      <div className="flex items-center justify-between pb-2 border-b border-border">
-        <div className="flex items-center gap-2">
-          <MessageSquare className="h-5 w-5 text-primary" />
-          <h2 className="font-serif text-xl font-semibold tracking-tight text-foreground whitespace-nowrap">
-            Geçmiş Sohbetler
-          </h2>
+    <Card className="flex h-full w-full flex-col min-h-0 rounded-md p-4 space-y-3.5 border-border">
+      {/* Header */}
+      <div className="flex items-center justify-between pb-3 border-b border-border shrink-0">
+        <div className="flex items-center gap-2 min-w-0">
+          <div className="h-7 w-7 rounded-md bg-primary/10 border border-primary/20 flex items-center justify-center text-primary shrink-0">
+            <MessageSquare className="h-4 w-4" />
+          </div>
+          <div className="min-w-0">
+            <h2 className="font-serif text-sm font-semibold tracking-tight text-foreground truncate">
+              Geçmiş Sohbetler
+            </h2>
+            <p className="text-[10px] text-muted-foreground truncate">
+              Danışman oturum geçmişi
+            </p>
+          </div>
         </div>
 
-        <div className="flex items-center gap-2">
-          <button
-            type="button"
-            onClick={onCreateSession}
-            title="Yeni Sohbet Başlat"
-            className="flex items-center gap-1 text-xs font-medium bg-primary/10 text-primary hover:bg-primary/20 px-2 py-1 rounded border border-primary/20 transition-all"
-          >
-            <Plus className="h-3.5 w-3.5" />
-            <span>Yeni</span>
-          </button>
-          <Badge
-            variant="outline"
-            className="text-xs font-medium text-muted-foreground border-border"
-          >
-            {filteredSessions.length}
-          </Badge>
-        </div>
+        <Badge
+          variant="outline"
+          className="text-[10px] font-mono font-semibold text-muted-foreground border-border h-6 px-1.5 shrink-0"
+        >
+          {sessions.length}
+        </Badge>
       </div>
 
-      <div className="relative w-full">
-        <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+      {/* New Chat Button */}
+      <Button
+        type="button"
+        variant="outline"
+        size="sm"
+        onClick={onCreateSession}
+        title="Yeni Sohbet Başlat"
+        className="w-full h-8 text-xs font-medium gap-1.5 bg-primary/10 hover:bg-primary/20 text-primary border-primary/20 transition-all cursor-pointer shrink-0"
+      >
+        <Plus className="h-3.5 w-3.5" />
+        <span>Yeni Sohbet Başlat</span>
+      </Button>
+
+      {/* Search Input */}
+      <div className="relative w-full shrink-0">
+        <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
         <Input
           type="text"
           placeholder="Sohbet ara..."
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
-          className="pl-9 text-sm bg-background border-border"
+          className="pl-8 pr-8 text-xs h-8 bg-background border-border rounded-md"
         />
-      </div>
-
-      <div className="flex-1 min-h-0 overflow-y-auto space-y-2 pr-1">
-        {filteredSessions.length === 0 ? (
-          <div className="flex flex-col items-center justify-center h-48 text-center text-muted-foreground p-4">
-            <MessageSquare className="h-8 w-8 mb-2 opacity-40 text-muted-foreground" />
-            <p className="text-sm font-medium">Kayıtlı sohbet bulunamadı</p>
-            <p className="text-xs text-muted-foreground mt-1">
-              Yeni bir sohbet başlatarak başlayabilirsiniz.
-            </p>
-          </div>
-        ) : (
-          filteredSessions.map((item) => {
-            const isSelected = item.id === activeSessionId;
-
-            return (
-              <Card
-                key={item.id}
-                onClick={() => onSelectSession(item.id)}
-                className={cn(
-                  "group relative cursor-pointer transition-all border p-3",
-                  isSelected
-                    ? "bg-primary/10 border-primary/20 text-foreground font-semibold"
-                    : "bg-card border-border/40 hover:bg-accent/20 text-muted-foreground hover:border-primary/20",
-                )}
-              >
-                <CardContent className="p-0 space-y-2">
-                  <div className="flex items-start justify-between gap-2">
-                    <h3 className="font-serif text-lg font-medium tracking-tight text-foreground line-clamp-2 leading-snug flex-1 min-w-0">
-                      {item.title}
-                    </h3>
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setSessionToDeleteId(item.id);
-                      }}
-                      title="Sohbeti Sil"
-                      className="opacity-0 group-hover:opacity-100 flex items-center p-1 text-muted-foreground hover:text-destructive transition-all cursor-pointer rounded hover:bg-destructive/10"
-                    >
-                      <Trash2 className="h-3.5 w-3.5" />
-                    </button>
-                  </div>
-
-                  <div className="flex items-center justify-between text-xs text-muted-foreground pt-2 border-t border-border/40">
-                    <span className="font-normal text-muted-foreground">
-                      {item.messageCount} mesaj
-                    </span>
-                    <span className="font-mono text-[10px] text-muted-foreground">
-                      {item.createdAt}
-                    </span>
-                  </div>
-                </CardContent>
-              </Card>
-            );
-          })
+        {searchQuery && (
+          <button
+            type="button"
+            onClick={() => setSearchQuery("")}
+            className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground cursor-pointer"
+            title="Aramayı temizle"
+          >
+            <X className="h-3 w-3" />
+          </button>
         )}
       </div>
 
+      {/* Scrollable Session List */}
+      <ScrollArea className="flex-1 min-h-0 pr-1.5 -mr-1.5">
+        <div className="space-y-2 min-w-0 pr-1 pb-1">
+          {filteredSessions.length === 0 ? (
+            <div className="flex flex-col items-center justify-center h-48 text-center text-muted-foreground p-4">
+              <div className="h-10 w-10 rounded-full bg-muted/50 border border-border/40 flex items-center justify-center mb-3 text-muted-foreground">
+                <MessageSquare className="h-5 w-5 opacity-40" />
+              </div>
+              <p className="text-sm font-medium text-foreground">
+                Kayıtlı sohbet bulunamadı
+              </p>
+              <p className="text-xs text-muted-foreground mt-1 leading-relaxed">
+                {searchQuery
+                  ? "Aramanıza uygun sohbet bulunamadı."
+                  : "Yeni bir sohbet başlatabilirsiniz."}
+              </p>
+            </div>
+          ) : (
+            filteredSessions.map((item) => {
+              const isSelected = item.id === activeSessionId;
+
+              return (
+                <Card
+                  key={item.id}
+                  onClick={() => onSelectSession(item.id)}
+                  className={cn(
+                    "group relative cursor-pointer transition-all border p-3 rounded-md",
+                    isSelected
+                      ? "bg-primary/10 border-primary/20 text-foreground"
+                      : "bg-card border-border/40 hover:bg-accent/20 text-muted-foreground hover:border-primary/20",
+                  )}
+                >
+                  <CardContent className="p-0 space-y-2">
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="flex items-start gap-2 min-w-0 flex-1">
+                        <MessageSquare
+                          className={cn(
+                            "h-3.5 w-3.5 mt-0.5 shrink-0 transition-colors",
+                            isSelected
+                              ? "text-primary"
+                              : "text-muted-foreground/60 group-hover:text-muted-foreground",
+                          )}
+                        />
+                        <h3
+                          className={cn(
+                            "font-sans text-xs font-semibold leading-snug line-clamp-2 min-w-0",
+                            isSelected
+                              ? "text-foreground font-semibold"
+                              : "text-foreground/90 group-hover:text-foreground",
+                          )}
+                        >
+                          {item.title}
+                        </h3>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setSessionToDeleteId(item.id);
+                        }}
+                        title="Sohbeti Sil"
+                        className="opacity-0 group-hover:opacity-100 flex items-center p-1 text-muted-foreground hover:text-destructive transition-all cursor-pointer rounded hover:bg-destructive/10 shrink-0"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </button>
+                    </div>
+
+                    <div className="flex items-center justify-between text-[10px] text-muted-foreground pt-2 border-t border-border/40 font-mono">
+                      <span className="font-normal text-muted-foreground">
+                        {item.messageCount} mesaj
+                      </span>
+                      <span className="text-muted-foreground">
+                        {item.createdAt}
+                      </span>
+                    </div>
+                  </CardContent>
+                </Card>
+              );
+            })
+          )}
+        </div>
+      </ScrollArea>
+
+      {/* Delete Confirmation Modal */}
       <AlertDialog
         open={sessionToDeleteId !== null}
         onOpenChange={(open) => {
@@ -31004,6 +30971,204 @@ export function usePositioningContinue() {
 }
 </file>
 
+<file path="src/app/(onboarding)/onboarding/_services/box-fetch.ts">
+import { eq, sql } from "drizzle-orm";
+import { cacheLife, cacheTag } from "next/cache";
+import { db } from "@/core/db";
+import { boxes } from "@/core/db/schema";
+import type { GeminiThesisBox } from "@/lib/types";
+import { getSession } from "@/lib/session";
+import { BOX_ORDER_WEIGHT } from "@/lib/box-constants";
+import { CACHE_TAGS } from "@/lib/cache-tags";
+import { DatabaseError } from "@/lib/errors/app-error";
+import { getCachedThesisMatrix, fetchThesisMatrixFresh } from "./matrix-fetch";
+
+/**
+ * Rethrows an already-normalized DatabaseError unchanged, or wraps any other
+ * thrown value into a DatabaseError so downstream callers stop the flow.
+ *
+ * @param err - The thrown value to normalize.
+ * @param message - Internal technical message for the wrapped error.
+ * @param technicalDetails - Optional diagnostic context for the wrapped error.
+ */
+function rethrowAsDatabaseError(
+  err: unknown,
+  message: string,
+  technicalDetails?: Record<string, unknown>,
+): never {
+  if (err instanceof DatabaseError) throw err;
+  throw new DatabaseError({
+    cause: err,
+    message,
+    technicalDetails: technicalDetails ?? {
+      cause:
+        err instanceof Error
+          ? err.message
+          : err === undefined
+            ? "undefined"
+            : String(err),
+    },
+  });
+}
+
+/**
+ * Cached DB query fetching boxes for a given thesis matrix.
+ *
+ * @param thesisMatrixId - The id of the thesis matrix to load boxes for.
+ * @returns The ordered box rows for the thesis matrix.
+ */
+export async function getCachedBoxes(thesisMatrixId: number) {
+  "use cache";
+  cacheTag(CACHE_TAGS.thesisBoxes);
+  cacheLife("minutes");
+
+  try {
+    return db
+      .select()
+      .from(boxes)
+      .where(eq(boxes.matrixId, thesisMatrixId))
+      .orderBy(
+        sql`CASE ${boxes.boxType}
+          WHEN 'SUBJECT_PROBLEM' THEN 1
+          WHEN 'THEORETICAL_FRAMEWORK' THEN 2
+          WHEN 'METHODOLOGY' THEN 3
+          WHEN 'PRIMARY_MATERIAL' THEN 4
+          WHEN 'RELATED_THESES' THEN 5
+          ELSE 99
+        END`,
+      );
+  } catch (err) {
+    rethrowAsDatabaseError(err, "Failed to load cached boxes.", {
+      thesisMatrixId,
+    });
+  }
+}
+
+/**
+ * Fetches boxes mapped to the full GeminiThesisBox shape expected by clients.
+ *
+ * @returns The current user's boxes in production shape, or an empty array.
+ */
+export async function fetchBoxesWithFullShape(): Promise<GeminiThesisBox[]> {
+  try {
+    const session = await getSession();
+    if (!session) return [];
+    const matrix = await getCachedThesisMatrix(session.userId);
+    if (!matrix) return [];
+    const rows = await getCachedBoxes(matrix.id);
+
+    const parentRows = rows.filter((r) => r.parentId === null);
+    const subBoxMap = new Map<number, GeminiThesisBox[]>();
+    for (const r of rows) {
+      if (r.parentId !== null) {
+        const list = subBoxMap.get(r.parentId) ?? [];
+        list.push({
+          id: r.id,
+          title: r.title,
+          boxType:
+            (r.boxType as GeminiThesisBox["boxType"]) ?? "SUBJECT_PROBLEM",
+          description: r.description ?? "",
+          parentId: r.parentId,
+          semanticQuery: r.semanticQuery,
+          subBoxes: undefined,
+          concepts: r.concepts ?? [],
+        });
+        subBoxMap.set(r.parentId, list);
+      }
+    }
+
+    const mappedBoxes: GeminiThesisBox[] = parentRows.map((b) => ({
+      id: b.id,
+      title: b.title,
+      boxType: (b.boxType as GeminiThesisBox["boxType"]) ?? "SUBJECT_PROBLEM",
+      description: b.description ?? "",
+      parentId: null,
+      semanticQuery: null,
+      subBoxes: subBoxMap.get(b.id),
+      concepts: b.concepts ?? [],
+    }));
+
+    return mappedBoxes.sort((a, b) => {
+      const weightA = BOX_ORDER_WEIGHT[a.boxType] ?? 99;
+      const weightB = BOX_ORDER_WEIGHT[b.boxType] ?? 99;
+      return weightA - weightB;
+    });
+  } catch (err) {
+    rethrowAsDatabaseError(err, "Failed to fetch boxes with full shape.");
+  }
+}
+
+/**
+ * Fetches boxes mapped to the full GeminiThesisBox shape directly from the database without caching.
+ *
+ * @returns The current user's boxes in production shape directly from DB, or an empty array.
+ */
+export async function fetchUncachedBoxesWithFullShape(): Promise<
+  GeminiThesisBox[]
+> {
+  try {
+    const session = await getSession();
+    if (!session) return [];
+    const matrix = await fetchThesisMatrixFresh();
+    if (!matrix) return [];
+
+    const rows = await db
+      .select()
+      .from(boxes)
+      .where(eq(boxes.matrixId, matrix.id))
+      .orderBy(
+        sql`CASE ${boxes.boxType}
+          WHEN 'SUBJECT_PROBLEM' THEN 1
+          WHEN 'THEORETICAL_FRAMEWORK' THEN 2
+          WHEN 'METHODOLOGY' THEN 3
+          WHEN 'PRIMARY_MATERIAL' THEN 4
+          WHEN 'RELATED_THESES' THEN 5
+          ELSE 99
+        END`,
+      );
+
+    const parentRows = rows.filter((r) => r.parentId === null);
+    const subBoxMap = new Map<number, GeminiThesisBox[]>();
+    for (const r of rows) {
+      if (r.parentId !== null) {
+        const list = subBoxMap.get(r.parentId) ?? [];
+        list.push({
+          id: r.id,
+          title: r.title,
+          boxType:
+            (r.boxType as GeminiThesisBox["boxType"]) ?? "SUBJECT_PROBLEM",
+          description: r.description ?? "",
+          parentId: r.parentId,
+          semanticQuery: r.semanticQuery,
+          subBoxes: undefined,
+          concepts: r.concepts ?? [],
+        });
+        subBoxMap.set(r.parentId, list);
+      }
+    }
+
+    const mappedBoxes: GeminiThesisBox[] = parentRows.map((b) => ({
+      id: b.id,
+      title: b.title,
+      boxType: (b.boxType as GeminiThesisBox["boxType"]) ?? "SUBJECT_PROBLEM",
+      description: b.description ?? "",
+      parentId: null,
+      semanticQuery: null,
+      subBoxes: subBoxMap.get(b.id),
+      concepts: b.concepts ?? [],
+    }));
+
+    return mappedBoxes.sort((a, b) => {
+      const weightA = BOX_ORDER_WEIGHT[a.boxType] ?? 99;
+      const weightB = BOX_ORDER_WEIGHT[b.boxType] ?? 99;
+      return weightA - weightB;
+    });
+  } catch (err) {
+    rethrowAsDatabaseError(err, "Failed to fetch uncached boxes.");
+  }
+}
+</file>
+
 <file path="src/app/(onboarding)/onboarding/literature-review/_components/literature-review-skeleton.tsx">
 import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -31294,14 +31459,11 @@ export async function fetchPreloadedPool(
       boxTitle: boxes.title,
       boxType: boxes.boxType,
       title: sources.title,
-      comparisonNote: sources.comparisonNote,
       openalexId: sources.openalexId,
       doi: sources.doi,
       publisher: sources.publisher,
-      thesisType: sources.thesisType,
       publicationYear: sources.publicationYear,
       authors: sources.authors,
-      relevanceScore: sources.relevanceScore,
     })
     .from(sources)
     .innerJoin(boxes, eq(sources.boxId, boxes.id))
@@ -31316,14 +31478,14 @@ export async function fetchPreloadedPool(
     const list = existing?.articles ?? [];
     list.push({
       title: row.title,
-      comparisonNote: row.comparisonNote ?? null,
+      comparisonNote: null,
       openalexId: row.openalexId ?? null,
       doi: row.doi,
       publisher: row.publisher ?? "",
-      thesisType: row.thesisType ?? null,
+      thesisType: null,
       publicationYear: row.publicationYear ?? 0,
       authors: (row.authors as string[]) ?? [],
-      relevanceScore: row.relevanceScore ?? 0,
+      relevanceScore: 0,
     });
     grouped.set(row.thesisBoxId, {
       boxTitle: row.boxTitle,
@@ -31444,24 +31606,15 @@ export async function persistRelatedTheses(userId: number): Promise<void> {
           ? `https://tez.yok.gov.tr/UlusalTezMerkezi/tezDetay.jsp?id=${t.externalThesisId}`
           : null);
 
-      const noteSections = [
-        t.abstract ? `ÖZET: ${t.abstract}` : null,
-        t.contributionArea ? `KATKI ALANI: ${t.contributionArea}` : null,
-        t.relevanceReason ? `STRATEJİK KULLANIM: ${t.relevanceReason}` : null,
-      ].filter((s): s is string => !!s && s.trim().length > 0);
-
       return {
         boxId: relatedBox.id,
         title: cleanThesisTitle(t.title),
         authors: [t.author].filter((a) => a && a.length > 0),
         publisher: t.university || null,
-        thesisType: t.thesisType || null,
+        documentType: "thesis",
         publicationYear: t.year,
         doi: thesisUrl,
-        comparisonNote:
-          noteSections.length > 0 ? noteSections.join("\n\n") : null,
         isRead: false,
-        relevanceScore: 100,
       };
     });
 
@@ -31891,7 +32044,11 @@ async function persistOutlines(
 "use client";
 
 import type { Positioning } from "@/core/db/schema";
-import type { PositioningGlobalStatus, RecommendedThesisItem, GapAnalysisStructured } from "../_services/validation";
+import type {
+  PositioningGlobalStatus,
+  RecommendedThesisItem,
+  GapAnalysisStructured,
+} from "../_services/validation";
 import type { JuryAnalysisResult } from "../_services/analysis";
 import { usePositioningContinue } from "../../_hooks/use-positioning-continue";
 import { PositioningReportView } from "./positioning-report-view";
@@ -33082,7 +33239,6 @@ import {
   varchar,
   text,
   integer,
-  real,
   timestamp,
   jsonb,
   pgEnum,
@@ -33276,12 +33432,11 @@ export const sources = pgTable(
     title: text().notNull(),
     authors: text().array(),
     publisher: text(),
-    thesisType: text("thesis_type"),
+    containerTitle: text("container_title"),
+    documentType: text("document_type"),
     publicationYear: integer(),
     doi: text(),
     openalexId: text("openalex_id"),
-    relevanceScore: real(),
-    comparisonNote: text(),
     isRead: boolean().default(false).notNull(),
     pdfUrl: text("pdf_url"),
     pdfFileName: text("pdf_file_name"),
@@ -35213,6 +35368,8 @@ export type ResourceFieldOverrides = Partial<
     LibraryResourceItem,
     | "title"
     | "authors"
+    | "containerTitle"
+    | "documentType"
     | "publisher"
     | "publicationYear"
     | "doi"
@@ -35242,6 +35399,8 @@ export function mapSourceToResource(
     | "boxId"
     | "title"
     | "authors"
+    | "containerTitle"
+    | "documentType"
     | "publisher"
     | "publicationYear"
     | "doi"
@@ -35276,6 +35435,9 @@ export function mapSourceToResource(
       publisher: rawPublisher,
       boxType,
     }),
+    containerTitle:
+      overrides.containerTitle ?? source.containerTitle ?? undefined,
+    documentType: overrides.documentType ?? source.documentType ?? undefined,
     publisher: rawPublisher ?? "Belirtilmemiş",
     publicationYear:
       overrides.publicationYear !== undefined
@@ -35803,10 +35965,8 @@ export async function getLiteratureMatrixData() {
           publicationYear: source.publicationYear,
           publisher: source.publisher,
           doi: source.doi,
-          thesisType: source.thesisType,
           isRead: source.isRead,
           pdfStatus: source.pdfStatus,
-          comparisonNote: source.comparisonNote,
           boxId: source.boxId,
           boxTitle: box ? box.title : null,
           boxType: box ? box.boxType : null,
@@ -36508,9 +36668,9 @@ export function SectionSourceItem({ source }: SectionSourceItemProps) {
                 {source.publicationYear}
               </Badge>
             )}
-            {source.thesisType && (
+            {source.documentType && (
               <Badge variant="secondary" className="text-[10px] font-sans">
-                {source.thesisType}
+                {source.documentType === "thesis" ? "Tez" : source.documentType}
               </Badge>
             )}
             {source.pdfStatus === "READY" && (
@@ -36552,12 +36712,6 @@ export function SectionSourceItem({ source }: SectionSourceItemProps) {
           </Button>
         </div>
       </div>
-
-      {source.comparisonNote && (
-        <div className="text-xs text-muted-foreground/90 bg-muted/40 p-2.5 rounded-md border border-border/40 leading-relaxed font-sans italic">
-          &quot;{source.comparisonNote}&quot;
-        </div>
-      )}
     </Card>
   );
 }
@@ -38908,7 +39062,13 @@ export const positioningQueryJsonSchema: JsonSchema = {
  * @returns The structured multi-aspect positioning query output.
  */
 export async function generatePositioningQuery(
-  matrix: PositioningMatrixInput | { subjectProblem: string; theoreticalFramework?: string; methodology?: string },
+  matrix:
+    | PositioningMatrixInput
+    | {
+        subjectProblem: string;
+        theoreticalFramework?: string;
+        methodology?: string;
+      },
   logger?: Logger,
 ): Promise<PositioningQuery> {
   const payload = buildQueryGenerationPromptPayload(matrix);
@@ -38981,9 +39141,7 @@ export type StrategicRole = z.infer<typeof strategicRoleEnum>;
 
 /** Enum type representing the global positioning / literature gap status. */
 export type PositioningGlobalStatus =
-  | "DIRECT_OVERLAP"
-  | "NOVEL_GAP_IDENTIFIED"
-  | "NO_RELATED_LITERATURE";
+  "DIRECT_OVERLAP" | "NOVEL_GAP_IDENTIFIED" | "NO_RELATED_LITERATURE";
 
 /** Structure for individual recommended thesis entries in gap analysis reports. */
 export interface RecommendedThesisItem {
@@ -39996,7 +40154,6 @@ You are the **Lead Software Engineer** and **Primary Auditor** for Fabricca, a p
 - **Semantic Reranking:** Cohere Rerank API (`rerank-v4.0-pro` — ONLY for reranking)
 - **Object Storage:** Cloudflare R2 / AWS S3 (`@aws-sdk/client-s3`)
 - **Literature & DOI:** OpenAlex API (canonical literature source), Crossref API (DOI resolution)
-- **Secondary LLM:** Cerebras API (`gemma-4-31b` — metadata extraction and sanitization)
 
 > **Constraint:** Introducing alternative frameworks, third-party libraries, or secondary model fallbacks requires explicit user approval.
 
@@ -40190,17 +40347,9 @@ import type { Message } from "../_lib/types";
 /** Sentinel used to trigger the initial session sync on mount regardless of the initial id value. */
 const PREV_SESSION_SENTINEL = Symbol("prev-session-sentinel");
 
-type CitationUpdater =
-  | { messageId: string; sourceIndex: number }
-  | null
-  | ((
-      prev: { messageId: string; sourceIndex: number } | null,
-    ) => { messageId: string; sourceIndex: number } | null);
-
 interface UseAdvisorSessionsParams {
   initialSessionId?: number;
   isSendingRef: { current: boolean };
-  setActiveCitation: (updater: CitationUpdater) => void;
 }
 
 /**
@@ -40209,13 +40358,11 @@ interface UseAdvisorSessionsParams {
  * @param root0 - Hook dependencies.
  * @param root0.initialSessionId - Session id to restore on mount, if any.
  * @param root0.isSendingRef - Shared ref signalling an in-flight message send.
- * @param root0.setActiveCitation - Resets the active UI citation on session switches.
  * @returns Session state and session lifecycle handlers.
  */
 export function useAdvisorSessions({
   initialSessionId,
   isSendingRef,
-  setActiveCitation,
 }: UseAdvisorSessionsParams) {
   const [sessions, setSessions] = useState<ChatSessionListItem[]>([]);
   const [activeSessionId, setActiveSessionId] = useState<number | null>(null);
@@ -40269,9 +40416,8 @@ export function useAdvisorSessions({
       } else {
         setMessages([]);
       }
-      setActiveCitation(null);
     },
-    [setMessages, setActiveCitation],
+    [setMessages],
   );
 
   const prevInitialSessionIdRef = useRef<number | undefined | symbol>(
@@ -40284,9 +40430,10 @@ export function useAdvisorSessions({
   }, [activeSessionId]);
 
   // Load sessions and the active session on mount, and resync when the initialSessionId route parameter changes (e.g. browser navigation).
-  // activeSessionId is intentionally excluded from deps to prevent the sidebar click (which sets activeSessionId) from re-triggering syncFromProp and racing against handleSelectSession.
   useEffect(() => {
     if (prevInitialSessionIdRef.current === initialSessionId) return;
+    const isFirstMount =
+      prevInitialSessionIdRef.current === PREV_SESSION_SENTINEL;
     prevInitialSessionIdRef.current = initialSessionId;
 
     let cancelled = false;
@@ -40302,35 +40449,28 @@ export function useAdvisorSessions({
       const list = res.data;
       setSessions(list);
 
-      const targetId =
-        initialSessionId !== undefined &&
-        list.some((s) => s.id === initialSessionId)
-          ? initialSessionId
-          : null;
-
-      if (targetId !== null) {
-        if (activeSessionIdRef.current !== targetId) {
-          setActiveSessionId(targetId);
-          await loadMessages(targetId);
+      if (initialSessionId !== undefined) {
+        const sessionExists = list.some((s) => s.id === initialSessionId);
+        if (sessionExists) {
+          if (activeSessionIdRef.current !== initialSessionId) {
+            setActiveSessionId(initialSessionId);
+            await loadMessages(initialSessionId);
+          }
+        } else {
+          setActiveSessionId(null);
+          setMessages([]);
         }
-      } else if (activeSessionIdRef.current !== null) {
+      } else if (!isFirstMount && activeSessionIdRef.current !== null) {
         setActiveSessionId(null);
         setMessages([]);
-        setActiveCitation(null);
       }
     }
+
     void syncFromProp();
     return () => {
       cancelled = true;
-      prevInitialSessionIdRef.current = PREV_SESSION_SENTINEL;
     };
-  }, [
-    initialSessionId,
-    loadMessages,
-    setMessages,
-    setActiveCitation,
-    isSendingRef,
-  ]);
+  }, [initialSessionId, loadMessages, setMessages, isSendingRef]);
 
   const handleSelectSession = useCallback(
     async (sessionId: number) => {
@@ -40344,9 +40484,8 @@ export function useAdvisorSessions({
   const handleCreateSession = useCallback(() => {
     setActiveSessionId(null);
     setMessages([]);
-    setActiveCitation(null);
     syncUrlSession(null);
-  }, [setMessages, setActiveCitation, syncUrlSession]);
+  }, [setMessages, syncUrlSession]);
 
   const handleDeleteSession = useCallback(
     async (sessionId: number) => {
@@ -40355,7 +40494,6 @@ export function useAdvisorSessions({
         if (activeSessionId === sessionId) {
           setActiveSessionId(null);
           setMessages([]);
-          setActiveCitation(null);
           await loadSessions();
           syncUrlSession(null);
         } else {
@@ -40366,13 +40504,7 @@ export function useAdvisorSessions({
         toast.error(res.error || "Sohbet silinemedi.");
       }
     },
-    [
-      activeSessionId,
-      setMessages,
-      loadSessions,
-      syncUrlSession,
-      setActiveCitation,
-    ],
+    [activeSessionId, setMessages, loadSessions, syncUrlSession],
   );
 
   /**
@@ -41538,6 +41670,7 @@ export async function completePdfUploadCore(
 import type { Logger } from "@/lib/logger";
 import { getPdfFromR2 } from "@/core/services/storage/r2";
 import { parsePdfToChunks } from "@/core/services/pdf";
+import { enrichWithCrossref } from "@/core/services/academic";
 import type { DocumentAnalysisResult } from "@/core/services/pdf/schema";
 import type { DocumentChunk } from "@/core/services/pdf/chunker";
 import type { ParsedReference } from "@/core/db/schema";
@@ -41599,6 +41732,36 @@ export async function fetchAndExtractPdf(
     log,
   );
 
+  // Tier 2: Check if crucial fields (publisher, year, containerTitle, DOI) are missing, and enrich via Crossref
+  const isMissingGaps =
+    !metadata.publisher ||
+    !metadata.publicationYear ||
+    !metadata.containerTitle ||
+    !metadata.doi;
+
+  let finalMetadata = { ...metadata };
+
+  if (isMissingGaps && metadata.title) {
+    const enriched = await enrichWithCrossref({
+      title: metadata.title,
+      authors: metadata.authors,
+      doi: metadata.doi,
+      logger: log,
+    });
+
+    if (enriched) {
+      finalMetadata = {
+        title: metadata.title,
+        authors: metadata.authors,
+        containerTitle: metadata.containerTitle || enriched.containerTitle,
+        documentType: metadata.documentType || enriched.documentType,
+        publisher: metadata.publisher || enriched.publisher,
+        publicationYear: metadata.publicationYear ?? enriched.publicationYear,
+        doi: metadata.doi || enriched.doi,
+      };
+    }
+  }
+
   const parsedReferences: ParsedReference[] = references.map((ref) => ({
     raw: ref.raw,
     documentType: ref.documentType ?? null,
@@ -41611,7 +41774,7 @@ export async function fetchAndExtractPdf(
     resolved: Boolean(ref.title ?? ref.year ?? ref.containerTitle),
   }));
 
-  return { buffer, chunks, parsedReferences, metadata };
+  return { buffer, chunks, parsedReferences, metadata: finalMetadata };
 }
 </file>
 
@@ -43400,175 +43563,6 @@ export async function savePositioningReportTransaction(
 }
 </file>
 
-<file path="src/lib/box-constants.ts">
-/**
- * Single source of truth for thesis box type ordering and display labels
- * across the entire application (onboarding, library, dashboard, literature
- * review, prompts).
- *
- * ANALYSIS_ACTORS has been removed — actors are now an integral part
- * of the SUBJECT_PROBLEM quadrant.
- */
-
-/** The four thesis box types. */
-export type ThesisBoxType =
-  | "SUBJECT_PROBLEM"
-  | "THEORETICAL_FRAMEWORK"
-  | "METHODOLOGY"
-  | "PRIMARY_MATERIAL"
-  | "RELATED_THESES";
-
-/** Canonical display ordering: SUBJECT_PROBLEM → THEORETICAL_FRAMEWORK → METHODOLOGY → PRIMARY_MATERIAL → RELATED_THESES. */
-export const BOX_ORDER_WEIGHT: Record<ThesisBoxType, number> = {
-  SUBJECT_PROBLEM: 1,
-  THEORETICAL_FRAMEWORK: 2,
-  METHODOLOGY: 3,
-  PRIMARY_MATERIAL: 4,
-  RELATED_THESES: 5,
-};
-
-/** Canonical full (long) Turkish labels. */
-export const BOX_TYPE_LABELS: Record<ThesisBoxType, string> = {
-  SUBJECT_PROBLEM: "Araştırma Problemi",
-  THEORETICAL_FRAMEWORK: "Teorik Çerçeve",
-  METHODOLOGY: "Yöntem",
-  PRIMARY_MATERIAL: "Birincil Kaynak",
-  RELATED_THESES: "İlgili Tezler",
-};
-
-/** Canonical short Turkish labels (tabs, compact badges). */
-export const BOX_TYPE_SHORT_LABELS: Record<ThesisBoxType, string> = {
-  SUBJECT_PROBLEM: "Problem",
-  THEORETICAL_FRAMEWORK: "Teori",
-  PRIMARY_MATERIAL: "Birincil",
-  METHODOLOGY: "Yöntem",
-  RELATED_THESES: "Tezler",
-};
-
-/** Canonical default descriptions for thesis box types. */
-export const BOX_TYPE_DESCRIPTIONS: Record<ThesisBoxType, string> = {
-  SUBJECT_PROBLEM:
-    "Araştırmanızın ana konusunu, kapsamını ve yanıt aradığı temel problemi inceleyen kaynaklar.",
-  THEORETICAL_FRAMEWORK:
-    "Çalışmanızın dayandığı teorik modelleri, kavramsal yaklaşımları ve literatür zeminini oluşturan eserler.",
-  METHODOLOGY:
-    "Araştırma yöntemlerini, veri toplama ve analiz tekniklerini ele alan metodolojik kaynaklar.",
-  PRIMARY_MATERIAL:
-    "Doğrudan analiz edilen birincil belgeler, arşiv derlemleri ve ampirik veri materyalleri.",
-  RELATED_THESES:
-    "Tez konunuz ve konumlandırmanız ile doğrudan ilişkili, incelenmesi önerilen YÖK ve akademik tez çalışmaları.",
-};
-
-/** Default parent box definitions (canonical order) for users without completed onboarding. */
-export const DEFAULT_PARENT_BOXES: {
-  boxType: ThesisBoxType;
-  title: string;
-}[] = [
-  { boxType: "SUBJECT_PROBLEM", title: BOX_TYPE_LABELS.SUBJECT_PROBLEM },
-  {
-    boxType: "THEORETICAL_FRAMEWORK",
-    title: BOX_TYPE_LABELS.THEORETICAL_FRAMEWORK,
-  },
-  { boxType: "METHODOLOGY", title: BOX_TYPE_LABELS.METHODOLOGY },
-  { boxType: "PRIMARY_MATERIAL", title: BOX_TYPE_LABELS.PRIMARY_MATERIAL },
-];
-
-/**
- * Resolves the canonical display label for a given box type.
- *
- * @param boxType - The thesis box type value
- * @param short - When true, returns the short label; otherwise the full label
- * @returns The canonical Turkish label, or the raw value when unknown
- */
-export function getBoxTypeLabel(
-  boxType: ThesisBoxType | string | null | undefined,
-  short = false,
-): string {
-  if (!boxType) return "Genel";
-  const key = boxType as ThesisBoxType;
-  const label = short ? BOX_TYPE_SHORT_LABELS[key] : BOX_TYPE_LABELS[key];
-  return label ?? boxType;
-}
-
-/**
- * Comparator for sorting boxes into the canonical display order with unknown box types sorted last.
- *
- * @param boxTypeA - First box type
- * @param boxTypeB - Second box type
- * @returns Negative/zero/positive for canonical ordering
- */
-export function compareBoxTypes(
-  boxTypeA: ThesisBoxType | string | null | undefined,
-  boxTypeB: ThesisBoxType | string | null | undefined,
-): number {
-  const weightA = BOX_ORDER_WEIGHT[boxTypeA as ThesisBoxType] ?? 99;
-  const weightB = BOX_ORDER_WEIGHT[boxTypeB as ThesisBoxType] ?? 99;
-  return weightA - weightB;
-}
-
-/**
- * UI badge configuration (Tailwind classes + label) for a thesis box type, shared by
- * the library sidebar and resource detail badge renders.
- *
- * @param boxType - The thesis box type value
- * @returns Badge display config with label and styling class names
- */
-export function getBoxTypeBadgeConfig(boxType: ThesisBoxType) {
-  const base = {
-    label: getBoxTypeLabel(boxType),
-  };
-  switch (boxType) {
-    case "THEORETICAL_FRAMEWORK":
-      return {
-        ...base,
-        className:
-          "bg-purple-500/10 text-purple-600 dark:text-purple-400 border-purple-500/20",
-        dotClassName: "bg-purple-500",
-        textClassName: "text-purple-600 dark:text-purple-400",
-      };
-    case "METHODOLOGY":
-      return {
-        ...base,
-        className:
-          "bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20",
-        dotClassName: "bg-blue-500",
-        textClassName: "text-blue-600 dark:text-blue-400",
-      };
-    case "SUBJECT_PROBLEM":
-      return {
-        ...base,
-        className:
-          "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20",
-        dotClassName: "bg-amber-500",
-        textClassName: "text-amber-600 dark:text-amber-400",
-      };
-    case "PRIMARY_MATERIAL":
-      return {
-        ...base,
-        className:
-          "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20",
-        dotClassName: "bg-emerald-500",
-        textClassName: "text-emerald-600 dark:text-emerald-400",
-      };
-    case "RELATED_THESES":
-      return {
-        ...base,
-        className:
-          "bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/20",
-        dotClassName: "bg-rose-500",
-        textClassName: "text-rose-600 dark:text-rose-400",
-      };
-    default:
-      return {
-        label: "Genel",
-        className: "bg-muted text-muted-foreground border-border",
-        dotClassName: "bg-muted-foreground",
-        textClassName: "text-muted-foreground",
-      };
-  }
-}
-</file>
-
 <file path="src/lib/session.ts">
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
@@ -44582,6 +44576,11 @@ import {
   CheckCircle2,
   Circle,
   Trash2,
+  BookOpen,
+  FileText,
+  Book,
+  GraduationCap,
+  FileSpreadsheet,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -44597,7 +44596,72 @@ interface ResourceHeaderProps {
 }
 
 /**
- * Renders the top metadata section for a library resource including badges, title, authors, publisher, DOI link, and header action buttons.
+ * Derives document type badge configuration (label, icon, styling).
+ */
+function getDocumentTypeConfig(docType?: string) {
+  const norm = docType?.toLowerCase() || "";
+  if (norm.includes("chapter")) {
+    return {
+      label: "Kitap Bölümü",
+      icon: BookOpen,
+      className: "border-sky-500/30 bg-sky-500/10 text-sky-400",
+    };
+  }
+  if (norm.includes("article") || norm.includes("journal")) {
+    return {
+      label: "Makale",
+      icon: FileText,
+      className: "border-emerald-500/30 bg-emerald-500/10 text-emerald-400",
+    };
+  }
+  if (norm.includes("book") || norm.includes("monograph")) {
+    return {
+      label: "Kitap",
+      icon: Book,
+      className: "border-amber-500/30 bg-amber-500/10 text-amber-400",
+    };
+  }
+  if (norm.includes("thesis") || norm.includes("dissertation")) {
+    return {
+      label: "Tez",
+      icon: GraduationCap,
+      className: "border-purple-500/30 bg-purple-500/10 text-purple-400",
+    };
+  }
+  if (norm.includes("report")) {
+    return {
+      label: "Rapor",
+      icon: FileSpreadsheet,
+      className: "border-slate-500/30 bg-slate-500/10 text-slate-400",
+    };
+  }
+  return null;
+}
+
+/**
+ * Determines the primary academic source venue (Journal name, Parent Book, or Publishing House).
+ */
+function getPrimarySourceVenue(resource: LibraryResourceItem): string | null {
+  if (resource.containerTitle && resource.containerTitle.trim()) {
+    return resource.containerTitle.trim();
+  }
+
+  if (
+    resource.publisher &&
+    resource.publisher.trim() &&
+    resource.publisher !== "Belirtilmemiş"
+  ) {
+    let pub = resource.publisher.trim();
+    if (pub.includes("Informa UK")) pub = "Taylor & Francis / Routledge";
+    if (pub.includes("(CUP)")) pub = "Cambridge University Press";
+    return pub;
+  }
+
+  return null;
+}
+
+/**
+ * Renders the top metadata section for a library resource with an ultra-minimal, clean layout focused on essential source information.
  *
  * @param root0 - Component props.
  * @param root0.resource - Selected library resource.
@@ -44613,121 +44677,169 @@ export function ResourceHeader({
   onDeletePdfClick,
 }: ResourceHeaderProps) {
   const boxBadge = getBoxTypeBadgeConfig(resource.boxType);
+  const docTypeConfig = getDocumentTypeConfig(resource.documentType);
+  const sourceVenue = getPrimarySourceVenue(resource);
 
   return (
-    <div className="space-y-4 border-b border-border pb-6">
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <div className="flex flex-wrap items-center gap-2">
+    <div className="space-y-2.5 border-b border-border/60 pb-3.5">
+      {/* Top Bar: Subject Badges, Document Type, and Compact Icon Actions */}
+      <div className="flex items-center justify-between gap-2">
+        <div className="flex flex-wrap items-center gap-1.5 min-w-0">
           <Badge
             variant="outline"
-            className={cn("text-[11px]", boxBadge.className)}
+            className={cn(
+              "text-[11px] px-2 py-0.5 font-medium shrink-0",
+              boxBadge.className,
+            )}
           >
             {boxBadge.label}
           </Badge>
+
           {resource.subBoxTitle && (
             <Badge
               variant="outline"
               className={cn(
-                "max-w-full text-[11px] px-2 py-1 border font-medium",
+                "text-[11px] px-2 py-0.5 border font-medium",
                 boxBadge.className,
               )}
             >
-              <span className="truncate">{resource.subBoxTitle}</span>
+              {resource.subBoxTitle}
+            </Badge>
+          )}
+
+          {docTypeConfig && (
+            <Badge
+              variant="outline"
+              className={cn(
+                "text-[11px] px-2 py-0.5 font-medium flex items-center gap-1 shrink-0",
+                docTypeConfig.className,
+              )}
+            >
+              <docTypeConfig.icon className="h-3 w-3" />
+              <span>{docTypeConfig.label}</span>
             </Badge>
           )}
         </div>
 
-        <div className="flex items-center gap-2">
+        {/* Compact Icon-Only Action Buttons Toolbar: Düzenle - Sil - Okundu - PDF */}
+        <div className="flex items-center gap-1 shrink-0">
+          {/* 1. Düzenle */}
           <Button
             variant="outline"
             size="sm"
             onClick={onOpenEditModal}
             title="Künyeyi Düzenle"
-            className="h-8 gap-2 text-[11px] font-medium border-border/40 text-muted-foreground hover:text-foreground hover:bg-muted"
+            className="h-7 w-7 p-0 border-border/40 text-muted-foreground hover:text-foreground hover:bg-muted/80"
           >
             <Pencil className="h-3.5 w-3.5 text-primary" />
-            <span>Künyeyi Düzenle</span>
+            <span className="sr-only">Künyeyi Düzenle</span>
           </Button>
 
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => onToggleReadStatus(resource.id)}
-            title={resource.isRead ? "Okunacak Yap" : "Okundu Olarak İşaretle"}
-            className="h-8 gap-2 text-[11px] font-medium border-border/40"
-          >
-            {resource.isRead ? (
-              <>
-                <CheckCircle2 className="h-3.5 w-3.5 text-success" />
-                <span className="text-success font-semibold">Okundu</span>
-              </>
-            ) : (
-              <>
-                <Circle className="h-3.5 w-3.5 text-muted-foreground" />
-                <span className="text-muted-foreground">
-                  Okundu Olarak İşaretle
-                </span>
-              </>
-            )}
-          </Button>
-
+          {/* 2. Sil */}
           {resource.pdfStatus === "READY" && onDeletePdfClick && (
             <Button
               variant="outline"
               size="sm"
               onClick={onDeletePdfClick}
-              title="PDF'i Sil"
-              className="h-8 w-8 p-0 border-border/40 text-muted-foreground hover:text-destructive hover:bg-destructive/10 hover:border-destructive/20"
+              title="PDF Sil"
+              className="h-7 w-7 p-0 border-border/40 text-muted-foreground hover:text-destructive hover:bg-destructive/10 hover:border-destructive/20"
             >
               <Trash2 className="h-3.5 w-3.5" />
+              <span className="sr-only">PDF Sil</span>
             </Button>
+          )}
+
+          {/* 3. Okundu */}
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => onToggleReadStatus(resource.id)}
+            title={resource.isRead ? "Okunacak Yap" : "Okundu Olarak İşaretle"}
+            className="h-7 w-7 p-0 border-border/40 text-muted-foreground hover:text-foreground hover:bg-muted/80"
+          >
+            {resource.isRead ? (
+              <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500" />
+            ) : (
+              <Circle className="h-3.5 w-3.5 text-muted-foreground/70" />
+            )}
+            <span className="sr-only">
+              {resource.isRead ? "Okundu" : "Okundu Olarak İşaretle"}
+            </span>
+          </Button>
+
+          {/* 4. PDF Durumu */}
+          {resource.pdfStatus === "READY" && (
+            <div
+              className="flex h-7 w-7 items-center justify-center rounded-md border border-emerald-500/30 bg-emerald-500/10 text-emerald-400"
+              title="PDF Yüklendi"
+            >
+              <FileText className="h-3.5 w-3.5" />
+            </div>
           )}
         </div>
       </div>
 
-      <h2 className="font-serif text-2xl font-semibold tracking-tight text-foreground leading-tight">
+      {/* Main Academic Title */}
+      <h2 className="font-serif text-xl sm:text-2xl font-bold tracking-tight text-foreground leading-snug">
         {resource.title}
       </h2>
 
-      <div className="flex flex-wrap items-center gap-x-3 gap-y-2 text-xs text-muted-foreground pt-2">
-        <div className="flex items-center gap-1">
-          <span className="font-medium text-foreground">Yazarlar:</span>
-          <span>{resource.authors.join(", ")}</span>
-        </div>
-        <span className="text-muted-foreground font-bold select-none">•</span>
-        <div className="flex items-center gap-1">
-          <span className="font-medium text-foreground">Yayıncı:</span>
-          <span>
-            {resource.publisher}
-            {resource.publicationYear ? ` (${resource.publicationYear})` : ""}
-          </span>
-        </div>
-        {resource.doi && (
+      {/* Essential Minimal Metadata Strip */}
+      <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1 text-xs text-muted-foreground">
+        {resource.authors.length > 0 && (
+          <div className="flex items-center gap-1">
+            <span className="font-medium text-foreground/80">Yazar:</span>
+            <span className="text-foreground/95">
+              {resource.authors.join(", ")}
+            </span>
+          </div>
+        )}
+
+        {sourceVenue && (
           <>
-            <span className="text-muted-foreground font-bold select-none">
+            <span className="text-muted-foreground/40 font-bold select-none">
               •
             </span>
             <div className="flex items-center gap-1">
-              <span className="font-medium text-foreground">DOI:</span>
+              <span className="font-medium text-foreground/80">Yayıncı:</span>
+              <span className="text-foreground/90">
+                {sourceVenue}
+                {resource.publicationYear
+                  ? ` (${resource.publicationYear})`
+                  : ""}
+              </span>
+            </div>
+          </>
+        )}
+
+        {!sourceVenue && resource.publicationYear && (
+          <>
+            <span className="text-muted-foreground/40 font-bold select-none">
+              •
+            </span>
+            <div className="flex items-center gap-1">
+              <span className="font-medium text-foreground/80">Yıl:</span>
+              <span>{resource.publicationYear}</span>
+            </div>
+          </>
+        )}
+
+        {resource.doi && (
+          <>
+            <span className="text-muted-foreground/40 font-bold select-none">
+              •
+            </span>
+            <div className="flex items-center gap-1">
+              <span className="font-medium text-foreground/80">DOI:</span>
               <a
                 href={`https://doi.org/${resource.doi}`}
                 target="_blank"
                 rel="noreferrer"
-                className="flex items-center gap-1 text-primary hover:underline font-mono"
+                className="flex items-center gap-1 text-sky-400 hover:text-sky-300 hover:underline font-mono text-[11px]"
               >
                 {resource.doi}
-                <ExternalLink className="h-3 w-3" />
+                <ExternalLink className="h-2.5 w-2.5" />
               </a>
-            </div>
-          </>
-        )}
-        {resource.pdfStatus === "READY" && (
-          <>
-            <span className="text-muted-foreground font-bold select-none">
-              •
-            </span>
-            <div className="flex items-center gap-2">
-              <span className="font-semibold text-success">PDF Yüklendi</span>
             </div>
           </>
         )}
@@ -46072,11 +46184,7 @@ export const jurySynthesisResultJsonSchema: JsonSchema = {
   properties: {
     globalStatus: {
       type: "string",
-      enum: [
-        "DIRECT_OVERLAP",
-        "NOVEL_GAP_IDENTIFIED",
-        "NO_RELATED_LITERATURE",
-      ],
+      enum: ["DIRECT_OVERLAP", "NOVEL_GAP_IDENTIFIED", "NO_RELATED_LITERATURE"],
       description:
         "Jürinin genel özgünlük kararı: NOVEL_GAP_IDENTIFIED (Özgün Katkı / Boşluk Mevcut), DIRECT_OVERLAP (Birebir Çakışma / Özgünlük Riski), NO_RELATED_LITERATURE (Bakir Alan / İlgili Tez Bulunamadı).",
     },
@@ -46099,11 +46207,7 @@ export const jurySynthesisResultJsonSchema: JsonSchema = {
             "Çalışmanın Özgün Katkısı: Araştırmacının tezinin bu boşluğu problem, kuram ve yöntem açısından nasıl dolduracağının analizi (Markdown).",
         },
       },
-      required: [
-        "literatureMapping",
-        "academicGap",
-        "originalContribution",
-      ],
+      required: ["literatureMapping", "academicGap", "originalContribution"],
       additionalProperties: false,
     },
     selectedThesisIds: {
@@ -46156,7 +46260,7 @@ export interface SiftedThesis extends TezaraThesisDetails {
 const SCORE_EPSILON = 1e-4;
 
 /** Minimum Cohere Rerank v4.0 relevance score to filter out irrelevant/noisy candidates. */
-export const MIN_COHERE_RELEVANCE_SCORE = 0.50;
+export const MIN_COHERE_RELEVANCE_SCORE = 0.5;
 
 /**
  * 3-Dimensional Academic Sifting Engine:
@@ -46182,7 +46286,8 @@ export async function searchAndSiftTheses(
   const queryGenStart = performance.now();
   logger?.info("sifting_query_generation_start", {
     service: "gemini",
-    filePath: "src/app/(onboarding)/onboarding/positioning/_services/sifting.ts",
+    filePath:
+      "src/app/(onboarding)/onboarding/positioning/_services/sifting.ts",
   });
 
   const distilledQuery = await generatePositioningQuery(matrixInput, logger);
@@ -46199,7 +46304,8 @@ export async function searchAndSiftTheses(
 
   logger?.info("sifting_query_generation_success", {
     service: "gemini",
-    filePath: "src/app/(onboarding)/onboarding/positioning/_services/sifting.ts",
+    filePath:
+      "src/app/(onboarding)/onboarding/positioning/_services/sifting.ts",
     durationMs: performance.now() - queryGenStart,
     data: {
       query1,
@@ -46213,7 +46319,8 @@ export async function searchAndSiftTheses(
 
   logger?.info("sifting_multi_search_start", {
     service: "tezara",
-    filePath: "src/app/(onboarding)/onboarding/positioning/_services/sifting.ts",
+    filePath:
+      "src/app/(onboarding)/onboarding/positioning/_services/sifting.ts",
     data: { queries: [query1, query2, query3], singleQueryLimit },
   });
 
@@ -46242,7 +46349,8 @@ export async function searchAndSiftTheses(
   if (filteredCandidates.length === 0) {
     logger?.info("sifting_multi_search_success", {
       service: "tezara",
-      filePath: "src/app/(onboarding)/onboarding/positioning/_services/sifting.ts",
+      filePath:
+        "src/app/(onboarding)/onboarding/positioning/_services/sifting.ts",
       durationMs: performance.now() - searchStart,
       data: { candidateCount: 0 },
     });
@@ -46251,7 +46359,8 @@ export async function searchAndSiftTheses(
 
   logger?.info("sifting_multi_search_success", {
     service: "tezara",
-    filePath: "src/app/(onboarding)/onboarding/positioning/_services/sifting.ts",
+    filePath:
+      "src/app/(onboarding)/onboarding/positioning/_services/sifting.ts",
     durationMs: performance.now() - searchStart,
     data: { candidateCount: filteredCandidates.length },
   });
@@ -46264,7 +46373,8 @@ export async function searchAndSiftTheses(
 
   logger?.info("sifting_rerank_start", {
     service: "cohere",
-    filePath: "src/app/(onboarding)/onboarding/positioning/_services/sifting.ts",
+    filePath:
+      "src/app/(onboarding)/onboarding/positioning/_services/sifting.ts",
     data: {
       model: COHERE_RERANK_MODEL,
       candidateCount: filteredCandidates.length,
@@ -46299,7 +46409,8 @@ export async function searchAndSiftTheses(
 
   logger?.info("sifting_rerank_success", {
     service: "cohere",
-    filePath: "src/app/(onboarding)/onboarding/positioning/_services/sifting.ts",
+    filePath:
+      "src/app/(onboarding)/onboarding/positioning/_services/sifting.ts",
     durationMs: performance.now() - rerankStart,
     data: {
       candidateCount: filteredCandidates.length,
@@ -46626,6 +46737,175 @@ export const CONTACT_EMAIL =
 export const OPENALEX_USER_AGENT = "FabriccaAcademicAssistant/1.0";
 
 export const CROSSREF_USER_AGENT = `FabriccaAcademicAssistant/1.0 (mailto:${CONTACT_EMAIL})`;
+</file>
+
+<file path="src/lib/box-constants.ts">
+/**
+ * Single source of truth for thesis box type ordering and display labels
+ * across the entire application (onboarding, library, dashboard, literature
+ * review, prompts).
+ *
+ * ANALYSIS_ACTORS has been removed — actors are now an integral part
+ * of the SUBJECT_PROBLEM quadrant.
+ */
+
+/** The four thesis box types. */
+export type ThesisBoxType =
+  | "SUBJECT_PROBLEM"
+  | "THEORETICAL_FRAMEWORK"
+  | "METHODOLOGY"
+  | "PRIMARY_MATERIAL"
+  | "RELATED_THESES";
+
+/** Canonical display ordering: SUBJECT_PROBLEM → THEORETICAL_FRAMEWORK → METHODOLOGY → PRIMARY_MATERIAL → RELATED_THESES. */
+export const BOX_ORDER_WEIGHT: Record<ThesisBoxType, number> = {
+  SUBJECT_PROBLEM: 1,
+  THEORETICAL_FRAMEWORK: 2,
+  METHODOLOGY: 3,
+  PRIMARY_MATERIAL: 4,
+  RELATED_THESES: 5,
+};
+
+/** Canonical full (long) Turkish labels. */
+export const BOX_TYPE_LABELS: Record<ThesisBoxType, string> = {
+  SUBJECT_PROBLEM: "Araştırma Problemi",
+  THEORETICAL_FRAMEWORK: "Teorik Çerçeve",
+  METHODOLOGY: "Yöntem",
+  PRIMARY_MATERIAL: "Birincil Kaynak",
+  RELATED_THESES: "İlgili Tezler",
+};
+
+/** Canonical short Turkish labels (tabs, compact badges). */
+export const BOX_TYPE_SHORT_LABELS: Record<ThesisBoxType, string> = {
+  SUBJECT_PROBLEM: "Problem",
+  THEORETICAL_FRAMEWORK: "Teori",
+  PRIMARY_MATERIAL: "Birincil",
+  METHODOLOGY: "Yöntem",
+  RELATED_THESES: "Tezler",
+};
+
+/** Canonical default descriptions for thesis box types. */
+export const BOX_TYPE_DESCRIPTIONS: Record<ThesisBoxType, string> = {
+  SUBJECT_PROBLEM:
+    "Araştırmanızın ana konusunu, kapsamını ve yanıt aradığı temel problemi inceleyen kaynaklar.",
+  THEORETICAL_FRAMEWORK:
+    "Çalışmanızın dayandığı teorik modelleri, kavramsal yaklaşımları ve literatür zeminini oluşturan eserler.",
+  METHODOLOGY:
+    "Araştırma yöntemlerini, veri toplama ve analiz tekniklerini ele alan metodolojik kaynaklar.",
+  PRIMARY_MATERIAL:
+    "Doğrudan analiz edilen birincil belgeler, arşiv derlemleri ve ampirik veri materyalleri.",
+  RELATED_THESES:
+    "Tez konunuz ve konumlandırmanız ile doğrudan ilişkili, incelenmesi önerilen YÖK ve akademik tez çalışmaları.",
+};
+
+/** Default parent box definitions (canonical order) for users without completed onboarding. */
+export const DEFAULT_PARENT_BOXES: {
+  boxType: ThesisBoxType;
+  title: string;
+}[] = [
+  { boxType: "SUBJECT_PROBLEM", title: BOX_TYPE_LABELS.SUBJECT_PROBLEM },
+  {
+    boxType: "THEORETICAL_FRAMEWORK",
+    title: BOX_TYPE_LABELS.THEORETICAL_FRAMEWORK,
+  },
+  { boxType: "METHODOLOGY", title: BOX_TYPE_LABELS.METHODOLOGY },
+  { boxType: "PRIMARY_MATERIAL", title: BOX_TYPE_LABELS.PRIMARY_MATERIAL },
+];
+
+/**
+ * Resolves the canonical display label for a given box type.
+ *
+ * @param boxType - The thesis box type value
+ * @param short - When true, returns the short label; otherwise the full label
+ * @returns The canonical Turkish label, or the raw value when unknown
+ */
+export function getBoxTypeLabel(
+  boxType: ThesisBoxType | string | null | undefined,
+  short = false,
+): string {
+  if (!boxType) return "Genel";
+  const key = boxType as ThesisBoxType;
+  const label = short ? BOX_TYPE_SHORT_LABELS[key] : BOX_TYPE_LABELS[key];
+  return label ?? boxType;
+}
+
+/**
+ * Comparator for sorting boxes into the canonical display order with unknown box types sorted last.
+ *
+ * @param boxTypeA - First box type
+ * @param boxTypeB - Second box type
+ * @returns Negative/zero/positive for canonical ordering
+ */
+export function compareBoxTypes(
+  boxTypeA: ThesisBoxType | string | null | undefined,
+  boxTypeB: ThesisBoxType | string | null | undefined,
+): number {
+  const weightA = BOX_ORDER_WEIGHT[boxTypeA as ThesisBoxType] ?? 99;
+  const weightB = BOX_ORDER_WEIGHT[boxTypeB as ThesisBoxType] ?? 99;
+  return weightA - weightB;
+}
+
+/**
+ * UI badge configuration (Tailwind classes + label) for a thesis box type, shared by
+ * the library sidebar and resource detail badge renders.
+ *
+ * @param boxType - The thesis box type value
+ * @returns Badge display config with label and styling class names
+ */
+export function getBoxTypeBadgeConfig(boxType: ThesisBoxType) {
+  const base = {
+    label: getBoxTypeLabel(boxType),
+  };
+  switch (boxType) {
+    case "THEORETICAL_FRAMEWORK":
+      return {
+        ...base,
+        className:
+          "bg-purple-500/10 text-purple-600 dark:text-purple-400 border-purple-500/20",
+        dotClassName: "bg-purple-500",
+        textClassName: "text-purple-600 dark:text-purple-400",
+      };
+    case "METHODOLOGY":
+      return {
+        ...base,
+        className:
+          "bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20",
+        dotClassName: "bg-blue-500",
+        textClassName: "text-blue-600 dark:text-blue-400",
+      };
+    case "SUBJECT_PROBLEM":
+      return {
+        ...base,
+        className:
+          "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20",
+        dotClassName: "bg-amber-500",
+        textClassName: "text-amber-600 dark:text-amber-400",
+      };
+    case "PRIMARY_MATERIAL":
+      return {
+        ...base,
+        className:
+          "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20",
+        dotClassName: "bg-emerald-500",
+        textClassName: "text-emerald-600 dark:text-emerald-400",
+      };
+    case "RELATED_THESES":
+      return {
+        ...base,
+        className:
+          "bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/20",
+        dotClassName: "bg-rose-500",
+        textClassName: "text-rose-600 dark:text-rose-400",
+      };
+    default:
+      return {
+        label: "Genel",
+        className: "bg-muted text-muted-foreground border-border",
+        dotClassName: "bg-muted-foreground",
+        textClassName: "text-muted-foreground",
+      };
+  }
+}
 </file>
 
 <file path="src/app/(app)/advisor/_lib/types.ts">
@@ -47827,7 +48107,7 @@ export async function processResourcePdfPipeline(options: ProcessPdfOptions) {
 
   let chunks: DocumentChunk[];
 
-  if (options.precomputedChunks && options.precomputedChunks.length > 0) {
+  if (options.precomputedChunks !== undefined) {
     chunks = options.precomputedChunks;
   } else {
     const parsed = await parsePdfToChunks(buffer, fileName, "", log);
@@ -48247,7 +48527,7 @@ tabanlı yapay zeka sohbeti:
 - **Yoğun dallar:** pgvector HNSW (cosine) üzerinden dense retrieval.
 - **Leksel dallar:** PostgreSQL `tsvector` (Türkçe + İngilizce) FTS.
 - **Füzyon:** Reciprocal Rank Fusion (RRF) + Cohere Rerank v4.0 Pro.
-- **HyDE:** Cerebras (`gemma-4-31b`) ile çapraz-dil sorgu genişletme.
+- **HyDE:** Gemini Flash Lite 3.5 ile çapraz-dil sorgu genişletme.
 - **Tool calling:** Gemini ile oturumlu arama, alıntı fişleme, okuma durumu
   güncelleme ve undo desteği.
 
@@ -48282,8 +48562,7 @@ merkezi yönetim ekranı.
 | **Veri Tabanı**        | Neon Serverless PostgreSQL                                                   |
 | **ORM**                | Drizzle ORM (snake_case)                                                     |
 | **Vektör DB (RAG)**    | pgvector (HNSW) + tsvector (FTS), COSINE                                     |
-| **Birincil LLM**       | Google Gemini Flash ailesi (`FLASH_LITE_31`, `FLASH_LITE_35`, `FLASH_36`)    |
-| **İkincil LLM**        | Cerebras (`gemma-4-31b`) — metadata sanitize, HyDE, başlık üretimi           |
+| **LLM Motoru**         | Google Gemini Flash ailesi (`FLASH_LITE_31`, `FLASH_LITE_35`, `FLASH_36`)    |
 | **Embedding**          | Cloudflare Workers AI (`@cf/baai/bge-m3`, **1024 dim**) — tek ve sabit motor |
 | **Rerank**             | Cohere Rerank v4.0 Pro (`rerank-v4.0-pro`)                                   |
 | **Tez Veri Kaynağı**   | Turso LibSQL Vektör Veritabanı (366k+ Tez, E5-Base 768d)                     |
@@ -48389,7 +48668,6 @@ Gerekli tüm API anahtarları `.env.local` dosyasında tanımlanır:
 | ------------------------ | ------------------------------------------- |
 | `DATABASE_URL`           | Neon PostgreSQL bağlantı dizesi             |
 | `GEMINI_API_KEY_1..3`    | Google Gemini API (en az 1 anahtar gerekli) |
-| `CEREBRAS_API_KEY`       | Cerebras API (gemma-4-31b)                  |
 | `CLOUDFLARE_ACCOUNT_ID`  | Cloudflare Workers AI hesap ID              |
 | `CLOUDFLARE_API_TOKEN`   | Cloudflare Workers AI API token             |
 | `COHERE_API_KEY`         | Cohere Rerank API                           |
@@ -50026,7 +50304,10 @@ import { generateGeminiStructuredContent } from "@/core/services/ai";
 import type { Logger } from "@/lib/logger";
 import { buildPositioningJuryPromptPayload } from "../_prompts/jury-analysis.prompt";
 import type { EvaluatedThesis } from "./per-thesis-evaluation";
-import type { PositioningMatrixInput, RecommendedThesisItem } from "./validation";
+import type {
+  PositioningMatrixInput,
+  RecommendedThesisItem,
+} from "./validation";
 import {
   jurySynthesisResultSchema,
   jurySynthesisResultJsonSchema,
@@ -50063,7 +50344,8 @@ export async function analyzePositioningJury(
   if (evaluatedTheses.length === 0) {
     logger?.info("positioning_jury_no_theses", {
       service: "positioning",
-      filePath: "src/app/(onboarding)/onboarding/positioning/_services/analysis.ts",
+      filePath:
+        "src/app/(onboarding)/onboarding/positioning/_services/analysis.ts",
       data: { inputSubject: input.subjectProblem },
     });
 
@@ -50131,7 +50413,10 @@ Katkı/Odak Alanları: ${e.contributionAreas.join(", ") || "Yok"}`;
   if (synthesis.selectedThesisIds && synthesis.selectedThesisIds.length > 0) {
     for (const id of synthesis.selectedThesisIds) {
       const found = evalByThesisId.get(String(id));
-      if (found && !selectedItems.some((s) => s.thesis.id === found.thesis.id)) {
+      if (
+        found &&
+        !selectedItems.some((s) => s.thesis.id === found.thesis.id)
+      ) {
         selectedItems.push(found);
       }
     }
@@ -50152,7 +50437,8 @@ Katkı/Odak Alanları: ${e.contributionAreas.join(", ") || "Yok"}`;
       university: t.university || "Bilinmiyor",
       strategicRole: e.strategicRole || "SPECIFIC_FOCUS",
       literaturePosition: e.literaturePosition,
-      contributionArea: e.contributionAreas.join(", ") || "Literatür İncelemesi",
+      contributionArea:
+        e.contributionAreas.join(", ") || "Literatür İncelemesi",
       relevanceReason: e.strategicUtility || e.relevanceReasoning || "",
       thesisType: t.thesisType,
       abstract: t.abstract,
@@ -51259,7 +51545,6 @@ export type ServiceName =
   | "dashboard"
   | "cohere"
   | "positioning"
-  | "cerebras"
   | "pdf-parser"
   | "rag-search"
   | "advisor"
@@ -52183,7 +52468,8 @@ export async function evaluateThesesInParallel(
   const evalStart = performance.now();
   logger?.info("per_thesis_evaluation_start", {
     service: "gemini",
-    filePath: "src/app/(onboarding)/onboarding/positioning/_services/per-thesis-evaluation.ts",
+    filePath:
+      "src/app/(onboarding)/onboarding/positioning/_services/per-thesis-evaluation.ts",
     data: { candidateCount: theses.length, chunkSize: BATCH_CHUNK_SIZE },
   });
 
@@ -52253,13 +52539,17 @@ export async function evaluateThesesInParallel(
 
   logger?.info("per_thesis_evaluation_success", {
     service: "gemini",
-    filePath: "src/app/(onboarding)/onboarding/positioning/_services/per-thesis-evaluation.ts",
+    filePath:
+      "src/app/(onboarding)/onboarding/positioning/_services/per-thesis-evaluation.ts",
     durationMs: performance.now() - evalStart,
     data: {
       totalCandidates: theses.length,
       evaluatedCount: evaluatedTheses.length,
-      relevantCount: evaluatedTheses.filter((e) => e.evaluation.isRelevant).length,
-      overlappingCount: evaluatedTheses.filter((e) => e.evaluation.isDirectOverlap).length,
+      relevantCount: evaluatedTheses.filter((e) => e.evaluation.isRelevant)
+        .length,
+      overlappingCount: evaluatedTheses.filter(
+        (e) => e.evaluation.isDirectOverlap,
+      ).length,
     },
   });
 
@@ -52359,13 +52649,12 @@ export function useAdvisorChat(initialSessionId?: number) {
     activeSessionId,
     loadSessions,
     handleSelectSession: selectSessionRaw,
-    handleCreateSession,
-    handleDeleteSession,
+    handleCreateSession: createSessionRaw,
+    handleDeleteSession: deleteSessionRaw,
     createChatSessionAndActivate,
   } = useAdvisorSessions({
     initialSessionId,
     isSendingRef,
-    setActiveCitation: () => {}, // Replaced by composed chat state below
   });
 
   // 2. UI, citation, loading, lock, and streaming state
@@ -52392,6 +52681,20 @@ export function useAdvisorChat(initialSessionId?: number) {
       await selectSessionRaw(sessionId);
     },
     [selectSessionRaw, setIsLocked, setActiveCitation],
+  );
+
+  const handleCreateSession = useCallback(() => {
+    setIsLocked(false);
+    setActiveCitation(null);
+    createSessionRaw();
+  }, [createSessionRaw, setIsLocked, setActiveCitation]);
+
+  const handleDeleteSession = useCallback(
+    async (sessionId: number) => {
+      setActiveCitation(null);
+      await deleteSessionRaw(sessionId);
+    },
+    [deleteSessionRaw, setActiveCitation],
   );
 
   // 3. Tool execution handlers (approve, reject, undo)
@@ -53194,7 +53497,7 @@ export function AdvisorChat({ initialSessionId }: AdvisorChatProps) {
   return (
     <div className="w-full flex gap-6 min-h-0 h-[calc(100vh-8.5rem)]">
       {/* Sidebar */}
-      <div className="hidden lg:flex flex-col min-h-0 w-72 shrink-0 h-full">
+      <div className="hidden lg:flex flex-col min-h-0 w-80 shrink-0 h-full">
         <ChatSidebar
           sessions={sessions}
           activeSessionId={activeSessionId}
@@ -53803,8 +54106,10 @@ export function PositioningReportView({
             </div>
 
             <h3 className="font-serif text-lg sm:text-xl font-semibold tracking-tight text-foreground">
-              {isNovelGap && "Özgün Katkı: Belirgin Bir Literatür Boşluğu Tespit Edildi"}
-              {isDirectOverlap && "Dikkat: Birebir Çakışan Tamamlanmış Tez Tespit Edildi"}
+              {isNovelGap &&
+                "Özgün Katkı: Belirgin Bir Literatür Boşluğu Tespit Edildi"}
+              {isDirectOverlap &&
+                "Dikkat: Birebir Çakışan Tamamlanmış Tez Tespit Edildi"}
               {isNoRelated && "Öncü Çalışma: Doğrudan İlgili Tez Bulunamadı"}
             </h3>
 
@@ -53827,13 +54132,12 @@ export function PositioningReportView({
             Akademik Boşluk Analizi ve Literatür Sentezi
           </h2>
           <p className="text-sm leading-relaxed text-muted-foreground">
-            Çalışmanızın literatürdeki konumu, tespit edilen boşluklar ve özgün katkısı aşağıda 3 boyutta sentezlenmiştir.
+            Çalışmanızın literatürdeki konumu, tespit edilen boşluklar ve özgün
+            katkısı aşağıda 3 boyutta sentezlenmiştir.
           </p>
         </div>
 
-        <PositioningMarkdownRenderer
-          content={reportData.gapAnalysisSummary}
-        />
+        <PositioningMarkdownRenderer content={reportData.gapAnalysisSummary} />
       </div>
 
       {/* 3. Strategic Recommended Theses Cards */}
@@ -53845,7 +54149,8 @@ export function PositioningReportView({
                 Kılavuz ve Öncül Tezler ({sortedTheses.length})
               </h2>
               <p className="text-sm leading-relaxed text-muted-foreground">
-                Çalışmanızın temel kuramsal, yöntemsel ve olgusal zeminini oluşturan en stratejik tezler ve konumlandırma rehberi.
+                Çalışmanızın temel kuramsal, yöntemsel ve olgusal zeminini
+                oluşturan en stratejik tezler ve konumlandırma rehberi.
               </p>
             </div>
           </div>
@@ -53854,7 +54159,9 @@ export function PositioningReportView({
             {sortedTheses.map((thesis, idx) => {
               const roleConfig = getRoleBadgeConfig(thesis.strategicRole);
               const RoleIcon = roleConfig.icon;
-              const { mainTitle, secondaryTitle } = splitBilingualTitle(thesis.title);
+              const { mainTitle, secondaryTitle } = splitBilingualTitle(
+                thesis.title,
+              );
               const yökUrl =
                 thesis.tezaraUrl ||
                 `https://tez.yok.gov.tr/UlusalTezMerkezi/tezDetay.jsp?id=${thesis.externalThesisId || thesis.id}`;
@@ -53941,7 +54248,10 @@ export function PositioningReportView({
 
                   <CardFooter className="p-4 sm:p-5 pt-3 flex items-center justify-between border-t border-border/40 gap-2">
                     <span className="text-xs text-muted-foreground">
-                      ID: <span className="font-mono">{thesis.externalThesisId || thesis.id}</span>
+                      ID:{" "}
+                      <span className="font-mono">
+                        {thesis.externalThesisId || thesis.id}
+                      </span>
                     </span>
 
                     <a
@@ -53998,10 +54308,7 @@ import { getSession, SESSION_ERROR_MSG } from "@/lib/session";
 import { Logger } from "@/lib/logger";
 import type { ThesisMatrix } from "@/lib/types";
 import { positioningMatrixSchema } from "./_services/validation";
-import {
-  searchAndSiftTheses,
-  type SiftedThesis,
-} from "./_services/sifting";
+import { searchAndSiftTheses, type SiftedThesis } from "./_services/sifting";
 import { evaluateThesesInParallel } from "./_services/per-thesis-evaluation";
 import {
   analyzePositioningJury,
@@ -54130,7 +54437,7 @@ export async function runPositioningJuryAction(
 }
 
 /**
- * Cerebras API ile başlık ve yazar verilerini sanitize eder ve raporu veritabanına atomik olarak kaydeder.
+ * Başlık ve yazar verilerini sanitize eder ve raporu veritabanına atomik olarak kaydeder.
  *
  * @param matrixInput - Tez matrisi.
  * @param juryResult - Jüri analiz sonucu.
@@ -54158,7 +54465,7 @@ export async function persistPositioningReportAction(
       return { error: "Form doğrulaması başarısız." };
     }
 
-    // Cerebras Sanitization for titles and authors
+    // Sanitization for titles and authors
     if (juryResult.recommendedTheses.length > 0) {
       const itemsToSanitize = juryResult.recommendedTheses.map((t) => ({
         title: t.title || "",

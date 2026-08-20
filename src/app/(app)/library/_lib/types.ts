@@ -18,6 +18,8 @@ export interface LibraryResourceItem {
   subBoxTitle?: string;
   title: string;
   authors: string[];
+  containerTitle?: string;
+  documentType?: string;
   publisher: string;
   publicationYear: number | null;
   doi?: string;

@@ -17,7 +17,6 @@ You are the **Lead Software Engineer** and **Primary Auditor** for Fabricca, a p
 - **Semantic Reranking:** Cohere Rerank API (`rerank-v4.0-pro` — ONLY for reranking)
 - **Object Storage:** Cloudflare R2 / AWS S3 (`@aws-sdk/client-s3`)
 - **Literature & DOI:** OpenAlex API (canonical literature source), Crossref API (DOI resolution)
-- **Secondary LLM:** Cerebras API (`gemma-4-31b` — metadata extraction and sanitization)
 
 > **Constraint:** Introducing alternative frameworks, third-party libraries, or secondary model fallbacks requires explicit user approval.
 

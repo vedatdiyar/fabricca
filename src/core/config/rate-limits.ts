@@ -7,7 +7,6 @@
  * - CROSSREF_LIMITS: Saniyede max 10 istek (600 RPM), concurrency 3
  * - SEMANTIC_SCHOLAR_LIMITS: Saniyede max 1 istek (60 RPM, concurrency 1)
  * - COHERE_LIMITS: Dakikada max 10 istek (10 RPM)
- * - CEREBRAS_LIMITS: Dakikada max 5 istek (5 RPM)
  * - CLOUDFLARE_EMBEDDINGS_LIMITS: Dakikada max 3.000 istek (3000 RPM)
  * - GEMINI_MODEL_QUOTAS: Flash Lite modeller 15 RPM, Flash modeller 5 RPM
  */
@@ -45,12 +44,6 @@ export const SEMANTIC_SCHOLAR_LIMITS: RateLimiterOptions = {
 export const COHERE_LIMITS: RateLimiterOptions = {
   label: "cohere",
   rpm: 10,
-};
-
-/** Cerebras — dakikada max 5 istek (5 req/min). */
-export const CEREBRAS_LIMITS: RateLimiterOptions = {
-  label: "cerebras",
-  rpm: 5,
 };
 
 /** Cloudflare Workers AI text embeddings — dakikada max 3.000 istek (3000 req/min). */

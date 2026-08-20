@@ -184,8 +184,10 @@ export function PositioningReportView({
             </div>
 
             <h3 className="font-serif text-lg sm:text-xl font-semibold tracking-tight text-foreground">
-              {isNovelGap && "Özgün Katkı: Belirgin Bir Literatür Boşluğu Tespit Edildi"}
-              {isDirectOverlap && "Dikkat: Birebir Çakışan Tamamlanmış Tez Tespit Edildi"}
+              {isNovelGap &&
+                "Özgün Katkı: Belirgin Bir Literatür Boşluğu Tespit Edildi"}
+              {isDirectOverlap &&
+                "Dikkat: Birebir Çakışan Tamamlanmış Tez Tespit Edildi"}
               {isNoRelated && "Öncü Çalışma: Doğrudan İlgili Tez Bulunamadı"}
             </h3>
 
@@ -208,13 +210,12 @@ export function PositioningReportView({
             Akademik Boşluk Analizi ve Literatür Sentezi
           </h2>
           <p className="text-sm leading-relaxed text-muted-foreground">
-            Çalışmanızın literatürdeki konumu, tespit edilen boşluklar ve özgün katkısı aşağıda 3 boyutta sentezlenmiştir.
+            Çalışmanızın literatürdeki konumu, tespit edilen boşluklar ve özgün
+            katkısı aşağıda 3 boyutta sentezlenmiştir.
           </p>
         </div>
 
-        <PositioningMarkdownRenderer
-          content={reportData.gapAnalysisSummary}
-        />
+        <PositioningMarkdownRenderer content={reportData.gapAnalysisSummary} />
       </div>
 
       {/* 3. Strategic Recommended Theses Cards */}
@@ -226,7 +227,8 @@ export function PositioningReportView({
                 Kılavuz ve Öncül Tezler ({sortedTheses.length})
               </h2>
               <p className="text-sm leading-relaxed text-muted-foreground">
-                Çalışmanızın temel kuramsal, yöntemsel ve olgusal zeminini oluşturan en stratejik tezler ve konumlandırma rehberi.
+                Çalışmanızın temel kuramsal, yöntemsel ve olgusal zeminini
+                oluşturan en stratejik tezler ve konumlandırma rehberi.
               </p>
             </div>
           </div>
@@ -235,7 +237,9 @@ export function PositioningReportView({
             {sortedTheses.map((thesis, idx) => {
               const roleConfig = getRoleBadgeConfig(thesis.strategicRole);
               const RoleIcon = roleConfig.icon;
-              const { mainTitle, secondaryTitle } = splitBilingualTitle(thesis.title);
+              const { mainTitle, secondaryTitle } = splitBilingualTitle(
+                thesis.title,
+              );
               const yökUrl =
                 thesis.tezaraUrl ||
                 `https://tez.yok.gov.tr/UlusalTezMerkezi/tezDetay.jsp?id=${thesis.externalThesisId || thesis.id}`;
@@ -322,7 +326,10 @@ export function PositioningReportView({
 
                   <CardFooter className="p-4 sm:p-5 pt-3 flex items-center justify-between border-t border-border/40 gap-2">
                     <span className="text-xs text-muted-foreground">
-                      ID: <span className="font-mono">{thesis.externalThesisId || thesis.id}</span>
+                      ID:{" "}
+                      <span className="font-mono">
+                        {thesis.externalThesisId || thesis.id}
+                      </span>
                     </span>
 
                     <a

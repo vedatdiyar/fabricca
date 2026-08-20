@@ -56,14 +56,12 @@ export async function insertLiteratureBatch(
     toInsert.push({
       boxId: thesisBoxId,
       title: article.title,
-      comparisonNote: article.comparisonNote ?? null,
       openalexId: article.openalexId ?? null,
       doi: article.doi?.trim() || null,
       publisher: article.publisher ?? null,
       publicationYear: article.publicationYear ?? null,
       authors: article.authors.filter(Boolean) as string[],
       isRead: false,
-      relevanceScore: article.relevanceScore ?? 0,
     });
   }
 

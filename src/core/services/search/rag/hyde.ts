@@ -1,6 +1,10 @@
 import { z } from "zod";
-import { generateCerebrasStructuredContent } from "@/core/services/ai";
-import { CEREBRAS_MODEL } from "@/lib/constants";
+import { ThinkingLevel } from "@google/genai";
+import {
+  generateGeminiStructuredContent,
+  type JsonSchema,
+} from "@/core/services/ai";
+import { FLASH_LITE_35 } from "@/lib/constants";
 import type { Logger } from "@/lib/logger";
 import { buildHyDePromptPayload } from "./prompts/hyde.prompt";
 
@@ -26,7 +30,7 @@ export const HyDeExpansionSchema = z.object({
 
 export type HyDeExpansionResult = z.infer<typeof HyDeExpansionSchema>;
 
-const JSON_SCHEMA_SPEC = {
+const JSON_SCHEMA_SPEC: JsonSchema = {
   type: "object",
   properties: {
     detectedLanguage: {
@@ -60,7 +64,7 @@ const JSON_SCHEMA_SPEC = {
 };
 
 /**
- * Expands and translates a user query using Cerebras Gemma 4 (31B) for bidirectional cross-lingual HyDE retrieval.
+ * Expands and translates a user query using Gemini Flash Lite 3.5 for bidirectional cross-lingual HyDE retrieval.
  *
  * @param query - The raw user search query.
  * @param logger - Optional logger for structured event tracking.
@@ -76,8 +80,8 @@ export async function expandAndTranslateQuery(
   const payload = buildHyDePromptPayload(trimmed);
 
   try {
-    const result = await generateCerebrasStructuredContent<HyDeExpansionResult>(
-      CEREBRAS_MODEL,
+    const result = await generateGeminiStructuredContent<HyDeExpansionResult>(
+      FLASH_LITE_35,
       payload.systemInstruction,
       payload.userPrompt,
       JSON_SCHEMA_SPEC,
@@ -85,6 +89,7 @@ export async function expandAndTranslateQuery(
       {
         payloadStage: "rag_hyde_expansion",
         zodSchema: HyDeExpansionSchema,
+        thinkingConfig: { thinkingLevel: ThinkingLevel.LOW },
       },
     );
     return result;

@@ -7,9 +7,9 @@ import {
   buildPdfReferencesPromptPayload,
 } from "./prompts/pdf-parser.prompt";
 import {
-  DocumentAnalysisSchema,
   DocumentMetadataZodSchema,
   DocumentReferencesZodSchema,
+  MetadataOnlySchema,
   ReferencesOnlySchema,
   type DocumentAnalysisResult,
 } from "./schema";
@@ -63,7 +63,7 @@ export async function extractDocumentMetadata(
       FLASH_LITE_35,
       payload.systemInstruction,
       payload.userPrompt,
-      DocumentAnalysisSchema,
+      MetadataOnlySchema,
       logger,
       {
         thinkingConfig: { thinkingLevel: ThinkingLevel.LOW },

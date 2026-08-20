@@ -1,6 +1,10 @@
 import { z } from "zod";
-import { generateCerebrasStructuredContent } from "@/core/services/ai";
-import { CEREBRAS_MODEL } from "@/lib/constants";
+import { ThinkingLevel } from "@google/genai";
+import {
+  generateGeminiStructuredContent,
+  type JsonSchema,
+} from "@/core/services/ai";
+import { FLASH_LITE_35 } from "@/lib/constants";
 import { buildChatTitlePromptPayload } from "../_prompts/chat-title.prompt";
 
 const CHAT_TITLE_ZOD_SCHEMA = z.object({
@@ -11,7 +15,7 @@ const CHAT_TITLE_ZOD_SCHEMA = z.object({
     ),
 });
 
-const CHAT_TITLE_JSON_SCHEMA = {
+const CHAT_TITLE_JSON_SCHEMA: JsonSchema = {
   type: "object",
   properties: {
     title: {
@@ -25,7 +29,7 @@ const CHAT_TITLE_JSON_SCHEMA = {
 };
 
 /**
- * Generates a concise 3-5 word academic topic title using Cerebras Gemma 4 (gemma-4-31b).
+ * Generates a concise 3-5 word academic topic title using Gemini Flash Lite 3.5.
  *
  * @param userQuery - The first user prompt query to derive the title from.
  * @returns The generated title string.
@@ -34,8 +38,8 @@ const CHAT_TITLE_JSON_SCHEMA = {
 export async function generateChatTitle(userQuery: string): Promise<string> {
   const payload = buildChatTitlePromptPayload(userQuery);
 
-  const res = await generateCerebrasStructuredContent<{ title: string }>(
-    CEREBRAS_MODEL,
+  const res = await generateGeminiStructuredContent<{ title: string }>(
+    FLASH_LITE_35,
     payload.systemInstruction,
     payload.userPrompt,
     CHAT_TITLE_JSON_SCHEMA,
@@ -43,6 +47,7 @@ export async function generateChatTitle(userQuery: string): Promise<string> {
     {
       zodSchema: CHAT_TITLE_ZOD_SCHEMA,
       payloadStage: "advisor_chat_title",
+      thinkingConfig: { thinkingLevel: ThinkingLevel.MINIMAL },
     },
   );
 

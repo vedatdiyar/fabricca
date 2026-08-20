@@ -137,7 +137,7 @@ export async function executeBackwardExpansion(
     thesisContext,
   );
 
-  // ── 7. Cerebras single call: dedup suspicious + final selection ───────────
+  // ── 7. Gemini single call: dedup suspicious + final selection ───────────
   const selectedCandidates = await coordinateCandidateSelection({
     thesisContext,
     rerankedPool,

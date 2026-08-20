@@ -105,12 +105,10 @@ export async function placeEssentialThesesInBoxes(
     title: string;
     authors: string[];
     publisher: string | null;
-    thesisType: string | null;
+    documentType: string | null;
     publicationYear: number;
     doi: string | null;
-    comparisonNote: string | null;
     isRead: boolean;
-    relevanceScore: number;
   }> = [];
 
   for (const thesis of theses) {
@@ -133,7 +131,7 @@ export async function placeEssentialThesesInBoxes(
       thesis.doi ||
       thesis.tezaraUrl ||
       (thesis.externalThesisId
-        ? `https://tezara.org/theses/${thesis.externalThesisId}`
+        ? `https://tez.yok.gov.tr/UlusalTezMerkezi/tezDetay.jsp?id=${thesis.externalThesisId}`
         : null);
     const doiKey = thesisUrl?.toLowerCase().trim() ?? null;
 
@@ -147,25 +145,15 @@ export async function placeEssentialThesesInBoxes(
     if (titleKey) existingTitles.add(titleKey);
     if (doiKey) existingDois.add(doiKey);
 
-    const noteSections = [
-      thesis.abstract ? `ÖZET: ${thesis.abstract}` : null,
-      thesis.contributionArea ? `KATKI ALANI: ${thesis.contributionArea}` : null,
-      thesis.relevanceReason
-        ? `STRATEJİK KULLANIM: ${thesis.relevanceReason}`
-        : null,
-    ].filter((s): s is string => !!s && s.trim().length > 0);
-
     toInsert.push({
       boxId: targetBoxId,
       title: cleanedTitle,
       authors: [thesis.author].filter((a) => a && a.length > 0),
       publisher: thesis.university || null,
-      thesisType: thesis.thesisType || null,
+      documentType: "thesis",
       publicationYear: thesis.year,
       doi: thesisUrl,
-      comparisonNote: noteSections.length > 0 ? noteSections.join("\n\n") : null,
       isRead: false,
-      relevanceScore: 100,
     });
   }
 

@@ -8,10 +8,7 @@ import { getSession, SESSION_ERROR_MSG } from "@/lib/session";
 import { Logger } from "@/lib/logger";
 import type { ThesisMatrix } from "@/lib/types";
 import { positioningMatrixSchema } from "./_services/validation";
-import {
-  searchAndSiftTheses,
-  type SiftedThesis,
-} from "./_services/sifting";
+import { searchAndSiftTheses, type SiftedThesis } from "./_services/sifting";
 import { evaluateThesesInParallel } from "./_services/per-thesis-evaluation";
 import {
   analyzePositioningJury,
@@ -140,7 +137,7 @@ export async function runPositioningJuryAction(
 }
 
 /**
- * Cerebras API ile başlık ve yazar verilerini sanitize eder ve raporu veritabanına atomik olarak kaydeder.
+ * Başlık ve yazar verilerini sanitize eder ve raporu veritabanına atomik olarak kaydeder.
  *
  * @param matrixInput - Tez matrisi.
  * @param juryResult - Jüri analiz sonucu.
@@ -168,7 +165,7 @@ export async function persistPositioningReportAction(
       return { error: "Form doğrulaması başarısız." };
     }
 
-    // Cerebras Sanitization for titles and authors
+    // Sanitization for titles and authors
     if (juryResult.recommendedTheses.length > 0) {
       const itemsToSanitize = juryResult.recommendedTheses.map((t) => ({
         title: t.title || "",

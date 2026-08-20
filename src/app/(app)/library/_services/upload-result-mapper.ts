@@ -33,6 +33,8 @@ export function buildCompletionResourceItem(
     boxMeta,
     createMode
       ? {
+          containerTitle: metadata.containerTitle || undefined,
+          documentType: metadata.documentType || undefined,
           isRead: false,
           pdfUrl: pipelineResult.r2Url,
           pdfFileName: pipelineResult.finalFileName,
@@ -42,6 +44,12 @@ export function buildCompletionResourceItem(
       : {
           title: metadata.title,
           authors: metadata.authors,
+          containerTitle:
+            metadata.containerTitle ||
+            targetResource.containerTitle ||
+            undefined,
+          documentType:
+            metadata.documentType || targetResource.documentType || undefined,
           publisher: metadata.publisher || "Belirtilmemiş",
           publicationYear: metadata.publicationYear,
           doi: metadata.doi || undefined,

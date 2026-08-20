@@ -7,7 +7,11 @@ import { parseScannedPdf } from "./scanned-parser";
 import { parseBornDigitalPdf } from "./born-digital-parser";
 
 export type { DocumentAnalysisResult, PageAnalysis };
-export { DocumentAnalysisSchema, ReferencesOnlySchema } from "./schema";
+export {
+  DocumentAnalysisSchema,
+  ReferencesOnlySchema,
+  MetadataOnlySchema,
+} from "./schema";
 export type { PdfParseOptions, PdfChunkParseResult };
 export {
   detectPrintedPageNumbers,
@@ -26,15 +30,16 @@ export {
 /**
  * Parses a PDF document into structured page-level markdown, metadata, and references.
  *
- * - **Scanned PDF:** Markdown extracted via Mistral OCR (R2 presigned URL → server-to-server fetch).
+ * - **Scanned / Image-based PDF:** Markdown extracted via Mistral OCR (R2 presigned URL → server-to-server fetch).
  *   Metadata and references are then extracted via Gemini Flash-Lite.
- * - **Born-digital PDF:** Text extracted locally via pdf-inspector (<100 ms).
+ * - **Born-digital / Mixed PDF:** Text extracted locally via pdf-inspector (<100 ms).
+ *   If extracted text is insufficient (<100 chars) and r2Key is present, seamlessly falls back to Mistral OCR.
  *   Metadata and references are extracted in parallel via Gemini Flash-Lite.
  *
  * @param pdfBuffer - Raw PDF file content buffer.
  * @param fileName - Original file name (used for logging and fallback title).
  * @param r2Key - R2 object key of the PDF. Required for scanned PDFs (Mistral OCR fetches from R2).
- *   Ignored for born-digital PDFs.
+ *   Ignored for born-digital PDFs unless fallback to OCR is needed.
  * @param options - Optional driver settings (page range).
  * @param logger - Optional logger instance.
  * @returns Merged DocumentAnalysisResult with metadata, pages, and references.
@@ -47,13 +52,45 @@ export async function parsePdfToDocumentAnalysis(
   logger?: Logger,
 ): Promise<DocumentAnalysisResult> {
   const inspection = processPdfInspector(pdfBuffer);
-  const isScanned = inspection.pdfType === "Scanned";
+  const isImageOrScanned =
+    inspection.pdfType === "Scanned" || inspection.pdfType === "ImageBased";
 
-  if (isScanned) {
+  if (isImageOrScanned) {
+    logger?.info("pdf_parse_scanned_routed", {
+      service: "pdf-parser",
+      data: { fileName, pdfType: inspection.pdfType },
+    });
     return parseScannedPdf(fileName, r2Key, options, logger);
   }
 
-  return parseBornDigitalPdf(pdfBuffer, fileName, options, logger);
+  const bornDigitalResult = await parseBornDigitalPdf(
+    pdfBuffer,
+    fileName,
+    options,
+    logger,
+  );
+
+  // Safety net: If born-digital extraction produced virtually no text (e.g. corrupt font/CMap or hidden scan)
+  // and an R2 key is available for Mistral OCR, fall back to scanned OCR processing.
+  const totalExtractedChars = bornDigitalResult.pages.reduce(
+    (sum, p) => sum + p.markdownContent.trim().length,
+    0,
+  );
+
+  if (totalExtractedChars < 100 && r2Key) {
+    logger?.info("pdf_parse_insufficient_text_fallback_to_ocr", {
+      service: "pdf-parser",
+      data: {
+        fileName,
+        pdfType: inspection.pdfType,
+        totalExtractedChars,
+        pageCount: bornDigitalResult.pages.length,
+      },
+    });
+    return parseScannedPdf(fileName, r2Key, options, logger);
+  }
+
+  return bornDigitalResult;
 }
 
 /**
@@ -80,17 +117,6 @@ export async function parsePdfToChunks(
   );
 
   const chunks = await buildChunksFromPageAnalysis(analysis.pages);
-
-  logger?.info("pdf_parse_content_success", {
-    service: "pdf-parser",
-    data: {
-      fileName,
-      pagesParsed: analysis.pages.length,
-      chunkCount: chunks.length,
-      referencesCount: analysis.references.length,
-      metadataTitle: analysis.metadata.title,
-    },
-  });
 
   return {
     chunks,

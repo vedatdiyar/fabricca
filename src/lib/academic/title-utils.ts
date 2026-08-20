@@ -25,7 +25,12 @@ export function splitBilingualTitle(rawTitle: string | null | undefined): {
     const words1 = part1.split(/\s+/).filter(Boolean);
     const words2 = part2.split(/\s+/).filter(Boolean);
 
-    if (words1.length >= 2 && words2.length >= 2 && part1.length >= 8 && part2.length >= 8) {
+    if (
+      words1.length >= 2 &&
+      words2.length >= 2 &&
+      part1.length >= 8 &&
+      part2.length >= 8
+    ) {
       splitPoints.push(splitIndex);
     }
   }

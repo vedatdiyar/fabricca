@@ -34,9 +34,7 @@ export type StrategicRole = z.infer<typeof strategicRoleEnum>;
 
 /** Enum type representing the global positioning / literature gap status. */
 export type PositioningGlobalStatus =
-  | "DIRECT_OVERLAP"
-  | "NOVEL_GAP_IDENTIFIED"
-  | "NO_RELATED_LITERATURE";
+  "DIRECT_OVERLAP" | "NOVEL_GAP_IDENTIFIED" | "NO_RELATED_LITERATURE";
 
 /** Structure for individual recommended thesis entries in gap analysis reports. */
 export interface RecommendedThesisItem {

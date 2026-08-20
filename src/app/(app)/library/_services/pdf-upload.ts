@@ -1,6 +1,7 @@
 import type { Logger } from "@/lib/logger";
 import { getPdfFromR2 } from "@/core/services/storage/r2";
 import { parsePdfToChunks } from "@/core/services/pdf";
+import { enrichWithCrossref } from "@/core/services/academic";
 import type { DocumentAnalysisResult } from "@/core/services/pdf/schema";
 import type { DocumentChunk } from "@/core/services/pdf/chunker";
 import type { ParsedReference } from "@/core/db/schema";
@@ -62,6 +63,36 @@ export async function fetchAndExtractPdf(
     log,
   );
 
+  // Tier 2: Check if crucial fields (publisher, year, containerTitle, DOI) are missing, and enrich via Crossref
+  const isMissingGaps =
+    !metadata.publisher ||
+    !metadata.publicationYear ||
+    !metadata.containerTitle ||
+    !metadata.doi;
+
+  let finalMetadata = { ...metadata };
+
+  if (isMissingGaps && metadata.title) {
+    const enriched = await enrichWithCrossref({
+      title: metadata.title,
+      authors: metadata.authors,
+      doi: metadata.doi,
+      logger: log,
+    });
+
+    if (enriched) {
+      finalMetadata = {
+        title: metadata.title,
+        authors: metadata.authors,
+        containerTitle: metadata.containerTitle || enriched.containerTitle,
+        documentType: metadata.documentType || enriched.documentType,
+        publisher: metadata.publisher || enriched.publisher,
+        publicationYear: metadata.publicationYear ?? enriched.publicationYear,
+        doi: metadata.doi || enriched.doi,
+      };
+    }
+  }
+
   const parsedReferences: ParsedReference[] = references.map((ref) => ({
     raw: ref.raw,
     documentType: ref.documentType ?? null,
@@ -74,5 +105,5 @@ export async function fetchAndExtractPdf(
     resolved: Boolean(ref.title ?? ref.year ?? ref.containerTitle),
   }));
 
-  return { buffer, chunks, parsedReferences, metadata };
+  return { buffer, chunks, parsedReferences, metadata: finalMetadata };
 }

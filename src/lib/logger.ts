@@ -42,7 +42,6 @@ export type ServiceName =
   | "dashboard"
   | "cohere"
   | "positioning"
-  | "cerebras"
   | "pdf-parser"
   | "rag-search"
   | "advisor"

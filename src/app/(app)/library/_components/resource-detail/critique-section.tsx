@@ -12,7 +12,6 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import type { LibraryResourceCritique } from "../../_lib/types";
@@ -83,7 +82,7 @@ function toFieldValues(
 }
 
 /**
- * Article analysis (Eser Analizi) form with 5 guiding academic fields and a live completion badge.
+ * Article analysis (Eser Analizi) form with 5 guiding academic fields.
  *
  * @param root0 - Component props.
  * @param root0.critique - The saved analysis for the currently selected resource, when present.
@@ -103,10 +102,6 @@ export function CritiqueSection({
     setPrevCritique(critique);
     setValues(toFieldValues(critique));
   }
-
-  const completedCount = CRITIQUE_FIELDS.filter(
-    (field) => values[field.key].trim().length > 0,
-  ).length;
 
   const handleSave = (e: React.FormEvent) => {
     e.preventDefault();
@@ -129,12 +124,6 @@ export function CritiqueSection({
               Eser Analizi
             </h3>
           </div>
-          <Badge
-            variant="outline"
-            className="text-xs font-medium border-border"
-          >
-            {completedCount}/5 Tamamlandı
-          </Badge>
         </div>
 
         <form onSubmit={handleSave} className="space-y-4">
@@ -167,10 +156,7 @@ export function CritiqueSection({
             );
           })}
 
-          <div className="flex items-center justify-between gap-3 pt-1 border-t border-border/40">
-            <p className="text-[10px] text-muted-foreground">
-              Alanları doldurdukça tamamlanma durumunuz güncellenir.
-            </p>
+          <div className="flex items-center justify-end gap-3 pt-1 border-t border-border/40">
             <Button
               type="submit"
               variant="default"

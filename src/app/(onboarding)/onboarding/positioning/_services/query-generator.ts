@@ -79,7 +79,13 @@ export const positioningQueryJsonSchema: JsonSchema = {
  * @returns The structured multi-aspect positioning query output.
  */
 export async function generatePositioningQuery(
-  matrix: PositioningMatrixInput | { subjectProblem: string; theoreticalFramework?: string; methodology?: string },
+  matrix:
+    | PositioningMatrixInput
+    | {
+        subjectProblem: string;
+        theoreticalFramework?: string;
+        methodology?: string;
+      },
   logger?: Logger,
 ): Promise<PositioningQuery> {
   const payload = buildQueryGenerationPromptPayload(matrix);

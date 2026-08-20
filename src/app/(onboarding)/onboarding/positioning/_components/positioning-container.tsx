@@ -1,7 +1,11 @@
 "use client";
 
 import type { Positioning } from "@/core/db/schema";
-import type { PositioningGlobalStatus, RecommendedThesisItem, GapAnalysisStructured } from "../_services/validation";
+import type {
+  PositioningGlobalStatus,
+  RecommendedThesisItem,
+  GapAnalysisStructured,
+} from "../_services/validation";
 import type { JuryAnalysisResult } from "../_services/analysis";
 import { usePositioningContinue } from "../../_hooks/use-positioning-continue";
 import { PositioningReportView } from "./positioning-report-view";

@@ -18,33 +18,35 @@ export function buildPdfParserPromptPayload(
       "You are an expert academic PDF parser. Your role is to analyze provided PDF pages and extract grounded structured metadata.",
 
     primaryTask:
-      "Analyze PDF first pages to extract accurate document metadata: title, authors, publication year, publisher, and DOI strictly grounded in the source text.",
+      "Analyze PDF first pages and running headers to extract accurate document metadata: title, authors, containerTitle (journal or edited book name), publication year, publisher, and DOI strictly grounded in the source text.",
 
     rulesAndConstraints: `1. **Grounded Extraction & Verbatim Preservation:**
    - Treat the provided PDF text as the absolute limit of truth. Extract facts strictly printed in the source.
    - Standardize document title into standard Academic Title Case (even if printed in ALL CAPS) and author names into Proper Case, preserving acronyms (NATO, YÖK, PKK, DOI, IMF, etc.) in uppercase.
+   - Extract journal name or edited book title into containerTitle if present in running headers, footers, or title blocks (e.g. "Alternatif Politika", "Routledge Handbook on the Kurds").
    - Output null for missing metadata fields when absent from source text.
 
 2. **Language & Character Normalization:**
    - Ensure all Turkish characters (ç, ğ, ı, ö, ş, ü, İ) are normalized and preserved without corruption.`,
 
     outputFormat:
-      "Return structured JSON adhering strictly to the provided document metadata schema.",
+      "Return structured JSON with a 'metadata' object adhering strictly to the provided document metadata schema.",
 
     examples: `<example>
 <input>
-THE KURDISH NATIONALIST MOVEMENT: OPPORTUNITY, MOBILIZATION AND IDENTITY
-David Romano
-Cambridge University Press, 2006
-DOI: 10.1017/CBO9780511606731
+Alternatif Politika, Cilt. 2, Sayı. 2, 175-194, October 2010
+AYRILIKÇI KÜRT HAREKETİNİN TARİHSEL DİNAMİKLERİNE KISA BİR BAKIŞ
+Maya ARAKON
 </input>
 <output>
 {
-  "title": "The Kurdish Nationalist Movement: Opportunity, Mobilization and Identity",
-  "authors": [{"name": "David Romano", "role": "Author"}],
-  "publicationYear": 2006,
-  "publisher": "Cambridge University Press",
-  "doi": "10.1017/CBO9780511606731"
+  "metadata": {
+    "title": "Ayrılıkçı Kürt Hareketinin Tarihsel Dinamiklerine Kısa Bir Bakış",
+    "authors": ["Maya Arakon"],
+    "containerTitle": "Alternatif Politika",
+    "publicationYear": 2010,
+    "publisher": "Alternatif Politika"
+  }
 }
 </output>
 </example>`,

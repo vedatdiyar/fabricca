@@ -17,7 +17,7 @@ export type { RagSearchDebug, RagSearchResultItem, RagSearchOptions };
 
 /**
  * Runs hybrid RAG retrieval by fusing dense (pgvector HNSW) and lexical (tsvector GIN) branches via RRF and reranking with Cohere.
- * Utilizes Cerebras Gemma 4 (31B) for bidirectional cross-lingual HyDE query expansion.
+ * Utilizes Gemini Flash Lite 3.5 for bidirectional cross-lingual HyDE query expansion.
  *
  * @param options - Hybrid search options (query, filters, and debug flags).
  * @returns Ranked RAG result items (Top 5 by default).

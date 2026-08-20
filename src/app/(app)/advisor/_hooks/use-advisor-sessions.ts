@@ -18,17 +18,9 @@ import type { Message } from "../_lib/types";
 /** Sentinel used to trigger the initial session sync on mount regardless of the initial id value. */
 const PREV_SESSION_SENTINEL = Symbol("prev-session-sentinel");
 
-type CitationUpdater =
-  | { messageId: string; sourceIndex: number }
-  | null
-  | ((
-      prev: { messageId: string; sourceIndex: number } | null,
-    ) => { messageId: string; sourceIndex: number } | null);
-
 interface UseAdvisorSessionsParams {
   initialSessionId?: number;
   isSendingRef: { current: boolean };
-  setActiveCitation: (updater: CitationUpdater) => void;
 }
 
 /**
@@ -37,13 +29,11 @@ interface UseAdvisorSessionsParams {
  * @param root0 - Hook dependencies.
  * @param root0.initialSessionId - Session id to restore on mount, if any.
  * @param root0.isSendingRef - Shared ref signalling an in-flight message send.
- * @param root0.setActiveCitation - Resets the active UI citation on session switches.
  * @returns Session state and session lifecycle handlers.
  */
 export function useAdvisorSessions({
   initialSessionId,
   isSendingRef,
-  setActiveCitation,
 }: UseAdvisorSessionsParams) {
   const [sessions, setSessions] = useState<ChatSessionListItem[]>([]);
   const [activeSessionId, setActiveSessionId] = useState<number | null>(null);
@@ -97,9 +87,8 @@ export function useAdvisorSessions({
       } else {
         setMessages([]);
       }
-      setActiveCitation(null);
     },
-    [setMessages, setActiveCitation],
+    [setMessages],
   );
 
   const prevInitialSessionIdRef = useRef<number | undefined | symbol>(
@@ -112,9 +101,10 @@ export function useAdvisorSessions({
   }, [activeSessionId]);
 
   // Load sessions and the active session on mount, and resync when the initialSessionId route parameter changes (e.g. browser navigation).
-  // activeSessionId is intentionally excluded from deps to prevent the sidebar click (which sets activeSessionId) from re-triggering syncFromProp and racing against handleSelectSession.
   useEffect(() => {
     if (prevInitialSessionIdRef.current === initialSessionId) return;
+    const isFirstMount =
+      prevInitialSessionIdRef.current === PREV_SESSION_SENTINEL;
     prevInitialSessionIdRef.current = initialSessionId;
 
     let cancelled = false;
@@ -130,35 +120,28 @@ export function useAdvisorSessions({
       const list = res.data;
       setSessions(list);
 
-      const targetId =
-        initialSessionId !== undefined &&
-        list.some((s) => s.id === initialSessionId)
-          ? initialSessionId
-          : null;
-
-      if (targetId !== null) {
-        if (activeSessionIdRef.current !== targetId) {
-          setActiveSessionId(targetId);
-          await loadMessages(targetId);
+      if (initialSessionId !== undefined) {
+        const sessionExists = list.some((s) => s.id === initialSessionId);
+        if (sessionExists) {
+          if (activeSessionIdRef.current !== initialSessionId) {
+            setActiveSessionId(initialSessionId);
+            await loadMessages(initialSessionId);
+          }
+        } else {
+          setActiveSessionId(null);
+          setMessages([]);
         }
-      } else if (activeSessionIdRef.current !== null) {
+      } else if (!isFirstMount && activeSessionIdRef.current !== null) {
         setActiveSessionId(null);
         setMessages([]);
-        setActiveCitation(null);
       }
     }
+
     void syncFromProp();
     return () => {
       cancelled = true;
-      prevInitialSessionIdRef.current = PREV_SESSION_SENTINEL;
     };
-  }, [
-    initialSessionId,
-    loadMessages,
-    setMessages,
-    setActiveCitation,
-    isSendingRef,
-  ]);
+  }, [initialSessionId, loadMessages, setMessages, isSendingRef]);
 
   const handleSelectSession = useCallback(
     async (sessionId: number) => {
@@ -172,9 +155,8 @@ export function useAdvisorSessions({
   const handleCreateSession = useCallback(() => {
     setActiveSessionId(null);
     setMessages([]);
-    setActiveCitation(null);
     syncUrlSession(null);
-  }, [setMessages, setActiveCitation, syncUrlSession]);
+  }, [setMessages, syncUrlSession]);
 
   const handleDeleteSession = useCallback(
     async (sessionId: number) => {
@@ -183,7 +165,6 @@ export function useAdvisorSessions({
         if (activeSessionId === sessionId) {
           setActiveSessionId(null);
           setMessages([]);
-          setActiveCitation(null);
           await loadSessions();
           syncUrlSession(null);
         } else {
@@ -194,13 +175,7 @@ export function useAdvisorSessions({
         toast.error(res.error || "Sohbet silinemedi.");
       }
     },
-    [
-      activeSessionId,
-      setMessages,
-      loadSessions,
-      syncUrlSession,
-      setActiveCitation,
-    ],
+    [activeSessionId, setMessages, loadSessions, syncUrlSession],
   );
 
   /**

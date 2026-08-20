@@ -28,7 +28,7 @@ export interface SiftedThesis extends TezaraThesisDetails {
 const SCORE_EPSILON = 1e-4;
 
 /** Minimum Cohere Rerank v4.0 relevance score to filter out irrelevant/noisy candidates. */
-export const MIN_COHERE_RELEVANCE_SCORE = 0.50;
+export const MIN_COHERE_RELEVANCE_SCORE = 0.5;
 
 /**
  * 3-Dimensional Academic Sifting Engine:
@@ -54,7 +54,8 @@ export async function searchAndSiftTheses(
   const queryGenStart = performance.now();
   logger?.info("sifting_query_generation_start", {
     service: "gemini",
-    filePath: "src/app/(onboarding)/onboarding/positioning/_services/sifting.ts",
+    filePath:
+      "src/app/(onboarding)/onboarding/positioning/_services/sifting.ts",
   });
 
   const distilledQuery = await generatePositioningQuery(matrixInput, logger);
@@ -71,7 +72,8 @@ export async function searchAndSiftTheses(
 
   logger?.info("sifting_query_generation_success", {
     service: "gemini",
-    filePath: "src/app/(onboarding)/onboarding/positioning/_services/sifting.ts",
+    filePath:
+      "src/app/(onboarding)/onboarding/positioning/_services/sifting.ts",
     durationMs: performance.now() - queryGenStart,
     data: {
       query1,
@@ -85,7 +87,8 @@ export async function searchAndSiftTheses(
 
   logger?.info("sifting_multi_search_start", {
     service: "tezara",
-    filePath: "src/app/(onboarding)/onboarding/positioning/_services/sifting.ts",
+    filePath:
+      "src/app/(onboarding)/onboarding/positioning/_services/sifting.ts",
     data: { queries: [query1, query2, query3], singleQueryLimit },
   });
 
@@ -114,7 +117,8 @@ export async function searchAndSiftTheses(
   if (filteredCandidates.length === 0) {
     logger?.info("sifting_multi_search_success", {
       service: "tezara",
-      filePath: "src/app/(onboarding)/onboarding/positioning/_services/sifting.ts",
+      filePath:
+        "src/app/(onboarding)/onboarding/positioning/_services/sifting.ts",
       durationMs: performance.now() - searchStart,
       data: { candidateCount: 0 },
     });
@@ -123,7 +127,8 @@ export async function searchAndSiftTheses(
 
   logger?.info("sifting_multi_search_success", {
     service: "tezara",
-    filePath: "src/app/(onboarding)/onboarding/positioning/_services/sifting.ts",
+    filePath:
+      "src/app/(onboarding)/onboarding/positioning/_services/sifting.ts",
     durationMs: performance.now() - searchStart,
     data: { candidateCount: filteredCandidates.length },
   });
@@ -136,7 +141,8 @@ export async function searchAndSiftTheses(
 
   logger?.info("sifting_rerank_start", {
     service: "cohere",
-    filePath: "src/app/(onboarding)/onboarding/positioning/_services/sifting.ts",
+    filePath:
+      "src/app/(onboarding)/onboarding/positioning/_services/sifting.ts",
     data: {
       model: COHERE_RERANK_MODEL,
       candidateCount: filteredCandidates.length,
@@ -171,7 +177,8 @@ export async function searchAndSiftTheses(
 
   logger?.info("sifting_rerank_success", {
     service: "cohere",
-    filePath: "src/app/(onboarding)/onboarding/positioning/_services/sifting.ts",
+    filePath:
+      "src/app/(onboarding)/onboarding/positioning/_services/sifting.ts",
     durationMs: performance.now() - rerankStart,
     data: {
       candidateCount: filteredCandidates.length,

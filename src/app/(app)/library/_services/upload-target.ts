@@ -59,6 +59,8 @@ export async function resolveCreateTarget(
       boxId: targetBox.id,
       title: metadata.title,
       authors: metadata.authors,
+      containerTitle: metadata.containerTitle || null,
+      documentType: metadata.documentType || null,
       publisher: metadata.publisher || "Belirtilmemiş",
       publicationYear: metadata.publicationYear ?? null,
       doi: metadata.doi || null,
@@ -122,9 +124,13 @@ export async function resolveUpgradeTarget(
     .set({
       title: metadata.title,
       authors: metadata.authors,
-      publisher: metadata.publisher || "Belirtilmemiş",
-      publicationYear: metadata.publicationYear ?? null,
-      doi: metadata.doi || null,
+      containerTitle:
+        metadata.containerTitle || resource.containerTitle || null,
+      documentType: metadata.documentType || resource.documentType || null,
+      publisher: metadata.publisher || resource.publisher || "Belirtilmemiş",
+      publicationYear:
+        metadata.publicationYear ?? resource.publicationYear ?? null,
+      doi: metadata.doi || resource.doi || null,
     })
     .where(eq(sources.id, resourceId));
 

@@ -1,5 +1,5 @@
 /**
- * Cerebras Gemma-4-31B selection client for backward expansion.
+ * Gemini Flash Lite 3.5 selection client for backward expansion.
  *
  * Single LLM call that performs two tasks simultaneously:
  *   1. Cross-language / edition-aware duplicate detection for "suspicious" candidates
@@ -12,9 +12,10 @@
  */
 
 import { z } from "zod";
-import { CEREBRAS_MODEL } from "@/lib/constants";
+import { ThinkingLevel } from "@google/genai";
+import { FLASH_LITE_35 } from "@/lib/constants";
 import {
-  generateCerebrasStructuredContent,
+  generateGeminiStructuredContent,
   type JsonSchema,
 } from "@/core/services/ai";
 import { buildPromptPayload } from "@/lib/ai/prompt-builder";
@@ -29,8 +30,8 @@ export interface SuspiciousEntry {
   authorScore: number;
 }
 
-/** Payload sent to the Cerebras LLM. */
-interface CerebrasSelectionPayload {
+/** Payload sent to the Gemini LLM. */
+export interface GeminiSelectionPayload {
   /** Thesis box context (title + description + matrix summary). */
   thesisContext: string;
   /** All confirmed-unique candidates in priority order (Cohere reranked). */
@@ -58,9 +59,9 @@ const selectionResponseSchema = z.object({
   suspiciousClear: z.array(z.string()),
 });
 
-type CerebrasSelectionResponse = z.infer<typeof selectionResponseSchema>;
+type GeminiSelectionResponse = z.infer<typeof selectionResponseSchema>;
 
-/** Strict JSON schema constraint for the Cerebras structured selection call. */
+/** Strict JSON schema constraint for the Gemini structured selection call. */
 const SELECTION_JSON_SCHEMA: JsonSchema = {
   type: "object",
   properties: {
@@ -87,7 +88,7 @@ const SELECTION_JSON_SCHEMA: JsonSchema = {
   additionalProperties: false,
 };
 
-function buildSelectionPromptPayload(payload: CerebrasSelectionPayload) {
+function buildSelectionPromptPayload(payload: GeminiSelectionPayload) {
   const suspiciousSection =
     payload.suspiciousCandidates.length > 0
       ? `### Şüpheli Çift Kayıtlar (Suspicious Duplicates - Doğrulama Gerektirenler):
@@ -168,27 +169,25 @@ ${suspiciousSection}`,
 }
 
 /**
- * Calls Cerebras Gemma-4-31B to deduplicate suspicious candidates and
+ * Calls Gemini Flash Lite 3.5 to deduplicate suspicious candidates and
  * select the final N sources from the backward expansion candidate pool.
  *
  * @param payload - Structured input: context, candidates, suspicious list, target count.
  * @param allCandidates - Full list of candidate sources.
  * @returns Selected CandidateSource items (length ≤ targetCount).
  */
-export async function selectWithCerebras(
-  payload: CerebrasSelectionPayload,
+export async function selectWithGemini(
+  payload: GeminiSelectionPayload,
   allCandidates: CandidateSource[],
 ): Promise<CandidateSource[]> {
   const fallback = () => allCandidates.slice(0, payload.targetCount);
 
   const promptPayload = buildSelectionPromptPayload(payload);
 
-  // Route through the central Cerebras provider (CEREBRAS_MODEL, retries,
-  // structured output + zod validation). Any failure degrades to top-N order.
-  let parsed: CerebrasSelectionResponse;
+  let parsed: GeminiSelectionResponse;
   try {
-    parsed = await generateCerebrasStructuredContent<CerebrasSelectionResponse>(
-      CEREBRAS_MODEL,
+    parsed = await generateGeminiStructuredContent<GeminiSelectionResponse>(
+      FLASH_LITE_35,
       promptPayload.systemInstruction,
       promptPayload.userPrompt,
       SELECTION_JSON_SCHEMA,
@@ -196,8 +195,7 @@ export async function selectWithCerebras(
       {
         payloadStage: "backward_expansion_selection",
         zodSchema: selectionResponseSchema,
-        temperature: 0,
-        maxTokens: 512,
+        thinkingConfig: { thinkingLevel: ThinkingLevel.LOW },
       },
     );
   } catch {
@@ -211,14 +209,14 @@ export async function selectWithCerebras(
     (parsed.suspiciousDuplicates ?? []).map((t) => t.toLowerCase().trim()),
   );
 
-  // Add confirmed candidates in the order Gemma selected
+  // Add confirmed candidates in the order Gemini selected
   for (const idx of parsed.selectedIndices ?? []) {
     if (selected.length >= payload.targetCount) break;
     const candidate = allCandidates[idx];
     if (candidate) selected.push(candidate);
   }
 
-  // Append suspiciousClear candidates that Gemma approved, if still room
+  // Append suspiciousClear candidates that Gemini approved, if still room
   for (const clearTitle of parsed.suspiciousClear ?? []) {
     if (selected.length >= payload.targetCount) break;
     if (duplicateTitleSet.has(clearTitle.toLowerCase().trim())) continue;

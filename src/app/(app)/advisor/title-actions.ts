@@ -6,7 +6,7 @@ import { handleActionError } from "@/lib/errors/handle-error";
 import { renameChatSession } from "./session-actions";
 
 /**
- * Generates a concise 3-5 word academic topic title using Cerebras Gemma 4 (gemma-4-31b)
+ * Generates a concise 3-5 word academic topic title using Gemini Flash Lite 3.5
  * and updates the chat session title in the database.
  *
  * @param sessionId - The chat session ID to update.

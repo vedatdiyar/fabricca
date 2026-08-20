@@ -51,7 +51,7 @@ export function AdvisorChat({ initialSessionId }: AdvisorChatProps) {
   return (
     <div className="w-full flex gap-6 min-h-0 h-[calc(100vh-8.5rem)]">
       {/* Sidebar */}
-      <div className="hidden lg:flex flex-col min-h-0 w-72 shrink-0 h-full">
+      <div className="hidden lg:flex flex-col min-h-0 w-80 shrink-0 h-full">
         <ChatSidebar
           sessions={sessions}
           activeSessionId={activeSessionId}
