@@ -84,9 +84,12 @@ export function useAdvisorChatState(messages: Message[]) {
 
   const activeSource = useMemo(() => {
     if (!activeCitation) return null;
+    if (activeCitation.messageId.startsWith("streaming-")) {
+      return streaming.sources?.[activeCitation.sourceIndex] ?? null;
+    }
     const msg = messages.find((m) => m.id === activeCitation.messageId);
     return msg?.sources?.[activeCitation.sourceIndex] ?? null;
-  }, [activeCitation, messages]);
+  }, [activeCitation, messages, streaming.sources]);
 
   const handleApprovePipeline = useCallback(() => {
     setIsLocked(false);

@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
 import {
   getChatSessions,
@@ -14,9 +14,6 @@ import type { RagSearchResultItem } from "@/core/services/search/rag-search";
 import type { PipelineResult } from "@/app/(app)/advisor/_services/pipeline/types";
 import type { AdvisorPersona } from "@/app/(app)/advisor/_services/classifier";
 import type { Message } from "../_lib/types";
-
-/** Sentinel used to trigger the initial session sync on mount regardless of the initial id value. */
-const PREV_SESSION_SENTINEL = Symbol("prev-session-sentinel");
 
 interface UseAdvisorSessionsParams {
   initialSessionId?: number;
@@ -78,10 +75,12 @@ export function useAdvisorSessions({
           toolCalls:
             (m.toolCalls as PendingToolCall[] | undefined) ?? undefined,
           pipeline: (m.pipelineData as PipelineResult | undefined) ?? undefined,
-          timestamp: m.createdAt.toLocaleTimeString("tr-TR", {
-            hour: "2-digit",
-            minute: "2-digit",
-          }),
+          timestamp: m.createdAt
+            ? new Date(m.createdAt).toLocaleTimeString("tr-TR", {
+                hour: "2-digit",
+                minute: "2-digit",
+              })
+            : "",
         }));
         setMessages(mapped);
       } else {
@@ -91,24 +90,10 @@ export function useAdvisorSessions({
     [setMessages],
   );
 
-  const prevInitialSessionIdRef = useRef<number | undefined | symbol>(
-    PREV_SESSION_SENTINEL,
-  );
-  const activeSessionIdRef = useRef(activeSessionId);
-
+  // Load sessions and restore the active session on mount or when the initialSessionId prop changes.
   useEffect(() => {
-    activeSessionIdRef.current = activeSessionId;
-  }, [activeSessionId]);
-
-  // Load sessions and the active session on mount, and resync when the initialSessionId route parameter changes (e.g. browser navigation).
-  useEffect(() => {
-    if (prevInitialSessionIdRef.current === initialSessionId) return;
-    const isFirstMount =
-      prevInitialSessionIdRef.current === PREV_SESSION_SENTINEL;
-    prevInitialSessionIdRef.current = initialSessionId;
-
     let cancelled = false;
-    /** Loads the session list and messages for the target session id if provided. */
+
     async function syncFromProp() {
       if (isSendingRef.current) return;
       const res = await getChatSessions();
@@ -123,15 +108,39 @@ export function useAdvisorSessions({
       if (initialSessionId !== undefined) {
         const sessionExists = list.some((s) => s.id === initialSessionId);
         if (sessionExists) {
-          if (activeSessionIdRef.current !== initialSessionId) {
-            setActiveSessionId(initialSessionId);
-            await loadMessages(initialSessionId);
+          setActiveSessionId(initialSessionId);
+          const msgRes = await getChatMessages(initialSessionId);
+          if (cancelled) return;
+          if (msgRes.success && msgRes.messages) {
+            const mapped: Message[] = msgRes.messages.map((m) => ({
+              id: `msg-${m.id}`,
+              dbId: m.id,
+              role: m.role as "user" | "model",
+              persona: (m.persona as AdvisorPersona | undefined) ?? undefined,
+              content: m.content,
+              sources:
+                (m.sources as RagSearchResultItem[] | undefined) ?? undefined,
+              toolCalls:
+                (m.toolCalls as PendingToolCall[] | undefined) ?? undefined,
+              pipeline:
+                (m.pipelineData as PipelineResult | undefined) ?? undefined,
+              timestamp: m.createdAt
+                ? new Date(m.createdAt).toLocaleTimeString("tr-TR", {
+                    hour: "2-digit",
+                    minute: "2-digit",
+                  })
+                : "",
+            }));
+            setMessages(mapped);
+          } else {
+            setMessages([]);
           }
         } else {
           setActiveSessionId(null);
           setMessages([]);
+          syncUrlSession(null);
         }
-      } else if (!isFirstMount && activeSessionIdRef.current !== null) {
+      } else {
         setActiveSessionId(null);
         setMessages([]);
       }
@@ -141,7 +150,7 @@ export function useAdvisorSessions({
     return () => {
       cancelled = true;
     };
-  }, [initialSessionId, loadMessages, setMessages, isSendingRef]);
+  }, [initialSessionId, setMessages, syncUrlSession, isSendingRef]);
 
   const handleSelectSession = useCallback(
     async (sessionId: number) => {
