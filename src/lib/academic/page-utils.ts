@@ -1,4 +1,8 @@
 /**
+ * UI input domain: parses free-form user strings (e.g. "s. 15", "15-17", "Madde 4/b").
+ * Do NOT merge with `src/core/services/pdf/page-format.ts` which formats numeric
+ * chunk indices from the PDF parser — different input types and validation rules.
+ *
  * Normalizes page number display with canonical academic prefixes ("s. X" for single page, "ss. X-Y" for ranges).
  *
  * @param raw - Raw page number string or user input.

@@ -3,8 +3,6 @@ import { connection } from "next/server";
 import { getLiteratureMatrixData } from "./actions";
 import { LiteratureMatrixContainer } from "./_components/literature-matrix-container";
 
-export const instant = false;
-
 export const metadata: Metadata = {
   title: "Literatür Matrisi | Fabricca",
   description:

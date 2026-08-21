@@ -111,7 +111,7 @@ export function SelectValue(props: SelectValueProps) {
 
   return (
     <span className={cn("truncate text-left", className)} {...rest}>
-      {children ?? activeLabel ?? ctx?.value ?? placeholder}
+      {children ?? activeLabel ?? placeholder ?? ctx?.value}
     </span>
   );
 }

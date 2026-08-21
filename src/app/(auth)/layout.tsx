@@ -1,5 +1,3 @@
-export const instant = false;
-
 import { Suspense } from "react";
 import { redirect } from "next/navigation";
 import { getSessionWithOnboarding } from "@/lib/session";

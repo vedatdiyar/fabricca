@@ -1,6 +1,4 @@
 export const maxDuration = 300;
-export const instant = false;
-
 import { redirect } from "next/navigation";
 import { getProfile } from "@/lib/session";
 import { eq } from "drizzle-orm";

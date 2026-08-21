@@ -88,6 +88,24 @@ export async function addTaskAction(input: TaskInput): Promise<{
 
     const valid = parsed.data;
 
+    // If a box is linked, verify it belongs to the authenticated user's matrix
+    if (valid.thesisBoxId) {
+      const linkedBox = await db.query.boxes.findFirst({
+        where: eq(boxes.id, valid.thesisBoxId),
+      });
+      if (!linkedBox) {
+        return { success: false, error: "Bağlanacak kutu bulunamadı." };
+      }
+      const { matrices: matrixTable } = await import("@/core/db/schema");
+      const [matrix] = await db
+        .select({ userId: matrixTable.userId })
+        .from(matrixTable)
+        .where(eq(matrixTable.id, linkedBox.matrixId));
+      if (!matrix || matrix.userId !== session.userId) {
+        return { success: false, error: "Bu kutuya görev bağlama yetkiniz yok." };
+      }
+    }
+
     const [inserted] = await db
       .insert(tasks)
       .values({
@@ -168,6 +186,24 @@ export async function updateTaskAction(
 
     if (!existing || existing.userId !== session.userId) {
       return { success: false, error: "Görev bulunamadı." };
+    }
+
+    // If re-linking to a different box, verify ownership
+    if (valid.thesisBoxId) {
+      const linkedBox = await db.query.boxes.findFirst({
+        where: eq(boxes.id, valid.thesisBoxId),
+      });
+      if (!linkedBox) {
+        return { success: false, error: "Bağlanacak kutu bulunamadı." };
+      }
+      const { matrices: matrixTable } = await import("@/core/db/schema");
+      const [matrix] = await db
+        .select({ userId: matrixTable.userId })
+        .from(matrixTable)
+        .where(eq(matrixTable.id, linkedBox.matrixId));
+      if (!matrix || matrix.userId !== session.userId) {
+        return { success: false, error: "Bu kutuya görev bağlama yetkiniz yok." };
+      }
     }
 
     const updateValues: Record<string, unknown> = {};

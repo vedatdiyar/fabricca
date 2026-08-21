@@ -69,19 +69,32 @@ async function executeCreateBox(
 
 /**
  * Updates the title and/or description of an existing box.
+ * Verifies ownership via box → matrix → userId chain.
  *
  * @param args - The proposed mutation arguments.
+ * @param userId - Authenticated user ID.
  * @returns The update result with the captured previous state.
  */
 async function executeUpdateBox(
   args: Record<string, unknown>,
+  userId: number,
 ): Promise<MutationToolResult> {
-  const boxId = args.boxId as number;
+  const boxId = toNumericId(args.boxId);
+  if (!boxId) return { success: false, error: "Kutu bulunamadı." };
+
   const existingBox = await db.query.boxes.findFirst({
     where: eq(boxes.id, boxId),
   });
   if (!existingBox) {
     return { success: false, error: "Kutu bulunamadı." };
+  }
+
+  // Ownership check: box → matrix → userId
+  const ownerMatrix = await db.query.matrices.findFirst({
+    where: eq(matrices.id, existingBox.matrixId),
+  });
+  if (!ownerMatrix || ownerMatrix.userId !== userId) {
+    return { success: false, error: "Bu kutuyu güncelleme yetkiniz yok." };
   }
 
   const previousState: Record<string, unknown> = {
@@ -108,19 +121,32 @@ async function executeUpdateBox(
 
 /**
  * Deletes an existing box.
+ * Verifies ownership via box → matrix → userId chain.
  *
  * @param args - The proposed mutation arguments.
+ * @param userId - Authenticated user ID.
  * @returns The deletion result with the captured previous state.
  */
 async function executeDeleteBox(
   args: Record<string, unknown>,
+  userId: number,
 ): Promise<MutationToolResult> {
-  const boxId = args.boxId as number;
+  const boxId = toNumericId(args.boxId);
+  if (!boxId) return { success: false, error: "Silinecek kutu bulunamadı." };
+
   const existingBox = await db.query.boxes.findFirst({
     where: eq(boxes.id, boxId),
   });
   if (!existingBox) {
     return { success: false, error: "Silinecek kutu bulunamadı." };
+  }
+
+  // Ownership check: box → matrix → userId
+  const ownerMatrix = await db.query.matrices.findFirst({
+    where: eq(matrices.id, existingBox.matrixId),
+  });
+  if (!ownerMatrix || ownerMatrix.userId !== userId) {
+    return { success: false, error: "Bu kutuyu silme yetkiniz yok." };
   }
 
   const previousState: Record<string, unknown> = {

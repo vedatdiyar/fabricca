@@ -3,12 +3,17 @@
 import { getSession } from "@/lib/session";
 import { createFlowId, Logger } from "@/lib/logger";
 import { fetchCitationCardsData } from "@/app/(app)/citation-cards/_services/citation-cards-query";
-import type { BoxItem, CitationCardItem, SourceItem } from "./_lib/types";
+import type {
+  BoxItem,
+  CitationCardItem,
+  OutlineItem,
+  SourceItem,
+} from "./_lib/types";
 
 /**
- * Server Action: Fetches all topic boxes, sources, and citation annotations for the logged-in user.
+ * Server Action: Fetches all topic boxes, sources, outlines, and citation annotations for the logged-in user.
  *
- * @returns The user's citation cards, boxes, and sources data on success, or an error message on failure.
+ * @returns The user's citation cards, boxes, sources, and outlines data on success, or an error message on failure.
  */
 export async function getCitationCardsDataAction(): Promise<
   | {
@@ -17,6 +22,7 @@ export async function getCitationCardsDataAction(): Promise<
         cards: CitationCardItem[];
         boxes: BoxItem[];
         sources: SourceItem[];
+        outlines: OutlineItem[];
       };
     }
   | { success: false; error: string }

@@ -1,4 +1,8 @@
 /**
+ * PDF chunk domain: formats numeric page indices coming from the PDF parser.
+ * Do NOT merge with `src/lib/academic/page-utils.ts` which parses free-form
+ * user input strings — different input types and validation rules.
+ *
  * Computes the printed page number display string for a chunk.
  *
  * @param pageStart - Start page number.

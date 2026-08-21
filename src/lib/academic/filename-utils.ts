@@ -1,36 +1,15 @@
 import { stripAltTitle } from "./title-utils";
+import { normalizeTurkishToAscii } from "./normalize";
 
 /**
  * Converts a word into an ASCII-safe, Turkish-normalized alphanumeric form.
+ * Delegates to the central `normalizeTurkishToAscii` core.
  *
  * @param str - Input word.
  * @returns ASCII-converted alphanumeric string.
  */
 export function toAsciiWord(str: string): string {
-  const turkishMap: Record<string, string> = {
-    ç: "c",
-    Ç: "C",
-    ğ: "g",
-    Ğ: "G",
-    ı: "i",
-    I: "I",
-    İ: "I",
-    ö: "o",
-    Ö: "O",
-    ş: "s",
-    Ş: "S",
-    ü: "u",
-    Ü: "U",
-  };
-  const converted = str
-    .split("")
-    .map((c) => turkishMap[c] || c)
-    .join("");
-
-  return converted
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .replace(/[^a-zA-Z0-9]/g, "");
+  return normalizeTurkishToAscii(str).replace(/[^a-zA-Z0-9]/g, "");
 }
 
 /**

@@ -37,32 +37,11 @@ export interface CandidateSnippet {
 }
 
 // ---------------------------------------------------------------------------
-// Turkish character pre-normalization
+// Turkish character pre-normalization (centralized)
 // ---------------------------------------------------------------------------
 
-/**
- * Maps Turkish-specific characters that do NOT decompose under NFD
- * (e.g. ı U+0131, İ U+0130) to their ASCII equivalents, so that the
- * subsequent NFD + diacritic-strip pass produces consistent output for
- * any mix of Turkish and Latin-script text.
- *
- * Must be called BEFORE String.prototype.normalize("NFD").
- */
-export function normalizeTurkishChars(s: string): string {
-  return s
-    .replace(/[İ]/g, "I")
-    .replace(/[ı]/g, "i")
-    .replace(/[Ğ]/g, "G")
-    .replace(/[ğ]/g, "g")
-    .replace(/[Ş]/g, "S")
-    .replace(/[ş]/g, "s")
-    .replace(/[Ç]/g, "C")
-    .replace(/[ç]/g, "c")
-    .replace(/[Ö]/g, "O")
-    .replace(/[ö]/g, "o")
-    .replace(/[Ü]/g, "U")
-    .replace(/[ü]/g, "u");
-}
+import { normalizeTurkishChars } from "@/lib/academic/normalize";
+export { normalizeTurkishChars };
 
 /**
  * Strips everything except lowercase ASCII alphanumerics.

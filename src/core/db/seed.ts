@@ -16,6 +16,11 @@ async function seed() {
 
   const user1Password = process.env.SEED_USER1_PASSWORD;
   const user2Password = process.env.SEED_USER2_PASSWORD;
+  // Email/name are also env-driven to avoid hardcoded PII; fallback to dummy format for local/dev
+  const user1Email = process.env.SEED_USER1_EMAIL || "seed-user-1@fabricca.local";
+  const user2Email = process.env.SEED_USER2_EMAIL || "seed-user-2@fabricca.local";
+  const user1Name = process.env.SEED_USER1_NAME || "Seed User 1";
+  const user2Name = process.env.SEED_USER2_NAME || "Seed User 2";
 
   if (!user1Password || !user2Password) {
     throw new Error(
@@ -30,14 +35,14 @@ async function seed() {
     .insert(users)
     .values([
       {
-        email: "vedatdiyarcelikkeser@gmail.com",
+        email: user1Email,
         password: password1,
-        name: "Vedat Diyar Çelikkeser",
+        name: user1Name,
       },
       {
-        email: "tubaahncr@gmail.com",
+        email: user2Email,
         password: password2,
-        name: "Tuğba Hançer",
+        name: user2Name,
       },
     ])
     .onConflictDoNothing({ target: users.email });

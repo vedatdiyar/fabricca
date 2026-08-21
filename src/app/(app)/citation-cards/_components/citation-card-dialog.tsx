@@ -10,7 +10,12 @@ import {
 } from "@/components/ui/dialog";
 import { CitationCardView } from "./citation-card-view";
 import { CitationCardForm } from "./citation-card-form";
-import type { CitationCardItem, BoxItem, SourceItem } from "../_lib/types";
+import type {
+  CitationCardItem,
+  BoxItem,
+  SourceItem,
+  OutlineItem,
+} from "../_lib/types";
 
 /** Props for CitationCardDialog. */
 export interface CitationCardDialogProps {
@@ -20,6 +25,7 @@ export interface CitationCardDialogProps {
   mode: "view" | "edit";
   sources: SourceItem[];
   boxes: BoxItem[];
+  outlines: OutlineItem[];
   onSave: (
     card: Omit<CitationCardItem, "id" | "createdAt" | "updatedAt"> & {
       id?: number;
@@ -35,8 +41,16 @@ export interface CitationCardDialogProps {
  * @returns Dialog markup.
  */
 export function CitationCardDialog(props: CitationCardDialogProps) {
-  const { open, onOpenChange, cardToEdit, mode, sources, boxes, onSave } =
-    props;
+  const {
+    open,
+    onOpenChange,
+    cardToEdit,
+    mode,
+    sources,
+    boxes,
+    outlines,
+    onSave,
+  } = props;
 
   const preventViewAutofocus = Boolean(cardToEdit) && mode === "view";
 
@@ -55,6 +69,7 @@ export function CitationCardDialog(props: CitationCardDialogProps) {
             mode={mode}
             sources={sources}
             boxes={boxes}
+            outlines={outlines}
             onSave={onSave}
             onClose={() => onOpenChange(false)}
           />
@@ -70,6 +85,7 @@ interface DialogBodyProps {
   mode: "view" | "edit";
   sources: SourceItem[];
   boxes: BoxItem[];
+  outlines: OutlineItem[];
   onSave: (
     card: Omit<CitationCardItem, "id" | "createdAt" | "updatedAt"> & {
       id?: number;
@@ -86,7 +102,8 @@ interface DialogBodyProps {
  * @returns Either the read-only view or the edit form markup.
  */
 function DialogBody(props: DialogBodyProps) {
-  const { cardToEdit, mode, sources, boxes, onSave, onClose } = props;
+  const { cardToEdit, mode, sources, boxes, outlines, onSave, onClose } =
+    props;
   const [isEditing, setIsEditing] = useState(mode === "edit");
 
   const isNewCard = !cardToEdit;
@@ -105,7 +122,7 @@ function DialogBody(props: DialogBodyProps) {
         <DialogDescription className="text-xs text-muted-foreground">
           {isNewCard || isEditing
             ? "Kaynaklardan derlediğiniz doğrudan alıntı, açımlama veya kişisel değerlendirme notlarınızı düzenleyin."
-            : "Akademik kaynak ve tez konu kutusu ile ilişkilendirilmiş araştırma fişi detayları."}
+            : "Akademik kaynak, konu kutusu ve tez iskeleti ile ilişkilendirilmiş alıntı fişi detayları."}
         </DialogDescription>
       </DialogHeader>
 
@@ -120,6 +137,7 @@ function DialogBody(props: DialogBodyProps) {
           cardToEdit={cardToEdit}
           sources={sources}
           boxes={boxes}
+          outlines={outlines}
           onSave={onSave}
           onClose={onClose}
         />

@@ -1,0 +1,103 @@
+import { Ban, Folder, CornerDownRight } from "lucide-react";
+import { SelectItem } from "@/components/ui/select";
+import type { OutlineItem } from "../_lib/types";
+
+interface OutlineSelectItemsProps {
+  outlines: OutlineItem[];
+  includeNoneOption?: boolean;
+  noneLabel?: string;
+  unassignedCount?: number;
+}
+
+/**
+ * Renders hierarchical, professionally formatted SelectItem rows for Thesis Outline sections.
+ * Displays main chapters and indented subsections with Lucide icons (no ascii pipes or emojis).
+ *
+ * @param props - Component props.
+ * @returns Array of SelectItem components.
+ */
+export function OutlineSelectItems({
+  outlines,
+  includeNoneOption = true,
+  noneLabel = "Bölüme Bağlanmadı (Boşta)",
+  unassignedCount,
+}: OutlineSelectItemsProps) {
+  // 1. Separate main chapters (parentId === null) and subsections
+  const mainChapters = outlines
+    .filter((o) => o.parentId === null)
+    .sort((a, b) => a.sortOrder - b.sortOrder);
+
+  const subSections = outlines.filter((o) => o.parentId !== null);
+
+  return (
+    <>
+      {includeNoneOption && (
+        <SelectItem
+          value="NONE"
+          className="text-xs py-2 text-muted-foreground hover:text-foreground border-b border-border/40 mb-1"
+        >
+          <div className="flex items-center gap-2">
+            <Ban className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+            <span>{noneLabel}</span>
+            {unassignedCount !== undefined && unassignedCount > 0 && (
+              <span className="text-[10px] font-mono text-amber-600 dark:text-amber-400 bg-amber-500/10 px-1.5 py-0.5 rounded">
+                {unassignedCount} Fiş
+              </span>
+            )}
+          </div>
+        </SelectItem>
+      )}
+
+      {mainChapters.map((chapter) => {
+        const chapterChildren = subSections
+          .filter((sub) => sub.parentId === chapter.id)
+          .sort((a, b) => a.sortOrder - b.sortOrder);
+
+        return (
+          <div key={chapter.id} className="space-y-0.5 my-1">
+            {/* Main Chapter Item */}
+            <SelectItem
+              value={String(chapter.id)}
+              className="text-xs py-2 font-semibold text-foreground bg-muted/30 rounded-sm"
+            >
+              <div className="flex items-center gap-2 min-w-0">
+                <Folder className="h-3.5 w-3.5 text-primary shrink-0" />
+                <span className="truncate">{chapter.title}</span>
+              </div>
+            </SelectItem>
+
+            {/* Subsections (Indented) */}
+            {chapterChildren.map((sub) => (
+              <SelectItem
+                key={sub.id}
+                value={String(sub.id)}
+                className="text-xs py-1.5 pl-6 text-muted-foreground hover:text-foreground rounded-sm"
+              >
+                <div className="flex items-center gap-2 min-w-0">
+                  <CornerDownRight className="h-3 w-3 text-muted-foreground/60 shrink-0" />
+                  <span className="truncate">{sub.title}</span>
+                </div>
+              </SelectItem>
+            ))}
+          </div>
+        );
+      })}
+
+      {/* Handle orphan subsections if any exist without a parent */}
+      {subSections
+        .filter((sub) => !mainChapters.some((m) => m.id === sub.parentId))
+        .map((orphan) => (
+          <SelectItem
+            key={orphan.id}
+            value={String(orphan.id)}
+            className="text-xs py-1.5 pl-4 text-muted-foreground hover:text-foreground"
+          >
+            <div className="flex items-center gap-2 min-w-0">
+              <CornerDownRight className="h-3 w-3 text-muted-foreground/60 shrink-0" />
+              <span className="truncate">{orphan.title}</span>
+            </div>
+          </SelectItem>
+        ))}
+    </>
+  );
+}

@@ -1,6 +1,6 @@
 "use server";
 
-import { eq, desc } from "drizzle-orm";
+import { and, eq, desc } from "drizzle-orm";
 import { db } from "@/core/db";
 import { sessions, messages } from "@/core/db/schema";
 import { getSession } from "@/lib/session";
@@ -101,10 +101,17 @@ export async function renameChatSession(
     const trimmed = title.trim().slice(0, 100);
     if (!trimmed) return { success: false, error: "Başlık boş olamaz." };
 
+    // IDOR check: session must belong to the authenticated user
+    const [owned] = await db
+      .select({ id: sessions.id })
+      .from(sessions)
+      .where(and(eq(sessions.id, sessionId), eq(sessions.userId, session.userId)));
+    if (!owned) return { success: false, error: "Oturum bulunamadı." };
+
     await db
       .update(sessions)
       .set({ title: trimmed, updatedAt: new Date() })
-      .where(eq(sessions.id, sessionId));
+      .where(and(eq(sessions.id, sessionId), eq(sessions.userId, session.userId)));
 
     return { success: true };
   } catch (err) {
@@ -125,7 +132,15 @@ export async function deleteChatSession(
     const session = await getSession();
     if (!session) return { success: false, error: "Oturum süreniz dolmuş." };
 
-    await db.delete(sessions).where(eq(sessions.id, sessionId));
+    const [owned] = await db
+      .select({ id: sessions.id })
+      .from(sessions)
+      .where(and(eq(sessions.id, sessionId), eq(sessions.userId, session.userId)));
+    if (!owned) return { success: false, error: "Oturum bulunamadı." };
+
+    await db
+      .delete(sessions)
+      .where(and(eq(sessions.id, sessionId), eq(sessions.userId, session.userId)));
     return { success: true };
   } catch (err) {
     return handleActionError(err);

@@ -7,17 +7,21 @@ import type {
 } from "@/app/(app)/citation-cards/_lib/types";
 
 /**
- * Shapes an annotation DB row into a client-facing citation card DTO using its linked source and topic box.
+ * Shapes an annotation DB row into a client-facing citation card DTO using its linked source, topic box, and outlines.
  *
  * @param annotation - The annotation (note) DB row.
  * @param source - The linked source row.
  * @param box - The topic box the source belongs to.
+ * @param outlineIds - Array of linked outline section IDs.
+ * @param outlineTitles - Array of linked outline section titles.
  * @returns The citation card DTO.
  */
 export function mapAnnotationToCard(
   annotation: Annotation,
   source: Source,
   box: Box,
+  outlineIds: number[] = [],
+  outlineTitles: string[] = [],
 ): CitationCardItem {
   return {
     id: annotation.id,
@@ -37,6 +41,8 @@ export function mapAnnotationToCard(
     content: annotation.content,
     comment: annotation.comment ?? undefined,
     sentToCitationCards: annotation.sentToCitationCards,
+    outlineIds,
+    outlineTitles,
     createdAt: annotation.createdAt.toISOString(),
     updatedAt: annotation.updatedAt.toISOString(),
   };

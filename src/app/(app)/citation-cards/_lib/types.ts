@@ -21,6 +21,8 @@ export interface CitationCardItem {
   content: string;
   comment?: string;
   sentToCitationCards: boolean;
+  outlineIds: number[];
+  outlineTitles?: string[];
   createdAt: string;
   updatedAt: string;
 }
@@ -42,4 +44,25 @@ export interface SourceItem {
   authors: string[];
   publisher: string;
   publicationYear: number;
+}
+
+/** Outline section item matching DB `outlines` table. */
+export interface OutlineItem {
+  id: number;
+  parentId: number | null;
+  title: string;
+  description: string | null;
+  sortOrder: number;
+  academicField?: string | null;
+}
+
+/** Grouping dimension for the citation workbench. */
+export type CitationGroupBy = "OUTLINE" | "BOX" | "NONE";
+
+/** Result shape for LLM card mapping. */
+export interface CardOutlineMapping {
+  annotationId: number;
+  suggestedOutlineId: number;
+  confidenceScore: number;
+  rationale: string;
 }

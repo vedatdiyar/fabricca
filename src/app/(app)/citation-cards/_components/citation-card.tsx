@@ -1,7 +1,6 @@
 "use client";
 
 import {
-  BookOpen,
   Copy,
   Check,
   Pencil,
@@ -9,8 +8,9 @@ import {
   Quote,
   Sparkles,
   Bookmark,
-  FolderInput,
+  BookOpen,
   MessageSquareQuote,
+  FolderTree,
 } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
@@ -21,15 +21,8 @@ import {
   CardFooter,
   CardHeader,
 } from "@/components/ui/card";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import { getBoxTypeBadgeConfig } from "@/lib/box-constants";
+import { formatPageNumber } from "@/lib/academic/utils";
 import { cn } from "@/lib/utils";
 import type {
   CitationCardItem,
@@ -51,7 +44,6 @@ export function getNoteTypeBadgeConfig(noteType: CitationNoteType) {
         icon: Quote,
         className:
           "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20",
-        textClassName: "text-emerald-600 dark:text-emerald-400",
         borderAccent: "border-l-emerald-500",
       };
     case "PARAPHRASE":
@@ -60,7 +52,6 @@ export function getNoteTypeBadgeConfig(noteType: CitationNoteType) {
         icon: Sparkles,
         className:
           "bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20",
-        textClassName: "text-blue-600 dark:text-blue-400",
         borderAccent: "border-l-blue-500",
       };
     case "PERSONAL_NOTE":
@@ -69,7 +60,6 @@ export function getNoteTypeBadgeConfig(noteType: CitationNoteType) {
         icon: Bookmark,
         className:
           "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20",
-        textClassName: "text-amber-600 dark:text-amber-400",
         borderAccent: "border-l-amber-500",
       };
     default:
@@ -77,7 +67,6 @@ export function getNoteTypeBadgeConfig(noteType: CitationNoteType) {
         label: "Not",
         icon: BookOpen,
         className: "bg-muted text-muted-foreground border-border",
-        textClassName: "text-muted-foreground",
         borderAccent: "border-l-primary",
       };
   }
@@ -86,140 +75,166 @@ export function getNoteTypeBadgeConfig(noteType: CitationNoteType) {
 /** Props for CitationCard component. */
 export interface CitationCardProps {
   card: CitationCardItem;
-  availableBoxes: BoxItem[];
+  availableBoxes?: BoxItem[];
+  isSelected?: boolean;
   onView: (card: CitationCardItem) => void;
   onEdit: (card: CitationCardItem) => void;
   onDelete: (id: number) => void;
-  onMoveBox: (cardId: number, targetBoxId: number) => void;
+  onMoveBox?: (cardId: number, targetBoxId: number) => void;
 }
 
 /**
- * Renders an individual academic citation card with elevated typography and quick actions.
+ * Clean, readable academic citation card.
+ * Features exact page formatting (s. X vs ss. X-Y), direct action buttons, and clear typography.
  *
- * @param props - Component props containing card data and callbacks.
+ * @param props - Component props.
  * @returns Rendered citation card component markup.
  */
 export function CitationCard(props: CitationCardProps) {
-  const { card, availableBoxes, onView, onEdit, onDelete, onMoveBox } = props;
+  const {
+    card,
+    isSelected = false,
+    onView,
+    onEdit,
+    onDelete,
+  } = props;
   const [copied, setCopied] = useState(false);
 
   const noteConfig = getNoteTypeBadgeConfig(card.noteType);
   const NoteIcon = noteConfig.icon;
   const boxConfig = getBoxTypeBadgeConfig(card.boxType);
 
-  /**
-   * Formats the citation reference string and copies it with card content to the clipboard.
-   *
-   * @param e - React click event to stop propagation.
-   */
-  const handleCopyCitation = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    const authorsStr =
-      card.sourceAuthors.length > 2
-        ? `${card.sourceAuthors[0]} vd.`
-        : card.sourceAuthors.join(" & ");
-    const citationText = `"${card.content}" (${authorsStr}, ${card.sourceYear}, ${card.pageNumber})`;
+  const isAssigned = card.outlineIds.length > 0;
+  const outlineTitle = card.outlineTitles?.[0] || null;
 
-    navigator.clipboard.writeText(citationText);
-    setCopied(true);
-    toast.success("Alıntı ve akademik atıf panoya kopyalandı.");
-    setTimeout(() => setCopied(false), 2000);
-  };
+  // Single page: s. X | Multiple pages: ss. X-Y
+  const formattedPage = formatPageNumber(card.pageNumber);
 
   const authorsDisplay =
     card.sourceAuthors.length > 2
       ? `${card.sourceAuthors[0]} vd.`
-      : card.sourceAuthors.join(" & ");
+      : card.sourceAuthors.join(" & ") || "Yazar Belirtilmemiş";
+
+  const handleCopyCitation = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    const citationText = `"${card.content}" (${authorsDisplay}, ${card.sourceYear}, ${formattedPage})`;
+
+    navigator.clipboard.writeText(citationText);
+    setCopied(true);
+    toast.success("Alıntı ve akademik atıf kopyalandı.");
+    setTimeout(() => setCopied(false), 2000);
+  };
 
   return (
     <Card
       onClick={() => onView(card)}
-      className="cursor-pointer rounded-md p-4 transition-all duration-200 border-border hover:border-primary/40 bg-card flex flex-col justify-between group select-none w-full"
+      className={cn(
+        "cursor-pointer rounded-md p-4 transition-all duration-150 border bg-card hover:bg-card/90 flex flex-col justify-between group select-none w-full gap-3",
+        isSelected
+          ? "border-primary ring-2 ring-primary/20 bg-primary/[0.02]"
+          : "border-border/70 hover:border-border",
+      )}
     >
-      {/* Header: Note Type Badge & Topic Box Tag + Quick Actions */}
-      <CardHeader className="p-0 pb-3 mb-2.5 border-b border-border/40 flex-row items-center justify-between gap-2 space-y-0">
+      {/* 1. Header: Note Type + Section Badge + Page + Direct Action Buttons */}
+      <CardHeader className="p-0 flex-row items-center justify-between gap-2 space-y-0">
+        {/* Left: Badges */}
         <div className="flex flex-wrap items-center gap-1.5 min-w-0 flex-1">
           {/* Note Type Pill */}
           <span
             className={cn(
-              "inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-[10px] font-semibold border shrink-0",
+              "inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-medium border shrink-0",
               noteConfig.className,
             )}
           >
             <NoteIcon className="h-3 w-3 shrink-0" />
-            {noteConfig.label}
+            <span>{noteConfig.label}</span>
           </span>
 
-          {/* Topic Box Pill */}
-          <span
-            className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-[10px] font-medium bg-muted/60 text-muted-foreground border border-border/40 max-w-[210px] truncate"
-            title={card.boxTitle}
-          >
+          {/* Outline Destination Pill */}
+          {isAssigned && outlineTitle ? (
             <span
-              className={cn(
-                "h-1.5 w-1.5 rounded-full shrink-0",
-                boxConfig.dotClassName,
-              )}
-            />
-            <span className="truncate">{card.boxTitle}</span>
-          </span>
+              className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-medium bg-primary/10 text-primary border border-primary/20 max-w-[200px] truncate shrink-0"
+              title={`Tez Bölümü: ${outlineTitle}`}
+            >
+              <FolderTree className="h-3 w-3 shrink-0" />
+              <span className="truncate">{outlineTitle}</span>
+            </span>
+          ) : (
+            <span
+              className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-medium text-amber-600 dark:text-amber-400 bg-amber-500/10 border border-amber-500/20 shrink-0"
+              title="Henüz bir tez bölümüne bağlanmadı"
+            >
+              <span>Atanmamış</span>
+            </span>
+          )}
         </div>
 
-        {/* Action Buttons */}
+        {/* Right: Page Number & Direct Actions */}
         <div
           role="presentation"
-          className="flex items-center gap-0.5 shrink-0"
+          className="flex items-center gap-1.5 shrink-0"
           onClick={(e) => e.stopPropagation()}
-          onKeyDown={(e) => e.stopPropagation()}
         >
-          <MoveBoxDropdown
-            card={card}
-            availableBoxes={availableBoxes}
-            onMoveBox={onMoveBox}
-          />
+          {/* Page Badge: s. 1 or ss. 15-18 */}
+          <span className="font-mono text-xs font-semibold text-foreground bg-muted/60 border border-border px-2 py-0.5 rounded">
+            {formattedPage}
+          </span>
+
+          {/* Quick Action Buttons */}
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={handleCopyCitation}
+            className="h-7 w-7 text-muted-foreground hover:text-foreground"
+            title="Atıf Metnini Kopyala"
+          >
+            {copied ? (
+              <Check className="h-3.5 w-3.5 text-emerald-500" />
+            ) : (
+              <Copy className="h-3.5 w-3.5" />
+            )}
+          </Button>
+
           <Button
             variant="ghost"
             size="icon"
             onClick={() => onEdit(card)}
-            className="h-6 w-6 text-muted-foreground hover:text-foreground shrink-0"
-            title="Fişi Düzenle"
+            className="h-7 w-7 text-muted-foreground hover:text-foreground"
+            title="Düzenle"
           >
-            <Pencil className="h-3 w-3" />
+            <Pencil className="h-3.5 w-3.5" />
           </Button>
+
           <Button
             variant="ghost"
             size="icon"
             onClick={() => onDelete(card.id)}
-            className="h-6 w-6 text-muted-foreground hover:text-destructive shrink-0"
-            title="Fişi Sil"
+            className="h-7 w-7 text-muted-foreground hover:text-destructive"
+            title="Sil"
           >
-            <Trash2 className="h-3 w-3" />
+            <Trash2 className="h-3.5 w-3.5" />
           </Button>
         </div>
       </CardHeader>
 
-      {/* Main Card Body */}
-      <CardContent className="p-0 my-1 flex-1">
-        {card.noteType === "DIRECT_QUOTE" ? (
-          <blockquote
-            className={cn(
-              "relative pl-3 text-sm leading-relaxed text-foreground border-l-2 font-sans line-clamp-4",
-              noteConfig.borderAccent,
-            )}
-          >
-            &ldquo;{card.content}&rdquo;
-          </blockquote>
-        ) : (
-          <p className="text-sm leading-relaxed text-foreground font-sans line-clamp-4">
+      {/* 2. Main Quote Body */}
+      <CardContent className="p-0 flex-1">
+        <div
+          className={cn(
+            "pl-3 border-l-2 py-0.5",
+            noteConfig.borderAccent,
+          )}
+        >
+          <p className="text-sm leading-relaxed text-foreground font-sans line-clamp-5">
             {card.content}
           </p>
-        )}
+        </div>
 
-        {/* Researcher's Commentary / Şerh */}
+        {/* 3. Commentary / Şerh (If present) */}
         {card.comment && (
-          <div className="mt-3 flex items-start gap-2 rounded-md border border-border/50 bg-muted/30 px-3 py-2">
+          <div className="mt-3 flex items-start gap-2 rounded-md bg-muted/30 px-3 py-2 text-xs text-muted-foreground border border-border/40">
             <MessageSquareQuote className="h-3.5 w-3.5 text-primary shrink-0 mt-0.5" />
-            <p className="text-xs text-muted-foreground leading-relaxed whitespace-pre-wrap line-clamp-3">
+            <p className="leading-relaxed whitespace-pre-wrap line-clamp-3">
               <span className="font-semibold text-foreground mr-1">Şerh:</span>
               {card.comment}
             </p>
@@ -227,91 +242,27 @@ export function CitationCard(props: CitationCardProps) {
         )}
       </CardContent>
 
-      {/* Footer: Academic Source & Citation Pill */}
-      <CardFooter className="p-0 mt-3 pt-2.5 border-t border-border/40 flex items-center justify-between gap-2 text-xs">
-        <div className="flex flex-col min-w-0 pr-1">
-          <span className="font-semibold text-foreground text-xs truncate">
-            {authorsDisplay} ({card.sourceYear})
-          </span>
+      {/* 4. Footer: Clean Academic Source Reference */}
+      <CardFooter className="p-0 pt-2.5 border-t border-border/40 flex items-center justify-between gap-2 text-xs">
+        <div className="flex items-center gap-2 min-w-0 flex-1">
           <span
-            className="text-muted-foreground text-[10px] truncate"
-            title={card.sourceTitle}
-          >
-            {card.sourceTitle}
-          </span>
-        </div>
-
-        <div className="flex items-center gap-1.5 shrink-0">
-          <span className="font-mono text-[10px] font-semibold text-foreground bg-muted/80 border border-border px-2 py-0.5 rounded">
-            {card.pageNumber}
-          </span>
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={handleCopyCitation}
-            className="h-6 w-6 text-muted-foreground hover:text-foreground shrink-0"
-            title="Atıf Metnini Kopyala"
-          >
-            {copied ? (
-              <Check className="h-3 w-3 text-emerald-500" />
-            ) : (
-              <Copy className="h-3 w-3" />
+            className={cn(
+              "h-2 w-2 rounded-full shrink-0",
+              boxConfig.dotClassName,
             )}
-          </Button>
+            title={`Kutu: ${card.boxTitle}`}
+          />
+          <div className="text-xs text-muted-foreground truncate leading-tight">
+            <strong className="text-foreground font-medium">
+              {authorsDisplay} ({card.sourceYear})
+            </strong>
+            <span className="mx-1 text-muted-foreground/60">—</span>
+            <span className="italic" title={card.sourceTitle}>
+              {card.sourceTitle}
+            </span>
+          </div>
         </div>
       </CardFooter>
     </Card>
-  );
-}
-
-/** Props for MoveBoxDropdown component. */
-interface MoveBoxDropdownProps {
-  card: CitationCardItem;
-  availableBoxes: BoxItem[];
-  onMoveBox: (cardId: number, targetBoxId: number) => void;
-}
-
-/**
- * Icon button opening dropdown list to move card to another box.
- *
- * @param props - Component props.
- * @returns Dropdown menu markup.
- */
-function MoveBoxDropdown(props: MoveBoxDropdownProps) {
-  const { card, availableBoxes, onMoveBox } = props;
-
-  return (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <Button
-          variant="ghost"
-          size="icon"
-          className="h-6 w-6 text-muted-foreground hover:text-foreground shrink-0"
-          title="Konu Kutusuna Taşı"
-        >
-          <FolderInput className="h-3 w-3" />
-          <span className="sr-only">Kutuya taşı</span>
-        </Button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-56">
-        <DropdownMenuLabel className="text-xs">
-          Konu Kutusuna Taşı
-        </DropdownMenuLabel>
-        <DropdownMenuSeparator />
-        {availableBoxes.map((box) => (
-          <DropdownMenuItem
-            key={box.id}
-            disabled={box.id === card.boxId}
-            onClick={() => onMoveBox(card.id, box.id)}
-            className="flex items-center justify-between text-xs cursor-pointer px-3 py-2"
-          >
-            <span className="truncate">{box.title}</span>
-            {box.id === card.boxId && (
-              <Check className="h-3 w-3 text-primary shrink-0 ml-1" />
-            )}
-          </DropdownMenuItem>
-        ))}
-      </DropdownMenuContent>
-    </DropdownMenu>
   );
 }

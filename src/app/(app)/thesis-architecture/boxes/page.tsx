@@ -1,5 +1,3 @@
-export const instant = false;
-
 import { redirect } from "next/navigation";
 import { getSession } from "@/lib/session";
 import { db } from "@/core/db";

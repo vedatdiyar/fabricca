@@ -8,6 +8,7 @@ import type {
   CitationCardItem,
   CitationNoteType,
   BoxItem,
+  OutlineItem,
   SourceItem,
 } from "../_lib/types";
 
@@ -16,6 +17,7 @@ export interface CitationCardFormProps {
   cardToEdit?: CitationCardItem | null;
   sources: SourceItem[];
   boxes: BoxItem[];
+  outlines: OutlineItem[];
   onSave: (
     card: Omit<CitationCardItem, "id" | "createdAt" | "updatedAt"> & {
       id?: number;
@@ -27,7 +29,7 @@ export interface CitationCardFormProps {
 /** The editable fields of the citation card form. */
 export interface CitationCardFormFields {
   selectedSourceId: string;
-  selectedBoxId: string;
+  selectedOutlineId: string;
   noteType: CitationNoteType;
   pageNumber: string;
   content: string;
@@ -42,6 +44,7 @@ export interface UseCitationCardFormResult {
   ) => void;
   selectedSourceObj?: SourceItem;
   selectedBoxObj?: BoxItem;
+  selectedOutlineObj?: OutlineItem;
   handleSubmit: (e: React.FormEvent) => void;
   handleContentPaste: (e: React.ClipboardEvent<HTMLTextAreaElement>) => void;
   isEditing: boolean;
@@ -57,20 +60,23 @@ export interface UseCitationCardFormResult {
 export function useCitationCardForm(
   props: CitationCardFormProps,
 ): UseCitationCardFormResult {
-  const { cardToEdit, sources, boxes, onSave, onClose } = props;
+  const { cardToEdit, sources, boxes, outlines, onSave, onClose } = props;
   const isEditing = Boolean(cardToEdit);
 
+  const initialSourceId = cardToEdit
+    ? String(cardToEdit.sourceId)
+    : sources[0]
+      ? String(sources[0].id)
+      : "";
+
+  const initialOutlineId =
+    cardToEdit && cardToEdit.outlineIds.length > 0
+      ? String(cardToEdit.outlineIds[0])
+      : "NONE";
+
   const [formFields, setFormFields] = useState<CitationCardFormFields>({
-    selectedSourceId: cardToEdit
-      ? String(cardToEdit.sourceId)
-      : sources[0]
-        ? String(sources[0].id)
-        : "",
-    selectedBoxId: cardToEdit
-      ? String(cardToEdit.boxId)
-      : boxes[0]
-        ? String(boxes[0].id)
-        : "",
+    selectedSourceId: initialSourceId,
+    selectedOutlineId: initialOutlineId,
     noteType: (cardToEdit
       ? cardToEdit.noteType
       : "DIRECT_QUOTE") as CitationNoteType,
@@ -89,8 +95,13 @@ export function useCitationCardForm(
   const selectedSourceObj = sources.find(
     (s) => s.id === Number(formFields.selectedSourceId),
   );
-  const selectedBoxObj = boxes.find(
-    (b) => b.id === Number(formFields.selectedBoxId),
+
+  const selectedBoxObj = selectedSourceObj
+    ? boxes.find((b) => b.id === selectedSourceObj.boxId)
+    : boxes[0];
+
+  const selectedOutlineObj = outlines.find(
+    (o) => o.id === Number(formFields.selectedOutlineId),
   );
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -101,40 +112,35 @@ export function useCitationCardForm(
       return;
     }
 
-    if (!formFields.selectedSourceId) {
+    if (!formFields.selectedSourceId || !selectedSourceObj) {
       toast.error("Lütfen bağlı akademik kaynağı seçin.");
       return;
     }
 
-    if (!formFields.selectedBoxId) {
-      toast.error("Lütfen bağlı konu kutusunu seçin.");
-      return;
-    }
-
     const formattedPage = formatPageNumber(formFields.pageNumber);
+    const targetOutlineId =
+      formFields.selectedOutlineId !== "NONE"
+        ? Number(formFields.selectedOutlineId)
+        : null;
 
     onSave({
       id: cardToEdit?.id,
-      sourceId: Number(formFields.selectedSourceId),
-      sourceTitle: selectedSourceObj?.title ?? "",
-      sourceAuthors: selectedSourceObj?.authors ?? [],
-      sourceYear: selectedSourceObj?.publicationYear ?? 0,
-      boxId: Number(formFields.selectedBoxId),
-      boxType:
-        selectedBoxObj?.boxType ?? boxes[0]?.boxType ?? "SUBJECT_PROBLEM",
+      sourceId: selectedSourceObj.id,
+      sourceTitle: selectedSourceObj.title,
+      sourceAuthors: selectedSourceObj.authors,
+      sourceYear: selectedSourceObj.publicationYear,
+      boxId: selectedSourceObj.boxId,
+      boxType: selectedBoxObj?.boxType ?? "SUBJECT_PROBLEM",
       boxTitle: selectedBoxObj?.title ?? "",
       pageNumber: formattedPage,
       noteType: formFields.noteType,
       content: formFields.content.trim(),
       comment: formFields.comment.trim() || undefined,
       sentToCitationCards: true,
+      outlineIds: targetOutlineId !== null ? [targetOutlineId] : [],
+      outlineTitles: selectedOutlineObj ? [selectedOutlineObj.title] : [],
     });
 
-    toast.success(
-      isEditing
-        ? "Alıntı fişi başarıyla güncellendi."
-        : "Yeni alıntı fişi başarıyla eklendi.",
-    );
     onClose();
   };
 
@@ -162,6 +168,7 @@ export function useCitationCardForm(
     setField,
     selectedSourceObj,
     selectedBoxObj,
+    selectedOutlineObj,
     handleSubmit,
     handleContentPaste,
     isEditing,

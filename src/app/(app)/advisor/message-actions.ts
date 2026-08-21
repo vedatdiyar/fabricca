@@ -1,6 +1,6 @@
 "use server";
 
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { db } from "@/core/db";
 import {
   sessions,
@@ -26,6 +26,15 @@ export async function getChatMessages(
     const session = await getSession();
     if (!session) {
       return { success: false, error: "Oturum süreniz dolmuş." };
+    }
+
+    // Ownership check: session must belong to the authenticated user
+    const [owned] = await db
+      .select({ id: sessions.id })
+      .from(sessions)
+      .where(and(eq(sessions.id, sessionId), eq(sessions.userId, session.userId)));
+    if (!owned) {
+      return { success: false, error: "Oturum bulunamadı." };
     }
 
     const rows = await db
@@ -65,25 +74,38 @@ export async function saveChatMessage(
     const session = await getSession();
     if (!session) return { success: false, error: "Oturum süreniz dolmuş." };
 
-    const [inserted] = await db
-      .insert(messages)
-      .values({
-        sessionId,
-        role,
-        persona: persona ?? undefined,
-        content,
-        sources: sources ?? undefined,
-        toolCalls: toolCalls ?? undefined,
-        pipelineData: pipelineData ?? undefined,
-      })
-      .returning({ id: messages.id });
+    // Ownership check: session must belong to the authenticated user
+    const [owned] = await db
+      .select({ id: sessions.id })
+      .from(sessions)
+      .where(and(eq(sessions.id, sessionId), eq(sessions.userId, session.userId)));
+    if (!owned) {
+      return { success: false, error: "Oturum bulunamadı." };
+    }
 
-    await db
-      .update(sessions)
-      .set({ updatedAt: new Date() })
-      .where(eq(sessions.id, sessionId));
+    const messageId = await db.transaction(async (tx) => {
+      const [inserted] = await tx
+        .insert(messages)
+        .values({
+          sessionId,
+          role,
+          persona: persona ?? undefined,
+          content,
+          sources: sources ?? undefined,
+          toolCalls: toolCalls ?? undefined,
+          pipelineData: pipelineData ?? undefined,
+        })
+        .returning({ id: messages.id });
 
-    return { success: true, messageId: inserted.id };
+      await tx
+        .update(sessions)
+        .set({ updatedAt: new Date() })
+        .where(and(eq(sessions.id, sessionId), eq(sessions.userId, session.userId)));
+
+      return inserted.id;
+    });
+
+    return { success: true, messageId };
   } catch (err) {
     return handleActionError(err);
   }
@@ -103,6 +125,16 @@ export async function updateChatMessageToolCalls(
   try {
     const session = await getSession();
     if (!session) return { success: false, error: "Oturum süreniz dolmuş." };
+
+    // Ownership check: message's session must belong to the authenticated user
+    const [owned] = await db
+      .select({ id: messages.id })
+      .from(messages)
+      .innerJoin(sessions, eq(messages.sessionId, sessions.id))
+      .where(and(eq(messages.id, messageId), eq(sessions.userId, session.userId)));
+    if (!owned) {
+      return { success: false, error: "Mesaj bulunamadı." };
+    }
 
     await db
       .update(messages)

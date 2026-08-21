@@ -7,6 +7,28 @@ import {
 } from "@/core/db/schema";
 import { eq, and } from "drizzle-orm";
 import type { MutationToolHandler, MutationToolResult } from "./mutation-types";
+import { toNumericId } from "./mutation-types";
+
+/**
+ * Verifies that an outline belongs to the authenticated user's matrix.
+ *
+ * @param outlineId - The outline ID to check.
+ * @param userId - Authenticated user ID.
+ * @returns True when the outline's matrix belongs to the user.
+ */
+async function isOutlineOwnedByUser(
+  outlineId: number,
+  userId: number,
+): Promise<boolean> {
+  const outline = await db.query.outlines.findFirst({
+    where: eq(outlines.id, outlineId),
+  });
+  if (!outline) return false;
+  const matrix = await db.query.matrices.findFirst({
+    where: eq(matrices.id, outline.matrixId),
+  });
+  return matrix?.userId === userId;
+}
 
 /**
  * Creates a new outline section under the user's thesis matrix.
@@ -59,17 +81,23 @@ async function executeCreateOutlineSection(
  * Updates the title and/or description of an outline section.
  *
  * @param args - The proposed mutation arguments.
+ * @param userId - Authenticated user ID.
  * @returns The update result with the captured previous state.
  */
 async function executeUpdateOutlineSection(
   args: Record<string, unknown>,
+  userId: number,
 ): Promise<MutationToolResult> {
-  const outlineId = args.outlineId as number;
+  const outlineId = toNumericId(args.outlineId);
+  if (!outlineId) return { success: false, error: "Bölüm bulunamadı." };
   const existingOutline = await db.query.outlines.findFirst({
     where: eq(outlines.id, outlineId),
   });
   if (!existingOutline) {
     return { success: false, error: "Bölüm bulunamadı." };
+  }
+  if (!(await isOutlineOwnedByUser(outlineId, userId))) {
+    return { success: false, error: "Bu bölümü güncelleme yetkiniz yok." };
   }
 
   const previousState: Record<string, unknown> = {
@@ -97,13 +125,21 @@ async function executeUpdateOutlineSection(
  * Pins a citation annotation to an outline section.
  *
  * @param args - The proposed mutation arguments.
+ * @param userId - Authenticated user ID.
  * @returns The pin result.
  */
 async function executePinAnnotationToOutline(
   args: Record<string, unknown>,
+  userId: number,
 ): Promise<MutationToolResult> {
-  const outlineId = args.outlineId as number;
-  const annotationId = args.annotationId as number;
+  const outlineId = toNumericId(args.outlineId);
+  const annotationId = toNumericId(args.annotationId);
+  if (!outlineId || !annotationId) {
+    return { success: false, error: "Geçersiz bölüm veya alıntı kimliği." };
+  }
+  if (!(await isOutlineOwnedByUser(outlineId, userId))) {
+    return { success: false, error: "Bu bölüme iğneleme yetkiniz yok." };
+  }
 
   const existing = await db.query.outlineAnnotations.findFirst({
     where: and(
@@ -134,13 +170,21 @@ async function executePinAnnotationToOutline(
  * Removes a citation annotation from an outline section.
  *
  * @param args - The proposed mutation arguments.
+ * @param userId - Authenticated user ID.
  * @returns The unpin result.
  */
 async function executeUnpinAnnotationFromOutline(
   args: Record<string, unknown>,
+  userId: number,
 ): Promise<MutationToolResult> {
-  const outlineId = args.outlineId as number;
-  const annotationId = args.annotationId as number;
+  const outlineId = toNumericId(args.outlineId);
+  const annotationId = toNumericId(args.annotationId);
+  if (!outlineId || !annotationId) {
+    return { success: false, error: "Geçersiz bölüm veya alıntı kimliği." };
+  }
+  if (!(await isOutlineOwnedByUser(outlineId, userId))) {
+    return { success: false, error: "Bu bölümden çıkarma yetkiniz yok." };
+  }
 
   await db
     .delete(outlineAnnotations)
@@ -161,13 +205,21 @@ async function executeUnpinAnnotationFromOutline(
  * Links an academic source to an outline section.
  *
  * @param args - The proposed mutation arguments.
+ * @param userId - Authenticated user ID.
  * @returns The link result.
  */
 async function executeLinkSourceToOutline(
   args: Record<string, unknown>,
+  userId: number,
 ): Promise<MutationToolResult> {
-  const outlineId = args.outlineId as number;
-  const sourceId = args.sourceId as number;
+  const outlineId = toNumericId(args.outlineId);
+  const sourceId = toNumericId(args.sourceId);
+  if (!outlineId || !sourceId) {
+    return { success: false, error: "Geçersiz bölüm veya kaynak kimliği." };
+  }
+  if (!(await isOutlineOwnedByUser(outlineId, userId))) {
+    return { success: false, error: "Bu bölüme kaynak bağlama yetkiniz yok." };
+  }
 
   const existing = await db.query.outlineSources.findFirst({
     where: and(
@@ -198,13 +250,21 @@ async function executeLinkSourceToOutline(
  * Removes an academic source link from an outline section.
  *
  * @param args - The proposed mutation arguments.
+ * @param userId - Authenticated user ID.
  * @returns The unlink result.
  */
 async function executeUnlinkSourceFromOutline(
   args: Record<string, unknown>,
+  userId: number,
 ): Promise<MutationToolResult> {
-  const outlineId = args.outlineId as number;
-  const sourceId = args.sourceId as number;
+  const outlineId = toNumericId(args.outlineId);
+  const sourceId = toNumericId(args.sourceId);
+  if (!outlineId || !sourceId) {
+    return { success: false, error: "Geçersiz bölüm veya kaynak kimliği." };
+  }
+  if (!(await isOutlineOwnedByUser(outlineId, userId))) {
+    return { success: false, error: "Bu bölümden kaynak kaldırma yetkiniz yok." };
+  }
 
   await db
     .delete(outlineSources)

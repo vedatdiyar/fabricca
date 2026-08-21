@@ -1,5 +1,3 @@
-export const instant = false;
-
 import { redirect } from "next/navigation";
 import { getProfile } from "@/lib/session";
 import { MatrixForm } from "./_components/matrix-form";

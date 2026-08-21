@@ -36,11 +36,25 @@ async function executeAddNote(
   args: Record<string, unknown>,
   userId: number,
 ): Promise<MutationToolResult> {
-  const sourceId = args.sourceId as number;
+  const sourceId = toNumericId(args.sourceId);
   const pageNumber = args.pageNumber as string;
   const noteType = args.noteType as Annotation["noteType"];
   const content = args.content as string;
   const comment = (args.comment as string | undefined) ?? null;
+
+  if (!sourceId) return { success: false, error: "Kaynak kimliği gerekli." };
+
+  // Verify source belongs to a box owned by the user (source → box → matrix → userId)
+  const { sources, boxes, matrices } = await import("@/core/db/schema");
+  const [ownership] = await db
+    .select({ ownerId: matrices.userId })
+    .from(sources)
+    .innerJoin(boxes, eq(sources.boxId, boxes.id))
+    .innerJoin(matrices, eq(boxes.matrixId, matrices.id))
+    .where(eq(sources.id, sourceId));
+  if (!ownership || ownership.ownerId !== userId) {
+    return { success: false, error: "Bu kaynağa not ekleme yetkiniz yok." };
+  }
 
   const [newNote] = await db
     .insert(annotations)

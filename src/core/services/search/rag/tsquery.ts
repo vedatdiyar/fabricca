@@ -1,11 +1,14 @@
+import { normalizeTurkishChars } from "@/lib/academic/normalize";
+
 /**
- * Normalizes a query token for `simple`-config matching; maps Turkish dotted İ (U+0130) to ASCII `i` to match PostgreSQL lower().
+ * Normalizes a query token for `simple`-config matching; uses the central
+ * Turkish map (İ/ı/Ğ/ğ/Ş/ş/Ç/ç/Ö/ö/Ü/ü) then lowercases to match PostgreSQL `lower()`.
  *
  * @param value - The query token to normalize.
  * @returns The lowercased, ASCII-normalized token.
  */
 export function normalizeForLexical(value: string): string {
-  return value.replace(/\u0130/g, "i").toLowerCase();
+  return normalizeTurkishChars(value).toLowerCase();
 }
 
 /** English and Turkish stop-words stripped from queries so the OR-prefix tsquery stays focused on content terms. */

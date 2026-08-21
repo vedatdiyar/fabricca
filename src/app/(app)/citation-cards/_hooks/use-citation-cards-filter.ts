@@ -2,29 +2,37 @@
 
 import { useCallback, useMemo, useState } from "react";
 import { compareBoxTypes } from "@/lib/box-constants";
-import type { CitationCardItem } from "../_lib/types";
+import type { CitationCardItem, CitationGroupBy } from "../_lib/types";
 
 /** Filtering & sorting state for the citation cards page. */
 export interface CitationCardFilters {
   selectedBoxId: number | null;
   selectedSourceId: number | null;
+  selectedOutlineId: number | null;
+  unassignedOnly: boolean;
   activeNoteTypeTab: string;
   searchQuery: string;
   sortBy: string;
+  groupBy: CitationGroupBy;
 }
 
 /** Default (empty) filter values. */
 export const DEFAULT_CARDS_FILTERS: CitationCardFilters = {
   selectedBoxId: null,
   selectedSourceId: null,
+  selectedOutlineId: null,
+  unassignedOnly: false,
   activeNoteTypeTab: "ALL",
   searchQuery: "",
   sortBy: "NEWEST",
+  groupBy: "NONE",
 };
 
 /** Aggregated note-type counts for the overview metric cards. */
 export interface CitationCardCounts {
   totalCount: number;
+  assignedCount: number;
+  unassignedCount: number;
   quoteCount: number;
   paraphraseCount: number;
   noteCount: number;
@@ -61,6 +69,8 @@ export function useCitationCardsFilter(cards: CitationCardItem[]) {
     const {
       selectedBoxId,
       selectedSourceId,
+      selectedOutlineId,
+      unassignedOnly,
       activeNoteTypeTab,
       searchQuery,
       sortBy,
@@ -75,6 +85,19 @@ export function useCitationCardsFilter(cards: CitationCardItem[]) {
 
         // Filter by source
         if (selectedSourceId !== null && card.sourceId !== selectedSourceId) {
+          return false;
+        }
+
+        // Filter by outline section
+        if (
+          selectedOutlineId !== null &&
+          !card.outlineIds.includes(selectedOutlineId)
+        ) {
+          return false;
+        }
+
+        // Filter by unassigned status
+        if (unassignedOnly && card.outlineIds.length > 0) {
           return false;
         }
 
@@ -105,8 +128,12 @@ export function useCitationCardsFilter(cards: CitationCardItem[]) {
       })
       .sort((a, b) => {
         // Primary sort: box category order (Problem → Teori → Yöntem → Birincil)
-        // when viewing all boxes/sources (sidebar "Tümü" state).
-        if (selectedBoxId === null && selectedSourceId === null) {
+        // when viewing all boxes/sources and grouped by none/box.
+        if (
+          selectedBoxId === null &&
+          selectedSourceId === null &&
+          selectedOutlineId === null
+        ) {
           const boxOrder = compareBoxTypes(a.boxType, b.boxType);
           if (boxOrder !== 0) return boxOrder;
         }
@@ -134,15 +161,18 @@ export function useCitationCardsFilter(cards: CitationCardItem[]) {
       });
   }, [cards, filters]);
 
-  const counts = useMemo<CitationCardCounts>(
-    () => ({
+  const counts = useMemo<CitationCardCounts>(() => {
+    const unassigned = cards.filter((c) => c.outlineIds.length === 0).length;
+    const assigned = cards.length - unassigned;
+    return {
       totalCount: cards.length,
+      assignedCount: assigned,
+      unassignedCount: unassigned,
       quoteCount: cards.filter((c) => c.noteType === "DIRECT_QUOTE").length,
       paraphraseCount: cards.filter((c) => c.noteType === "PARAPHRASE").length,
       noteCount: cards.filter((c) => c.noteType === "PERSONAL_NOTE").length,
-    }),
-    [cards],
-  );
+    };
+  }, [cards]);
 
   return {
     filters,

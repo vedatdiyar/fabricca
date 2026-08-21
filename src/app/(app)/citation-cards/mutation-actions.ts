@@ -227,3 +227,63 @@ export async function moveCitationCardBoxAction(input: {
     return { success: false, error: "Fiş taşınırken bir hata oluştu." };
   }
 }
+
+/**
+ * Server Action: Updates or clears the linked Outline section for a citation card.
+ *
+ * @param input - The payload containing annotation ID and optional outline ID.
+ * @param input.annotationId - The ID of the citation card (annotation).
+ * @param input.outlineId - The target outline section ID, or null to unlink.
+ * @returns Success status or error message.
+ */
+export async function updateCardOutlineLinkAction(input: {
+  annotationId: number;
+  outlineId: number | null;
+}): Promise<{ success: true } | { success: false; error: string }> {
+  const flowId = createFlowId();
+  const log = new Logger(flowId);
+
+  try {
+    const session = await getSession();
+    if (!session) {
+      return { success: false, error: "Oturum bulunamadı." };
+    }
+
+    const { db } = await import("@/core/db");
+    const { outlineAnnotations } = await import("@/core/db/schema");
+    const { eq } = await import("drizzle-orm");
+    const { revalidatePath } = await import("next/cache");
+
+    // Remove any existing outline links for this annotation
+    await db
+      .delete(outlineAnnotations)
+      .where(eq(outlineAnnotations.annotationId, input.annotationId));
+
+    // If a new outlineId is specified, create the junction row
+    if (input.outlineId !== null) {
+      await db.insert(outlineAnnotations).values({
+        outlineId: input.outlineId,
+        annotationId: input.annotationId,
+      });
+    }
+
+    revalidatePath("/citation-cards");
+    revalidatePath("/thesis-architecture");
+
+    log.info("update_card_outline_link_success", {
+      service: "citation-cards",
+      data: { annotationId: input.annotationId, outlineId: input.outlineId },
+    });
+
+    return { success: true };
+  } catch (err) {
+    log.error("update_card_outline_link_failed", {
+      service: "citation-cards",
+      error: err,
+    });
+    return {
+      success: false,
+      error: "Alıntı fişinin bölüm bağı güncellenirken bir hata oluştu.",
+    };
+  }
+}

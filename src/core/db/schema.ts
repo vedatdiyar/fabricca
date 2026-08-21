@@ -26,12 +26,18 @@ import type {
 import type { RagSearchResultItem } from "@/core/services/search/rag-search";
 import type { ParsedReference } from "@/core/services/pdf/parsed-reference";
 import type { ChatToolCall } from "@/app/(app)/advisor/_lib/types";
-import type { PipelineResultData } from "@/app/(app)/advisor/_services/pipeline/types";
+import type {
+  PipelineResultData,
+  JuryCritique,
+  OfficeReviewReport,
+} from "@/app/(app)/advisor/_services/pipeline/types";
 
 export type {
   ParsedReference,
   ChatToolCall,
   PipelineResultData,
+  JuryCritique,
+  OfficeReviewReport,
   RagSearchResultItem,
 };
 
@@ -488,6 +494,7 @@ export const outlinesRelations = relations(outlines, ({ one, many }) => ({
   }),
   outlineAnnotations: many(outlineAnnotations),
   outlineSources: many(outlineSources),
+  sessions: many(sessions),
 }));
 
 export const annotationsRelations = relations(annotations, ({ one, many }) => ({
@@ -560,7 +567,7 @@ export const tasksRelations = relations(tasks, ({ one }) => ({
   }),
 }));
 
-/** Sessions table — stores advisor conversation threads per user. */
+/** Sessions table — stores advisor conversation threads and office review sessions per user. */
 export const sessions = pgTable(
   "sessions",
   {
@@ -568,16 +575,36 @@ export const sessions = pgTable(
     userId: integer("user_id")
       .notNull()
       .references(() => users.id, { onDelete: "cascade" }),
+    outlineId: integer("outline_id").references(() => outlines.id, {
+      onDelete: "set null",
+    }),
     title: varchar({ length: 255 }).notNull(),
+    draftText: text("draft_text"),
+    studentNote: text("student_note"),
     createdAt: timestamp("created_at").defaultNow().notNull(),
     updatedAt: timestamp("updated_at").defaultNow().notNull(),
   },
-  (table) => [index("idx_sessions_user_id").on(table.userId)],
+  (table) => [
+    index("idx_sessions_user_id").on(table.userId),
+    index("idx_sessions_outline_id").on(table.outlineId),
+  ],
 );
 
 export type Session = InferSelectModel<typeof sessions>;
 
 export type NewSession = InferInsertModel<typeof sessions>;
+
+export const sessionsRelations = relations(sessions, ({ one, many }) => ({
+  user: one(users, {
+    fields: [sessions.userId],
+    references: [users.id],
+  }),
+  outline: one(outlines, {
+    fields: [sessions.outlineId],
+    references: [outlines.id],
+  }),
+  messages: many(messages),
+}));
 
 /** Messages table — stores individual messages within a chat session. */
 export const messages = pgTable(
@@ -601,3 +628,10 @@ export const messages = pgTable(
 export type Message = InferSelectModel<typeof messages>;
 
 export type NewMessage = InferInsertModel<typeof messages>;
+
+export const messagesRelations = relations(messages, ({ one }) => ({
+  session: one(sessions, {
+    fields: [messages.sessionId],
+    references: [sessions.id],
+  }),
+}));

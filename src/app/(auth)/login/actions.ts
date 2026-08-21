@@ -22,9 +22,15 @@ const LoginSchema = z.object({
 const LOGIN_MAX_ATTEMPTS = 5;
 const LOGIN_WINDOW_MS = 15 * 60 * 1000;
 
+// NOTE: In-memory Map is single-instance only. In serverless/multi-instance
+// deployments (Vercel, Neon) each isolate has its own Map, so distributed
+// brute-force is not fully mitigated. For production hardening, replace with
+// a shared store (e.g. Upstash Redis / DB table) or add a DB-backed counter.
+// Kept intentionally minimal for the 2-user private deployment.
 const attemptMap = new Map<string, { count: number; windowStart: number }>();
 
 /** Enforces a sliding-window brute-force rate limit for a single email address.
+ * Single-instance only — see note above for distributed deployments.
  *
  * @param email - The email address to check against the rate limit.
  * @returns True when the request is allowed, false when the limit was reached.

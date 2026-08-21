@@ -80,11 +80,53 @@ export interface PipelineResult {
   audit?: AuditReport;
 }
 
-/** Pipeline result type for the three-stage Academic Pipeline stored on chat messages. */
+/** Category of jury critique / Socratic challenge. */
+export type JuryCritiqueCategory =
+  | "LOGIC_LEAP"
+  | "UNBACKED_CLAIM"
+  | "METHODOLOGICAL_GAP";
+
+/** A single jury remark / critique identified during the draft audit. */
+export interface JuryCritique {
+  id: string;
+  title: string;
+  critique: string;
+  category: JuryCritiqueCategory;
+  suggestedDefensePoint: string;
+}
+
+/** Structured output of the Office Review stage (Audit + Diff + Jury Remarks). */
+export interface OfficeReviewReport {
+  outlineId?: number;
+  draftText?: string;
+  studentNote?: string;
+  audit: {
+    summary: string;
+    findings: Array<{
+      message: string;
+      severity: "CRITICAL" | "WARNING" | "NOTE";
+      sourceTitle?: string;
+      citedPages?: string;
+      status?: "VERIFIED" | "MISMATCH" | "UNVERIFIED";
+    }>;
+    hasCriticalIssues: boolean;
+  };
+  diff: {
+    original: string;
+    polished: string;
+    changes: string[];
+  };
+  juryCritiques: JuryCritique[];
+}
+
+/** Pipeline result type for Academic Pipeline / Office Hours stored on chat messages. */
 export interface PipelineResultData {
-  stage: "audit" | "socratic" | "redaction";
-  cycle: number;
+  stage: "audit" | "socratic" | "redaction" | "office_review" | "office_defense";
+  cycle?: number;
   originalDraft?: string;
+  outlineId?: number;
+  draftText?: string;
+  studentNote?: string;
   audit?: {
     summary: string;
     findings: Array<{
@@ -92,6 +134,7 @@ export interface PipelineResultData {
       severity: "CRITICAL" | "WARNING" | "NOTE";
       sourceTitle?: string;
       citedPages?: string;
+      status?: "VERIFIED" | "MISMATCH" | "UNVERIFIED";
     }>;
     hasCriticalIssues: boolean;
   };
@@ -103,5 +146,8 @@ export interface PipelineResultData {
   diff?: {
     original: string;
     polished: string;
+    changes?: string[];
   };
+  juryCritiques?: JuryCritique[];
 }
+

@@ -6,7 +6,10 @@ import {
   updateCitationCardAction as _updateCitationCardAction,
   deleteCitationCardAction as _deleteCitationCardAction,
   moveCitationCardBoxAction as _moveCitationCardBoxAction,
+  updateCardOutlineLinkAction as _updateCardOutlineLinkAction,
 } from "./mutation-actions";
+
+import { autoMapCitationCardsAction as _autoMapCitationCardsAction } from "./ai-actions";
 
 export async function getCitationCardsDataAction(
   ...args: Parameters<typeof _getCitationCardsDataAction>
@@ -36,4 +39,16 @@ export async function moveCitationCardBoxAction(
   ...args: Parameters<typeof _moveCitationCardBoxAction>
 ) {
   return _moveCitationCardBoxAction(...args);
+}
+
+export async function updateCardOutlineLinkAction(
+  ...args: Parameters<typeof _updateCardOutlineLinkAction>
+) {
+  return _updateCardOutlineLinkAction(...args);
+}
+
+export async function autoMapCitationCardsAction(
+  ...args: Parameters<typeof _autoMapCitationCardsAction>
+) {
+  return _autoMapCitationCardsAction(...args);
 }
