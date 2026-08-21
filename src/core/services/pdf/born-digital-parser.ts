@@ -18,6 +18,8 @@ import {
 import type { DocumentAnalysisResult, PageAnalysis } from "./schema";
 import type { PdfParseOptions } from "./types";
 
+import type { PositionedTextItemInput } from "./page-detection-born-digital";
+
 /**
  * Parses a born-digital PDF document using local pdf-inspector extraction and Gemini Flash-Lite.
  *
@@ -25,6 +27,7 @@ import type { PdfParseOptions } from "./types";
  * @param fileName - Original file name.
  * @param options - Parser options (startPage, endPage).
  * @param logger - Optional logger.
+ * @param preloadedPositionedItems - Optional pre-extracted text items with coordinates.
  * @returns DocumentAnalysisResult.
  */
 export async function parseBornDigitalPdf(
@@ -32,6 +35,7 @@ export async function parseBornDigitalPdf(
   fileName: string,
   options: PdfParseOptions = {},
   logger?: Logger,
+  preloadedPositionedItems?: PositionedTextItemInput[],
 ): Promise<DocumentAnalysisResult> {
   const extracted = extractPdfInspectorPages(pdfBuffer);
   const totalPages = extracted.pages.length;
@@ -43,7 +47,8 @@ export async function parseBornDigitalPdf(
   // Printed page number detection: position-based Page-Association + font
   // filter + 3-page anchor on the full buffer, then backward extrapolation
   // for cover/front pages that precede the confirmed chain.
-  const positionedItems = extractPdfInspectorTextPositions(pdfBuffer);
+  const positionedItems =
+    preloadedPositionedItems ?? extractPdfInspectorTextPositions(pdfBuffer);
   const pageDetection = positionedItems.some((it) => it.text.trim().length > 0)
     ? detectPrintedPageNumbers(positionedItems)
     : null;

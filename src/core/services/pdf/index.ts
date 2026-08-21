@@ -1,10 +1,17 @@
-import { processPdf as processPdfInspector } from "@firecrawl/pdf-inspector";
+import {
+  processPdf as processPdfInspector,
+  extractTextWithPositions as extractPdfInspectorTextPositions,
+} from "@firecrawl/pdf-inspector";
 import type { Logger } from "@/lib/logger";
 import { buildChunksFromPageAnalysis } from "./chunker";
 import { type DocumentAnalysisResult, type PageAnalysis } from "./schema";
 import type { PdfParseOptions, PdfChunkParseResult } from "./types";
 import { parseScannedPdf } from "./scanned-parser";
 import { parseBornDigitalPdf } from "./born-digital-parser";
+import {
+  evaluatePdfLayoutAndQuality,
+  type LayoutAnalysisResult,
+} from "./layout-detector";
 
 export type { DocumentAnalysisResult, PageAnalysis };
 export {
@@ -26,12 +33,14 @@ export {
   resolveMistralPrintedPages,
   type MistralOcrPage,
 } from "./page-detection-ocr";
+export { evaluatePdfLayoutAndQuality, type LayoutAnalysisResult };
 
 /**
  * Parses a PDF document into structured page-level markdown, metadata, and references.
  *
  * - **Scanned / Image-based PDF:** Markdown extracted via Mistral OCR (R2 presigned URL → server-to-server fetch).
  *   Metadata and references are then extracted via Gemini Flash-Lite.
+ * - **Multi-column / Corrupt OCR PDF:** Automatically detected and routed to Mistral OCR to prevent cross-column bleed.
  * - **Born-digital / Mixed PDF:** Text extracted locally via pdf-inspector (<100 ms).
  *   If extracted text is insufficient (<100 chars) and r2Key is present, seamlessly falls back to Mistral OCR.
  *   Metadata and references are extracted in parallel via Gemini Flash-Lite.
@@ -63,11 +72,33 @@ export async function parsePdfToDocumentAnalysis(
     return parseScannedPdf(fileName, r2Key, options, logger);
   }
 
+  // Pre-extract positioned text items to evaluate layout complexity and text layer quality.
+  const positionedItems = extractPdfInspectorTextPositions(pdfBuffer);
+  const layoutEvaluation = evaluatePdfLayoutAndQuality(positionedItems);
+
+  // If the document has a complex multi-column layout (periodical/magazine) or corrupted
+  // legacy OCR layer, route to layout-aware Vision OCR (Mistral OCR) to avoid cross-column bleed.
+  if (layoutEvaluation.shouldRouteToMistralOcr && r2Key) {
+    logger?.info("pdf_parse_complex_layout_routed_to_ocr", {
+      service: "pdf-parser",
+      data: {
+        fileName,
+        pdfType: inspection.pdfType,
+        maxColumns: layoutEvaluation.metrics.maxColumns,
+        multiColumnLineRatio: layoutEvaluation.metrics.multiColumnLineRatio,
+        ocrArtifactRatePer1k: layoutEvaluation.metrics.ocrArtifactRatePer1k,
+        reasons: layoutEvaluation.reasons,
+      },
+    });
+    return parseScannedPdf(fileName, r2Key, options, logger);
+  }
+
   const bornDigitalResult = await parseBornDigitalPdf(
     pdfBuffer,
     fileName,
     options,
     logger,
+    positionedItems,
   );
 
   // Safety net: If born-digital extraction produced virtually no text (e.g. corrupt font/CMap or hidden scan)
