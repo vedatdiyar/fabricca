@@ -104,26 +104,42 @@ async function main() {
   // -----------------------------------------------------------------
   // 2. POSITIONING PIPELINE (Search, Sift, Jury Evaluation)
   // -----------------------------------------------------------------
-  console.log("\n[2/6] 🎯 Running Positioning Analysis (Tezara + Cohere + Gemini)...");
+  console.log(
+    "\n[2/6] 🎯 Running Positioning Analysis (Tezara + Cohere + Gemini)...",
+  );
   const positioningInput = {
     subjectProblem: THESIS_INPUT.subjectProblem,
     theoreticalFramework: THESIS_INPUT.theoreticalFramework,
     methodology: THESIS_INPUT.methodology,
   };
 
-  console.log("   - Sifting candidate theses from Tezara (Qdrant) & Cohere Rerank v4.0 Pro...");
+  console.log(
+    "   - Sifting candidate theses from Tezara (Qdrant) & Cohere Rerank v4.0 Pro...",
+  );
   const siftedTheses = await searchAndSiftTheses(positioningInput, log);
   console.log(`   - Retrieved ${siftedTheses.length} sifted candidate theses.`);
 
   console.log("   - Evaluating theses in parallel via Gemini Flash Lite...");
-  const evaluatedTheses = await evaluateThesesInParallel(positioningInput, siftedTheses, log);
-  const relevantTheses = evaluatedTheses.filter((ev) => ev.evaluation.isRelevant);
+  const evaluatedTheses = await evaluateThesesInParallel(
+    positioningInput,
+    siftedTheses,
+    log,
+  );
+  const relevantTheses = evaluatedTheses.filter(
+    (ev) => ev.evaluation.isRelevant,
+  );
   console.log(`   - Found ${relevantTheses.length} relevant candidate theses.`);
 
   console.log("   - Synthesizing Academic Jury Analysis...");
-  const juryResult = await analyzePositioningJury(positioningInput, relevantTheses, log);
+  const juryResult = await analyzePositioningJury(
+    positioningInput,
+    relevantTheses,
+    log,
+  );
   console.log(`   - Jury status: ${juryResult.globalStatus}`);
-  console.log(`   - Recommended guiding theses count: ${juryResult.recommendedTheses.length}`);
+  console.log(
+    `   - Recommended guiding theses count: ${juryResult.recommendedTheses.length}`,
+  );
 
   if (juryResult.recommendedTheses.length > 0) {
     console.log("   - Sanitizing academic titles & authors...");
@@ -132,11 +148,13 @@ async function main() {
       author: t.author || "",
     }));
     const sanitized = await sanitizeAcademicDataBulk(itemsToSanitize, log);
-    juryResult.recommendedTheses = juryResult.recommendedTheses.map((t, idx) => ({
-      ...t,
-      title: sanitized[idx]?.title || t.title,
-      author: sanitized[idx]?.author || t.author,
-    }));
+    juryResult.recommendedTheses = juryResult.recommendedTheses.map(
+      (t, idx) => ({
+        ...t,
+        title: sanitized[idx]?.title || t.title,
+        author: sanitized[idx]?.author || t.author,
+      }),
+    );
   }
 
   console.log("   - Persisting positioning report to database...");
@@ -146,7 +164,9 @@ async function main() {
   // -----------------------------------------------------------------
   // 3. TOPIC BOXES PIPELINE (Structure Generation + Semantic Queries)
   // -----------------------------------------------------------------
-  console.log("\n[3/6] 📦 Generating Academic Topic Boxes (Phase 1 & Phase 2)...");
+  console.log(
+    "\n[3/6] 📦 Generating Academic Topic Boxes (Phase 1 & Phase 2)...",
+  );
   const boxStructurePayload = buildBoxStructurePromptPayload({
     subjectProblem: matrix.subjectProblem,
     theoreticalFramework: matrix.theoreticalFramework,
@@ -154,23 +174,26 @@ async function main() {
     methodology: matrix.methodology,
   });
 
-  const structure = await generateGeminiStructuredContent<RawBoxStructureResponse>(
-    FLASH_LITE_35,
-    boxStructurePayload.systemInstruction,
-    boxStructurePayload.userPrompt,
-    boxStructureJsonSchema,
-    log,
-    {
-      thinkingConfig: { thinkingLevel: ThinkingLevel.LOW },
-      zodSchema: boxStructureSchema,
-      seed: GEMINI_SEED,
-      thesisMatrix: matrix,
-      payloadStage: "box_structure_generation",
-      quiet: true,
-    },
-  );
+  const structure =
+    await generateGeminiStructuredContent<RawBoxStructureResponse>(
+      FLASH_LITE_35,
+      boxStructurePayload.systemInstruction,
+      boxStructurePayload.userPrompt,
+      boxStructureJsonSchema,
+      log,
+      {
+        thinkingConfig: { thinkingLevel: ThinkingLevel.LOW },
+        zodSchema: boxStructureSchema,
+        seed: GEMINI_SEED,
+        thesisMatrix: matrix,
+        payloadStage: "box_structure_generation",
+        quiet: true,
+      },
+    );
 
-  console.log("   - Generating English semantic search queries for sub-boxes...");
+  console.log(
+    "   - Generating English semantic search queries for sub-boxes...",
+  );
   const subBoxEntries: {
     title: string;
     boxType: string;
@@ -178,7 +201,11 @@ async function main() {
     concepts?: string[];
   }[] = [];
 
-  for (const key of ["subjectProblem", "theoreticalFramework", "methodology"] as const) {
+  for (const key of [
+    "subjectProblem",
+    "theoreticalFramework",
+    "methodology",
+  ] as const) {
     const quadrant = structure[key];
     for (const sb of quadrant.subBoxes) {
       subBoxEntries.push({
@@ -204,20 +231,21 @@ async function main() {
     subBoxes: subBoxEntries,
   });
 
-  const queryResult = await generateGeminiStructuredContent<BulkSemanticQueryResponse>(
-    FLASH_LITE_35,
-    semanticPayload.systemInstruction,
-    semanticPayload.userPrompt,
-    bulkSemanticQueryJsonSchema,
-    log,
-    {
-      thinkingConfig: { thinkingLevel: ThinkingLevel.LOW },
-      zodSchema: bulkSemanticQuerySchema,
-      seed: GEMINI_SEED,
-      payloadStage: "semantic_query_generation",
-      quiet: true,
-    },
-  );
+  const queryResult =
+    await generateGeminiStructuredContent<BulkSemanticQueryResponse>(
+      FLASH_LITE_35,
+      semanticPayload.systemInstruction,
+      semanticPayload.userPrompt,
+      bulkSemanticQueryJsonSchema,
+      log,
+      {
+        thinkingConfig: { thinkingLevel: ThinkingLevel.LOW },
+        zodSchema: bulkSemanticQuerySchema,
+        seed: GEMINI_SEED,
+        payloadStage: "semantic_query_generation",
+        quiet: true,
+      },
+    );
 
   const queriesMap = new Map<string, string>();
   for (const entry of queryResult.semanticQueries) {
@@ -233,7 +261,9 @@ async function main() {
     }
   }
 
-  console.log(`   - Persisting ${productionBoxes.length} boxes into database...`);
+  console.log(
+    `   - Persisting ${productionBoxes.length} boxes into database...`,
+  );
   await db.transaction(async (tx) => {
     await tx
       .delete(boxRows)
@@ -312,23 +342,26 @@ async function main() {
     methodology: matrix.methodology,
   });
 
-  const generatedOutline = await generateGeminiStructuredContent<OutlineGenerationResponse>(
-    FLASH_LITE_35,
-    outlinePayload.systemInstruction,
-    outlinePayload.userPrompt,
-    outlineGenerationJsonSchema,
-    log,
-    {
-      thinkingConfig: { thinkingLevel: ThinkingLevel.LOW },
-      zodSchema: outlineGenerationSchema,
-      seed: GEMINI_SEED,
-      thesisMatrix: matrix,
-      payloadStage: "outline_generation",
-      quiet: true,
-    },
-  );
+  const generatedOutline =
+    await generateGeminiStructuredContent<OutlineGenerationResponse>(
+      FLASH_LITE_35,
+      outlinePayload.systemInstruction,
+      outlinePayload.userPrompt,
+      outlineGenerationJsonSchema,
+      log,
+      {
+        thinkingConfig: { thinkingLevel: ThinkingLevel.LOW },
+        zodSchema: outlineGenerationSchema,
+        seed: GEMINI_SEED,
+        thesisMatrix: matrix,
+        payloadStage: "outline_generation",
+        quiet: true,
+      },
+    );
 
-  console.log(`   - Generated ${generatedOutline.sections.length} main chapters.`);
+  console.log(
+    `   - Generated ${generatedOutline.sections.length} main chapters.`,
+  );
   console.log("   - Persisting outline hierarchy to database...");
   await db.transaction(async (tx) => {
     await tx.delete(outlineRows).where(eq(outlineRows.matrixId, matrix.id));
@@ -390,7 +423,9 @@ async function main() {
   // -----------------------------------------------------------------
   // 5. LITERATURE REVIEW PIPELINE (OpenAlex + Jury + Selection)
   // -----------------------------------------------------------------
-  console.log("\n[5/6] 📚 Running Literature Review Pipeline (OpenAlex + Gemini Paper Jury)...");
+  console.log(
+    "\n[5/6] 📚 Running Literature Review Pipeline (OpenAlex + Gemini Paper Jury)...",
+  );
 
   // Load all freshly saved boxes from DB
   const rawDbBoxes = await db
@@ -398,7 +433,9 @@ async function main() {
     .from(boxRows)
     .where(eq(boxRows.matrixId, matrix.id));
 
-  const parentBoxes = rawDbBoxes.filter((b) => b.parentId === null && b.boxType !== "RELATED_THESES");
+  const parentBoxes = rawDbBoxes.filter(
+    (b) => b.parentId === null && b.boxType !== "RELATED_THESES",
+  );
   const subBoxInputs: SubBoxInput[] = parentBoxes.map((pBox) => {
     const children = rawDbBoxes.filter((c) => c.parentId === pBox.id);
     return {
@@ -415,7 +452,9 @@ async function main() {
     };
   });
 
-  console.log(`   - Processing ${subBoxInputs.length} parent topic boxes through batch orchestrator...`);
+  console.log(
+    `   - Processing ${subBoxInputs.length} parent topic boxes through batch orchestrator...`,
+  );
   const { poolEntries } = await orchestrateBatchProcess(
     subBoxInputs,
     log,
@@ -446,9 +485,18 @@ async function main() {
   // VERIFICATION SUMMARY
   // -----------------------------------------------------------------
   const finalUser = await db.select().from(users).where(eq(users.id, USER_ID));
-  const finalPos = await db.select().from(positioning).where(eq(positioning.userId, USER_ID));
-  const finalBoxes = await db.select().from(boxRows).where(eq(boxRows.matrixId, matrix.id));
-  const finalOutlines = await db.select().from(outlineRows).where(eq(outlineRows.matrixId, matrix.id));
+  const finalPos = await db
+    .select()
+    .from(positioning)
+    .where(eq(positioning.userId, USER_ID));
+  const finalBoxes = await db
+    .select()
+    .from(boxRows)
+    .where(eq(boxRows.matrixId, matrix.id));
+  const finalOutlines = await db
+    .select()
+    .from(outlineRows)
+    .where(eq(outlineRows.matrixId, matrix.id));
   const finalSources = await db
     .select()
     .from(sourceRows)
@@ -458,7 +506,9 @@ async function main() {
   console.log("\n======================================================");
   console.log("🎉 ONBOARDING PIPELINE COMPLETED SUCCESSFULLY!");
   console.log("======================================================");
-  console.log(`👤 User Onboarding Status: ${finalUser[0]?.onboardingCompleted}`);
+  console.log(
+    `👤 User Onboarding Status: ${finalUser[0]?.onboardingCompleted}`,
+  );
   console.log(`🎯 Positioning Status: ${finalPos[0]?.globalStatus}`);
   console.log(`📦 Total Topic Boxes: ${finalBoxes.length}`);
   console.log(`📑 Total Outline Sections: ${finalOutlines.length}`);

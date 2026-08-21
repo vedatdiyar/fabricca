@@ -1,13 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import {
-  Send,
-  Loader2,
-  GraduationCap,
-  User,
-  Swords,
-} from "lucide-react";
+import { Send, Loader2, GraduationCap, User, Swords } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
@@ -93,12 +87,16 @@ export function OfficeDefenseChat({
               <h3 className="font-serif text-sm font-semibold tracking-tight text-foreground">
                 Danışmanla Canlı Müzakere Masası
               </h3>
-              <Badge variant="outline" className="text-[10px] bg-primary/10 text-primary border-primary/20">
+              <Badge
+                variant="outline"
+                className="text-[10px] bg-primary/10 text-primary border-primary/20"
+              >
                 Sokratik Hoca
               </Badge>
             </div>
             <p className="text-[11px] text-muted-foreground">
-              Argümanlarınızı savunun, teorik tercihlerinizi açıklayın ve danışmanı ikna edin.
+              Argümanlarınızı savunun, teorik tercihlerinizi açıklayın ve
+              danışmanı ikna edin.
             </p>
           </div>
         </div>
@@ -115,8 +113,9 @@ export function OfficeDefenseChat({
               Danışmanın Kapısını Çalın
             </h4>
             <p className="text-xs text-muted-foreground leading-relaxed mb-5">
-              Sol paneldeki kenar notlarını ve jüri şerhlerini inceledikten sonra savunma oturumunu başlatın.
-              Danışmanınız en kritik itiraz noktasını masaya getirecektir.
+              Sol paneldeki kenar notlarını ve jüri şerhlerini inceledikten
+              sonra savunma oturumunu başlatın. Danışmanınız en kritik itiraz
+              noktasını masaya getirecektir.
             </p>
             <Button
               onClick={() => onStartDefense(activeCritique || undefined)}

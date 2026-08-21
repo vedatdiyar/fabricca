@@ -11,11 +11,7 @@ import {
   type CitationSynthesisReport,
 } from "./_services/citation-synthesis.service";
 import { fetchCitationCardsData } from "./_services/citation-cards-query";
-import type {
-  CitationCardItem,
-  OutlineItem,
-  SourceItem,
-} from "./_lib/types";
+import type { CitationCardItem, OutlineItem, SourceItem } from "./_lib/types";
 import { revalidatePath } from "next/cache";
 
 export type { CitationSynthesisReport };
@@ -99,11 +95,14 @@ export async function synthesizeCitationCardsAction(
     if (cards.length === 0) {
       return {
         success: false,
-        error: "Sentez yapmak için kütüphanenizde en az 1 alıntı fişi bulunmalıdır.",
+        error:
+          "Sentez yapmak için kütüphanenizde en az 1 alıntı fişi bulunmalıdır.",
       };
     }
 
-    const sourceMap = new Map<number, SourceItem>(sources.map((s) => [s.id, s]));
+    const sourceMap = new Map<number, SourceItem>(
+      sources.map((s) => [s.id, s]),
+    );
 
     const formattedCards = cards.map((c: CitationCardItem) => {
       const src = sourceMap.get(c.sourceId);
@@ -115,7 +114,8 @@ export async function synthesizeCitationCardsAction(
         year: src?.publicationYear || null,
         pageNumber: c.pageNumber,
         noteType: c.noteType,
-        outlineId: c.outlineIds && c.outlineIds.length > 0 ? c.outlineIds[0] : null,
+        outlineId:
+          c.outlineIds && c.outlineIds.length > 0 ? c.outlineIds[0] : null,
       };
     });
 

@@ -38,7 +38,9 @@ export async function streamOfficeDefense(
     .limit(1);
 
   if (!session || session.userId !== userId) {
-    writer.send("error", { message: "Oturum bulunamadı veya yetkisiz erişim." });
+    writer.send("error", {
+      message: "Oturum bulunamadı veya yetkisiz erişim.",
+    });
     writer.done();
     return;
   }

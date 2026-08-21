@@ -82,9 +82,7 @@ export interface PipelineResult {
 
 /** Category of jury critique / Socratic challenge. */
 export type JuryCritiqueCategory =
-  | "LOGIC_LEAP"
-  | "UNBACKED_CLAIM"
-  | "METHODOLOGICAL_GAP";
+  "LOGIC_LEAP" | "UNBACKED_CLAIM" | "METHODOLOGICAL_GAP";
 
 /** A single jury remark / critique identified during the draft audit. */
 export interface JuryCritique {
@@ -121,7 +119,8 @@ export interface OfficeReviewReport {
 
 /** Pipeline result type for Academic Pipeline / Office Hours stored on chat messages. */
 export interface PipelineResultData {
-  stage: "audit" | "socratic" | "redaction" | "office_review" | "office_defense";
+  stage:
+    "audit" | "socratic" | "redaction" | "office_review" | "office_defense";
   cycle?: number;
   originalDraft?: string;
   outlineId?: number;
@@ -150,4 +149,3 @@ export interface PipelineResultData {
   };
   juryCritiques?: JuryCritique[];
 }
-

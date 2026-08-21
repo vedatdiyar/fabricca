@@ -83,7 +83,10 @@ export function OfficeSessionSidebar({
             <CardTitle className="font-serif text-sm font-semibold text-foreground">
               Geçmiş Randevular
             </CardTitle>
-            <Badge variant="secondary" className="text-[10px] px-1.5 py-0 bg-muted text-muted-foreground">
+            <Badge
+              variant="secondary"
+              className="text-[10px] px-1.5 py-0 bg-muted text-muted-foreground"
+            >
               {sessions.length}
             </Badge>
           </div>

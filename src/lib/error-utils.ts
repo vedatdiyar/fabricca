@@ -1,12 +1,6 @@
 import { classifyError } from "@/core/services/ai/llm-errors";
 import type { ErrorScenario } from "@/core/services/ai/llm-errors";
 
-export {
-  classifyError,
-  extractMessage,
-  type ErrorScenario,
-} from "@/core/services/ai/llm-errors";
-
 /** Safe, user-ready error display derived from a masked internal scenario. */
 export interface ErrorDisplay {
   title: string;

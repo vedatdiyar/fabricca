@@ -57,6 +57,7 @@ skills-lock.json
 .codegraph
 
 # repomix
+repomix-output.xml
 
 # docs
 /docs

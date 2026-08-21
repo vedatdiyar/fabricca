@@ -263,7 +263,10 @@ async function executeUnlinkSourceFromOutline(
     return { success: false, error: "Geçersiz bölüm veya kaynak kimliği." };
   }
   if (!(await isOutlineOwnedByUser(outlineId, userId))) {
-    return { success: false, error: "Bu bölümden kaynak kaldırma yetkiniz yok." };
+    return {
+      success: false,
+      error: "Bu bölümden kaynak kaldırma yetkiniz yok.",
+    };
   }
 
   await db

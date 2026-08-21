@@ -102,8 +102,7 @@ interface DialogBodyProps {
  * @returns Either the read-only view or the edit form markup.
  */
 function DialogBody(props: DialogBodyProps) {
-  const { cardToEdit, mode, sources, boxes, outlines, onSave, onClose } =
-    props;
+  const { cardToEdit, mode, sources, boxes, outlines, onSave, onClose } = props;
   const [isEditing, setIsEditing] = useState(mode === "edit");
 
   const isNewCard = !cardToEdit;

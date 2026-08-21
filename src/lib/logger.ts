@@ -47,7 +47,9 @@ export type ServiceName =
   | "advisor"
   | "citation-cards"
   | "literature-matrix"
-  | "outline";
+  | "outline"
+  | "thesis-architecture"
+  | "ui";
 
 export interface LogParams {
   service?: ServiceName;

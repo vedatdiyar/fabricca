@@ -2,6 +2,7 @@
 
 import { useEffect } from "react";
 import { Button } from "@/components/ui/button";
+import { createFlowId, Logger } from "@/lib/logger";
 
 /**
  * Route-level error boundary for authenticated app routes.
@@ -19,7 +20,10 @@ export default function AppRouteError({
   reset: () => void;
 }) {
   useEffect(() => {
-    console.error(error);
+    new Logger(createFlowId()).error("AppRouteError", {
+      service: "ui",
+      error,
+    });
   }, [error]);
 
   return (

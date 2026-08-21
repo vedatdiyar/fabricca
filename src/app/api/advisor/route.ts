@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { getSession } from "@/lib/session";
+import { createFlowId, Logger } from "@/lib/logger";
 import { createSseStream } from "@/app/(app)/advisor/_services/stream";
 import { runTurn } from "@/app/(app)/advisor/_services/turn";
 import { runOfficeReview } from "@/app/(app)/advisor/_services/office-review.service";
@@ -84,7 +85,10 @@ export async function POST(request: Request) {
         sources: result.sources,
       });
     } catch (err) {
-      console.error("Office review error:", err);
+      new Logger(createFlowId()).error("Office review error:", {
+        service: "advisor",
+        error: err,
+      });
       return NextResponse.json(
         {
           error:

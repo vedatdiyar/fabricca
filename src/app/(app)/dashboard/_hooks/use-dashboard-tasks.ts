@@ -9,7 +9,7 @@ import {
   updateTaskStatusAction,
   deleteTaskAction,
   updateTaskAction,
-} from "@/app/(app)/dashboard/actions";
+} from "@/app/(app)/dashboard/task-actions";
 
 /**
  * Maps a database task row into a Kanban task model.

@@ -32,7 +32,9 @@ export async function getChatMessages(
     const [owned] = await db
       .select({ id: sessions.id })
       .from(sessions)
-      .where(and(eq(sessions.id, sessionId), eq(sessions.userId, session.userId)));
+      .where(
+        and(eq(sessions.id, sessionId), eq(sessions.userId, session.userId)),
+      );
     if (!owned) {
       return { success: false, error: "Oturum bulunamadı." };
     }
@@ -78,7 +80,9 @@ export async function saveChatMessage(
     const [owned] = await db
       .select({ id: sessions.id })
       .from(sessions)
-      .where(and(eq(sessions.id, sessionId), eq(sessions.userId, session.userId)));
+      .where(
+        and(eq(sessions.id, sessionId), eq(sessions.userId, session.userId)),
+      );
     if (!owned) {
       return { success: false, error: "Oturum bulunamadı." };
     }
@@ -100,7 +104,9 @@ export async function saveChatMessage(
       await tx
         .update(sessions)
         .set({ updatedAt: new Date() })
-        .where(and(eq(sessions.id, sessionId), eq(sessions.userId, session.userId)));
+        .where(
+          and(eq(sessions.id, sessionId), eq(sessions.userId, session.userId)),
+        );
 
       return inserted.id;
     });
@@ -131,7 +137,9 @@ export async function updateChatMessageToolCalls(
       .select({ id: messages.id })
       .from(messages)
       .innerJoin(sessions, eq(messages.sessionId, sessions.id))
-      .where(and(eq(messages.id, messageId), eq(sessions.userId, session.userId)));
+      .where(
+        and(eq(messages.id, messageId), eq(sessions.userId, session.userId)),
+      );
     if (!owned) {
       return { success: false, error: "Mesaj bulunamadı." };
     }

@@ -1,11 +1,7 @@
+import type { ThesisBoxType as BaseThesisBoxType } from "@/lib/box-constants";
+
 /** Box types matching the thesis matrix boxes in the Fabricca system. */
-export type ThesisBoxType =
-  | "ALL"
-  | "SUBJECT_PROBLEM"
-  | "THEORETICAL_FRAMEWORK"
-  | "PRIMARY_MATERIAL"
-  | "METHODOLOGY"
-  | "RELATED_THESES";
+export type ThesisBoxType = BaseThesisBoxType | "ALL";
 
 /** Note types for individual citations and academic notes. */
 export type NoteType = "DIRECT_QUOTE" | "PARAPHRASE" | "PERSONAL_NOTE";

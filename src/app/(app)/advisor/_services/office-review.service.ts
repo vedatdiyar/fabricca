@@ -19,10 +19,7 @@ import {
   buildOfficeReviewPromptPayload,
   officeReviewJsonSchema,
 } from "../_prompts/office-review.prompt";
-import type {
-  OfficeReviewReport,
-  PipelineResultData,
-} from "./pipeline/types";
+import type { OfficeReviewReport, PipelineResultData } from "./pipeline/types";
 import { formatRagSourceContext } from "./pipeline/context";
 
 export interface RunOfficeReviewInput {
@@ -45,10 +42,7 @@ export interface RunOfficeReviewOutput {
  * @param outlineId - Selected Outline Section ID.
  * @returns Outline info and rendered annotations context.
  */
-async function loadSectionContext(
-  userId: number,
-  outlineId: number,
-) {
+async function loadSectionContext(userId: number, outlineId: number) {
   const [outline] = await db
     .select({
       id: outlines.id,
@@ -141,8 +135,10 @@ export async function runOfficeReview(
 ): Promise<RunOfficeReviewOutput> {
   const { userId, outlineId, draftText, studentNote } = input;
 
-  const { outline, pinnedSourceIds, notesContext } =
-    await loadSectionContext(userId, outlineId);
+  const { outline, pinnedSourceIds, notesContext } = await loadSectionContext(
+    userId,
+    outlineId,
+  );
 
   // Run Hybrid RAG (prioritize section pinned sources if available, otherwise search library)
   const ragSources = await performHybridRagSearch({
@@ -165,16 +161,17 @@ export async function runOfficeReview(
     studentNote,
   });
 
-  const reviewResult = await generateGeminiStructuredContent<OfficeReviewReport>(
-    FLASH_36,
-    payload.systemInstruction,
-    payload.userPrompt,
-    officeReviewJsonSchema,
-    undefined,
-    {
-      payloadStage: "advisor_office_review",
-    },
-  );
+  const reviewResult =
+    await generateGeminiStructuredContent<OfficeReviewReport>(
+      FLASH_36,
+      payload.systemInstruction,
+      payload.userPrompt,
+      officeReviewJsonSchema,
+      undefined,
+      {
+        payloadStage: "advisor_office_review",
+      },
+    );
 
   const reviewReport: OfficeReviewReport = {
     ...reviewResult,

@@ -32,8 +32,14 @@ export const citationSynthesisJsonSchema: JsonSchema = {
         type: "object",
         properties: {
           id: { type: "string" },
-          themeTitle: { type: "string", description: "Tematik fikir kümesi başlığı (Türkçe)." },
-          description: { type: "string", description: "Kümenin anlamsal özeti ve tezdeki rolü." },
+          themeTitle: {
+            type: "string",
+            description: "Tematik fikir kümesi başlığı (Türkçe).",
+          },
+          description: {
+            type: "string",
+            description: "Kümenin anlamsal özeti ve tezdeki rolü.",
+          },
           cardIds: {
             type: "array",
             items: { type: "number" },
@@ -61,11 +67,13 @@ export const citationSynthesisJsonSchema: JsonSchema = {
           cardId: { type: "number" },
           roleInArgument: {
             type: "string",
-            description: "Argümandaki işlevi (örn: 'Tez Giriş İddiası', 'Karşı Argüman / Şerh', 'Ampirik Kanıt', 'Sentez & Çözüm').",
+            description:
+              "Argümandaki işlevi (örn: 'Tez Giriş İddiası', 'Karşı Argüman / Şerh', 'Ampirik Kanıt', 'Sentez & Çözüm').",
           },
           transitionNote: {
             type: "string",
-            description: "Word'de yazarken önceki adımdan bu adıma geçişi sağlayacak bağlaç/kavramsal köprü önerisi.",
+            description:
+              "Word'de yazarken önceki adımdan bu adıma geçişi sağlayacak bağlaç/kavramsal köprü önerisi.",
           },
         },
         required: ["step", "cardId", "roleInArgument", "transitionNote"],
@@ -91,13 +99,18 @@ export function buildCitationSynthesisPromptPayload(
     .map((c) => {
       const authors = c.authors?.join(", ") || "Bilinmiyor";
       const year = c.year ? ` (${c.year})` : "";
-      const outlineInfo = c.outlineId ? `[Bölüm ID: ${c.outlineId}]` : "[EŞLENMEMİŞ]";
+      const outlineInfo = c.outlineId
+        ? `[Bölüm ID: ${c.outlineId}]`
+        : "[EŞLENMEMİŞ]";
       return `ID: ${c.id} | ${outlineInfo} | ${c.sourceTitle}${year} - s. ${c.pageNumber} (${authors})\nTür: ${c.noteType}\nİçerik: ${c.content}`;
     })
     .join("\n\n");
 
   const formattedOutlines = outlines
-    .map((o) => `Bölüm ID ${o.id}: ${o.title}${o.description ? ` (${o.description})` : ""}`)
+    .map(
+      (o) =>
+        `Bölüm ID ${o.id}: ${o.title}${o.description ? ` (${o.description})` : ""}`,
+    )
     .join("\n");
 
   return buildPromptPayload({

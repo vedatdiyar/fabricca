@@ -42,7 +42,10 @@ export async function autoMapCitationCards(
   userId: number,
   specificCardIds?: number[],
   logger?: Logger,
-): Promise<{ success: true; data: AutoMapCardsResult } | { success: false; error: string }> {
+): Promise<
+  | { success: true; data: AutoMapCardsResult }
+  | { success: false; error: string }
+> {
   try {
     // 1. Fetch user's thesis matrix
     const userMatrix = await db.query.matrices.findFirst({
@@ -61,7 +64,8 @@ export async function autoMapCitationCards(
     if (userOutlines.length === 0) {
       return {
         success: false,
-        error: "Tez planında henüz bir bölüm bulunmuyor. Lütfen önce iskeleti oluşturun.",
+        error:
+          "Tez planında henüz bir bölüm bulunmuyor. Lütfen önce iskeleti oluşturun.",
       };
     }
 

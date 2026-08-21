@@ -128,7 +128,10 @@ export function evaluatePdfLayoutAndQuality(
     let currentY = -1;
 
     for (const item of sorted) {
-      if (currentY === -1 || Math.abs(item.y - currentY) <= LINE_VERTICAL_TOLERANCE_PX) {
+      if (
+        currentY === -1 ||
+        Math.abs(item.y - currentY) <= LINE_VERTICAL_TOLERANCE_PX
+      ) {
         currentLine.push(item);
         currentY = item.y;
       } else {
@@ -163,7 +166,9 @@ export function evaluatePdfLayoutAndQuality(
   const ocrArtifactRatePer1k =
     totalCharsSampled > 0 ? (ocrArtifactCount * 1000) / totalCharsSampled : 0;
   const intrawordSpaceRatePer1k =
-    totalCharsSampled > 0 ? (intrawordSpaceCount * 1000) / totalCharsSampled : 0;
+    totalCharsSampled > 0
+      ? (intrawordSpaceCount * 1000) / totalCharsSampled
+      : 0;
 
   const reasons: string[] = [];
 
@@ -187,11 +192,15 @@ export function evaluatePdfLayoutAndQuality(
 
   // Criterion C: Mixed document (Scanned/Image front cover + multi-column inner pages)
   if (hasEmptyCoverOrPage && globalMaxCols >= 2) {
-    reasons.push("Cover or front page is an image with multi-column inner layout.");
+    reasons.push(
+      "Cover or front page is an image with multi-column inner layout.",
+    );
   }
 
   const shouldRouteToMistralOcr =
-    isComplexLayout || isCorruptOcr || (hasEmptyCoverOrPage && globalMaxCols >= 2);
+    isComplexLayout ||
+    isCorruptOcr ||
+    (hasEmptyCoverOrPage && globalMaxCols >= 2);
 
   const evaluationTimeMs = performance.now() - startTime;
 

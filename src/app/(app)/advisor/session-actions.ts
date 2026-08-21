@@ -105,13 +105,17 @@ export async function renameChatSession(
     const [owned] = await db
       .select({ id: sessions.id })
       .from(sessions)
-      .where(and(eq(sessions.id, sessionId), eq(sessions.userId, session.userId)));
+      .where(
+        and(eq(sessions.id, sessionId), eq(sessions.userId, session.userId)),
+      );
     if (!owned) return { success: false, error: "Oturum bulunamadı." };
 
     await db
       .update(sessions)
       .set({ title: trimmed, updatedAt: new Date() })
-      .where(and(eq(sessions.id, sessionId), eq(sessions.userId, session.userId)));
+      .where(
+        and(eq(sessions.id, sessionId), eq(sessions.userId, session.userId)),
+      );
 
     return { success: true };
   } catch (err) {
@@ -135,12 +139,16 @@ export async function deleteChatSession(
     const [owned] = await db
       .select({ id: sessions.id })
       .from(sessions)
-      .where(and(eq(sessions.id, sessionId), eq(sessions.userId, session.userId)));
+      .where(
+        and(eq(sessions.id, sessionId), eq(sessions.userId, session.userId)),
+      );
     if (!owned) return { success: false, error: "Oturum bulunamadı." };
 
     await db
       .delete(sessions)
-      .where(and(eq(sessions.id, sessionId), eq(sessions.userId, session.userId)));
+      .where(
+        and(eq(sessions.id, sessionId), eq(sessions.userId, session.userId)),
+      );
     return { success: true };
   } catch (err) {
     return handleActionError(err);

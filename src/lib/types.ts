@@ -1,3 +1,5 @@
+import type { ThesisBoxType } from "./box-constants";
+
 export type OnboardingActionResult =
   | { success: true; isProcessing?: boolean; error?: never }
   | { success?: never; error: string };
@@ -36,12 +38,7 @@ export interface ThesisMatrix {
 export interface GeminiThesisBox {
   id?: number;
   parentId: number | null;
-  boxType:
-    | "SUBJECT_PROBLEM"
-    | "THEORETICAL_FRAMEWORK"
-    | "PRIMARY_MATERIAL"
-    | "METHODOLOGY"
-    | "RELATED_THESES";
+  boxType: ThesisBoxType;
   title: string;
   description: string;
   semanticQuery: string | null;

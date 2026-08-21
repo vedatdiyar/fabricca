@@ -5,6 +5,7 @@ import {
   type JsonSchema,
 } from "@/core/services/ai";
 import { FLASH_LITE_35 } from "@/lib/constants";
+import { createFlowId, Logger } from "@/lib/logger";
 
 export type AdvisorPersona = "SOCRATIC_ADVISOR" | "TEZ_ASSISTANT";
 
@@ -98,7 +99,10 @@ export async function classifyAdvisorIntent(
 
     return res;
   } catch (error) {
-    console.error("Advisor intent classification fallback:", error);
+    new Logger(createFlowId()).warn("Advisor intent classification fallback:", {
+      service: "advisor",
+      error,
+    });
     // Safe fallback based on simple regex heuristics
     const isAction =
       /\b(ekle\w*|oluştur\w*|sil\w*|güncelle\w*|değiştir\w*|düzenle\w*|tamamla\w*|göster\w*)\b/i.test(

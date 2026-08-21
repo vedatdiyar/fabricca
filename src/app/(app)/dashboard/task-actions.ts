@@ -102,7 +102,10 @@ export async function addTaskAction(input: TaskInput): Promise<{
         .from(matrixTable)
         .where(eq(matrixTable.id, linkedBox.matrixId));
       if (!matrix || matrix.userId !== session.userId) {
-        return { success: false, error: "Bu kutuya görev bağlama yetkiniz yok." };
+        return {
+          success: false,
+          error: "Bu kutuya görev bağlama yetkiniz yok.",
+        };
       }
     }
 
@@ -202,7 +205,10 @@ export async function updateTaskAction(
         .from(matrixTable)
         .where(eq(matrixTable.id, linkedBox.matrixId));
       if (!matrix || matrix.userId !== session.userId) {
-        return { success: false, error: "Bu kutuya görev bağlama yetkiniz yok." };
+        return {
+          success: false,
+          error: "Bu kutuya görev bağlama yetkiniz yok.",
+        };
       }
     }
 

@@ -91,13 +91,7 @@ export interface CitationCardProps {
  * @returns Rendered citation card component markup.
  */
 export function CitationCard(props: CitationCardProps) {
-  const {
-    card,
-    isSelected = false,
-    onView,
-    onEdit,
-    onDelete,
-  } = props;
+  const { card, isSelected = false, onView, onEdit, onDelete } = props;
   const [copied, setCopied] = useState(false);
 
   const noteConfig = getNoteTypeBadgeConfig(card.noteType);
@@ -219,12 +213,7 @@ export function CitationCard(props: CitationCardProps) {
 
       {/* 2. Main Quote Body */}
       <CardContent className="p-0 flex-1">
-        <div
-          className={cn(
-            "pl-3 border-l-2 py-0.5",
-            noteConfig.borderAccent,
-          )}
-        >
+        <div className={cn("pl-3 border-l-2 py-0.5", noteConfig.borderAccent)}>
           <p className="text-sm leading-relaxed text-foreground font-sans line-clamp-5">
             {card.content}
           </p>

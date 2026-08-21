@@ -1,11 +1,6 @@
 "use client";
 
-import {
-  Search,
-  SlidersHorizontal,
-  X,
-  Box as BoxIcon,
-} from "lucide-react";
+import { Search, SlidersHorizontal, X, Box as BoxIcon } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import {
   Select,
@@ -85,10 +80,7 @@ export function CitationFilterBar({
                   : "ALL"
               }
               onValueChange={(v) =>
-                onFilterChange(
-                  "selectedBoxId",
-                  v === "ALL" ? null : Number(v),
-                )
+                onFilterChange("selectedBoxId", v === "ALL" ? null : Number(v))
               }
             >
               <SelectTrigger className="text-xs h-9 bg-card border-border">

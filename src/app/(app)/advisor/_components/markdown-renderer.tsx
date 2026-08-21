@@ -34,10 +34,7 @@ const components: Components = {
     </h3>
   ),
   p: ({ children, ...props }) => (
-    <p
-      className="text-sm leading-relaxed text-card-foreground mb-3"
-      {...props}
-    >
+    <p className="text-sm leading-relaxed text-card-foreground mb-3" {...props}>
       {children}
     </p>
   ),

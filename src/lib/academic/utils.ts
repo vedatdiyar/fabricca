@@ -9,7 +9,6 @@ export {
 
 export {
   stripAltTitle,
-  containmentSimilarity,
   areTitlesSimilar,
   normalizeTitle,
   normalizeCleanTitle,
@@ -17,6 +16,7 @@ export {
 
 export {
   toAsciiWord,
+  toAsciiAlphanumeric,
   extractSurname,
   formatApaPdfFileName,
 } from "./filename-utils";

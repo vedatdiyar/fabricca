@@ -2,6 +2,7 @@
 
 import { useCallback } from "react";
 import { toast } from "sonner";
+import { createFlowId, Logger } from "@/lib/logger";
 import {
   deleteResourcePdfAction,
   requestResourcePdfUploadAction,
@@ -108,10 +109,12 @@ export function usePdfUpload({
         });
         if (!uploadRes.ok) {
           const uploadErrorText = await uploadRes.text().catch(() => "unknown");
-          console.error(
+          new Logger(createFlowId()).error(
             "[handleUploadPdf] R2 presigned PUT failed:",
-            uploadRes.status,
-            uploadErrorText,
+            {
+              service: "library",
+              data: { status: uploadRes.status, uploadErrorText },
+            },
           );
           toast.error("PDF dosyası bulut depolamaya yüklenirken hata oluştu.");
           return false;

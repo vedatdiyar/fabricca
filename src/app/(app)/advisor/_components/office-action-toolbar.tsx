@@ -89,7 +89,9 @@ export function OfficeActionToolbar({
         noteContent: noteContent.trim(),
       });
       if (res.success) {
-        toast.success("Savunma notu Alıntı Fişleri ve Bölüme başarıyla kaydedildi.");
+        toast.success(
+          "Savunma notu Alıntı Fişleri ve Bölüme başarıyla kaydedildi.",
+        );
         setIsNoteDialogOpen(false);
       } else {
         toast.error(res.error || "Not kaydedilemedi.");
@@ -150,12 +152,14 @@ export function OfficeActionToolbar({
       ``,
       `--- SAYFA & KAYNAK DENETİMİ BULGULARI ---`,
       ...(report.audit.findings || []).map(
-        (f) => `[${f.severity}] ${f.citedPages || ""} ${f.sourceTitle || ""}: ${f.message}`,
+        (f) =>
+          `[${f.severity}] ${f.citedPages || ""} ${f.sourceTitle || ""}: ${f.message}`,
       ),
       ``,
       `--- JÜRİ ŞERHLERİ & SAVUNMA ÇIKIŞLARI ---`,
       ...(report.juryCritiques || []).map(
-        (j) => `* [${j.category}] ${j.title}: ${j.critique} (Çıkış: ${j.suggestedDefensePoint})`,
+        (j) =>
+          `* [${j.category}] ${j.title}: ${j.critique} (Çıkış: ${j.suggestedDefensePoint})`,
       ),
     ].join("\n");
 
@@ -234,12 +238,16 @@ export function OfficeActionToolbar({
               Savunma Notunu Bölüme Kaydet
             </DialogTitle>
             <DialogDescription className="text-xs text-muted-foreground">
-              Bu not, Alıntı Fişleri (Citation Cards) modülüne ve <strong>{outlineTitle}</strong> bölümüne iliştirilecektir.
+              Bu not, Alıntı Fişleri (Citation Cards) modülüne ve{" "}
+              <strong>{outlineTitle}</strong> bölümüne iliştirilecektir.
             </DialogDescription>
           </DialogHeader>
 
           <div className="py-2 space-y-2">
-            <Label htmlFor="note-content" className="text-xs font-medium text-foreground">
+            <Label
+              htmlFor="note-content"
+              className="text-xs font-medium text-foreground"
+            >
               Kaydedilecek Not İçeriği
             </Label>
             <Textarea
@@ -292,7 +300,10 @@ export function OfficeActionToolbar({
 
           <div className="py-2 space-y-3">
             <div className="space-y-1.5">
-              <Label htmlFor="task-title" className="text-xs font-medium text-foreground">
+              <Label
+                htmlFor="task-title"
+                className="text-xs font-medium text-foreground"
+              >
                 Görev Başlığı
               </Label>
               <Input
@@ -304,7 +315,10 @@ export function OfficeActionToolbar({
             </div>
 
             <div className="space-y-1.5">
-              <Label htmlFor="task-desc" className="text-xs font-medium text-foreground">
+              <Label
+                htmlFor="task-desc"
+                className="text-xs font-medium text-foreground"
+              >
                 Görev Açıklaması / Düzeltme Notu
               </Label>
               <Textarea

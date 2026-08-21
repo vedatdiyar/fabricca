@@ -222,7 +222,11 @@ export function formatContent(
   // Single-pass regex matching either bracket citations [ ... ] OR parenthetical citations ( ... )
   return sanitizedContent.replace(
     /\[([^\]\n]+)\]|\(([A-Za-zÇçĞğİıÖöŞşÜü\s.]+?,\s*\d{4}[^\)\n]*)\)/g,
-    (match, bracketInner: string | undefined, parenInner: string | undefined) => {
+    (
+      match,
+      bracketInner: string | undefined,
+      parenInner: string | undefined,
+    ) => {
       const inner = bracketInner || parenInner;
       if (!inner) return match;
 

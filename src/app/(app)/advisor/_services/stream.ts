@@ -1,3 +1,4 @@
+import { createFlowId, Logger } from "@/lib/logger";
 import { sanitizeModelStreamText } from "@/lib/text-sanitizer";
 
 /**
@@ -77,7 +78,11 @@ export function createSseStream(
         await run({ writer });
       } catch (err) {
         const errorDetail = err instanceof Error ? err.message : String(err);
-        console.error("Advisor API error:", errorDetail);
+        new Logger(createFlowId()).error("Advisor API error:", {
+          service: "advisor",
+          error: err,
+          data: { errorDetail },
+        });
         controller.enqueue(
           encoder.encode(
             encodeSseEvent({

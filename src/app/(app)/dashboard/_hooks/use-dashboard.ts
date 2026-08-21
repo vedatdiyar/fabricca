@@ -6,7 +6,7 @@ import {
   toggleResourceReadStatusAction,
   deleteLibraryResourceAction as deleteLibraryResource,
 } from "@/app/(app)/library/actions";
-import { refreshDashboardDataAction } from "@/app/(app)/dashboard/actions";
+import { refreshDashboardDataAction } from "@/app/(app)/dashboard/dashboard-data-actions";
 import type { Box, Source } from "@/core/db/schema";
 import type { TaskRow } from "../_lib/schemas";
 import { useDashboardArticles } from "./use-dashboard-articles";

@@ -26,7 +26,8 @@ export const officeReviewJsonSchema: JsonSchema = {
         },
         hasCriticalIssues: {
           type: "boolean",
-          description: "Kritik atıf/sayfa uyumsuzluğu veya iddia çelişkisi var mı?",
+          description:
+            "Kritik atıf/sayfa uyumsuzluğu veya iddia çelişkisi var mı?",
         },
         findings: {
           type: "array",
@@ -108,10 +109,17 @@ export const officeReviewJsonSchema: JsonSchema = {
           },
           suggestedDefensePoint: {
             type: "string",
-            description: "Öğrencinin savunmada hocaya sunabileceği çıkış/temellendirme argümanı.",
+            description:
+              "Öğrencinin savunmada hocaya sunabileceği çıkış/temellendirme argümanı.",
           },
         },
-        required: ["id", "title", "critique", "category", "suggestedDefensePoint"],
+        required: [
+          "id",
+          "title",
+          "critique",
+          "category",
+          "suggestedDefensePoint",
+        ],
         additionalProperties: false,
       },
     },

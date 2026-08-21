@@ -19,7 +19,10 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
-import type { OfficeReviewReport, JuryCritique } from "../_services/pipeline/types";
+import type {
+  OfficeReviewReport,
+  JuryCritique,
+} from "../_services/pipeline/types";
 
 interface OfficeMarginNotesProps {
   report: OfficeReviewReport;
@@ -69,7 +72,9 @@ export function OfficeMarginNotes({
   hasStartedDefense,
   onStartDefense,
 }: OfficeMarginNotesProps) {
-  const [activeTab, setActiveTab] = useState<"audit" | "diff" | "jury">("audit");
+  const [activeTab, setActiveTab] = useState<"audit" | "diff" | "jury">(
+    "audit",
+  );
   const [copiedDiff, setCopiedDiff] = useState(false);
 
   const { audit, diff, juryCritiques } = report;
@@ -95,12 +100,18 @@ export function OfficeMarginNotes({
           </div>
 
           {audit.hasCriticalIssues ? (
-            <Badge variant="outline" className="bg-destructive/10 text-destructive border-destructive/20 text-[10px]">
+            <Badge
+              variant="outline"
+              className="bg-destructive/10 text-destructive border-destructive/20 text-[10px]"
+            >
               <AlertTriangle className="h-3 w-3 mr-1" />
               Kritik Şerhler Var
             </Badge>
           ) : (
-            <Badge variant="outline" className="bg-primary/10 text-primary border-primary/20 text-[10px]">
+            <Badge
+              variant="outline"
+              className="bg-primary/10 text-primary border-primary/20 text-[10px]"
+            >
               <CheckCircle2 className="h-3 w-3 mr-1" />
               Kaynaklar Doğrulandı
             </Badge>
@@ -210,7 +221,8 @@ export function OfficeMarginNotes({
                             </span>
                           ) : (
                             <span className="text-[10px] text-destructive flex items-center gap-1">
-                              <AlertCircle className="h-3 w-3" /> Uyumsuz / Şüpheli
+                              <AlertCircle className="h-3 w-3" /> Uyumsuz /
+                              Şüpheli
                             </span>
                           )}
                         </div>
@@ -238,7 +250,8 @@ export function OfficeMarginNotes({
           <div className="space-y-4">
             <div className="flex items-center justify-between gap-2">
               <p className="text-xs text-muted-foreground">
-                Yazarın özgün argümanı korunarak yalnızca akademik akış, APA ve anlatım pürüzleri giderilmiştir.
+                Yazarın özgün argümanı korunarak yalnızca akademik akış, APA ve
+                anlatım pürüzleri giderilmiştir.
               </p>
               <Button
                 size="sm"
@@ -306,8 +319,9 @@ export function OfficeMarginNotes({
               <span className="font-semibold text-foreground block mb-0.5">
                 Tez Savunması Provası:
               </span>
-              Jüri üyelerinin tez savunmasında yöneltebileceği olası itirazlar aşağıda sıralanmıştır.
-              Bu şerhleri danışmanınızla canlı olarak müzakere edebilirsiniz.
+              Jüri üyelerinin tez savunmasında yöneltebileceği olası itirazlar
+              aşağıda sıralanmıştır. Bu şerhleri danışmanınızla canlı olarak
+              müzakere edebilirsiniz.
             </div>
 
             <div className="space-y-3">

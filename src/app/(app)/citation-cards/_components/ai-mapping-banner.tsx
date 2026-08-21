@@ -5,6 +5,7 @@ import { Sparkles, Loader2, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { toast } from "sonner";
+import { createFlowId, Logger } from "@/lib/logger";
 import { autoMapCitationCardsAction } from "../actions";
 
 interface AiMappingBannerProps {
@@ -45,10 +46,16 @@ export function AiMappingBanner({
         toast.error(result.error, { id: toastId });
       }
     } catch (err) {
-      console.error("handleAutoMap error:", err);
-      toast.error("Yapay zeka eşlemesi sırasında beklenmeyen bir hata oluştu.", {
-        id: toastId,
+      new Logger(createFlowId()).error("handleAutoMap error:", {
+        service: "citation-cards",
+        error: err,
       });
+      toast.error(
+        "Yapay zeka eşlemesi sırasında beklenmeyen bir hata oluştu.",
+        {
+          id: toastId,
+        },
+      );
     } finally {
       setIsMapping(false);
     }

@@ -15,8 +15,12 @@ import {
   boxes,
 } from "@/core/db/schema";
 import { getSession } from "@/lib/session";
+import { createFlowId, Logger } from "@/lib/logger";
 import { handleActionError } from "@/lib/errors/handle-error";
-import type { OfficeReviewReport, PipelineResultData } from "./_services/pipeline/types";
+import type {
+  OfficeReviewReport,
+  PipelineResultData,
+} from "./_services/pipeline/types";
 
 export interface OutlineOption {
   id: number;
@@ -68,7 +72,12 @@ export async function getOfficeInitialDataAction(): Promise<{
   try {
     const session = await getSession();
     if (!session) {
-      return { success: false, outlines: [], sessions: [], error: "Oturum bulunamadı." };
+      return {
+        success: false,
+        outlines: [],
+        sessions: [],
+        error: "Oturum bulunamadı.",
+      };
     }
 
     // 1. Fetch outlines linked to user's thesis matrix
@@ -120,7 +129,9 @@ export async function getOfficeInitialDataAction(): Promise<{
         id: row.id,
         title: row.title,
         outlineId: row.outlineId,
-        outlineTitle: row.outlineId ? outlineMap.get(row.outlineId) ?? null : null,
+        outlineTitle: row.outlineId
+          ? (outlineMap.get(row.outlineId) ?? null)
+          : null,
         draftText: row.draftText,
         studentNote: row.studentNote,
         createdAt: row.createdAt.toLocaleDateString("tr-TR", {
@@ -139,7 +150,10 @@ export async function getOfficeInitialDataAction(): Promise<{
       sessions: sessionSummaries,
     };
   } catch (err) {
-    console.error("getOfficeInitialDataAction error:", err);
+    new Logger(createFlowId()).error("getOfficeInitialDataAction error:", {
+      service: "advisor",
+      error: err,
+    });
     return {
       success: false,
       outlines: [],
@@ -166,7 +180,9 @@ export async function getOfficeSessionDetailAction(
     const [sessionRow] = await db
       .select()
       .from(sessions)
-      .where(and(eq(sessions.id, sessionId), eq(sessions.userId, session.userId)))
+      .where(
+        and(eq(sessions.id, sessionId), eq(sessions.userId, session.userId)),
+      )
       .limit(1);
 
     if (!sessionRow) {
@@ -314,8 +330,14 @@ export async function saveDefenseNoteAction(input: {
 
     return { success: true, noteId: insertedAnnotation.id };
   } catch (err) {
-    console.error("saveDefenseNoteAction error:", err);
-    return { success: false, error: "Savunma notu kaydedilirken bir hata oluştu." };
+    new Logger(createFlowId()).error("saveDefenseNoteAction error:", {
+      service: "advisor",
+      error: err,
+    });
+    return {
+      success: false,
+      error: "Savunma notu kaydedilirken bir hata oluştu.",
+    };
   }
 }
 
@@ -353,8 +375,14 @@ export async function createRevisionTaskAction(input: {
 
     return { success: true, taskId: insertedTask.id };
   } catch (err) {
-    console.error("createRevisionTaskAction error:", err);
-    return { success: false, error: "Revizyon görevi eklenirken bir hata oluştu." };
+    new Logger(createFlowId()).error("createRevisionTaskAction error:", {
+      service: "advisor",
+      error: err,
+    });
+    return {
+      success: false,
+      error: "Revizyon görevi eklenirken bir hata oluştu.",
+    };
   }
 }
 
@@ -374,7 +402,9 @@ export async function deleteOfficeSessionAction(
 
     await db
       .delete(sessions)
-      .where(and(eq(sessions.id, sessionId), eq(sessions.userId, session.userId)));
+      .where(
+        and(eq(sessions.id, sessionId), eq(sessions.userId, session.userId)),
+      );
 
     return { success: true };
   } catch (err) {

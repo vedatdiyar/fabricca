@@ -8,9 +8,12 @@ import { normalizeTurkishToAscii } from "./normalize";
  * @param str - Input word.
  * @returns ASCII-converted alphanumeric string.
  */
-export function toAsciiWord(str: string): string {
+export function toAsciiAlphanumeric(str: string): string {
   return normalizeTurkishToAscii(str).replace(/[^a-zA-Z0-9]/g, "");
 }
+
+/** @deprecated Use toAsciiAlphanumeric — alias kept for backward compatibility. */
+export const toAsciiWord = toAsciiAlphanumeric;
 
 /**
  * Extracts the surname from a full name.

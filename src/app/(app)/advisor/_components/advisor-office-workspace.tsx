@@ -1,12 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import {
-  BookOpen,
-  ArrowLeft,
-  Layers,
-  Clock,
-} from "lucide-react";
+import { BookOpen, ArrowLeft, Layers, Clock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
@@ -21,7 +16,10 @@ import {
   type OutlineOption,
   type OfficeSessionSummary,
 } from "../office-actions";
-import type { OfficeReviewReport, JuryCritique } from "../_services/pipeline/types";
+import type {
+  OfficeReviewReport,
+  JuryCritique,
+} from "../_services/pipeline/types";
 import { Skeleton } from "@/components/ui/skeleton";
 
 interface AdvisorOfficeWorkspaceProps {
@@ -54,7 +52,9 @@ export function AdvisorOfficeWorkspace({
   const [hasStartedDefense, setHasStartedDefense] = useState(false);
   const [isStreamingDefense, setIsStreamingDefense] = useState(false);
   const [isSubmittingReview, setIsSubmittingReview] = useState(false);
-  const [activeCritique, setActiveCritique] = useState<JuryCritique | null>(null);
+  const [activeCritique, setActiveCritique] = useState<JuryCritique | null>(
+    null,
+  );
 
   // Load session detail callback
   const loadSessionDetail = useCallback(
@@ -67,14 +67,20 @@ export function AdvisorOfficeWorkspace({
           setCurrentReport(detail.reviewReport);
           setActiveOutlineId(detail.outlineId);
 
-          const outlineMatch = outlineList.find((o) => o.id === detail.outlineId);
+          const outlineMatch = outlineList.find(
+            (o) => o.id === detail.outlineId,
+          );
           setActiveOutlineTitle(
             detail.outlineTitle || outlineMatch?.title || "Tez Bölümü",
           );
 
           // Filter messages for defense chat
           const chatMsgs: DefenseMessage[] = detail.messages
-            .filter((m) => m.role === "user" || (m.role === "assistant" && !m.pipelineData))
+            .filter(
+              (m) =>
+                m.role === "user" ||
+                (m.role === "assistant" && !m.pipelineData),
+            )
             .map((m) => ({
               id: m.id,
               role: m.role as "assistant" | "user",
@@ -336,12 +342,16 @@ export function AdvisorOfficeWorkspace({
             <h1 className="font-serif text-2xl font-bold tracking-tight text-foreground">
               Danışmanın Çalışma Odası
             </h1>
-            <Badge variant="outline" className="text-xs bg-primary/10 text-primary border-primary/20">
+            <Badge
+              variant="outline"
+              className="text-xs bg-primary/10 text-primary border-primary/20"
+            >
               {isReviewActive ? "İnceleme & Savunma Masası" : "Ofis Randevusu"}
             </Badge>
           </div>
           <p className="text-xs text-muted-foreground mt-1">
-            Word taslak pasajlarınızı teslim edin, sayfa denetimi ve editoryal rötuşları inceleyin, danışmanla canlı müzakere edin.
+            Word taslak pasajlarınızı teslim edin, sayfa denetimi ve editoryal
+            rötuşları inceleyin, danışmanla canlı müzakere edin.
           </p>
         </div>
 

@@ -22,11 +22,7 @@ import {
   type CitationSynthesisReport,
 } from "../ai-actions";
 import { updateCardOutlineLinkAction } from "../mutation-actions";
-import type {
-  CitationCardItem,
-  OutlineItem,
-  SourceItem,
-} from "../_lib/types";
+import type { CitationCardItem, OutlineItem, SourceItem } from "../_lib/types";
 
 interface CitationSynthesisViewProps {
   cards: CitationCardItem[];
@@ -111,7 +107,9 @@ export function CitationSynthesisView({
         });
       }
       await onRefreshData();
-      toast.success("Kümedeki tüm fişler seçili tez bölümüne başarıyla atandı.");
+      toast.success(
+        "Kümedeki tüm fişler seçili tez bölümüne başarıyla atandı.",
+      );
     } catch {
       toast.error("Fişler bölüme atanırken hata oluştu.");
     } finally {
@@ -165,11 +163,17 @@ export function CitationSynthesisView({
                 Fikir & Argüman Sentezi
               </h3>
               {selectedOutline ? (
-                <Badge variant="outline" className="text-[10px] bg-primary/10 text-primary border-primary/20">
+                <Badge
+                  variant="outline"
+                  className="text-[10px] bg-primary/10 text-primary border-primary/20"
+                >
                   {selectedOutline.title}
                 </Badge>
               ) : (
-                <Badge variant="secondary" className="text-[10px] bg-muted text-muted-foreground">
+                <Badge
+                  variant="secondary"
+                  className="text-[10px] bg-muted text-muted-foreground"
+                >
                   Tüm Fişler
                 </Badge>
               )}
@@ -190,7 +194,9 @@ export function CitationSynthesisView({
               disabled={isSynthesizing}
               className="text-xs h-7 gap-1 border-border bg-background hover:bg-muted text-foreground cursor-pointer"
             >
-              <RotateCw className={`h-3 w-3 ${isSynthesizing ? "animate-spin" : ""}`} />
+              <RotateCw
+                className={`h-3 w-3 ${isSynthesizing ? "animate-spin" : ""}`}
+              />
               <span>Yeniden Sentezle</span>
             </Button>
           )}
@@ -212,7 +218,8 @@ export function CitationSynthesisView({
         <div className="py-10 flex flex-col items-center justify-center text-center gap-2.5">
           <Loader2 className="h-6 w-6 animate-spin text-primary" />
           <span className="text-xs text-muted-foreground font-medium">
-            Alıntı fişleri anlamsal kümelere ayrılıyor ve Word yazım akışı hazırlanıyor...
+            Alıntı fişleri anlamsal kümelere ayrılıyor ve Word yazım akışı
+            hazırlanıyor...
           </span>
         </div>
       ) : !synthesisReport ? (
@@ -307,7 +314,10 @@ export function CitationSynthesisView({
                           </h4>
                         </div>
 
-                        <Badge variant="secondary" className="text-[10px] bg-muted text-muted-foreground">
+                        <Badge
+                          variant="secondary"
+                          className="text-[10px] bg-muted text-muted-foreground"
+                        >
                           {clusterCards.length} Fiş
                         </Badge>
                       </div>
@@ -345,7 +355,11 @@ export function CitationSynthesisView({
                     {cluster.suggestedOutlineId && (
                       <div className="p-2.5 border-t border-border bg-muted/30 flex items-center justify-between gap-2">
                         <span className="text-[10px] text-muted-foreground truncate">
-                          Önerilen Bölüm: <strong>{cluster.suggestedOutlineTitle || `Bölüm #${cluster.suggestedOutlineId}`}</strong>
+                          Önerilen Bölüm:{" "}
+                          <strong>
+                            {cluster.suggestedOutlineTitle ||
+                              `Bölüm #${cluster.suggestedOutlineId}`}
+                          </strong>
                         </span>
 
                         <Button
@@ -384,7 +398,8 @@ export function CitationSynthesisView({
                 <span className="font-semibold text-foreground mr-1">
                   Word Tez Yazım Kılavuzu:
                 </span>
-                Bu sıralama, alıntılarınızı tezinizde sunarken mantıksal bir argüman akışı oluşturmanız için tasarlanmıştır.
+                Bu sıralama, alıntılarınızı tezinizde sunarken mantıksal bir
+                argüman akışı oluşturmanız için tasarlanmıştır.
               </div>
 
               <div className="space-y-2.5 relative before:absolute before:left-3.5 before:top-4 before:bottom-4 before:w-0.5 before:bg-border">
@@ -404,7 +419,10 @@ export function CitationSynthesisView({
 
                       <Card className="border-border bg-card shadow-2xs p-3 flex flex-col gap-2">
                         <div className="flex items-center justify-between gap-2">
-                          <Badge variant="outline" className="text-[10px] bg-primary/10 text-primary border-primary/20">
+                          <Badge
+                            variant="outline"
+                            className="text-[10px] bg-primary/10 text-primary border-primary/20"
+                          >
                             {step.roleInArgument}
                           </Badge>
 

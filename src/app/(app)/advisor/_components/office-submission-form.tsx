@@ -13,7 +13,13 @@ import {
   PenLine,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import {
@@ -65,9 +71,7 @@ export function OfficeSubmissionForm({
     });
   };
 
-  const wordCount = draftText.trim()
-    ? draftText.trim().split(/\s+/).length
-    : 0;
+  const wordCount = draftText.trim() ? draftText.trim().split(/\s+/).length : 0;
 
   return (
     <div className="w-full flex flex-col gap-6">
@@ -84,7 +88,8 @@ export function OfficeSubmissionForm({
                   Taslak Teslim Masası
                 </CardTitle>
                 <CardDescription className="text-xs text-muted-foreground mt-0.5">
-                  İlgili tez bölümünü seçin ve Word&apos;de yazdığınız 1–3 paragraflık metni yapıştırın.
+                  İlgili tez bölümünü seçin ve Word&apos;de yazdığınız 1–3
+                  paragraflık metni yapıştırın.
                 </CardDescription>
               </div>
             </div>
@@ -102,7 +107,10 @@ export function OfficeSubmissionForm({
             {/* Outline Selection */}
             <div className="flex flex-col gap-2">
               <div className="flex items-center justify-between">
-                <Label htmlFor="outline-select" className="text-xs font-medium text-foreground flex items-center gap-1.5">
+                <Label
+                  htmlFor="outline-select"
+                  className="text-xs font-medium text-foreground flex items-center gap-1.5"
+                >
                   <Layers className="h-3.5 w-3.5 text-primary" />
                   Hedef Tez Bölümü (Outline)
                 </Label>
@@ -140,7 +148,8 @@ export function OfficeSubmissionForm({
                 </Select>
               ) : (
                 <div className="p-3 text-xs rounded-md bg-muted text-muted-foreground border border-border">
-                  Henüz bir tez içindekiler (outline) planı bulunamadı. Lütfen önce İçindekiler modülünden bölüm oluşturun.
+                  Henüz bir tez içindekiler (outline) planı bulunamadı. Lütfen
+                  önce İçindekiler modülünden bölüm oluşturun.
                 </div>
               )}
             </div>
@@ -148,7 +157,10 @@ export function OfficeSubmissionForm({
             {/* Draft Textarea */}
             <div className="flex flex-col gap-2">
               <div className="flex items-center justify-between">
-                <Label htmlFor="draft-text" className="text-xs font-medium text-foreground">
+                <Label
+                  htmlFor="draft-text"
+                  className="text-xs font-medium text-foreground"
+                >
                   Taslak Pasaj Metni (Word&apos;den Yapıştırın)
                 </Label>
                 <span className="text-[10px] text-muted-foreground">
@@ -170,11 +182,16 @@ export function OfficeSubmissionForm({
             {/* Student Note / Concern */}
             <div className="flex flex-col gap-2">
               <div className="flex items-center justify-between">
-                <Label htmlFor="student-note" className="text-xs font-medium text-foreground flex items-center gap-1.5">
+                <Label
+                  htmlFor="student-note"
+                  className="text-xs font-medium text-foreground flex items-center gap-1.5"
+                >
                   <HelpCircle className="h-3.5 w-3.5 text-primary" />
                   Danışmana İsteğe Bağlı Not / Özel Soru
                 </Label>
-                <span className="text-[10px] text-muted-foreground">Opsiyonel</span>
+                <span className="text-[10px] text-muted-foreground">
+                  Opsiyonel
+                </span>
               </div>
 
               <Textarea
@@ -191,12 +208,19 @@ export function OfficeSubmissionForm({
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-3 border-t border-border mt-1">
               <div className="text-[11px] text-muted-foreground flex items-center gap-1.5">
                 <Sparkles className="h-3.5 w-3.5 text-primary shrink-0" />
-                <span>RAG Kaynakları, Alıntı Fişleri ve Jüri Perspektifi ile doğrulanır.</span>
+                <span>
+                  RAG Kaynakları, Alıntı Fişleri ve Jüri Perspektifi ile
+                  doğrulanır.
+                </span>
               </div>
 
               <Button
                 type="submit"
-                disabled={isSubmitting || !selectedOutlineId || draftText.trim().length < 10}
+                disabled={
+                  isSubmitting ||
+                  !selectedOutlineId ||
+                  draftText.trim().length < 10
+                }
                 className="bg-primary text-primary-foreground hover:bg-primary/90 text-xs font-medium px-5 h-10 gap-2 shrink-0 cursor-pointer shadow-xs"
               >
                 {isSubmitting ? (
@@ -226,7 +250,8 @@ export function OfficeSubmissionForm({
             </h4>
           </div>
           <p className="text-xs text-muted-foreground leading-relaxed">
-            Metninizdeki yazar, yıl ve sayfa numaraları PDF parçaları ve fişlerle satır satır çapraz kontrol edilir.
+            Metninizdeki yazar, yıl ve sayfa numaraları PDF parçaları ve
+            fişlerle satır satır çapraz kontrol edilir.
           </p>
         </Card>
 
@@ -238,7 +263,8 @@ export function OfficeSubmissionForm({
             </h4>
           </div>
           <p className="text-xs text-muted-foreground leading-relaxed">
-            Özgün üslubunuz ve argümanınız asla bozulmaz; yalnızca akademik akış, APA formatı ve anlatım pürüzleri giderilir.
+            Özgün üslubunuz ve argümanınız asla bozulmaz; yalnızca akademik
+            akış, APA formatı ve anlatım pürüzleri giderilir.
           </p>
         </Card>
 
@@ -250,7 +276,8 @@ export function OfficeSubmissionForm({
             </h4>
           </div>
           <p className="text-xs text-muted-foreground leading-relaxed">
-            Tez savunmasında jürinin sorabileceği mantık sıçramaları ve temellendirilmemiş iddialar canlı müzakereye açılır.
+            Tez savunmasında jürinin sorabileceği mantık sıçramaları ve
+            temellendirilmemiş iddialar canlı müzakereye açılır.
           </p>
         </Card>
       </div>

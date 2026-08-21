@@ -48,7 +48,10 @@ export function CitationOutlineSidebar({
 
   const toggleChapter = (chapterId: number, e: React.MouseEvent) => {
     e.stopPropagation();
-    setCollapsedChapters((prev) => ({ ...prev, [chapterId]: !prev[chapterId] }));
+    setCollapsedChapters((prev) => ({
+      ...prev,
+      [chapterId]: !prev[chapterId],
+    }));
   };
 
   const totalCount = cards.length;
@@ -161,7 +164,8 @@ export function CitationOutlineSidebar({
           );
           const chapterTotalCount = directCount + childrenCount;
 
-          const isChapterSelected = selectedOutlineId === chapter.id && !unassignedOnly;
+          const isChapterSelected =
+            selectedOutlineId === chapter.id && !unassignedOnly;
 
           return (
             <div key={chapter.id} className="space-y-0.5">
@@ -182,7 +186,8 @@ export function CitationOutlineSidebar({
                       onClick={(e) => toggleChapter(chapter.id, e)}
                       className={cn(
                         "p-0.5 rounded hover:bg-muted/80 text-muted-foreground",
-                        isChapterSelected && "hover:bg-primary-foreground/20 text-primary-foreground",
+                        isChapterSelected &&
+                          "hover:bg-primary-foreground/20 text-primary-foreground",
                       )}
                     >
                       {isCollapsed ? (
@@ -226,7 +231,8 @@ export function CitationOutlineSidebar({
                 <div className="pl-4 space-y-0.5 border-l border-border/50 ml-3">
                   {chapterChildren.map((sub) => {
                     const subCount = outlineCardCountMap.get(sub.id) ?? 0;
-                    const isSubSelected = selectedOutlineId === sub.id && !unassignedOnly;
+                    const isSubSelected =
+                      selectedOutlineId === sub.id && !unassignedOnly;
 
                     return (
                       <button

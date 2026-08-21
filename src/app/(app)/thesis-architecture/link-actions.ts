@@ -3,6 +3,7 @@
 import { db } from "@/core/db";
 import { outlineAnnotations, outlineSources } from "@/core/db/schema";
 import { getSession } from "@/lib/session";
+import { createFlowId, Logger } from "@/lib/logger";
 import { eq, and } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 
@@ -35,7 +36,10 @@ export async function linkAnnotationToOutlineAction(
     revalidatePath("/citation-cards");
     return { success: true };
   } catch (err) {
-    console.error("linkAnnotationToOutlineAction error:", err);
+    new Logger(createFlowId()).error("linkAnnotationToOutlineAction error:", {
+      service: "thesis-architecture",
+      error: err,
+    });
     return {
       success: false,
       error: "Alıntı fişi bölüme bağlanırken bir hata oluştu.",
@@ -67,7 +71,13 @@ export async function unlinkAnnotationFromOutlineAction(
     revalidatePath("/citation-cards");
     return { success: true };
   } catch (err) {
-    console.error("unlinkAnnotationFromOutlineAction error:", err);
+    new Logger(createFlowId()).error(
+      "unlinkAnnotationFromOutlineAction error:",
+      {
+        service: "thesis-architecture",
+        error: err,
+      },
+    );
     return { success: false, error: "Fiş bağı kaldırılırken bir hata oluştu." };
   }
 }
@@ -101,7 +111,10 @@ export async function linkSourceToOutlineAction(
     revalidatePath("/library");
     return { success: true };
   } catch (err) {
-    console.error("linkSourceToOutlineAction error:", err);
+    new Logger(createFlowId()).error("linkSourceToOutlineAction error:", {
+      service: "thesis-architecture",
+      error: err,
+    });
     return {
       success: false,
       error: "Kaynak bölüme bağlanırken bir hata oluştu.",
@@ -133,7 +146,10 @@ export async function unlinkSourceFromOutlineAction(
     revalidatePath("/library");
     return { success: true };
   } catch (err) {
-    console.error("unlinkSourceFromOutlineAction error:", err);
+    new Logger(createFlowId()).error("unlinkSourceFromOutlineAction error:", {
+      service: "thesis-architecture",
+      error: err,
+    });
     return {
       success: false,
       error: "Kaynak bağı kaldırılırken bir hata oluştu.",

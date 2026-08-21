@@ -1,13 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import {
-  Plus,
-  FolderTree,
-  AlertCircle,
-  Layers,
-  Sparkles,
-} from "lucide-react";
+import { Plus, FolderTree, AlertCircle, Layers, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { CitationCardsSkeleton } from "./_components/citation-cards-skeleton";
@@ -221,7 +215,8 @@ export default function CitationCardsPage() {
             Alıntı Fişleri & Tez Masası
           </h1>
           <p className="text-xs text-muted-foreground mt-0.5">
-            Tez konu kutularındaki okumaları tez iskeletinin (Outline) alt başlıklarına bağlayan araştırma masası.
+            Tez konu kutularındaki okumaları tez iskeletinin (Outline) alt
+            başlıklarına bağlayan araştırma masası.
           </p>
         </div>
 
@@ -239,7 +234,9 @@ export default function CitationCardsPage() {
             }`}
           >
             <Sparkles className="h-4 w-4 text-primary" />
-            <span>{isSynthesisOpen ? "Sentezi Gizle" : "Fikir & Argüman Sentezi"}</span>
+            <span>
+              {isSynthesisOpen ? "Sentezi Gizle" : "Fikir & Argüman Sentezi"}
+            </span>
           </Button>
 
           {/* Global Add Card Button */}

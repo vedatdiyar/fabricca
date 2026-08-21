@@ -3,6 +3,7 @@
 import { db } from "@/core/db";
 import { boxes } from "@/core/db/schema";
 import { getSession } from "@/lib/session";
+import { createFlowId, Logger } from "@/lib/logger";
 import { eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 
@@ -59,7 +60,10 @@ export async function updateBoxAction(data: {
     revalidatePath("/thesis-architecture/boxes");
     return { success: true };
   } catch (err) {
-    console.error("updateBoxAction error:", err);
+    new Logger(createFlowId()).error("updateBoxAction error:", {
+      service: "thesis-architecture",
+      error: err,
+    });
     return { success: false, error: "Kutu güncellenirken bir hata oluştu." };
   }
 }
@@ -116,7 +120,10 @@ export async function createSubBoxAction(data: {
     revalidatePath("/thesis-architecture/boxes");
     return { success: true, boxId: newBox.id };
   } catch (err) {
-    console.error("createSubBoxAction error:", err);
+    new Logger(createFlowId()).error("createSubBoxAction error:", {
+      service: "thesis-architecture",
+      error: err,
+    });
     return {
       success: false,
       error: "Yeni alt konu eklenirken bir hata oluştu.",
@@ -159,7 +166,10 @@ export async function deleteSubBoxAction(
     revalidatePath("/thesis-architecture/boxes");
     return { success: true };
   } catch (err) {
-    console.error("deleteSubBoxAction error:", err);
+    new Logger(createFlowId()).error("deleteSubBoxAction error:", {
+      service: "thesis-architecture",
+      error: err,
+    });
     return { success: false, error: "Kutu silinirken bir hata oluştu." };
   }
 }

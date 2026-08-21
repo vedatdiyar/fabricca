@@ -23,6 +23,7 @@ import {
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { getNoteTypeBadgeConfig } from "./citation-card";
+import { createFlowId, Logger } from "@/lib/logger";
 import { getBoxTypeBadgeConfig } from "@/lib/box-constants";
 import { formatPageNumber } from "@/lib/academic/utils";
 import { OutlineSelectItems } from "./outline-select-items";
@@ -114,7 +115,10 @@ export function CitationInspector({
           : "Fiş yeni tez bölümüne bağlandı.",
       );
     } catch (err) {
-      console.error("handleOutlineChange error:", err);
+      new Logger(createFlowId()).error("handleOutlineChange error:", {
+        service: "citation-cards",
+        error: err,
+      });
       toast.error("Bölüm bağı güncellenirken bir hata oluştu.");
     } finally {
       setIsUpdatingOutline(false);
@@ -192,7 +196,9 @@ export function CitationInspector({
           </label>
 
           <Select
-            value={currentOutlineId !== null ? String(currentOutlineId) : "NONE"}
+            value={
+              currentOutlineId !== null ? String(currentOutlineId) : "NONE"
+            }
             onValueChange={handleOutlineChange}
           >
             <SelectTrigger
@@ -280,7 +286,10 @@ export function CitationInspector({
               <span className="text-[10px] text-muted-foreground uppercase tracking-wider">
                 Eser Başlığı
               </span>
-              <span className="font-medium text-foreground line-clamp-2" title={card.sourceTitle}>
+              <span
+                className="font-medium text-foreground line-clamp-2"
+                title={card.sourceTitle}
+              >
                 {card.sourceTitle}
               </span>
             </div>
@@ -290,7 +299,8 @@ export function CitationInspector({
                 Yazar & Yıl
               </span>
               <span className="font-medium text-foreground truncate">
-                {card.sourceAuthors.join(", ") || "Belirtilmemiş"} ({card.sourceYear})
+                {card.sourceAuthors.join(", ") || "Belirtilmemiş"} (
+                {card.sourceYear})
               </span>
             </div>
 
@@ -308,7 +318,12 @@ export function CitationInspector({
                 Tematik Kutu (Menşe)
               </span>
               <span className="font-medium text-foreground truncate flex items-center gap-1">
-                <span className={cn("h-1.5 w-1.5 rounded-full shrink-0", boxConfig.dotClassName)} />
+                <span
+                  className={cn(
+                    "h-1.5 w-1.5 rounded-full shrink-0",
+                    boxConfig.dotClassName,
+                  )}
+                />
                 {card.boxTitle}
               </span>
             </div>
