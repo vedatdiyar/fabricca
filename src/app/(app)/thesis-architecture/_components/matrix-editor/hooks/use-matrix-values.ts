@@ -44,7 +44,10 @@ export function useMatrixValues({
 
     if (res.success) {
       setValues(next);
-      toast.success("Matris sütunu başarıyla güncellendi.");
+      toast.success("Matris sütunu başarıyla güncellendi.", {
+        description:
+          "Değişikliklerin Konu Kutuları ve Bölüm Planınıza etkisini inceleyebilirsiniz.",
+      });
       return true;
     }
 

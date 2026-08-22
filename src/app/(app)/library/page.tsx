@@ -33,6 +33,7 @@ export default function LibraryPage() {
  */
 function LibraryPageContent() {
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [mobileView, setMobileView] = useState<"list" | "detail">("list");
 
   const searchParams = useSearchParams();
   const urlResourceId = searchParams.get("id");
@@ -80,18 +81,59 @@ function LibraryPageContent() {
 
   const selectedCritique = getCritiqueFor(selectedResourceId);
 
+  const onSelectAndOpenDetail = (id: number) => {
+    handleSelectResource(id);
+    setMobileView("detail");
+  };
+
   if (isLoading) {
     return <LibrarySkeleton />;
   }
 
   return (
-    <div className="w-full space-y-6">
+    <div className="w-full space-y-4 sm:space-y-6">
+      {/* Mobile Master-Detail View Switcher (Visible only below lg) */}
+      <div className="flex items-center justify-between lg:hidden pb-1">
+        <div className="flex items-center rounded-lg border border-border bg-card p-1 text-xs w-full">
+          <button
+            type="button"
+            onClick={() => setMobileView("list")}
+            className={`flex-1 py-1.5 px-3 rounded-md font-medium transition-all ${
+              mobileView === "list"
+                ? "bg-primary text-primary-foreground shadow-xs"
+                : "text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            Eser Listesi ({sortedResources.length})
+          </button>
+          <button
+            type="button"
+            onClick={() => setMobileView("detail")}
+            disabled={!selectedResource}
+            className={`flex-1 py-1.5 px-3 rounded-md font-medium transition-all ${
+              mobileView === "detail"
+                ? "bg-primary text-primary-foreground shadow-xs"
+                : !selectedResource
+                  ? "opacity-40 cursor-not-allowed text-muted-foreground"
+                  : "text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            Eser Detayı & Notlar
+          </button>
+        </div>
+      </div>
+
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 w-full items-start">
-        <div className="lg:col-span-4 lg:sticky lg:top-[calc(7rem+1px)] lg:h-[calc(100vh-8.5rem-1px)] flex flex-col min-h-0">
+        {/* Left Column: Sidebar Work List */}
+        <div
+          className={`lg:col-span-4 lg:sticky lg:top-[calc(7rem+1px)] lg:h-[calc(100vh-8.5rem-1px)] flex flex-col min-h-0 ${
+            mobileView === "list" ? "block" : "hidden lg:flex"
+          }`}
+        >
           <SidebarWorkList
             resources={sortedResources}
             selectedResourceId={selectedResourceId}
-            onSelectResource={(id) => handleSelectResource(id)}
+            onSelectResource={onSelectAndOpenDetail}
             activeTab={activeTab}
             onTabChange={(tab) => setActiveTab(tab)}
             searchQuery={searchQuery}
@@ -101,7 +143,25 @@ function LibraryPageContent() {
           />
         </div>
 
-        <div className="lg:col-span-8 h-full min-h-0">
+        {/* Right Column: Resource Detail */}
+        <div
+          className={`lg:col-span-8 h-full min-h-0 ${
+            mobileView === "detail" ? "block" : "hidden lg:block"
+          }`}
+        >
+          {/* Back Button on Mobile */}
+          {selectedResource && (
+            <div className="lg:hidden mb-3">
+              <button
+                type="button"
+                onClick={() => setMobileView("list")}
+                className="text-xs text-primary font-medium flex items-center gap-1.5 py-1 px-2.5 rounded-md bg-primary/10 border border-primary/20 hover:bg-primary/20"
+              >
+                ← Eser Listesine Dön
+              </button>
+            </div>
+          )}
+
           {selectedResource ? (
             <ResourceDetail
               resource={selectedResource}

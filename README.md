@@ -12,19 +12,22 @@ Platformudur**.
 
 ## Onboarding (Kayıt) Süreci
 
-Yeni kullanıcı ilk girişinde sırasıyla **4 adımlı** onboarding sürecini
+Yeni kullanıcı ilk girişinde sırasıyla **5 adımlı** onboarding sürecini
 tamamlar:
 
 ```
 1. Çalışma Matrisi (Matrix)
         ↓
 2. Akademik Konumlandırma (Positioning)
-   └─ TEZARA (YÖK Meili) + Cohere Rerank + Gemini jüri analizi
+   └─ TEZARA (Qdrant Cloud E5) + Cohere Rerank + Gemini jüri analizi
         ↓
 3. Konu Kutuları (Boxes)
    └─ Gemini ile otomatik kutu üretimi + kullanıcı onayı
         ↓
-4. Literatür Taraması (Literature Review)
+4. Tez Planı (Outline)
+   └─ Disipline özel hiyerarşik içindekiler ve bölüm iskeleti
+        ↓
+5. Literatür Taraması (Literature Review)
    └─ OpenAlex araması + jüri/eleme aşamaları
         ↓
    Dashboard (onboarding tamamlandı)
@@ -47,11 +50,11 @@ Sistem, her adımda kullanıcının kaldığı yerden devam edebilmesini sağlar
 
 ### 2. Akademik Konumlandırma & Özgünlük Analizi (Positioning)
 
-Turso LibSQL Vektör Veritabanı (366.000+ tez, multilingual-e5-base 768d) üzerinden çalışan,
+Qdrant Vektör Veritabanı (366.000+ tez, multilingual-e5-base 768d) üzerinden çalışan,
 kaynaklarının özgünlük boşluğunu analiz eden hat:
 
 - **Sorgu üretimi:** Gemini ile ilgili tezlere yönelik 8 semantik arama sorgusu.
-- **Tez araması ve eleme:** Turso Vektör İndeksi (`vector_top_k` cosine similarity) ile aday tezler çekilir.
+- **Tez araması ve eleme:** Qdrant Vektör İndeksi (cosine similarity) ile aday tezler çekilir.
 - **Semantik sıralama:** Cohere Rerank v4.0 Pro ile benzerlik sıralaması.
 - **Rapor:** Gemini jürisi üç durumdan birini üretir:
   - `DIRECT_OVERLAP` — Doğrudan örtüşme
@@ -74,7 +77,15 @@ oluşturulan kavramsal kutulardır. **Beş tür kutu** mevcuttur:
 Kutular iç içe alt kutular (sub-box) barındırabilir; her kutuya temel
 (foundational) sorgular bağlanabilir.
 
-### 4. Literatür Taraması
+### 4. Tez Planı & İçindekiler İskeleti (Thesis Outline)
+
+Kullanıcının akademik alanına ve tez matrisine göre yapılandırılan
+hiyerarşik içindekiler mimarisi:
+
+- Otomatik bölüm ve alt bölüm taslağı üretimi.
+- Bölümlere bağlı kaynak ve alıntı fişleri kanıt haritası (`outline_annotations`, `outline_sources`).
+
+### 5. Literatür Taraması
 
 Her bir konu kutusu için **OpenAlex API** üzerinden kaynak taraması yapar;
 
@@ -83,36 +94,35 @@ Her bir konu kutusu için **OpenAlex API** üzerinden kaynak taraması yapar;
 - **Faz 3 — Seçim:** Jüri değerlendirmesi sonrası final kaynak havuzunun
   belirlenmesi.
 
-### 5. Danışman Odası (RAG Chat)
+### 6. Danışman Odası (RAG Chat & Taslak Denetimi)
 
 Makale PDF'lerinden üretilen vektör embedding'leri üzerinden **hybrid RAG**
-tabanlı yapay zeka sohbeti:
+tabanlı yapay zeka sohbeti ve taslak denetim masası:
 
 - **Yoğun dallar:** pgvector HNSW (cosine) üzerinden dense retrieval.
 - **Leksel dallar:** PostgreSQL `tsvector` (Türkçe + İngilizce) FTS.
 - **Füzyon:** Reciprocal Rank Fusion (RRF) + Cohere Rerank v4.0 Pro.
 - **HyDE:** Gemini Flash Lite 3.5 ile çapraz-dil sorgu genişletme.
-- **Tool calling:** Gemini ile oturumlu arama, alıntı fişleme, okuma durumu
-  güncelleme ve undo desteği.
+- **Ofis Masası (Draft Audit):** Word taslak pasajlarının 3 katmanlı kenar notu denetimi (Alıntı denetimi, editoryal revizyon diff'i, jüri eleştirisi) ve Sokratesçi canlı savunma sohbeti.
 
-### 6. Alıntı Fişleri (Citation Cards)
+### 7. Alıntı Fişleri (Citation Cards)
 
 Geleneksel akademik kartoteksin dijital versiyonu. Makalelerden not çıkarma,
-alıntı fişleme ve fişleri konu kutularına yerleştirme. Not türleri:
+alıntı fişleme ve fişleri konu kutularına ve tez bölümlerine yerleştirme. Not türleri:
 `DIRECT_QUOTE`, `PARAPHRASE`, `PERSONAL_NOTE`.
 
-### 7. Kütüphane
+### 8. Kütüphane & Literatür Matrisi
 
 Sistemdeki tüm akademik kaynakların görüntülenmesi, yönetimi ve PDF
 işlemleri:
 
 - PDF yükleme → R2 depolama, Gemini ile sayfa analizi & kaynakça ayıklama.
-- Chunk'lama → embedding üretimi → pgvector/tsvector indexleme.
-- Kaynak bazlı notlar ve bağlı konu kutusu filtresi.
+- Chunk'lama → Cloudflare BGE-M3 (1024d) embedding üretimi → pgvector/tsvector indexleme.
+- Kaynak bazlı notlar, 1:1 Eser Kritiği ve karşılaştırmalı 2D Literatür Matrisi.
 
-### 8. Dashboard (Genel Özet)
+### 9. Dashboard (Genel Özet & Kanban)
 
-Konu kutuları, kaynaklar ve kanban görevlerinin tek bir panelde toplandığı
+Konu kutuları, dinamik okuma ilerlemesi ve Kanban araştırma görevlerinin tek bir panelde toplandığı
 merkezi yönetim ekranı.
 
 ---
@@ -129,7 +139,7 @@ merkezi yönetim ekranı.
 | **LLM Motoru**         | Google Gemini Flash ailesi (`FLASH_LITE_31`, `FLASH_LITE_35`, `FLASH_36`)    |
 | **Embedding**          | Cloudflare Workers AI (`@cf/baai/bge-m3`, **1024 dim**) — tek ve sabit motor |
 | **Rerank**             | Cohere Rerank v4.0 Pro (`rerank-v4.0-pro`)                                   |
-| **Tez Veri Kaynağı**   | Turso LibSQL Vektör Veritabanı (366k+ Tez, E5-Base 768d)                     |
+| **Tez Veri Kaynağı**   | Qdrant Cloud Vektör Veritabanı (366k+ Tez, E5-Base 768d)                     |
 | **Akademik Veri**      | OpenAlex API                                                                 |
 | **Object Storage**     | Cloudflare R2 (AWS S3 SDK)                                                   |
 | **PDF İşleme**         | `@firecrawl/pdf-inspector`, pdf-lib, Gemini                                  |
@@ -274,11 +284,11 @@ npm run build
 # Production sunucusunu başlat
 npm run start
 
-# Kalite kontrol (lint + typecheck + prettier)
+# Kalite kontrol (lint + tip denetimi + prettier)
 npm run check:full
 
 # Yalnızca tip denetimi
-npm run typecheck
+npx tsc --noEmit
 
 # Yalnızca lint
 npm run lint

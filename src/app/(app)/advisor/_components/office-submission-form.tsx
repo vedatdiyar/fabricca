@@ -71,7 +71,17 @@ export function OfficeSubmissionForm({
     });
   };
 
-  const wordCount = draftText.trim() ? draftText.trim().split(/\s+/).length : 0;
+  const trimmedDraft = draftText.trim();
+  const wordCount = trimmedDraft ? trimmedDraft.split(/\s+/).length : 0;
+  const paragraphCount = trimmedDraft
+    ? trimmedDraft.split(/\n\s*\n/).filter((p) => p.trim().length > 0).length
+    : 0;
+  const estimatedPages = wordCount > 0 ? (wordCount / 250).toFixed(1) : "0";
+
+  // Dynamic context and length assessment
+  const isOptimalLength = wordCount >= 60 && wordCount <= 650;
+  const isLongLength = wordCount > 650;
+  const isVeryShort = wordCount > 0 && wordCount < 60;
 
   return (
     <div className="w-full flex flex-col gap-6">
@@ -89,14 +99,27 @@ export function OfficeSubmissionForm({
                 </CardTitle>
                 <CardDescription className="text-xs text-muted-foreground mt-0.5">
                   İlgili tez bölümünü seçin ve Word&apos;de yazdığınız 1–3
-                  paragraflık metni yapıştırın.
+                  paragraflık pasajınızı yapıştırın.
                 </CardDescription>
               </div>
             </div>
 
-            <div className="flex items-center gap-2 self-start sm:self-auto">
-              <span className="text-xs font-mono text-muted-foreground bg-muted px-2.5 py-1 rounded-md border border-border">
-                {wordCount} kelime
+            {/* Dynamic Status Counter Badge */}
+            <div className="flex items-center gap-2 self-start sm:self-auto flex-wrap">
+              <span
+                className={`text-xs font-mono px-2.5 py-1 rounded-md border flex items-center gap-1.5 transition-colors ${
+                  isOptimalLength
+                    ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/30"
+                    : isLongLength
+                      ? "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/30"
+                      : "bg-muted text-muted-foreground border-border"
+                }`}
+              >
+                <span>{wordCount} / 650 kelime</span>
+                <span className="opacity-60 text-[10px]">
+                  (~{estimatedPages} sayfa
+                  {paragraphCount > 0 ? `, ${paragraphCount} paragraf` : ""})
+                </span>
               </span>
             </div>
           </div>
@@ -163,8 +186,20 @@ export function OfficeSubmissionForm({
                 >
                   Taslak Pasaj Metni (Word&apos;den Yapıştırın)
                 </Label>
-                <span className="text-[10px] text-muted-foreground">
-                  1–3 paragraf (Önerilen: 80–350 kelime)
+                <span className="text-[11px] text-muted-foreground">
+                  {isOptimalLength ? (
+                    <span className="text-emerald-500 font-medium">
+                      ✓ İdeal Analiz Boyutu
+                    </span>
+                  ) : isLongLength ? (
+                    <span className="text-amber-500 font-medium">
+                      ⚠ Geniş Pasaj (Bölümlere ayırmanız önerilir)
+                    </span>
+                  ) : isVeryShort ? (
+                    <span className="text-muted-foreground">Kısa Pasaj</span>
+                  ) : (
+                    <span>Önerilen: 1–3 Paragraf (~1–2 Sayfa)</span>
+                  )}
                 </span>
               </div>
 
@@ -177,6 +212,15 @@ export function OfficeSubmissionForm({
                 className="min-h-[160px] text-sm p-3.5 bg-background border-border resize-y leading-relaxed focus:border-primary/40 focus:ring-1 focus:ring-primary/20"
                 required
               />
+
+              <div className="p-2.5 rounded-md bg-muted/40 border border-border/50 text-[11px] text-muted-foreground leading-relaxed">
+                <span className="font-semibold text-foreground">
+                  💡 Pasaj Odaklama İpucu:
+                </span>{" "}
+                Tezin tamamı yerine 1–3 paragraflık odak pasajlar teslim etmek;
+                alıntı denetiminin, kaynakça eşleştirmesinin ve Sokratesçi jüri
+                eleştirilerinin en keskin sonucu vermesini sağlar.
+              </div>
             </div>
 
             {/* Student Note / Concern */}

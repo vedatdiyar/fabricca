@@ -17,6 +17,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { getBoxTypeBadgeConfig } from "@/lib/box-constants";
 import { cn } from "@/lib/utils";
+import { LiteratureExpansionButton } from "@/components/shared/literature-expansion-button";
 import type { LibraryResourceItem } from "../../_lib/types";
 
 interface ResourceHeaderProps {
@@ -152,8 +153,15 @@ export function ResourceHeader({
           )}
         </div>
 
-        {/* Compact Icon-Only Action Buttons Toolbar: Düzenle - Sil - Okundu - PDF */}
-        <div className="flex items-center gap-1 shrink-0">
+        {/* Compact Action Buttons Toolbar: Genişletme/Undo - Düzenle - Sil - Okundu - PDF */}
+        <div className="flex items-center gap-1.5 shrink-0">
+          {resource.subBoxId && (
+            <LiteratureExpansionButton
+              boxId={resource.subBoxId}
+              className="scale-90 origin-right"
+            />
+          )}
+
           {/* 1. Düzenle */}
           <Button
             variant="outline"

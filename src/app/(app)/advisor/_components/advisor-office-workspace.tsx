@@ -55,6 +55,12 @@ export function AdvisorOfficeWorkspace({
   const [activeCritique, setActiveCritique] = useState<JuryCritique | null>(
     null,
   );
+  const [mobileWorkspaceTab, setMobileWorkspaceTab] = useState<
+    "margin-notes" | "defense-chat"
+  >("margin-notes");
+  const [mobileSubmissionTab, setMobileSubmissionTab] = useState<
+    "form" | "history"
+  >("form");
 
   // Load session detail callback
   const loadSessionDetail = useCallback(
@@ -66,6 +72,7 @@ export function AdvisorOfficeWorkspace({
           setActiveSessionId(detail.id);
           setCurrentReport(detail.reviewReport);
           setActiveOutlineId(detail.outlineId);
+          setMobileSubmissionTab("form");
 
           const outlineMatch = outlineList.find(
             (o) => o.id === detail.outlineId,
@@ -167,6 +174,7 @@ export function AdvisorOfficeWorkspace({
       setCurrentReport(json.reviewReport);
       setDefenseMessages([]);
       setHasStartedDefense(false);
+      setMobileWorkspaceTab("margin-notes");
 
       // Refresh session sidebar
       const initialRes = await getOfficeInitialDataAction();
@@ -174,7 +182,9 @@ export function AdvisorOfficeWorkspace({
         setSessions(initialRes.sessions);
       }
 
-      toast.success("Taslak incelendi. Kenar notları ve jüri şerhleri hazır!");
+      toast.success(
+        "Taslak incelendi. Kenar notları ve jüri eleştirileri hazır!",
+      );
     } catch (err) {
       toast.error(
         err instanceof Error ? err.message : "Taslak incelenirken hata oluştu.",
@@ -185,16 +195,16 @@ export function AdvisorOfficeWorkspace({
   };
 
   // 2. Start Live Defense & Stream SSE
-  const handleStartDefense = async (initialCritique?: JuryCritique) => {
+  const handleStartDefense = async (critique?: JuryCritique) => {
     if (!activeSessionId) return;
-
-    setHasStartedDefense(true);
-    if (initialCritique) {
-      setActiveCritique(initialCritique);
+    if (critique) {
+      setActiveCritique(critique);
     }
+    setHasStartedDefense(true);
+    setMobileWorkspaceTab("defense-chat");
 
-    const userPrompt = initialCritique
-      ? `Hocam, "${initialCritique.title}" şerhine dair şu noktayı açıklamak istiyorum: ${initialCritique.suggestedDefensePoint}`
+    const userPrompt = critique
+      ? `Hocam, "${critique.title}" eleştirisine dair şu noktayı açıklamak ve savunmak istiyorum: ${critique.suggestedDefensePoint || critique.critique}`
       : undefined;
 
     await handleSendDefenseMessage(userPrompt);
@@ -261,42 +271,37 @@ export function AdvisorOfficeWorkspace({
 
         for (const line of lines) {
           if (line.startsWith("data: ")) {
-            const dataStr = line.slice(6).trim();
-            if (dataStr === "[DONE]") break;
+            const dataStr = line.replace("data: ", "").trim();
+            if (!dataStr) continue;
 
             try {
               const parsed = JSON.parse(dataStr);
-              if (parsed.type === "delta" && parsed.text) {
+              if (parsed.type === "chunk" && parsed.text) {
                 accumulatedText += parsed.text;
                 setDefenseMessages((prev) =>
-                  prev.map((msg) =>
-                    msg.id === tempAdvisorId
-                      ? { ...msg, content: accumulatedText }
-                      : msg,
+                  prev.map((m) =>
+                    m.id === tempAdvisorId
+                      ? { ...m, content: accumulatedText }
+                      : m,
                   ),
                 );
-              } else if (parsed.type === "error") {
-                toast.error(parsed.error || "Yanıt akışında hata oluştu.");
               }
             } catch {
-              // Non-json chunk frame
+              // Ignore non-json lines
             }
           }
         }
       }
 
-      // Finalize streaming item
       setDefenseMessages((prev) =>
-        prev.map((msg) =>
-          msg.id === tempAdvisorId
-            ? { ...msg, content: accumulatedText, isStreaming: false }
-            : msg,
+        prev.map((m) =>
+          m.id === tempAdvisorId
+            ? { ...m, content: accumulatedText, isStreaming: false }
+            : m,
         ),
       );
-    } catch (err) {
-      toast.error(
-        err instanceof Error ? err.message : "Savunma yanıtı üretilemedi.",
-      );
+    } catch {
+      toast.error("Danışman yanıt verirken bir hata oluştu.");
       setDefenseMessages((prev) => prev.filter((m) => m.id !== tempAdvisorId));
     } finally {
       setIsStreamingDefense(false);
@@ -311,6 +316,8 @@ export function AdvisorOfficeWorkspace({
     setActiveOutlineTitle("");
     setDefenseMessages([]);
     setHasStartedDefense(false);
+    setMobileWorkspaceTab("margin-notes");
+    setMobileSubmissionTab("form");
   };
 
   if (isLoadingInitial) {
@@ -387,10 +394,43 @@ export function AdvisorOfficeWorkspace({
             </div>
           </div>
 
+          {/* Mobile Phase 2 Tab Switcher (Visible below lg) */}
+          <div className="flex items-center rounded-lg border border-border bg-card p-1 text-xs lg:hidden">
+            <button
+              type="button"
+              onClick={() => setMobileWorkspaceTab("margin-notes")}
+              className={`flex-1 py-1.5 px-3 rounded-md font-medium transition-all ${
+                mobileWorkspaceTab === "margin-notes"
+                  ? "bg-primary text-primary-foreground shadow-xs"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              Kenar Notları & Denetim
+            </button>
+            <button
+              type="button"
+              onClick={() => setMobileWorkspaceTab("defense-chat")}
+              className={`flex-1 py-1.5 px-3 rounded-md font-medium transition-all ${
+                mobileWorkspaceTab === "defense-chat"
+                  ? "bg-primary text-primary-foreground shadow-xs"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              Canlı Savunma Masası{" "}
+              {defenseMessages.length > 0 ? `(${defenseMessages.length})` : ""}
+            </button>
+          </div>
+
           {/* Unified Split Workspace Card */}
           <div className="rounded-xl border border-border bg-card shadow-xs overflow-hidden flex flex-col lg:flex-row h-[660px]">
             {/* Left Panel: Margin Notes & Audit */}
-            <div className="w-full lg:w-1/2 h-full border-b lg:border-b-0 lg:border-r border-border overflow-hidden">
+            <div
+              className={`w-full lg:w-1/2 h-full border-b lg:border-b-0 lg:border-r border-border overflow-hidden ${
+                mobileWorkspaceTab === "margin-notes"
+                  ? "block"
+                  : "hidden lg:block"
+              }`}
+            >
               <OfficeMarginNotes
                 report={currentReport}
                 hasStartedDefense={hasStartedDefense}
@@ -399,7 +439,13 @@ export function AdvisorOfficeWorkspace({
             </div>
 
             {/* Right Panel: Live Defense Chat */}
-            <div className="w-full lg:w-1/2 h-full overflow-hidden">
+            <div
+              className={`w-full lg:w-1/2 h-full overflow-hidden ${
+                mobileWorkspaceTab === "defense-chat"
+                  ? "block"
+                  : "hidden lg:block"
+              }`}
+            >
               <OfficeDefenseChat
                 messages={defenseMessages}
                 isStreaming={isStreamingDefense}
@@ -422,30 +468,68 @@ export function AdvisorOfficeWorkspace({
         </div>
       ) : (
         // PHASE 1: Submission View (Past Sessions Sidebar + Submission Form + Guide Cards)
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-          {/* Left Column: Past Sessions */}
-          <div className="lg:col-span-4 w-full">
-            <OfficeSessionSidebar
-              sessions={sessions}
-              activeSessionId={activeSessionId}
-              onSelectSession={(id) => loadSessionDetail(id, outlines)}
-              onNewSession={handleResetToNewSubmission}
-              onSessionDeleted={(deletedId) => {
-                setSessions((prev) => prev.filter((s) => s.id !== deletedId));
-                if (activeSessionId === deletedId) {
-                  handleResetToNewSubmission();
-                }
-              }}
-            />
-          </div>
+        <div className="flex flex-col gap-4">
+          {/* Mobile Phase 1 Tab Switcher when sessions exist */}
+          {sessions.length > 0 && (
+            <div className="flex items-center rounded-lg border border-border bg-card p-1 text-xs lg:hidden">
+              <button
+                type="button"
+                onClick={() => setMobileSubmissionTab("form")}
+                className={`flex-1 py-1.5 px-3 rounded-md font-medium transition-all ${
+                  mobileSubmissionTab === "form"
+                    ? "bg-primary text-primary-foreground shadow-xs"
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                Yeni Taslak Teslimi
+              </button>
+              <button
+                type="button"
+                onClick={() => setMobileSubmissionTab("history")}
+                className={`flex-1 py-1.5 px-3 rounded-md font-medium transition-all ${
+                  mobileSubmissionTab === "history"
+                    ? "bg-primary text-primary-foreground shadow-xs"
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                Geçmiş Randevular ({sessions.length})
+              </button>
+            </div>
+          )}
 
-          {/* Right Column: Submission Form & Guide Cards */}
-          <div className="lg:col-span-8 w-full">
-            <OfficeSubmissionForm
-              outlines={outlines}
-              isSubmitting={isSubmittingReview}
-              onSubmit={handleReviewSubmit}
-            />
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+            {/* Left Column: Past Sessions */}
+            <div
+              className={`lg:col-span-4 w-full ${
+                mobileSubmissionTab === "history" ? "block" : "hidden lg:block"
+              }`}
+            >
+              <OfficeSessionSidebar
+                sessions={sessions}
+                activeSessionId={activeSessionId}
+                onSelectSession={(id) => loadSessionDetail(id, outlines)}
+                onNewSession={handleResetToNewSubmission}
+                onSessionDeleted={(deletedId) => {
+                  setSessions((prev) => prev.filter((s) => s.id !== deletedId));
+                  if (activeSessionId === deletedId) {
+                    handleResetToNewSubmission();
+                  }
+                }}
+              />
+            </div>
+
+            {/* Right Column: Submission Form & Guide Cards */}
+            <div
+              className={`lg:col-span-8 w-full ${
+                mobileSubmissionTab === "form" ? "block" : "hidden lg:block"
+              }`}
+            >
+              <OfficeSubmissionForm
+                outlines={outlines}
+                isSubmitting={isSubmittingReview}
+                onSubmit={handleReviewSubmit}
+              />
+            </div>
           </div>
         </div>
       )}

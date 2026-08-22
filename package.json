@@ -7,8 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint .",
-    "typecheck": "tsc --noEmit",
-    "check:full": "npm run lint && npm run typecheck && npx prettier --write .",
+    "check:full": "eslint . && tsc --noEmit && npx prettier --write .",
     "db:push": "drizzle-kit push --force",
     "db:reset": "tsx src/core/db/reset.ts",
     "db:seed": "tsx src/core/db/seed.ts"
