@@ -104,6 +104,23 @@ export function compareBoxTypes(
 }
 
 /**
+ * Sorts an array of items with a boxType field into canonical display order.
+ *
+ * @param a - First item with boxType.
+ * @param b - Second item with boxType.
+ * @returns Negative/zero/positive for canonical ordering.
+ */
+export function sortByBoxType(
+  a: { boxType: string | null | undefined },
+  b: { boxType: string | null | undefined },
+): number {
+  return compareBoxTypes(
+    a.boxType as ThesisBoxType,
+    b.boxType as ThesisBoxType,
+  );
+}
+
+/**
  * UI badge configuration (Tailwind classes + label) for a thesis box type, shared by
  * the library sidebar and resource detail badge renders.
  *

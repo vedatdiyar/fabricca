@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import { toast } from "sonner";
-import { BOX_ORDER_WEIGHT } from "@/lib/box-constants";
+import { compareBoxTypes } from "@/lib/box-constants";
 import {
   getLibraryResourcesAction,
   toggleResourceReadStatusAction,
@@ -81,9 +81,8 @@ export function useLibraryResources(initialSelectedId: number | null) {
       const aHasPdf = a.pdfStatus && a.pdfStatus !== "NOT_UPLOADED" ? 0 : 1;
       const bHasPdf = b.pdfStatus && b.pdfStatus !== "NOT_UPLOADED" ? 0 : 1;
       if (aHasPdf !== bHasPdf) return aHasPdf - bHasPdf;
-      const orderA = BOX_ORDER_WEIGHT[a.boxType] ?? 99;
-      const orderB = BOX_ORDER_WEIGHT[b.boxType] ?? 99;
-      if (orderA !== orderB) return orderA - orderB;
+      const cmp = compareBoxTypes(a.boxType, b.boxType);
+      if (cmp !== 0) return cmp;
       return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
     });
   }, [resources]);

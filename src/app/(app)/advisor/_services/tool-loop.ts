@@ -2,15 +2,16 @@ import { HarmCategory, HarmBlockThreshold, ThinkingLevel } from "@google/genai";
 import { getAi } from "@/core/services/ai";
 import { dispatchGeminiCall } from "@/core/services/ai/gemini-scheduler";
 import { FLASH_LITE_35, GEMINI_SEED } from "@/lib/constants";
-import { sanitizeModelStreamText } from "@/lib/text-sanitizer";
 import {
   ADVISOR_TOOL_DECLARATIONS,
-  isReadTool,
-  executeReadTool,
-  getToolPreviousState,
 } from "@/app/(app)/advisor/_tools";
-import { formatToolExplanation } from "@/app/(app)/advisor/_tools/format-tool";
 import type { AdvisorStreamWriter } from "./stream";
+import {
+  extractTextFromChunk,
+  extractFunctionCalls,
+  collectModelParts,
+} from "./tool-loop/stream-parser";
+import { routeFunctionCall } from "./tool-loop/tool-router";
 
 /** Resolved stream object returned by Gemini's `generateContentStream`. */
 type GeminiContentStream = Awaited<
@@ -89,92 +90,25 @@ export async function runAdvisorToolLoop(
     });
 
     for await (const chunk of stream) {
-      if (chunk.candidates?.[0]?.content?.parts) {
-        for (const part of chunk.candidates[0].content.parts) {
-          turnModelParts.push(part as unknown as Record<string, unknown>);
-        }
-      }
+      turnModelParts.push(...collectModelParts(chunk as never));
 
-      let text = "";
-      try {
-        if (chunk.candidates?.[0]?.content?.parts) {
-          for (const part of chunk.candidates[0].content.parts) {
-            if (part.text) text += part.text;
-          }
-        } else {
-          text = chunk.text ?? "";
-        }
-      } catch {
-        text = "";
-      }
-
+      const text = extractTextFromChunk(chunk as never);
       if (text) {
-        const clean = sanitizeModelStreamText(text);
-        fullText += clean;
-        writer.delta(clean);
+        fullText += text;
+        writer.delta(text);
       }
 
-      let funcCalls = chunk.functionCalls;
-      if (!funcCalls && chunk.candidates?.[0]?.content?.parts) {
-        const callParts = chunk.candidates[0].content.parts.filter(
-          (p) => p.functionCall,
-        );
-        if (callParts.length > 0) {
-          funcCalls = callParts.map((p) => p.functionCall!);
-        }
-      }
-      if (funcCalls && funcCalls.length > 0) {
+      const funcCalls = extractFunctionCalls(chunk as never);
+      if (funcCalls.length > 0) {
         for (const call of funcCalls) {
-          if (!call.name) continue;
-
-          if (isReadTool(call.name)) {
-            const readResult = await executeReadTool(
-              call.name,
-              (call.args as Record<string, unknown>) ?? {},
-              userId,
-            );
-
-            contents.push({
-              role: "model",
-              parts:
-                turnModelParts.length > 0
-                  ? turnModelParts
-                  : [{ functionCall: call }],
-            });
-            contents.push({
-              role: "user",
-              parts: [
-                {
-                  functionResponse: {
-                    name: call.name,
-                    response: { result: readResult },
-                  },
-                },
-              ],
-            });
-
-            continueLoop = true;
-          } else {
-            const toolCallId = `tool-${Date.now()}-${Math.random()
-              .toString(36)
-              .substring(2, 7)}`;
-            const args = (call.args as Record<string, unknown>) ?? {};
-            const explanation = formatToolExplanation(call.name, args);
-            const previousState = await getToolPreviousState(
-              call.name,
-              args,
-              userId,
-            );
-
-            writer.send("tool_call_request", {
-              status: "pending",
-              toolCallId,
-              name: call.name,
-              args,
-              explanation,
-              previousState,
-            });
-          }
+          const shouldContinue = await routeFunctionCall(
+            call,
+            userId,
+            contents,
+            turnModelParts,
+            writer,
+          );
+          if (shouldContinue) continueLoop = true;
         }
       }
     }

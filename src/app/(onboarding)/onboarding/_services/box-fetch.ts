@@ -4,37 +4,52 @@ import { db } from "@/core/db";
 import { boxes } from "@/core/db/schema";
 import type { GeminiThesisBox } from "@/lib/types";
 import { getSession } from "@/lib/session";
-import { BOX_ORDER_WEIGHT } from "@/lib/box-constants";
+import { sortByBoxType } from "@/lib/box-constants";
 import { CACHE_TAGS } from "@/lib/cache-tags";
-import { DatabaseError } from "@/lib/errors/app-error";
+import { rethrowAsDatabaseError } from "@/lib/errors/db-error";
 import { getCachedThesisMatrix, fetchThesisMatrixFresh } from "./matrix-fetch";
 
 /**
- * Rethrows an already-normalized DatabaseError unchanged, or wraps any other
- * thrown value into a DatabaseError so downstream callers stop the flow.
+ * Maps raw box rows to the production GeminiThesisBox shape.
  *
- * @param err - The thrown value to normalize.
- * @param message - Internal technical message for the wrapped error.
- * @param technicalDetails - Optional diagnostic context for the wrapped error.
+ * @param rows - Raw box rows from the database.
+ * @returns Production-shaped boxes sorted by canonical box type order.
  */
-function rethrowAsDatabaseError(
-  err: unknown,
-  message: string,
-  technicalDetails?: Record<string, unknown>,
-): never {
-  if (err instanceof DatabaseError) throw err;
-  throw new DatabaseError({
-    cause: err,
-    message,
-    technicalDetails: technicalDetails ?? {
-      cause:
-        err instanceof Error
-          ? err.message
-          : err === undefined
-            ? "undefined"
-            : String(err),
-    },
-  });
+function rowsToGeminiBoxes(
+  rows: (typeof boxes.$inferSelect)[],
+): GeminiThesisBox[] {
+  const parentRows = rows.filter((r) => r.parentId === null);
+  const subBoxMap = new Map<number, GeminiThesisBox[]>();
+  for (const r of rows) {
+    if (r.parentId !== null) {
+      const list = subBoxMap.get(r.parentId) ?? [];
+      list.push({
+        id: r.id,
+        title: r.title,
+        boxType:
+          (r.boxType as GeminiThesisBox["boxType"]) ?? "SUBJECT_PROBLEM",
+        description: r.description ?? "",
+        parentId: r.parentId,
+        semanticQuery: r.semanticQuery,
+        subBoxes: undefined,
+        concepts: r.concepts ?? [],
+      });
+      subBoxMap.set(r.parentId, list);
+    }
+  }
+
+  const mappedBoxes: GeminiThesisBox[] = parentRows.map((b) => ({
+    id: b.id,
+    title: b.title,
+    boxType: (b.boxType as GeminiThesisBox["boxType"]) ?? "SUBJECT_PROBLEM",
+    description: b.description ?? "",
+    parentId: null,
+    semanticQuery: null,
+    subBoxes: subBoxMap.get(b.id),
+    concepts: b.concepts ?? [],
+  }));
+
+  return mappedBoxes.sort(sortByBoxType);
 }
 
 /**
@@ -82,43 +97,7 @@ export async function fetchBoxesWithFullShape(): Promise<GeminiThesisBox[]> {
     const matrix = await getCachedThesisMatrix(session.userId);
     if (!matrix) return [];
     const rows = await getCachedBoxes(matrix.id);
-
-    const parentRows = rows.filter((r) => r.parentId === null);
-    const subBoxMap = new Map<number, GeminiThesisBox[]>();
-    for (const r of rows) {
-      if (r.parentId !== null) {
-        const list = subBoxMap.get(r.parentId) ?? [];
-        list.push({
-          id: r.id,
-          title: r.title,
-          boxType:
-            (r.boxType as GeminiThesisBox["boxType"]) ?? "SUBJECT_PROBLEM",
-          description: r.description ?? "",
-          parentId: r.parentId,
-          semanticQuery: r.semanticQuery,
-          subBoxes: undefined,
-          concepts: r.concepts ?? [],
-        });
-        subBoxMap.set(r.parentId, list);
-      }
-    }
-
-    const mappedBoxes: GeminiThesisBox[] = parentRows.map((b) => ({
-      id: b.id,
-      title: b.title,
-      boxType: (b.boxType as GeminiThesisBox["boxType"]) ?? "SUBJECT_PROBLEM",
-      description: b.description ?? "",
-      parentId: null,
-      semanticQuery: null,
-      subBoxes: subBoxMap.get(b.id),
-      concepts: b.concepts ?? [],
-    }));
-
-    return mappedBoxes.sort((a, b) => {
-      const weightA = BOX_ORDER_WEIGHT[a.boxType] ?? 99;
-      const weightB = BOX_ORDER_WEIGHT[b.boxType] ?? 99;
-      return weightA - weightB;
-    });
+    return rowsToGeminiBoxes(rows);
   } catch (err) {
     rethrowAsDatabaseError(err, "Failed to fetch boxes with full shape.");
   }
@@ -153,42 +132,7 @@ export async function fetchUncachedBoxesWithFullShape(): Promise<
         END`,
       );
 
-    const parentRows = rows.filter((r) => r.parentId === null);
-    const subBoxMap = new Map<number, GeminiThesisBox[]>();
-    for (const r of rows) {
-      if (r.parentId !== null) {
-        const list = subBoxMap.get(r.parentId) ?? [];
-        list.push({
-          id: r.id,
-          title: r.title,
-          boxType:
-            (r.boxType as GeminiThesisBox["boxType"]) ?? "SUBJECT_PROBLEM",
-          description: r.description ?? "",
-          parentId: r.parentId,
-          semanticQuery: r.semanticQuery,
-          subBoxes: undefined,
-          concepts: r.concepts ?? [],
-        });
-        subBoxMap.set(r.parentId, list);
-      }
-    }
-
-    const mappedBoxes: GeminiThesisBox[] = parentRows.map((b) => ({
-      id: b.id,
-      title: b.title,
-      boxType: (b.boxType as GeminiThesisBox["boxType"]) ?? "SUBJECT_PROBLEM",
-      description: b.description ?? "",
-      parentId: null,
-      semanticQuery: null,
-      subBoxes: subBoxMap.get(b.id),
-      concepts: b.concepts ?? [],
-    }));
-
-    return mappedBoxes.sort((a, b) => {
-      const weightA = BOX_ORDER_WEIGHT[a.boxType] ?? 99;
-      const weightB = BOX_ORDER_WEIGHT[b.boxType] ?? 99;
-      return weightA - weightB;
-    });
+    return rowsToGeminiBoxes(rows);
   } catch (err) {
     rethrowAsDatabaseError(err, "Failed to fetch uncached boxes.");
   }

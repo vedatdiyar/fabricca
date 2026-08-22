@@ -1,9 +1,7 @@
 "use server";
 
-import { and, eq, ne } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "@/core/db";
-import { boxes as boxRows } from "@/core/db/schema";
 import { getSession, SESSION_ERROR_MSG } from "@/lib/session";
 import { createFlowId, Logger } from "@/lib/logger";
 import { updateTag } from "next/cache";
@@ -11,6 +9,7 @@ import { CACHE_TAGS, revalidateOnboardingPaths } from "@/lib/cache-tags";
 import { type OnboardingActionResult } from "@/lib/types";
 import { fetchThesisMatrix } from "@/app/(onboarding)/onboarding/_services/fetch-actions";
 import { persistRelatedTheses } from "@/app/(onboarding)/onboarding/literature-review/_services/related-theses";
+import { insertBoxesTransaction } from "./persist/box-inserter";
 
 const confirmBoxSchema: z.ZodType<{
   title: string;
@@ -81,67 +80,7 @@ export async function persistBoxesAction(
     const thesisMatrixId = matrix.id;
 
     await db.transaction(async (tx) => {
-      await tx
-        .delete(boxRows)
-        .where(
-          and(
-            eq(boxRows.matrixId, thesisMatrixId),
-            ne(boxRows.boxType, "RELATED_THESES"),
-          ),
-        );
-
-      const parentFlatIndices: number[] = [];
-      for (let i = 0; i < validBoxes.length; i++) {
-        if (validBoxes[i].parentId === null) {
-          parentFlatIndices.push(i);
-        }
-      }
-
-      const parentValues = parentFlatIndices.map((i) => ({
-        matrixId: thesisMatrixId,
-        title: validBoxes[i].title,
-        boxType: validBoxes[i].boxType,
-        description: validBoxes[i].description || "",
-        parentId: null,
-        semanticQuery: null,
-        concepts: validBoxes[i].concepts || [],
-      }));
-
-      let insertedParents: { id: number }[] = [];
-      if (parentValues.length > 0) {
-        insertedParents = await tx
-          .insert(boxRows)
-          .values(parentValues)
-          .returning({ id: boxRows.id });
-      }
-
-      const dbParentIdMap = new Map<number, number>();
-      for (let j = 0; j < parentFlatIndices.length; j++) {
-        const dbId = insertedParents[j]?.id;
-        if (dbId !== undefined) {
-          dbParentIdMap.set(parentFlatIndices[j], dbId);
-        }
-      }
-
-      const childValues: (typeof boxRows.$inferInsert)[] = [];
-      for (let i = 0; i < validBoxes.length; i++) {
-        const box = validBoxes[i];
-        if (box.parentId === null) continue;
-        const mappedParentId = dbParentIdMap.get(box.parentId) ?? null;
-        childValues.push({
-          matrixId: thesisMatrixId,
-          title: box.title,
-          boxType: box.boxType,
-          description: box.description || "",
-          parentId: mappedParentId,
-          semanticQuery: box.semanticQuery || "",
-          concepts: box.concepts ?? [],
-        });
-      }
-
-      if (childValues.length > 0) {
-        await tx.insert(boxRows).values(childValues);
-      }
+      await insertBoxesTransaction(tx as never, validBoxes, thesisMatrixId);
     });
 
     await persistRelatedTheses(session.userId);

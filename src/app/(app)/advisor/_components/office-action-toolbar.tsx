@@ -1,26 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import {
-  CheckSquare,
-  Copy,
-  PlusCircle,
-  Check,
-  BookmarkPlus,
-  Loader2,
-} from "lucide-react";
+import { CheckSquare, Copy, PlusCircle, Check, BookmarkPlus } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import {
   saveDefenseNoteAction,
@@ -28,6 +10,8 @@ import {
 } from "../office-actions";
 import type { OfficeReviewReport } from "../_services/pipeline/types";
 import type { DefenseMessage } from "./office-defense-chat";
+import { SaveNoteDialog } from "./office/save-note-dialog";
+import { CreateTaskDialog } from "./office/create-task-dialog";
 
 interface OfficeActionToolbarProps {
   outlineId: number;
@@ -35,186 +19,6 @@ interface OfficeActionToolbarProps {
   report: OfficeReviewReport;
   defenseMessages: DefenseMessage[];
   onResetToNewSubmission: () => void;
-}
-
-/**
- * Footer Action Toolbar for the Advisor's Office workspace.
- * Provides quick persistent actions:
- * - Save Defense Note to Outline (as PERSONAL_NOTE annotation)
- * - Create Revision Task in Kanban
- * - Copy to Word (Clipboard)
- * - Start New Draft Submission
- */
-interface SaveNoteDialogProps {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-  outlineTitle: string;
-  noteContent: string;
-  onChangeNoteContent: (content: string) => void;
-  onSave: () => Promise<void>;
-  isSaving: boolean;
-}
-
-function SaveNoteDialog({
-  open,
-  onOpenChange,
-  outlineTitle,
-  noteContent,
-  onChangeNoteContent,
-  onSave,
-  isSaving,
-}: SaveNoteDialogProps) {
-  return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md bg-card border-border">
-        <DialogHeader>
-          <DialogTitle className="font-serif text-lg font-medium text-foreground">
-            Savunma Notunu Bölüme Kaydet
-          </DialogTitle>
-          <DialogDescription className="text-xs text-muted-foreground">
-            Bu not, Alıntı Fişleri (Citation Cards) modülüne ve{" "}
-            <strong>{outlineTitle}</strong> bölümüne iliştirilecektir.
-          </DialogDescription>
-        </DialogHeader>
-
-        <div className="py-2 space-y-2">
-          <Label
-            htmlFor="note-content"
-            className="text-xs font-medium text-foreground"
-          >
-            Kaydedilecek Not İçeriği
-          </Label>
-          <Textarea
-            id="note-content"
-            value={noteContent}
-            onChange={(e) => onChangeNoteContent(e.target.value)}
-            className="min-h-[140px] text-xs p-3 bg-background border-border leading-relaxed"
-          />
-        </div>
-
-        <DialogFooter className="gap-2 sm:gap-0">
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={() => onOpenChange(false)}
-            className="text-xs h-9"
-          >
-            Vazgeç
-          </Button>
-          <Button
-            type="button"
-            size="sm"
-            onClick={onSave}
-            disabled={isSaving || !noteContent.trim()}
-            className="bg-primary text-primary-foreground text-xs h-9 gap-1.5"
-          >
-            {isSaving ? (
-              <Loader2 className="h-3.5 w-3.5 animate-spin" />
-            ) : (
-              <BookmarkPlus className="h-3.5 w-3.5" />
-            )}
-            <span>Fiş Olarak Kaydet</span>
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
-  );
-}
-
-interface CreateTaskDialogProps {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-  taskTitle: string;
-  onChangeTaskTitle: (title: string) => void;
-  taskDescription: string;
-  onChangeTaskDescription: (desc: string) => void;
-  onSave: () => Promise<void>;
-  isSaving: boolean;
-}
-
-function CreateTaskDialog({
-  open,
-  onOpenChange,
-  taskTitle,
-  onChangeTaskTitle,
-  taskDescription,
-  onChangeTaskDescription,
-  onSave,
-  isSaving,
-}: CreateTaskDialogProps) {
-  return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md bg-card border-border">
-        <DialogHeader>
-          <DialogTitle className="font-serif text-lg font-medium text-foreground">
-            Revizyon Görevi Oluştur
-          </DialogTitle>
-          <DialogDescription className="text-xs text-muted-foreground">
-            Kanban panonuza yeni bir yüksek öncelikli revizyon görevi ekler.
-          </DialogDescription>
-        </DialogHeader>
-
-        <div className="py-2 space-y-3">
-          <div className="space-y-1.5">
-            <Label
-              htmlFor="task-title"
-              className="text-xs font-medium text-foreground"
-            >
-              Görev Başlığı
-            </Label>
-            <Input
-              id="task-title"
-              value={taskTitle}
-              onChange={(e) => onChangeTaskTitle(e.target.value)}
-              className="text-xs h-9 bg-background border-border"
-            />
-          </div>
-
-          <div className="space-y-1.5">
-            <Label
-              htmlFor="task-desc"
-              className="text-xs font-medium text-foreground"
-            >
-              Görev Açıklaması / Düzeltme Notu
-            </Label>
-            <Textarea
-              id="task-desc"
-              value={taskDescription}
-              onChange={(e) => onChangeTaskDescription(e.target.value)}
-              className="min-h-[100px] text-xs p-2.5 bg-background border-border leading-relaxed"
-            />
-          </div>
-        </div>
-
-        <DialogFooter className="gap-2 sm:gap-0">
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={() => onOpenChange(false)}
-            className="text-xs h-9"
-          >
-            Vazgeç
-          </Button>
-          <Button
-            type="button"
-            size="sm"
-            onClick={onSave}
-            disabled={isSaving || !taskTitle.trim()}
-            className="bg-primary text-primary-foreground text-xs h-9 gap-1.5"
-          >
-            {isSaving ? (
-              <Loader2 className="h-3.5 w-3.5 animate-spin" />
-            ) : (
-              <CheckSquare className="h-3.5 w-3.5" />
-            )}
-            <span>Görevi Ekle</span>
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
-  );
 }
 
 /**

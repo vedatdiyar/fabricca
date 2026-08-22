@@ -77,7 +77,12 @@ export async function autoMapCitationCards(
       // Find all existing outline links for the user
       const existingLinks = await db
         .select({ annotationId: outlineAnnotations.annotationId })
-        .from(outlineAnnotations);
+        .from(outlineAnnotations)
+        .innerJoin(
+          annotations,
+          eq(outlineAnnotations.annotationId, annotations.id),
+        )
+        .where(eq(annotations.userId, userId));
 
       const assignedAnnoIds = new Set(existingLinks.map((l) => l.annotationId));
 

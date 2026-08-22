@@ -1,9 +1,9 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { Plus, FolderTree, AlertCircle, Layers, Sparkles } from "lucide-react";
-import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
+import { CitationCardsPageHeader } from "./_components/page-header/citation-page-header";
+import { CitationCardsSectionHeading } from "./_components/page-header/citation-section-heading";
 import { CitationCardsSkeleton } from "./_components/citation-cards-skeleton";
 import { useCitationCardsFilter } from "./_hooks/use-citation-cards-filter";
 import { CitationOutlineSidebar } from "./_components/citation-outline-sidebar";
@@ -28,113 +28,7 @@ import type {
   SourceItem,
 } from "./_lib/types";
 
-interface CitationCardsPageHeaderProps {
-  isSynthesisOpen: boolean;
-  hasAnyCard: boolean;
-  onToggleSynthesis: () => void;
-  onOpenAddDialog: () => void;
-}
 
-function CitationCardsPageHeader({
-  isSynthesisOpen,
-  hasAnyCard,
-  onToggleSynthesis,
-  onOpenAddDialog,
-}: CitationCardsPageHeaderProps) {
-  return (
-    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-border pb-4">
-      <div>
-        <h1 className="font-serif text-2xl font-bold tracking-tight text-foreground">
-          Alıntı Fişleri & Tez Masası
-        </h1>
-        <p className="text-xs text-muted-foreground mt-0.5">
-          Tez konu kutularındaki okumaları tez iskeletinin (Outline) alt
-          başlıklarına bağlayan araştırma masası.
-        </p>
-      </div>
-
-      <div className="flex items-center gap-2.5 shrink-0 self-start sm:self-auto">
-        {/* 1-Click AI Synthesis Action */}
-        <Button
-          variant={isSynthesisOpen ? "secondary" : "outline"}
-          size="sm"
-          onClick={onToggleSynthesis}
-          disabled={!hasAnyCard}
-          className={`gap-1.5 h-9 px-3.5 border-primary/30 text-xs font-medium cursor-pointer transition-colors ${
-            isSynthesisOpen
-              ? "bg-primary/15 text-primary border-primary/40"
-              : "bg-primary/5 hover:bg-primary/10 text-primary"
-          }`}
-        >
-          <Sparkles className="h-4 w-4 text-primary" />
-          <span>
-            {isSynthesisOpen ? "Sentezi Gizle" : "Fikir & Argüman Sentezi"}
-          </span>
-        </Button>
-
-        {/* Global Add Card Button */}
-        <Button
-          onClick={onOpenAddDialog}
-          size="sm"
-          className="gap-1.5 h-9 px-3.5 shrink-0 cursor-pointer"
-        >
-          <Plus className="h-4 w-4" />
-          <span>Yeni Fiş</span>
-        </Button>
-      </div>
-    </div>
-  );
-}
-
-interface CitationCardsSectionHeadingProps {
-  unassignedOnly: boolean;
-  activeOutline?: OutlineItem;
-  cardCount: number;
-}
-
-function CitationCardsSectionHeading({
-  unassignedOnly,
-  activeOutline,
-  cardCount,
-}: CitationCardsSectionHeadingProps) {
-  return (
-    <div className="flex items-center justify-between gap-2 pb-1 border-b border-border/40">
-      <div className="flex items-center gap-2 min-w-0">
-        {unassignedOnly ? (
-          <>
-            <AlertCircle className="h-4 w-4 text-amber-500 shrink-0" />
-            <h2 className="font-serif text-sm font-semibold text-amber-600 dark:text-amber-400 truncate">
-              Henüz Bir Tez Bölümüne Atanmamış Fişler Havuzu
-            </h2>
-          </>
-        ) : activeOutline ? (
-          <>
-            <FolderTree className="h-4 w-4 text-primary shrink-0" />
-            <h2 className="font-serif text-sm font-semibold text-foreground truncate">
-              {activeOutline.title}
-            </h2>
-            {activeOutline.description && (
-              <span className="text-xs text-muted-foreground truncate hidden md:inline">
-                — {activeOutline.description}
-              </span>
-            )}
-          </>
-        ) : (
-          <>
-            <Layers className="h-4 w-4 text-primary shrink-0" />
-            <h2 className="font-serif text-sm font-semibold text-foreground truncate">
-              Tüm Alıntı Fişleri
-            </h2>
-          </>
-        )}
-      </div>
-
-      <span className="font-mono text-xs text-muted-foreground shrink-0">
-        {cardCount} Fiş
-      </span>
-    </div>
-  );
-}
 
 /**
  * Citation Cards & Thesis Workbench (Alıntı Fişleri & Tez Masası) main page component.

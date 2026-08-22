@@ -17,7 +17,7 @@ import { AIBanner } from "@/components/shared/ai-banner";
 import { BoxesSkeleton } from "./boxes-skeleton";
 import { useBoxesContinue } from "../../_hooks/use-boxes-continue";
 import { fetchBoxesWithFullShape } from "@/app/(onboarding)/onboarding/_services/fetch-actions";
-import { BOX_ORDER_WEIGHT, BOX_TYPE_LABELS } from "@/lib/box-constants";
+import { BOX_TYPE_LABELS, sortByBoxType } from "@/lib/box-constants";
 import type { GeminiThesisBox } from "@/lib/types";
 
 /**
@@ -50,12 +50,7 @@ export function BoxesContainer() {
     if (!boxes) return [];
     return [...boxes]
       .filter((b) => b.parentId === null && b.boxType !== "RELATED_THESES")
-      .sort((a, b) => {
-        return (
-          (BOX_ORDER_WEIGHT[a.boxType] || 99) -
-          (BOX_ORDER_WEIGHT[b.boxType] || 99)
-        );
-      });
+      .sort(sortByBoxType);
   }, [boxes]);
 
   if (loading) {

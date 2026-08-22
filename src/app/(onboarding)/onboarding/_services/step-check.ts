@@ -10,35 +10,7 @@ import {
   outlines,
 } from "@/core/db/schema";
 import { getSession } from "@/lib/session";
-import { DatabaseError } from "@/lib/errors/app-error";
-
-/**
- * Rethrows an already-normalized DatabaseError unchanged, or wraps any other
- * thrown value into a DatabaseError so downstream callers stop the flow.
- *
- * @param err - The thrown value to normalize.
- * @param message - Internal technical message for the wrapped error.
- * @param technicalDetails - Optional diagnostic context for the wrapped error.
- */
-function rethrowAsDatabaseError(
-  err: unknown,
-  message: string,
-  technicalDetails?: Record<string, unknown>,
-): never {
-  if (err instanceof DatabaseError) throw err;
-  throw new DatabaseError({
-    cause: err,
-    message,
-    technicalDetails: technicalDetails ?? {
-      cause:
-        err instanceof Error
-          ? err.message
-          : err === undefined
-            ? "undefined"
-            : String(err),
-    },
-  });
-}
+import { rethrowAsDatabaseError } from "@/lib/errors/db-error";
 
 /**
  * Returns which onboarding steps have data for the current user.

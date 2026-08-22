@@ -14,7 +14,7 @@ import {
   runLiteraturePipelineAction,
 } from "../actions";
 import type { SubBoxInput } from "@/app/(onboarding)/onboarding/literature-review/_services/literature-review-papers";
-import { BOX_ORDER_WEIGHT } from "@/lib/box-constants";
+import { compareBoxTypes } from "@/lib/box-constants";
 
 /** Processing status of a single sub-box within the literature review grid. */
 export type BoxStatus = "idle" | "loading" | "done" | "error";
@@ -70,13 +70,9 @@ export function useLiteratureReview(): UseLiteratureReviewResult {
 
   const subBoxes = useMemo(() => {
     if (!allBoxes) return [];
-    return [...allBoxes].sort((a, b) => {
-      const weightA =
-        BOX_ORDER_WEIGHT[a.boxType as keyof typeof BOX_ORDER_WEIGHT] ?? 99;
-      const weightB =
-        BOX_ORDER_WEIGHT[b.boxType as keyof typeof BOX_ORDER_WEIGHT] ?? 99;
-      return weightA - weightB;
-    });
+    return [...allBoxes].sort((a, b) =>
+      compareBoxTypes(a.boxType, b.boxType),
+    );
   }, [allBoxes]);
 
   const loading = boxesLoading || poolLoading || allBoxes === undefined;
