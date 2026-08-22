@@ -33,22 +33,22 @@ function SubBoxQuery({
 }) {
   if (status === "idle" || status === "loading") {
     return (
-      <div className="space-y-3 animate-pulse">
-        <div className="h-5 w-3/4 rounded bg-muted" />
-        <div className="h-24 w-full rounded-md bg-muted/20" />
-        <div className="h-24 w-full rounded-md bg-muted/20" />
+      <div className="space-y-2.5 animate-pulse pt-1">
+        <div className="h-4 w-1/3 rounded bg-muted/40" />
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          <div className="h-16 rounded-md bg-muted/20 border border-border/40" />
+          <div className="h-16 rounded-md bg-muted/20 border border-border/40" />
+        </div>
       </div>
     );
   }
 
   if (status === "error") {
     return (
-      <div className="p-6 text-center border border-destructive/20 rounded-md bg-destructive/5">
-        <AlertCircle className="w-8 h-8 text-destructive mx-auto mb-2" />
-        <p className="text-sm text-destructive font-medium mb-1">
-          Tarama hatası
-        </p>
-        <p className="text-xs text-muted-foreground mb-3">{errorMessage}</p>
+      <div className="p-4 text-center border border-destructive/20 rounded-md bg-destructive/5 space-y-1">
+        <AlertCircle className="size-5 text-destructive mx-auto" />
+        <p className="text-xs text-destructive font-medium">Tarama hatası</p>
+        <p className="text-[11px] text-muted-foreground">{errorMessage}</p>
       </div>
     );
   }
@@ -76,24 +76,24 @@ function SubBoxDone({
   if (subBox.boxType === "PRIMARY_MATERIAL") {
     const childBoxes = subBox.subBoxes ?? [];
     return (
-      <div className="space-y-4">
+      <div className="space-y-3">
         {childBoxes.length > 0 ? (
-          <div className="relative border-l border-primary/20 pl-4 ml-3 space-y-6 pt-2">
+          <div className="relative border-l border-primary/20 pl-4 ml-3 space-y-4 pt-1">
             {childBoxes.map((sub, idx) => {
               const subEntry = literaturePool.find(
                 (e) => e.subBoxTitle === sub.title,
               );
               const subArticles = subEntry?.articles ?? [];
               return (
-                <div key={`${sub.title}-${idx}`} className="relative space-y-3">
-                  <span className="absolute -left-[21.5px] top-2 h-2.5 w-2.5 rounded-full border-2 border-primary bg-background" />
+                <div key={`${sub.title}-${idx}`} className="relative space-y-2">
+                  <span className="absolute -left-[21.5px] top-1.5 size-2 rounded-full border-2 border-primary bg-background" />
 
-                  <div className="space-y-1">
-                    <h3 className="font-serif text-lg font-medium tracking-tight text-foreground leading-snug">
+                  <div className="space-y-0.5">
+                    <h3 className="font-serif text-sm font-semibold tracking-tight text-foreground leading-snug">
                       {sub.title}
                     </h3>
                     {sub.description && (
-                      <p className="text-sm text-muted-foreground leading-relaxed font-light">
+                      <p className="text-xs text-muted-foreground leading-relaxed font-light">
                         {sub.description}
                       </p>
                     )}
@@ -138,13 +138,13 @@ function SubBoxDone({
   if (childBoxes.length === 0) {
     if (!entry || entry.articles.length === 0) {
       return (
-        <Card className="p-6 text-center border border-dashed border-border rounded-md">
-          <p className="text-sm text-muted-foreground">Kaynak bulunamadı.</p>
+        <Card className="p-4 text-center border border-dashed border-border rounded-md">
+          <p className="text-xs text-muted-foreground">Kaynak bulunamadı.</p>
         </Card>
       );
     }
     return (
-      <div className="space-y-4">
+      <div className="space-y-3">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           {[...entry.articles]
             .sort((a, b) => b.relevanceScore - a.relevanceScore)
@@ -160,32 +160,32 @@ function SubBoxDone({
   }
 
   return (
-    <div className="space-y-4 pt-2">
-      <div className="relative border-l border-primary/20 pl-4 ml-3 space-y-6">
+    <div className="space-y-3 pt-1">
+      <div className="relative border-l border-primary/20 pl-4 ml-3 space-y-4">
         {childBoxes.map((sub, idx) => {
           const subEntry = literaturePool.find(
             (e) => e.subBoxTitle === sub.title,
           );
           const subArticles = subEntry?.articles ?? [];
           return (
-            <div key={`${sub.title}-${idx}`} className="relative space-y-3">
-              <span className="absolute -left-[21.5px] top-2 h-2.5 w-2.5 rounded-full border-2 border-primary bg-background" />
+            <div key={`${sub.title}-${idx}`} className="relative space-y-2">
+              <span className="absolute -left-[21.5px] top-1.5 size-2 rounded-full border-2 border-primary bg-background" />
 
-              <div className="space-y-1">
-                <h3 className="font-serif text-lg font-medium tracking-tight text-foreground leading-snug">
+              <div className="space-y-0.5">
+                <h3 className="font-serif text-sm font-semibold tracking-tight text-foreground leading-snug">
                   {sub.title}
                 </h3>
                 {sub.description && (
-                  <p className="text-sm text-muted-foreground leading-relaxed">
+                  <p className="text-xs text-muted-foreground leading-relaxed">
                     {sub.description}
                   </p>
                 )}
                 {sub.concepts && sub.concepts.length > 0 && (
-                  <div className="flex flex-wrap gap-2 pt-1">
+                  <div className="flex flex-wrap gap-1.5 pt-0.5">
                     {sub.concepts.map((concept, cIdx) => (
                       <span
                         key={`${concept}-${cIdx}`}
-                        className="inline-flex items-center px-2 py-1 rounded bg-primary/10 border border-primary/20 text-[10px] text-primary font-medium"
+                        className="inline-flex items-center px-1.5 py-0.5 rounded bg-primary/10 border border-primary/20 text-[10px] text-primary font-medium"
                       >
                         {concept}
                       </span>
@@ -195,7 +195,7 @@ function SubBoxDone({
               </div>
 
               {subArticles.length > 0 ? (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-2">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-1">
                   {[...subArticles]
                     .sort((a, b) => b.relevanceScore - a.relevanceScore)
                     .map((article, aIdx) => (
@@ -245,8 +245,9 @@ export function LiteratureReviewContent() {
   if (loading) {
     return <LiteratureReviewSkeleton />;
   }
+
   return (
-    <div className="w-full space-y-8">
+    <div className="w-full space-y-6">
       <AIBanner
         icon={BookOpen}
         title="Akademik Kaynak Taraması Aktif"
@@ -269,20 +270,21 @@ export function LiteratureReviewContent() {
                   (e) =>
                     e.subBoxTitle === subBox.title && e.articles.length > 0,
                 );
+
           return (
-            <Card key={subBox.title} className="p-6 space-y-4 rounded-md">
+            <Card key={subBox.title} className="p-5 space-y-3 rounded-md">
               <div className="flex items-center gap-2">
-                <h2 className="font-serif text-xl font-semibold tracking-tight text-foreground">
+                <h2 className="font-serif text-base font-semibold tracking-tight text-foreground">
                   {subBox.title}
                 </h2>
                 {subBox.boxType && (
-                  <span className="inline-flex items-center px-2 py-1 rounded-md text-[10px] font-semibold border bg-primary/10 border-primary/20 text-primary ml-auto">
+                  <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-semibold border bg-primary/10 border-primary/20 text-primary ml-auto">
                     {getBoxTypeLabel(subBox.boxType)}
                   </span>
                 )}
               </div>
               {subBox.description && (
-                <p className="text-sm text-muted-foreground leading-relaxed">
+                <p className="text-xs text-muted-foreground leading-relaxed">
                   {subBox.description}
                 </p>
               )}
@@ -322,21 +324,21 @@ export function LiteratureReviewContent() {
           const boxType = relatedThesesBox?.boxType ?? "RELATED_THESES";
 
           return (
-            <Card className="p-6 space-y-4 rounded-md">
+            <Card className="p-5 space-y-3 rounded-md">
               <div className="flex items-center gap-2">
-                <h2 className="font-serif text-xl font-semibold tracking-tight text-foreground">
+                <h2 className="font-serif text-base font-semibold tracking-tight text-foreground">
                   {title}
                 </h2>
-                <span className="inline-flex items-center px-2 py-1 rounded-md text-[10px] font-semibold border bg-primary/10 border-primary/20 text-primary ml-auto">
+                <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-semibold border bg-primary/10 border-primary/20 text-primary ml-auto">
                   {getBoxTypeLabel(boxType)}
                 </span>
               </div>
               {description && (
-                <p className="text-sm text-muted-foreground leading-relaxed">
+                <p className="text-xs text-muted-foreground leading-relaxed">
                   {description}
                 </p>
               )}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-2">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-1">
                 {relatedArticles.map((article, idx) => (
                   <LiteratureArticleCard
                     key={`${article.title}-${idx}`}
@@ -349,17 +351,17 @@ export function LiteratureReviewContent() {
         })()}
       </div>
 
-      <div className="flex justify-end mt-8 pb-8">
+      <div className="flex justify-end mt-6 pb-8">
         <Button onClick={handleFinalize} disabled={confirming} size="lg">
           {confirming ? (
             <span className="flex items-center gap-2">
-              <Loader2 className="w-4 h-4 animate-spin" />
+              <Loader2 className="size-4 animate-spin" />
               Kaydediliyor...
             </span>
           ) : (
             <span className="flex items-center gap-2">
               Onayla ve Tamamla
-              <Check className="w-4 h-4" />
+              <Check className="size-4" />
             </span>
           )}
         </Button>
@@ -367,3 +369,5 @@ export function LiteratureReviewContent() {
     </div>
   );
 }
+
+

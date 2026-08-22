@@ -5,20 +5,31 @@ import { useQuery } from "@tanstack/react-query";
 import {
   CheckCircle2,
   ArrowRight,
+  Target,
+  Compass,
+  Microscope,
+  BookOpen,
   Library,
-  PlusCircle,
-  WholeWord,
   Archive,
   Loader2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Card, CardTitle } from "@/components/ui/card";
+import { Card } from "@/components/ui/card";
 import { AIBanner } from "@/components/shared/ai-banner";
 import { BoxesSkeleton } from "./boxes-skeleton";
 import { useBoxesContinue } from "../../_hooks/use-boxes-continue";
 import { fetchBoxesWithFullShape } from "@/app/(onboarding)/onboarding/_services/fetch-actions";
 import { BOX_TYPE_LABELS, sortByBoxType } from "@/lib/box-constants";
+import type { ThesisBoxType } from "@/lib/box-constants";
 import type { GeminiThesisBox } from "@/lib/types";
+
+const BOX_TYPE_ICONS: Record<ThesisBoxType, React.ComponentType<{ className?: string }>> = {
+  SUBJECT_PROBLEM: Target,
+  THEORETICAL_FRAMEWORK: Compass,
+  METHODOLOGY: Microscope,
+  PRIMARY_MATERIAL: BookOpen,
+  RELATED_THESES: Library,
+};
 
 /**
  * Renders the subject boxes overview with a proceed-to-literature action.
@@ -58,7 +69,7 @@ export function BoxesContainer() {
   }
 
   return (
-    <div className="w-full space-y-8">
+    <div className="w-full space-y-6">
       <AIBanner
         icon={CheckCircle2}
         title="Konu Kutuları Yapılandırıldı"
@@ -71,17 +82,17 @@ export function BoxesContainer() {
         ))}
       </div>
 
-      <div className="flex justify-end mt-8 pb-8">
+      <div className="flex justify-end mt-6 pb-8">
         <Button onClick={handleProceed} disabled={proceeding} size="lg">
           {proceeding ? (
             <span className="flex items-center gap-2">
-              <Loader2 className="w-4 h-4 animate-spin" />
+              <Loader2 className="size-4 animate-spin" />
               Kaydediliyor...
             </span>
           ) : (
             <span className="flex items-center gap-2">
               Onayla ve Tez Planı Adımına Geç
-              <ArrowRight className="w-4 h-4" />
+              <ArrowRight className="size-4" />
             </span>
           )}
         </Button>
@@ -91,51 +102,61 @@ export function BoxesContainer() {
 }
 
 /**
- * Renders the sub-box nested section (timeline + cards).
+ * Renders the sub-box nested section cleanly without bulky timelines or heavy cards.
  *
  * @param root0 - The section props object.
  * @param root0.subBoxes - The sub-boxes to render.
+ * @param root0.parentIndex - The 1-based index of the parent box.
  * @returns The sub-box section markup.
  */
 const SubBoxSection = memo(function SubBoxSection({
   subBoxes,
+  parentIndex,
 }: {
   subBoxes: GeminiThesisBox[];
+  parentIndex: number;
 }) {
   return (
-    <div className="pt-4 space-y-4 mt-5">
-      <h4 className="text-xs font-medium uppercase tracking-wider text-muted-foreground flex items-center gap-2">
-        <Library className="w-3.5 h-3.5 text-primary" />
-        Alt Konu Kutuları
-      </h4>
-      <div className="relative border-l border-primary/20 pl-4 ml-3 space-y-4 mt-2">
+    <div className="pt-3 border-t border-border/40 space-y-2">
+      <div className="flex items-center justify-between text-xs text-muted-foreground">
+        <span className="font-sans text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
+          Alt Odak Alanları ({subBoxes.length})
+        </span>
+      </div>
+
+      <div className="grid grid-cols-1 gap-2">
         {subBoxes.map((subBox, sbIdx) => (
-          <div key={`${subBox.title}-${sbIdx}`} className="relative">
-            <span className="absolute -left-[21.5px] top-[21px] h-2.5 w-2.5 rounded-full border-2 border-primary bg-background" />
-            <Card className="p-4 rounded-md border border-border hover:border-primary/20 transition-all duration-200 space-y-2">
-              <div className="flex items-start justify-between gap-2">
-                <h5 className="font-sans text-sm font-semibold text-foreground leading-snug line-clamp-2 break-words hyphens-auto">
-                  {subBox.title}
-                </h5>
+          <div
+            key={`${subBox.title}-${sbIdx}`}
+            className="rounded-md border border-border/40 bg-muted/20 p-3 space-y-1.5 transition-colors hover:border-border"
+          >
+            <div className="flex items-start justify-between gap-2">
+              <h4 className="font-sans text-xs font-semibold text-foreground leading-snug">
+                <span className="font-mono text-muted-foreground font-normal mr-1.5">
+                  {parentIndex}.{sbIdx + 1}
+                </span>
+                {subBox.title}
+              </h4>
+            </div>
+
+            {subBox.description && (
+              <p className="text-xs text-muted-foreground leading-relaxed line-clamp-2">
+                {subBox.description}
+              </p>
+            )}
+
+            {subBox.concepts && subBox.concepts.length > 0 && (
+              <div className="flex flex-wrap gap-1.5 pt-0.5">
+                {subBox.concepts.map((concept, cIdx) => (
+                  <span
+                    key={`${concept}-${cIdx}`}
+                    className="inline-flex items-center px-1.5 py-0.5 rounded bg-secondary text-secondary-foreground border border-border text-[10px] font-medium"
+                  >
+                    {concept}
+                  </span>
+                ))}
               </div>
-              {subBox.description && (
-                <p className="text-xs text-muted-foreground leading-relaxed line-clamp-3">
-                  {subBox.description}
-                </p>
-              )}
-              {subBox.concepts && subBox.concepts.length > 0 && (
-                <div className="flex flex-wrap gap-2 pt-1">
-                  {subBox.concepts.map((concept, cIdx) => (
-                    <span
-                      key={`${concept}-${cIdx}`}
-                      className="inline-flex items-center px-2 py-1 rounded bg-primary/10 border border-primary/20 text-[10px] text-primary font-medium"
-                    >
-                      {concept}
-                    </span>
-                  ))}
-                </div>
-              )}
-            </Card>
+            )}
           </div>
         ))}
       </div>
@@ -150,26 +171,26 @@ const SubBoxSection = memo(function SubBoxSection({
  */
 const PrimaryMaterialSection = memo(function PrimaryMaterialSection() {
   return (
-    <div className="pt-4 space-y-2 mt-5">
-      <h4 className="text-xs font-medium uppercase tracking-wider text-muted-foreground flex items-center gap-2">
-        <Archive className="w-3.5 h-3.5 text-muted-foreground" />
-        Arşiv / Birincil Kaynak Alanı
-      </h4>
+    <div className="pt-3 border-t border-border/40 space-y-1">
+      <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+        <Archive className="size-3 text-muted-foreground" />
+        <span className="font-sans text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
+          Arşiv / Birincil Kaynak Alanı
+        </span>
+      </div>
       <p className="text-xs text-muted-foreground leading-relaxed">
-        Bu kutu, saha çalışması verileri ve birincil kaynaklar için ayrılmıştır.
-        Kurucu literatür taraması yapılmamıştır; arşiv belgeleri bir sonraki
-        adımda el ile girilecektir.
+        Bu kutu saha çalışması ve birincil kaynaklar için ayrılmıştır. Arşiv belgeleri literatür taramasından sonra doğrudan eklenecektir.
       </p>
     </div>
   );
 });
 
 /**
- * Renders a single box card with its sub-boxes and metadata.
+ * Renders a single box card with its sub-boxes and metadata in a minimalist style.
  *
  * @param root0 - The card props object.
  * @param root0.box - The thesis box to render.
- * @param root0.index - The index of the box within the grid.
+ * @param root0.index - The index of the box within the list.
  * @returns The box card markup.
  */
 const BoxCard = memo(function BoxCard({
@@ -179,52 +200,55 @@ const BoxCard = memo(function BoxCard({
   box: GeminiThesisBox;
   index: number;
 }) {
+  const Icon = BOX_TYPE_ICONS[box.boxType as ThesisBoxType] ?? Target;
   const parentConcepts = box.concepts ?? [];
 
   return (
-    <Card className="group/card flex flex-col h-full p-6 rounded-md transition-all duration-300 hover:-translate-y-1 hover:border-primary/20">
-      <div className="space-y-4">
-        <div className="flex items-center gap-2 text-muted-foreground text-xs">
-          <PlusCircle className="w-3 h-3" />
-          <span>Kutu {index + 1}</span>
-          <span className="ml-auto inline-flex items-center px-2 py-1 rounded-md text-xs font-medium bg-secondary text-secondary-foreground border border-border/40">
-            {BOX_TYPE_LABELS[box.boxType]}
+    <Card className="flex flex-col p-4 sm:p-5 rounded-md border border-border bg-card transition-colors hover:border-primary/20 space-y-3">
+      {/* Top Header Row */}
+      <div className="flex items-center justify-between gap-2">
+        <div className="flex items-center gap-2">
+          <span className="flex items-center justify-center size-5 rounded bg-primary/10 border border-primary/20 text-primary shrink-0">
+            <Icon className="size-3" />
+          </span>
+          <span className="font-mono text-xs font-medium text-muted-foreground">
+            Kutu 0{index + 1}
           </span>
         </div>
-        <div className="flex items-start gap-3">
-          <span className="relative mt-2 h-2.5 w-2.5 shrink-0 rounded-full bg-primary" />
-          <CardTitle className="text-lg font-semibold text-foreground leading-snug line-clamp-2 break-words hyphens-auto">
-            {box.title}
-          </CardTitle>
-        </div>
+        <span className="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-medium bg-secondary text-secondary-foreground border border-border">
+          {BOX_TYPE_LABELS[box.boxType as ThesisBoxType] ?? box.boxType}
+        </span>
       </div>
 
-      {box.description && (
-        <p className="text-sm text-muted-foreground leading-relaxed mt-4 line-clamp-3">
-          {box.description}
-        </p>
-      )}
+      {/* Main Title & Description */}
+      <div className="space-y-1">
+        <h3 className="font-serif text-lg font-semibold text-foreground tracking-tight leading-snug">
+          {box.title}
+        </h3>
+        {box.description && (
+          <p className="text-xs text-muted-foreground leading-relaxed line-clamp-2">
+            {box.description}
+          </p>
+        )}
+      </div>
 
+      {/* Parent concepts if any */}
       {parentConcepts.length > 0 && (
-        <div className="mt-4">
-          <div className="border-y border-border py-3">
-            <div className="flex flex-wrap gap-2">
-              {parentConcepts.map((concept, i) => (
-                <span
-                  key={`${concept}-${i}`}
-                  className="inline-flex items-center gap-1 px-2 py-1 rounded-md bg-primary/10 text-xs text-primary font-semibold"
-                >
-                  <WholeWord className="w-3.5 h-3.5 shrink-0" />
-                  {concept}
-                </span>
-              ))}
-            </div>
-          </div>
+        <div className="flex flex-wrap gap-1.5">
+          {parentConcepts.map((concept, i) => (
+            <span
+              key={`${concept}-${i}`}
+              className="inline-flex items-center px-1.5 py-0.5 rounded bg-secondary text-secondary-foreground border border-border text-[10px] font-medium"
+            >
+              {concept}
+            </span>
+          ))}
         </div>
       )}
 
+      {/* Sub Boxes / Primary Material */}
       {box.subBoxes && box.subBoxes.length > 0 ? (
-        <SubBoxSection subBoxes={box.subBoxes} />
+        <SubBoxSection subBoxes={box.subBoxes} parentIndex={index + 1} />
       ) : box.boxType === "PRIMARY_MATERIAL" ? (
         <PrimaryMaterialSection />
       ) : null}

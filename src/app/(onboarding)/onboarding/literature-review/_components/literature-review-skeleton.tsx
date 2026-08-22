@@ -9,9 +9,9 @@ import { Skeleton } from "@/components/ui/skeleton";
  */
 export function LiteratureReviewSkeleton() {
   return (
-    <div className="w-full space-y-8">
+    <div className="w-full space-y-6">
       <div className="flex w-full items-start gap-3 rounded-md border border-primary/20 bg-primary/10 px-4 py-3">
-        <Skeleton className="mt-1 h-4 w-4 shrink-0 rounded-md" />
+        <Skeleton className="mt-1 size-4 shrink-0 rounded-md" />
         <div className="space-y-2">
           <Skeleton className="h-4 w-64" />
           <Skeleton className="h-3 w-full bg-border/20" />
@@ -23,29 +23,34 @@ export function LiteratureReviewSkeleton() {
         {Array.from({ length: 2 }).map((_, index) => (
           <Card
             key={`lit-rev-skel-${index}`}
-            className="space-y-4 rounded-md p-6"
+            className="flex flex-col p-4 sm:p-5 rounded-md border border-border bg-card space-y-3"
           >
-            <div className="flex items-center gap-2">
-              <Skeleton className="h-6 w-1.5 rounded-full bg-border/20" />
-              <Skeleton className="h-7 w-56" />
-              <Skeleton className="ml-auto h-5 w-24 rounded-md bg-border/20" />
+            <div className="flex items-center justify-between gap-2">
+              <div className="flex items-center gap-2">
+                <Skeleton className="size-5 rounded bg-primary/10" />
+                <Skeleton className="h-3 w-16" />
+              </div>
+              <Skeleton className="h-5 w-24 rounded-md bg-border/20" />
             </div>
-            <Skeleton className="h-3 w-full bg-border/20" />
-            <Skeleton className="h-3 w-3/4 bg-border/20" />
 
-            <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-              {Array.from({ length: 4 }).map((_, cardIndex) => (
-                <Card
-                  key={`lit-rev-card-skel-${cardIndex}`}
-                  className="space-y-2 rounded-md p-4"
-                >
-                  <div className="space-y-2">
+            <div className="space-y-1">
+              <Skeleton className="h-5 w-3/4" />
+              <Skeleton className="h-3.5 w-full bg-border/20" />
+            </div>
+
+            <div className="pt-3 border-t border-border/40 space-y-2">
+              <Skeleton className="h-3.5 w-1/3" />
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-2 pt-1">
+                {Array.from({ length: 2 }).map((_, cardIndex) => (
+                  <div
+                    key={`lit-rev-card-skel-${cardIndex}`}
+                    className="rounded-md border border-border/40 bg-muted/10 p-2.5 sm:p-3 space-y-1.5"
+                  >
                     <Skeleton className="h-3.5 w-4/5" />
-                    <Skeleton className="h-3 w-1/3 bg-border/20" />
+                    <Skeleton className="h-3 w-1/2 bg-border/20" />
                   </div>
-                  <Skeleton className="h-3 w-full bg-border/20" />
-                </Card>
-              ))}
+                ))}
+              </div>
             </div>
           </Card>
         ))}
@@ -53,3 +58,4 @@ export function LiteratureReviewSkeleton() {
     </div>
   );
 }
+
