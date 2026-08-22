@@ -114,7 +114,15 @@ export function CitationSectionGroup({
             <div key={box.id} className="space-y-2.5">
               {/* Section Header */}
               <div
+                role="button"
+                tabIndex={0}
                 onClick={() => toggleSection(`box-${box.id}`)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ") {
+                    e.preventDefault();
+                    toggleSection(`box-${box.id}`);
+                  }
+                }}
                 className="flex items-center justify-between p-2.5 rounded-md bg-muted/40 hover:bg-muted/60 transition-colors cursor-pointer border border-border/60 select-none"
               >
                 <div className="flex items-center gap-2 min-w-0">
@@ -179,7 +187,15 @@ export function CitationSectionGroup({
       {unassignedCards.length > 0 && (
         <div className="space-y-2.5">
           <div
+            role="button"
+            tabIndex={0}
             onClick={() => toggleSection("unassigned")}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault();
+                toggleSection("unassigned");
+              }
+            }}
             className="flex items-center justify-between p-2.5 rounded-md bg-amber-500/10 hover:bg-amber-500/15 transition-colors cursor-pointer border border-amber-500/20 select-none"
           >
             <div className="flex items-center gap-2 min-w-0 text-amber-600 dark:text-amber-400">
@@ -233,7 +249,15 @@ export function CitationSectionGroup({
           <div key={outline.id} className="space-y-2.5">
             {/* Section Header */}
             <div
+              role="button"
+              tabIndex={0}
               onClick={() => toggleSection(`outline-${outline.id}`)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault();
+                  toggleSection(`outline-${outline.id}`);
+                }
+              }}
               className={cn(
                 "flex items-center justify-between p-2.5 rounded-md transition-colors cursor-pointer border select-none",
                 isChild

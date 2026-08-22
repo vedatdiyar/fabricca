@@ -195,9 +195,9 @@ export function OfficeDefenseChat({
         <div className="p-3 border-t border-border bg-card/90 shrink-0 space-y-2.5">
           {/* Quick Prompts */}
           <div className="flex items-center gap-1.5 overflow-x-auto pb-0.5 scrollbar-none">
-            {QUICK_DEFENSE_PROMPTS.map((p, i) => (
+            {QUICK_DEFENSE_PROMPTS.map((p) => (
               <button
-                key={i}
+                key={p}
                 type="button"
                 onClick={() => handleQuickPromptClick(p)}
                 disabled={isStreaming}

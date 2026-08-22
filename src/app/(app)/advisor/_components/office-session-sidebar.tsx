@@ -114,8 +114,9 @@ export function OfficeSessionSidebar({
             {searchQuery && (
               <button
                 type="button"
+                aria-label="Aramayı temizle"
                 onClick={() => setSearchQuery("")}
-                className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground cursor-pointer"
               >
                 <X className="h-3 w-3" />
               </button>
@@ -142,7 +143,15 @@ export function OfficeSessionSidebar({
             return (
               <div
                 key={s.id}
+                role="button"
+                tabIndex={0}
                 onClick={() => onSelectSession(s.id)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ") {
+                    e.preventDefault();
+                    onSelectSession(s.id);
+                  }
+                }}
                 className={`p-3 rounded-lg border text-xs cursor-pointer transition-all flex flex-col gap-1.5 relative group ${
                   isActive
                     ? "bg-primary/10 border-primary/30 text-foreground"
@@ -159,6 +168,7 @@ export function OfficeSessionSidebar({
 
                   <button
                     type="button"
+                    aria-label="İncelemeyi Sil"
                     onClick={(e) => handleDelete(e, s.id)}
                     className="opacity-0 group-hover:opacity-100 hover:text-destructive p-1 rounded transition-opacity cursor-pointer shrink-0"
                     title="İncelemeyi Sil"

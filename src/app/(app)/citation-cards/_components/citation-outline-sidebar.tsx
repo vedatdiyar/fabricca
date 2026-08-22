@@ -171,7 +171,15 @@ export function CitationOutlineSidebar({
             <div key={chapter.id} className="space-y-0.5">
               {/* Main Chapter Item */}
               <div
+                role="button"
+                tabIndex={0}
                 onClick={() => onSelectOutline(chapter.id)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ") {
+                    e.preventDefault();
+                    onSelectOutline(chapter.id);
+                  }
+                }}
                 className={cn(
                   "group flex items-center justify-between px-2 py-1.5 rounded text-xs transition-colors cursor-pointer text-left select-none",
                   isChapterSelected
@@ -183,9 +191,12 @@ export function CitationOutlineSidebar({
                   {chapterChildren.length > 0 ? (
                     <button
                       type="button"
+                      aria-label={
+                        isCollapsed ? "Bölümü genişlet" : "Bölümü daralt"
+                      }
                       onClick={(e) => toggleChapter(chapter.id, e)}
                       className={cn(
-                        "p-0.5 rounded hover:bg-muted/80 text-muted-foreground",
+                        "p-0.5 rounded hover:bg-muted/80 text-muted-foreground cursor-pointer",
                         isChapterSelected &&
                           "hover:bg-primary-foreground/20 text-primary-foreground",
                       )}

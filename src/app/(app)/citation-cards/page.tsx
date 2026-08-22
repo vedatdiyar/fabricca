@@ -28,6 +28,114 @@ import type {
   SourceItem,
 } from "./_lib/types";
 
+interface CitationCardsPageHeaderProps {
+  isSynthesisOpen: boolean;
+  hasAnyCard: boolean;
+  onToggleSynthesis: () => void;
+  onOpenAddDialog: () => void;
+}
+
+function CitationCardsPageHeader({
+  isSynthesisOpen,
+  hasAnyCard,
+  onToggleSynthesis,
+  onOpenAddDialog,
+}: CitationCardsPageHeaderProps) {
+  return (
+    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-border pb-4">
+      <div>
+        <h1 className="font-serif text-2xl font-bold tracking-tight text-foreground">
+          Alıntı Fişleri & Tez Masası
+        </h1>
+        <p className="text-xs text-muted-foreground mt-0.5">
+          Tez konu kutularındaki okumaları tez iskeletinin (Outline) alt
+          başlıklarına bağlayan araştırma masası.
+        </p>
+      </div>
+
+      <div className="flex items-center gap-2.5 shrink-0 self-start sm:self-auto">
+        {/* 1-Click AI Synthesis Action */}
+        <Button
+          variant={isSynthesisOpen ? "secondary" : "outline"}
+          size="sm"
+          onClick={onToggleSynthesis}
+          disabled={!hasAnyCard}
+          className={`gap-1.5 h-9 px-3.5 border-primary/30 text-xs font-medium cursor-pointer transition-colors ${
+            isSynthesisOpen
+              ? "bg-primary/15 text-primary border-primary/40"
+              : "bg-primary/5 hover:bg-primary/10 text-primary"
+          }`}
+        >
+          <Sparkles className="h-4 w-4 text-primary" />
+          <span>
+            {isSynthesisOpen ? "Sentezi Gizle" : "Fikir & Argüman Sentezi"}
+          </span>
+        </Button>
+
+        {/* Global Add Card Button */}
+        <Button
+          onClick={onOpenAddDialog}
+          size="sm"
+          className="gap-1.5 h-9 px-3.5 shrink-0 cursor-pointer"
+        >
+          <Plus className="h-4 w-4" />
+          <span>Yeni Fiş</span>
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+interface CitationCardsSectionHeadingProps {
+  unassignedOnly: boolean;
+  activeOutline?: OutlineItem;
+  cardCount: number;
+}
+
+function CitationCardsSectionHeading({
+  unassignedOnly,
+  activeOutline,
+  cardCount,
+}: CitationCardsSectionHeadingProps) {
+  return (
+    <div className="flex items-center justify-between gap-2 pb-1 border-b border-border/40">
+      <div className="flex items-center gap-2 min-w-0">
+        {unassignedOnly ? (
+          <>
+            <AlertCircle className="h-4 w-4 text-amber-500 shrink-0" />
+            <h2 className="font-serif text-sm font-semibold text-amber-600 dark:text-amber-400 truncate">
+              Henüz Bir Tez Bölümüne Atanmamış Fişler Havuzu
+            </h2>
+          </>
+        ) : activeOutline ? (
+          <>
+            <FolderTree className="h-4 w-4 text-primary shrink-0" />
+            <h2 className="font-serif text-sm font-semibold text-foreground truncate">
+              {activeOutline.title}
+            </h2>
+            {activeOutline.description && (
+              <span className="text-xs text-muted-foreground truncate hidden md:inline">
+                — {activeOutline.description}
+              </span>
+            )}
+          </>
+        ) : (
+          <>
+            <Layers className="h-4 w-4 text-primary shrink-0" />
+            <h2 className="font-serif text-sm font-semibold text-foreground truncate">
+              Tüm Alıntı Fişleri
+            </h2>
+          </>
+        )}
+      </div>
+
+      <span className="font-mono text-xs text-muted-foreground shrink-0">
+        {cardCount} Fiş
+      </span>
+    </div>
+  );
+}
+
 /**
  * Citation Cards & Thesis Workbench (Alıntı Fişleri & Tez Masası) main page component.
  * Features:
@@ -209,47 +317,12 @@ export default function CitationCardsPage() {
   return (
     <div className="w-full space-y-6 pb-12">
       {/* Page Header with Single-Click AI Action and Add Button */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-border pb-4">
-        <div>
-          <h1 className="font-serif text-2xl font-bold tracking-tight text-foreground">
-            Alıntı Fişleri & Tez Masası
-          </h1>
-          <p className="text-xs text-muted-foreground mt-0.5">
-            Tez konu kutularındaki okumaları tez iskeletinin (Outline) alt
-            başlıklarına bağlayan araştırma masası.
-          </p>
-        </div>
-
-        <div className="flex items-center gap-2.5 shrink-0 self-start sm:self-auto">
-          {/* 1-Click AI Synthesis Action */}
-          <Button
-            variant={isSynthesisOpen ? "secondary" : "outline"}
-            size="sm"
-            onClick={() => setIsSynthesisOpen((prev) => !prev)}
-            disabled={!hasAnyCard}
-            className={`gap-1.5 h-9 px-3.5 border-primary/30 text-xs font-medium cursor-pointer transition-colors ${
-              isSynthesisOpen
-                ? "bg-primary/15 text-primary border-primary/40"
-                : "bg-primary/5 hover:bg-primary/10 text-primary"
-            }`}
-          >
-            <Sparkles className="h-4 w-4 text-primary" />
-            <span>
-              {isSynthesisOpen ? "Sentezi Gizle" : "Fikir & Argüman Sentezi"}
-            </span>
-          </Button>
-
-          {/* Global Add Card Button */}
-          <Button
-            onClick={handleOpenAddDialog}
-            size="sm"
-            className="gap-1.5 h-9 px-3.5 shrink-0 cursor-pointer"
-          >
-            <Plus className="h-4 w-4" />
-            <span>Yeni Fiş</span>
-          </Button>
-        </div>
-      </div>
+      <CitationCardsPageHeader
+        isSynthesisOpen={isSynthesisOpen}
+        hasAnyCard={hasAnyCard}
+        onToggleSynthesis={() => setIsSynthesisOpen((prev) => !prev)}
+        onOpenAddDialog={handleOpenAddDialog}
+      />
 
       {/* Main Page Content */}
       {!hasAnyCard ? (
@@ -283,41 +356,11 @@ export default function CitationCardsPage() {
           {/* Right Main Area */}
           <div className="flex-1 w-full min-w-0 space-y-4">
             {/* Active Section Breadcrumb / Heading */}
-            <div className="flex items-center justify-between gap-2 pb-1 border-b border-border/40">
-              <div className="flex items-center gap-2 min-w-0">
-                {filters.unassignedOnly ? (
-                  <>
-                    <AlertCircle className="h-4 w-4 text-amber-500 shrink-0" />
-                    <h2 className="font-serif text-sm font-semibold text-amber-600 dark:text-amber-400 truncate">
-                      Henüz Bir Tez Bölümüne Atanmamış Fişler Havuzu
-                    </h2>
-                  </>
-                ) : activeOutline ? (
-                  <>
-                    <FolderTree className="h-4 w-4 text-primary shrink-0" />
-                    <h2 className="font-serif text-sm font-semibold text-foreground truncate">
-                      {activeOutline.title}
-                    </h2>
-                    {activeOutline.description && (
-                      <span className="text-xs text-muted-foreground truncate hidden md:inline">
-                        — {activeOutline.description}
-                      </span>
-                    )}
-                  </>
-                ) : (
-                  <>
-                    <Layers className="h-4 w-4 text-primary shrink-0" />
-                    <h2 className="font-serif text-sm font-semibold text-foreground truncate">
-                      Tüm Alıntı Fişleri
-                    </h2>
-                  </>
-                )}
-              </div>
-
-              <span className="font-mono text-xs text-muted-foreground shrink-0">
-                {filteredCards.length} Fiş
-              </span>
-            </div>
+            <CitationCardsSectionHeading
+              unassignedOnly={filters.unassignedOnly}
+              activeOutline={activeOutline}
+              cardCount={filteredCards.length}
+            />
 
             {/* In-Place AI Synthesis Panel (When triggered) */}
             {isSynthesisOpen && (

@@ -45,10 +45,60 @@ export function OutlineContainer({
   );
 }
 
-function OutlineEditor({
-  sections: initialSections,
-  academicField: initialAcademicField,
-}: OutlineContainerProps) {
+interface OutlineSectionListProps {
+  sections: OutlineSectionData[];
+  expandedIndices: Set<number>;
+  draggedSectionIndex: number | null;
+  dragOverSectionIndex: number | null;
+  onToggleSectionExpand: (idx: number) => void;
+  onUpdateSection: (idx: number, updated: OutlineSectionData) => void;
+  onDeleteSection: (idx: number) => void;
+  onDragStartSection: (idx: number) => void;
+  onDragOverSection: (idx: number) => void;
+  onDropSection: (targetIdx: number) => void;
+  onDragEndSection: () => void;
+}
+
+function OutlineSectionList({
+  sections,
+  expandedIndices,
+  draggedSectionIndex,
+  dragOverSectionIndex,
+  onToggleSectionExpand,
+  onUpdateSection,
+  onDeleteSection,
+  onDragStartSection,
+  onDragOverSection,
+  onDropSection,
+  onDragEndSection,
+}: OutlineSectionListProps) {
+  return (
+    <div className="flex flex-col gap-4">
+      {sections.map((section, idx) => (
+        <OutlineSectionCard
+          key={`${section.title}-${idx}`}
+          section={section}
+          sectionIndex={idx}
+          isExpanded={expandedIndices.has(idx)}
+          onToggleExpand={() => onToggleSectionExpand(idx)}
+          onUpdateSection={(updated) => onUpdateSection(idx, updated)}
+          onDeleteSection={() => onDeleteSection(idx)}
+          onDragStartSection={onDragStartSection}
+          onDragOverSection={onDragOverSection}
+          onDropSection={onDropSection}
+          onDragEndSection={onDragEndSection}
+          isDraggingSection={draggedSectionIndex === idx}
+          isDragOverSection={dragOverSectionIndex === idx}
+        />
+      ))}
+    </div>
+  );
+}
+
+function useOutlineEditor(
+  initialSections: OutlineSectionData[],
+  initialAcademicField: string | null,
+) {
   const { proceedFromOutline } = useOutlineContinue();
 
   const [containerState, setContainerState] = useState({
@@ -297,6 +347,53 @@ function OutlineEditor({
     }
   }, [confirming, setConfirming, academicField, sections, proceedFromOutline]);
 
+  return {
+    sections,
+    academicField,
+    totalSubSections,
+    expandedIndices,
+    draggedSectionIndex,
+    dragOverSectionIndex,
+    confirming,
+    isRegenerating,
+    handleToggleSectionExpand,
+    handleAddSection,
+    handleUpdateSection,
+    handleDeleteSection,
+    handleDragStartSection,
+    handleDragOverSection,
+    handleDropSection,
+    handleDragEndSection,
+    handleRegenerate,
+    handleConfirm,
+  };
+}
+
+function OutlineEditor({
+  sections: initialSections,
+  academicField: initialAcademicField,
+}: OutlineContainerProps) {
+  const {
+    sections,
+    academicField,
+    totalSubSections,
+    expandedIndices,
+    draggedSectionIndex,
+    dragOverSectionIndex,
+    confirming,
+    isRegenerating,
+    handleToggleSectionExpand,
+    handleAddSection,
+    handleUpdateSection,
+    handleDeleteSection,
+    handleDragStartSection,
+    handleDragOverSection,
+    handleDropSection,
+    handleDragEndSection,
+    handleRegenerate,
+    handleConfirm,
+  } = useOutlineEditor(initialSections, initialAcademicField);
+
   return (
     <div className="w-full flex flex-col gap-6">
       <AIBanner
@@ -314,25 +411,19 @@ function OutlineEditor({
         isRegenerating={isRegenerating}
       />
 
-      <div className="flex flex-col gap-4">
-        {sections.map((section, idx) => (
-          <OutlineSectionCard
-            key={`${section.title}-${idx}`}
-            section={section}
-            sectionIndex={idx}
-            isExpanded={expandedIndices.has(idx)}
-            onToggleExpand={() => handleToggleSectionExpand(idx)}
-            onUpdateSection={(updated) => handleUpdateSection(idx, updated)}
-            onDeleteSection={() => handleDeleteSection(idx)}
-            onDragStartSection={handleDragStartSection}
-            onDragOverSection={handleDragOverSection}
-            onDropSection={handleDropSection}
-            onDragEndSection={handleDragEndSection}
-            isDraggingSection={draggedSectionIndex === idx}
-            isDragOverSection={dragOverSectionIndex === idx}
-          />
-        ))}
-      </div>
+      <OutlineSectionList
+        sections={sections}
+        expandedIndices={expandedIndices}
+        draggedSectionIndex={draggedSectionIndex}
+        dragOverSectionIndex={dragOverSectionIndex}
+        onToggleSectionExpand={handleToggleSectionExpand}
+        onUpdateSection={handleUpdateSection}
+        onDeleteSection={handleDeleteSection}
+        onDragStartSection={handleDragStartSection}
+        onDragOverSection={handleDragOverSection}
+        onDropSection={handleDropSection}
+        onDragEndSection={handleDragEndSection}
+      />
 
       <div className="flex justify-end pt-4 pb-8">
         <Button onClick={handleConfirm} disabled={confirming} size="lg">

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useCallback, useEffect, useMemo } from "react";
 import {
   Sparkles,
   Layers,
@@ -37,43 +37,324 @@ interface CitationSynthesisViewProps {
  * In-place Fikir & Sentez Düzenleyici Panel.
  * Renders directly inside the active section workspace on /citation-cards.
  */
-export function CitationSynthesisView({
+interface SynthesisClustersTabProps {
+  clusters: CitationSynthesisReport["clusters"];
+  cardMap: Map<number, CitationCardItem>;
+  sourceMap: Map<number, SourceItem>;
+  onPinCluster: (
+    clusterId: string,
+    cardIds: number[],
+    targetOutlineId: number,
+  ) => void;
+  pinningClusterId: string | null;
+}
+
+function SynthesisClustersTab({
+  clusters,
+  cardMap,
+  sourceMap,
+  onPinCluster,
+  pinningClusterId,
+}: SynthesisClustersTabProps) {
+  return (
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
+      {clusters.map((cluster) => {
+        const clusterCards = cluster.cardIds
+          .map((id) => cardMap.get(id))
+          .filter((c): c is CitationCardItem => c !== undefined);
+
+        return (
+          <Card
+            key={cluster.id}
+            className="border-border bg-card flex flex-col justify-between shadow-2xs overflow-hidden"
+          >
+            <div className="p-3.5 flex flex-col gap-2.5">
+              <div className="flex items-start justify-between gap-2">
+                <div className="flex items-center gap-2">
+                  <span className="h-2 w-2 rounded-full bg-primary" />
+                  <h4 className="font-serif text-xs font-semibold text-foreground">
+                    {cluster.themeTitle}
+                  </h4>
+                </div>
+
+                <Badge
+                  variant="secondary"
+                  className="text-[10px] bg-muted text-muted-foreground"
+                >
+                  {clusterCards.length} Fiş
+                </Badge>
+              </div>
+
+              <p className="text-[11px] text-muted-foreground leading-relaxed">
+                {cluster.description}
+              </p>
+
+              {/* Cards Mini List in this Cluster */}
+              <div className="space-y-1.5 pt-2 border-t border-border/40">
+                {clusterCards.map((card) => {
+                  const src = sourceMap.get(card.sourceId);
+
+                  return (
+                    <div
+                      key={card.id}
+                      className="p-2 rounded-md bg-muted/40 border border-border/70 text-[11px] flex flex-col gap-1"
+                    >
+                      <div className="flex items-center justify-between gap-2 text-[10px] text-muted-foreground">
+                        <span className="font-medium text-foreground truncate max-w-[180px]">
+                          {src?.title || "Kaynak"}
+                        </span>
+                        <span>s. {card.pageNumber}</span>
+                      </div>
+                      <p className="text-[11px] text-muted-foreground line-clamp-2 italic">
+                        &quot;{card.content}&quot;
+                      </p>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Cluster Footer: Quick Assign to Outline */}
+            {cluster.suggestedOutlineId && (
+              <div className="p-2.5 border-t border-border bg-muted/30 flex items-center justify-between gap-2">
+                <span className="text-[10px] text-muted-foreground truncate">
+                  Önerilen Bölüm:{" "}
+                  <strong>
+                    {cluster.suggestedOutlineTitle ||
+                      `Bölüm #${cluster.suggestedOutlineId}`}
+                  </strong>
+                </span>
+
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={() =>
+                    cluster.suggestedOutlineId &&
+                    onPinCluster(
+                      cluster.id,
+                      cluster.cardIds,
+                      cluster.suggestedOutlineId,
+                    )
+                  }
+                  disabled={pinningClusterId === cluster.id}
+                  className="h-6 text-[11px] text-primary hover:text-primary hover:bg-primary/10 gap-1 px-2 cursor-pointer shrink-0"
+                >
+                  {pinningClusterId === cluster.id ? (
+                    <Loader2 className="h-3 w-3 animate-spin" />
+                  ) : (
+                    <Pin className="h-3 w-3" />
+                  )}
+                  <span>Bölüme Ata</span>
+                </Button>
+              </div>
+            )}
+          </Card>
+        );
+      })}
+    </div>
+  );
+}
+
+interface SynthesisFlowTabProps {
+  argumentFlow: CitationSynthesisReport["argumentFlow"];
+  cardMap: Map<number, CitationCardItem>;
+  sourceMap: Map<number, SourceItem>;
+}
+
+function SynthesisFlowTab({
+  argumentFlow,
+  cardMap,
+  sourceMap,
+}: SynthesisFlowTabProps) {
+  return (
+    <div className="space-y-3">
+      <div className="p-3 rounded-lg bg-muted/30 border border-border text-[11px] text-muted-foreground leading-relaxed">
+        <span className="font-semibold text-foreground mr-1">
+          Word Tez Yazım Kılavuzu:
+        </span>
+        Bu sıralama, alıntılarınızı tezinizde sunarken mantıksal bir argüman
+        akışı oluşturmanız için tasarlanmıştır.
+      </div>
+
+      <div className="space-y-2.5 relative before:absolute before:left-3.5 before:top-4 before:bottom-4 before:w-0.5 before:bg-border">
+        {argumentFlow.map((step) => {
+          const card = cardMap.get(step.cardId);
+          const src = card ? sourceMap.get(card.sourceId) : null;
+
+          return (
+            <div
+              key={step.step}
+              className="relative pl-8 flex flex-col gap-1.5"
+            >
+              {/* Step Indicator Dot */}
+              <div className="absolute left-2 top-2.5 -translate-x-1/2 h-4 w-4 rounded-full bg-card border-2 border-primary flex items-center justify-center text-[9px] font-bold text-primary shadow-2xs">
+                {step.step}
+              </div>
+
+              <Card className="border-border bg-card shadow-2xs p-3 flex flex-col gap-2">
+                <div className="flex items-center justify-between gap-2">
+                  <Badge
+                    variant="outline"
+                    className="text-[10px] bg-primary/10 text-primary border-primary/20"
+                  >
+                    {step.roleInArgument}
+                  </Badge>
+
+                  {src && (
+                    <span className="text-[10px] font-medium text-muted-foreground truncate max-w-[220px]">
+                      {src.title} — s. {card?.pageNumber || ""}
+                    </span>
+                  )}
+                </div>
+
+                {card && (
+                  <div className="p-2 rounded-md bg-muted/30 border border-border/60 text-[11px] text-foreground leading-relaxed italic">
+                    &quot;{card.content}&quot;
+                  </div>
+                )}
+
+                {/* Transition Note */}
+                <div className="p-2 rounded-md bg-amber-500/10 border border-amber-500/20 text-[10px] leading-relaxed text-foreground">
+                  <span className="font-semibold text-amber-600 dark:text-amber-400 block mb-0.5">
+                    🔗 Geçiş ve Eklemlenme Önerisi:
+                  </span>
+                  {step.transitionNote}
+                </div>
+              </Card>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+interface CitationSynthesisPanelHeaderProps {
+  selectedOutline: OutlineItem | null | undefined;
+  report: CitationSynthesisReport | null;
+  isSynthesizing: boolean;
+  onRunSynthesis: () => void;
+  onClose: () => void;
+}
+
+function CitationSynthesisPanelHeader({
+  selectedOutline,
+  report,
+  isSynthesizing,
+  onRunSynthesis,
+  onClose,
+}: CitationSynthesisPanelHeaderProps) {
+  return (
+    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-border/50">
+      <div className="flex items-center gap-3">
+        <div className="p-2 rounded-lg bg-primary/10 border border-primary/20 text-primary shrink-0">
+          <Sparkles className="h-4 w-4" />
+        </div>
+        <div>
+          <div className="flex items-center gap-2 flex-wrap">
+            <h3 className="font-serif text-sm font-semibold text-foreground">
+              Fikir & Argüman Sentezi
+            </h3>
+            {selectedOutline ? (
+              <Badge
+                variant="outline"
+                className="text-[10px] bg-primary/10 text-primary border-primary/20"
+              >
+                {selectedOutline.title}
+              </Badge>
+            ) : (
+              <Badge
+                variant="secondary"
+                className="text-[10px] bg-muted text-muted-foreground"
+              >
+                Tüm Fişler
+              </Badge>
+            )}
+          </div>
+          <p className="text-[11px] text-muted-foreground mt-0.5">
+            Fişlerin anlamsal temaları ve Word tez yazım akış sırası.
+          </p>
+        </div>
+      </div>
+
+      <div className="flex items-center gap-2 self-end sm:self-auto">
+        {report && (
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={onRunSynthesis}
+            disabled={isSynthesizing}
+            className="text-xs h-7 gap-1 border-border bg-background hover:bg-muted text-foreground cursor-pointer"
+          >
+            <RotateCw
+              className={`h-3 w-3 ${isSynthesizing ? "animate-spin" : ""}`}
+            />
+            <span>Yeniden Sentezle</span>
+          </Button>
+        )}
+
+        <Button
+          size="sm"
+          variant="ghost"
+          onClick={onClose}
+          className="text-xs h-7 w-7 p-0 text-muted-foreground hover:text-foreground cursor-pointer rounded-full"
+          title="Sentez Panelini Kapat"
+        >
+          <X className="h-4 w-4" />
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+function useCitationSynthesisLogic({
   cards,
   outlines,
   sources,
   selectedOutlineId,
   onRefreshData,
-  onClose,
 }: CitationSynthesisViewProps) {
-  const [synthesisReport, setSynthesisReport] =
-    useState<CitationSynthesisReport | null>(null);
-  const [isSynthesizing, setIsSynthesizing] = useState(false);
-  const [activeTab, setActiveTab] = useState<"clusters" | "flow">("clusters");
-  const [hasCopiedFlow, setHasCopiedFlow] = useState(false);
-  const [isPinningCluster, setIsPinningCluster] = useState<string | null>(null);
+  const [synthesisState, setSynthesisState] = useState<{
+    report: CitationSynthesisReport | null;
+    isSynthesizing: boolean;
+    activeTab: "clusters" | "flow";
+    hasCopiedFlow: boolean;
+    pinningClusterId: string | null;
+  }>({
+    report: null,
+    isSynthesizing: cards.length > 0,
+    activeTab: "clusters",
+    hasCopiedFlow: false,
+    pinningClusterId: null,
+  });
 
-  const sourceMap = new Map(sources.map((s) => [s.id, s]));
-  const cardMap = new Map(cards.map((c) => [c.id, c]));
-  const outlineMap = new Map(outlines.map((o) => [o.id, o]));
+  const sourceMap = useMemo(
+    () => new Map(sources.map((s) => [s.id, s])),
+    [sources],
+  );
+  const cardMap = useMemo(() => new Map(cards.map((c) => [c.id, c])), [cards]);
+  const outlineMap = useMemo(
+    () => new Map(outlines.map((o) => [o.id, o])),
+    [outlines],
+  );
 
   const selectedOutline = selectedOutlineId
     ? outlineMap.get(selectedOutlineId)
     : null;
 
-  // Run AI Synthesis
-  const handleRunSynthesis = async () => {
+  const handleRunSynthesis = useCallback(async () => {
     if (cards.length === 0) {
       toast.error("Sentez yapabilmek için en az 1 alıntı fişiniz olmalıdır.");
       return;
     }
 
-    setIsSynthesizing(true);
+    setSynthesisState((prev) => ({ ...prev, isSynthesizing: true }));
     try {
       const res = await synthesizeCitationCardsAction(
         selectedOutlineId || undefined,
       );
       if (res.success) {
-        setSynthesisReport(res.data);
+        setSynthesisState((prev) => ({ ...prev, report: res.data }));
         toast.success(
           "Fişler semantik kümelere ayrıldı ve yazım akış sırası çıkarıldı.",
         );
@@ -83,22 +364,41 @@ export function CitationSynthesisView({
     } catch {
       toast.error("Sentez işlemi sırasında bir hata oluştu.");
     } finally {
-      setIsSynthesizing(false);
+      setSynthesisState((prev) => ({ ...prev, isSynthesizing: false }));
     }
-  };
+  }, [cards.length, selectedOutlineId]);
 
-  // Automatically trigger on mount if not yet generated
-  useState(() => {
-    handleRunSynthesis();
-  });
+  useEffect(() => {
+    let isMounted = true;
+    if (cards.length === 0) return;
 
-  // 1-Click pin all cards in a cluster to suggested outline
+    synthesizeCitationCardsAction(selectedOutlineId || undefined)
+      .then((res) => {
+        if (!isMounted) return;
+        if (res.success) {
+          setSynthesisState((prev) => ({ ...prev, report: res.data }));
+        }
+      })
+      .catch(() => {
+        // Silently catch
+      })
+      .finally(() => {
+        if (isMounted) {
+          setSynthesisState((prev) => ({ ...prev, isSynthesizing: false }));
+        }
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [cards.length, selectedOutlineId]);
+
   const handlePinClusterToOutline = async (
     clusterId: string,
     cardIds: number[],
     targetOutlineId: number,
   ) => {
-    setIsPinningCluster(clusterId);
+    setSynthesisState((prev) => ({ ...prev, pinningClusterId: clusterId }));
     try {
       for (const cardId of cardIds) {
         await updateCardOutlineLinkAction({
@@ -113,13 +413,13 @@ export function CitationSynthesisView({
     } catch {
       toast.error("Fişler bölüme atanırken hata oluştu.");
     } finally {
-      setIsPinningCluster(null);
+      setSynthesisState((prev) => ({ ...prev, pinningClusterId: null }));
     }
   };
 
-  // Copy Argument Flow to Clipboard for Word
   const handleCopyFlowForWord = async () => {
-    if (!synthesisReport || synthesisReport.argumentFlow.length === 0) return;
+    const report = synthesisState.report;
+    if (!report || report.argumentFlow.length === 0) return;
 
     const formattedLines = [
       `=== TEZ YAZIM PLANI: ARGÜMAN AKIŞ SIRASI ===`,
@@ -130,7 +430,7 @@ export function CitationSynthesisView({
       ``,
     ];
 
-    synthesisReport.argumentFlow.forEach((step) => {
+    report.argumentFlow.forEach((step) => {
       const card = cardMap.get(step.cardId);
       const src = card ? sourceMap.get(card.sourceId) : null;
       const citation = src
@@ -144,77 +444,55 @@ export function CitationSynthesisView({
     });
 
     await navigator.clipboard.writeText(formattedLines.join("\n"));
-    setHasCopiedFlow(true);
+    setSynthesisState((prev) => ({ ...prev, hasCopiedFlow: true }));
     toast.success("Argüman akış sırası Word için panoya kopyalandı.");
-    setTimeout(() => setHasCopiedFlow(false), 2500);
+    setTimeout(() => {
+      setSynthesisState((prev) => ({ ...prev, hasCopiedFlow: false }));
+    }, 2500);
   };
+
+  return {
+    synthesisState,
+    setSynthesisState,
+    sourceMap,
+    cardMap,
+    selectedOutline,
+    handleRunSynthesis,
+    handlePinClusterToOutline,
+    handleCopyFlowForWord,
+  };
+}
+
+/**
+ * In-place Fikir & Sentez Düzenleyici Panel.
+ * Renders directly inside the active section workspace on /citation-cards.
+ */
+export function CitationSynthesisView(props: CitationSynthesisViewProps) {
+  const {
+    synthesisState,
+    setSynthesisState,
+    sourceMap,
+    cardMap,
+    selectedOutline,
+    handleRunSynthesis,
+    handlePinClusterToOutline,
+    handleCopyFlowForWord,
+  } = useCitationSynthesisLogic(props);
+
+  const report = synthesisState.report;
 
   return (
     <Card className="border-primary/30 bg-gradient-to-b from-primary/5 via-card to-card shadow-sm p-4 sm:p-5 flex flex-col gap-4">
-      {/* Panel Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-border/50">
-        <div className="flex items-center gap-3">
-          <div className="p-2 rounded-lg bg-primary/10 border border-primary/20 text-primary shrink-0">
-            <Sparkles className="h-4 w-4" />
-          </div>
-          <div>
-            <div className="flex items-center gap-2 flex-wrap">
-              <h3 className="font-serif text-sm font-semibold text-foreground">
-                Fikir & Argüman Sentezi
-              </h3>
-              {selectedOutline ? (
-                <Badge
-                  variant="outline"
-                  className="text-[10px] bg-primary/10 text-primary border-primary/20"
-                >
-                  {selectedOutline.title}
-                </Badge>
-              ) : (
-                <Badge
-                  variant="secondary"
-                  className="text-[10px] bg-muted text-muted-foreground"
-                >
-                  Tüm Fişler
-                </Badge>
-              )}
-            </div>
-            <p className="text-[11px] text-muted-foreground mt-0.5">
-              Fişlerin anlamsal temaları ve Word tez yazım akış sırası.
-            </p>
-          </div>
-        </div>
-
-        {/* Header Actions */}
-        <div className="flex items-center gap-2 self-end sm:self-auto">
-          {synthesisReport && (
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={handleRunSynthesis}
-              disabled={isSynthesizing}
-              className="text-xs h-7 gap-1 border-border bg-background hover:bg-muted text-foreground cursor-pointer"
-            >
-              <RotateCw
-                className={`h-3 w-3 ${isSynthesizing ? "animate-spin" : ""}`}
-              />
-              <span>Yeniden Sentezle</span>
-            </Button>
-          )}
-
-          <Button
-            size="sm"
-            variant="ghost"
-            onClick={onClose}
-            className="text-xs h-7 w-7 p-0 text-muted-foreground hover:text-foreground cursor-pointer rounded-full"
-            title="Sentez Panelini Kapat"
-          >
-            <X className="h-4 w-4" />
-          </Button>
-        </div>
-      </div>
+      <CitationSynthesisPanelHeader
+        selectedOutline={selectedOutline}
+        report={report}
+        isSynthesizing={synthesisState.isSynthesizing}
+        onRunSynthesis={handleRunSynthesis}
+        onClose={props.onClose}
+      />
 
       {/* Synthesis Content or Loading */}
-      {isSynthesizing ? (
+      {synthesisState.isSynthesizing ? (
         <div className="py-10 flex flex-col items-center justify-center text-center gap-2.5">
           <Loader2 className="h-6 w-6 animate-spin text-primary" />
           <span className="text-xs text-muted-foreground font-medium">
@@ -222,7 +500,7 @@ export function CitationSynthesisView({
             hazırlanıyor...
           </span>
         </div>
-      ) : !synthesisReport ? (
+      ) : !report ? (
         <div className="py-6 flex flex-col items-center justify-center text-center gap-3">
           <p className="text-xs text-muted-foreground">
             Sentez henüz oluşturulmadı.
@@ -241,8 +519,13 @@ export function CitationSynthesisView({
           {/* Sub-tabs: Clusters vs Argument Flow */}
           <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 border-b border-border/40 pb-3">
             <Tabs
-              value={activeTab}
-              onValueChange={(v) => setActiveTab(v as "clusters" | "flow")}
+              value={synthesisState.activeTab}
+              onValueChange={(v) =>
+                setSynthesisState((prev) => ({
+                  ...prev,
+                  activeTab: v as "clusters" | "flow",
+                }))
+              }
               className="w-full sm:w-auto"
             >
               <TabsList className="bg-muted/60 h-8 p-0.5">
@@ -253,7 +536,7 @@ export function CitationSynthesisView({
                   <Layers className="h-3.5 w-3.5 text-primary" />
                   <span>Semantik Fikir Kümeleri</span>
                   <span className="px-1.5 py-0.2 bg-muted text-[10px] rounded-full">
-                    {synthesisReport.clusters.length}
+                    {report.clusters.length}
                   </span>
                 </TabsTrigger>
 
@@ -264,20 +547,20 @@ export function CitationSynthesisView({
                   <ListOrdered className="h-3.5 w-3.5 text-amber-500" />
                   <span>Word Argüman Akış Sırası</span>
                   <span className="px-1.5 py-0.2 bg-muted text-[10px] rounded-full">
-                    {synthesisReport.argumentFlow.length}
+                    {report.argumentFlow.length}
                   </span>
                 </TabsTrigger>
               </TabsList>
             </Tabs>
 
-            {activeTab === "flow" && (
+            {synthesisState.activeTab === "flow" && (
               <Button
                 size="sm"
                 variant="outline"
                 onClick={handleCopyFlowForWord}
                 className="text-xs h-7 gap-1.5 border-primary/30 bg-primary/10 text-primary hover:bg-primary/20 shrink-0 cursor-pointer"
               >
-                {hasCopiedFlow ? (
+                {synthesisState.hasCopiedFlow ? (
                   <>
                     <Check className="h-3 w-3" />
                     <span>Kopyalandı!</span>
@@ -293,165 +576,23 @@ export function CitationSynthesisView({
           </div>
 
           {/* TAB 1: SEMANTIC CLUSTERS */}
-          {activeTab === "clusters" && (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
-              {synthesisReport.clusters.map((cluster) => {
-                const clusterCards = cluster.cardIds
-                  .map((id) => cardMap.get(id))
-                  .filter((c): c is CitationCardItem => c !== undefined);
-
-                return (
-                  <Card
-                    key={cluster.id}
-                    className="border-border bg-card flex flex-col justify-between shadow-2xs overflow-hidden"
-                  >
-                    <div className="p-3.5 flex flex-col gap-2.5">
-                      <div className="flex items-start justify-between gap-2">
-                        <div className="flex items-center gap-2">
-                          <span className="h-2 w-2 rounded-full bg-primary" />
-                          <h4 className="font-serif text-xs font-semibold text-foreground">
-                            {cluster.themeTitle}
-                          </h4>
-                        </div>
-
-                        <Badge
-                          variant="secondary"
-                          className="text-[10px] bg-muted text-muted-foreground"
-                        >
-                          {clusterCards.length} Fiş
-                        </Badge>
-                      </div>
-
-                      <p className="text-[11px] text-muted-foreground leading-relaxed">
-                        {cluster.description}
-                      </p>
-
-                      {/* Cards Mini List in this Cluster */}
-                      <div className="space-y-1.5 pt-2 border-t border-border/40">
-                        {clusterCards.map((card) => {
-                          const src = sourceMap.get(card.sourceId);
-
-                          return (
-                            <div
-                              key={card.id}
-                              className="p-2 rounded-md bg-muted/40 border border-border/70 text-[11px] flex flex-col gap-1"
-                            >
-                              <div className="flex items-center justify-between gap-2 text-[10px] text-muted-foreground">
-                                <span className="font-medium text-foreground truncate max-w-[180px]">
-                                  {src?.title || "Kaynak"}
-                                </span>
-                                <span>s. {card.pageNumber}</span>
-                              </div>
-                              <p className="text-[11px] text-muted-foreground line-clamp-2 italic">
-                                &quot;{card.content}&quot;
-                              </p>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    </div>
-
-                    {/* Cluster Footer: Quick Assign to Outline */}
-                    {cluster.suggestedOutlineId && (
-                      <div className="p-2.5 border-t border-border bg-muted/30 flex items-center justify-between gap-2">
-                        <span className="text-[10px] text-muted-foreground truncate">
-                          Önerilen Bölüm:{" "}
-                          <strong>
-                            {cluster.suggestedOutlineTitle ||
-                              `Bölüm #${cluster.suggestedOutlineId}`}
-                          </strong>
-                        </span>
-
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          onClick={() =>
-                            cluster.suggestedOutlineId &&
-                            handlePinClusterToOutline(
-                              cluster.id,
-                              cluster.cardIds,
-                              cluster.suggestedOutlineId,
-                            )
-                          }
-                          disabled={isPinningCluster === cluster.id}
-                          className="h-6 text-[11px] text-primary hover:text-primary hover:bg-primary/10 gap-1 px-2 cursor-pointer shrink-0"
-                        >
-                          {isPinningCluster === cluster.id ? (
-                            <Loader2 className="h-3 w-3 animate-spin" />
-                          ) : (
-                            <Pin className="h-3 w-3" />
-                          )}
-                          <span>Bölüme Ata</span>
-                        </Button>
-                      </div>
-                    )}
-                  </Card>
-                );
-              })}
-            </div>
+          {synthesisState.activeTab === "clusters" && (
+            <SynthesisClustersTab
+              clusters={report.clusters}
+              cardMap={cardMap}
+              sourceMap={sourceMap}
+              onPinCluster={handlePinClusterToOutline}
+              pinningClusterId={synthesisState.pinningClusterId}
+            />
           )}
 
           {/* TAB 2: ARGUMENT FLOW FOR WORD */}
-          {activeTab === "flow" && (
-            <div className="space-y-3">
-              <div className="p-3 rounded-lg bg-muted/30 border border-border text-[11px] text-muted-foreground leading-relaxed">
-                <span className="font-semibold text-foreground mr-1">
-                  Word Tez Yazım Kılavuzu:
-                </span>
-                Bu sıralama, alıntılarınızı tezinizde sunarken mantıksal bir
-                argüman akışı oluşturmanız için tasarlanmıştır.
-              </div>
-
-              <div className="space-y-2.5 relative before:absolute before:left-3.5 before:top-4 before:bottom-4 before:w-0.5 before:bg-border">
-                {synthesisReport.argumentFlow.map((step) => {
-                  const card = cardMap.get(step.cardId);
-                  const src = card ? sourceMap.get(card.sourceId) : null;
-
-                  return (
-                    <div
-                      key={step.step}
-                      className="relative pl-8 flex flex-col gap-1.5"
-                    >
-                      {/* Step Indicator Dot */}
-                      <div className="absolute left-2 top-2.5 -translate-x-1/2 h-4 w-4 rounded-full bg-card border-2 border-primary flex items-center justify-center text-[9px] font-bold text-primary shadow-2xs">
-                        {step.step}
-                      </div>
-
-                      <Card className="border-border bg-card shadow-2xs p-3 flex flex-col gap-2">
-                        <div className="flex items-center justify-between gap-2">
-                          <Badge
-                            variant="outline"
-                            className="text-[10px] bg-primary/10 text-primary border-primary/20"
-                          >
-                            {step.roleInArgument}
-                          </Badge>
-
-                          {src && (
-                            <span className="text-[10px] font-medium text-muted-foreground truncate max-w-[220px]">
-                              {src.title} — s. {card?.pageNumber || ""}
-                            </span>
-                          )}
-                        </div>
-
-                        {card && (
-                          <div className="p-2 rounded-md bg-muted/30 border border-border/60 text-[11px] text-foreground leading-relaxed italic">
-                            &quot;{card.content}&quot;
-                          </div>
-                        )}
-
-                        {/* Transition Note */}
-                        <div className="p-2 rounded-md bg-amber-500/10 border border-amber-500/20 text-[10px] leading-relaxed text-foreground">
-                          <span className="font-semibold text-amber-600 dark:text-amber-400 block mb-0.5">
-                            🔗 Geçiş ve Eklemlenme Önerisi:
-                          </span>
-                          {step.transitionNote}
-                        </div>
-                      </Card>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
+          {synthesisState.activeTab === "flow" && (
+            <SynthesisFlowTab
+              argumentFlow={report.argumentFlow}
+              cardMap={cardMap}
+              sourceMap={sourceMap}
+            />
           )}
         </div>
       )}

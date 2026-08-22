@@ -30,56 +30,286 @@ interface AdvisorOfficeWorkspaceProps {
  * Root workspace for Danışmanın Çalışma Odası (Office Hours & Draft Audit Desk).
  * Seamlessly fits into the standard Fabricca page layout with full responsive flow.
  */
-export function AdvisorOfficeWorkspace({
-  initialSessionId,
-}: AdvisorOfficeWorkspaceProps) {
-  const [isLoadingInitial, setIsLoadingInitial] = useState(true);
-  const [outlines, setOutlines] = useState<OutlineOption[]>([]);
-  const [sessions, setSessions] = useState<OfficeSessionSummary[]>([]);
+interface OfficeReviewPhaseProps {
+  activeOutlineId: number | null;
+  activeOutlineTitle: string;
+  currentReport: OfficeReviewReport;
+  mobileWorkspaceTab: "margin-notes" | "defense-chat";
+  defenseMessages: DefenseMessage[];
+  hasStartedDefense: boolean;
+  isStreamingDefense: boolean;
+  activeCritique: JuryCritique | null;
+  onMobileTabChange: (tab: "margin-notes" | "defense-chat") => void;
+  onStartDefense: (critique?: JuryCritique) => Promise<void>;
+  onSendMessage: (text: string) => Promise<void>;
+  onResetToNewSubmission: () => void;
+}
+
+function OfficeReviewPhase({
+  activeOutlineId,
+  activeOutlineTitle,
+  currentReport,
+  mobileWorkspaceTab,
+  defenseMessages,
+  hasStartedDefense,
+  isStreamingDefense,
+  activeCritique,
+  onMobileTabChange,
+  onStartDefense,
+  onSendMessage,
+  onResetToNewSubmission,
+}: OfficeReviewPhaseProps) {
+  return (
+    <div className="flex flex-col gap-3">
+      {/* Active Section Context Bar */}
+      <div className="flex items-center justify-between p-3 rounded-lg bg-card border border-border text-xs">
+        <div className="flex items-center gap-2">
+          <Layers className="h-4 w-4 text-primary shrink-0" />
+          <span className="font-semibold text-foreground">
+            {activeOutlineTitle}
+          </span>
+        </div>
+
+        <div className="flex items-center gap-2 text-muted-foreground text-[11px]">
+          <Clock className="h-3.5 w-3.5" />
+          <span>Danışman Ofis Masası</span>
+        </div>
+      </div>
+
+      {/* Mobile Phase 2 Tab Switcher (Visible below lg) */}
+      <div className="flex items-center rounded-lg border border-border bg-card p-1 text-xs lg:hidden">
+        <button
+          type="button"
+          onClick={() => onMobileTabChange("margin-notes")}
+          className={`flex-1 py-1.5 px-3 rounded-md font-medium transition-all cursor-pointer ${
+            mobileWorkspaceTab === "margin-notes"
+              ? "bg-primary text-primary-foreground shadow-xs"
+              : "text-muted-foreground hover:text-foreground"
+          }`}
+        >
+          Kenar Notları & Denetim
+        </button>
+        <button
+          type="button"
+          onClick={() => onMobileTabChange("defense-chat")}
+          className={`flex-1 py-1.5 px-3 rounded-md font-medium transition-all cursor-pointer ${
+            mobileWorkspaceTab === "defense-chat"
+              ? "bg-primary text-primary-foreground shadow-xs"
+              : "text-muted-foreground hover:text-foreground"
+          }`}
+        >
+          Canlı Savunma Masası{" "}
+          {defenseMessages.length > 0 ? `(${defenseMessages.length})` : ""}
+        </button>
+      </div>
+
+      {/* Unified Split Workspace Card */}
+      <div className="rounded-xl border border-border bg-card shadow-xs overflow-hidden flex flex-col lg:flex-row h-[660px]">
+        {/* Left Panel: Margin Notes & Audit */}
+        <div
+          className={`w-full lg:w-1/2 h-full border-b lg:border-b-0 lg:border-r border-border overflow-hidden ${
+            mobileWorkspaceTab === "margin-notes" ? "block" : "hidden lg:block"
+          }`}
+        >
+          <OfficeMarginNotes
+            report={currentReport}
+            hasStartedDefense={hasStartedDefense}
+            onStartDefense={onStartDefense}
+          />
+        </div>
+
+        {/* Right Panel: Live Defense Chat */}
+        <div
+          className={`w-full lg:w-1/2 h-full overflow-hidden ${
+            mobileWorkspaceTab === "defense-chat" ? "block" : "hidden lg:block"
+          }`}
+        >
+          <OfficeDefenseChat
+            messages={defenseMessages}
+            isStreaming={isStreamingDefense}
+            onSendMessage={onSendMessage}
+            hasStartedDefense={hasStartedDefense}
+            onStartDefense={onStartDefense}
+            activeCritique={activeCritique}
+          />
+        </div>
+      </div>
+
+      {/* Footer Action Toolbar */}
+      <OfficeActionToolbar
+        outlineId={activeOutlineId || 0}
+        outlineTitle={activeOutlineTitle || "Tez Bölümü"}
+        report={currentReport}
+        defenseMessages={defenseMessages}
+        onResetToNewSubmission={onResetToNewSubmission}
+      />
+    </div>
+  );
+}
+
+interface OfficeSubmissionPhaseProps {
+  sessions: OfficeSessionSummary[];
+  outlines: OutlineOption[];
+  activeSessionId: number | null;
+  mobileSubmissionTab: "form" | "history";
+  isSubmittingReview: boolean;
+  onMobileTabChange: (tab: "form" | "history") => void;
+  onSelectSession: (id: number) => void;
+  onNewSession: () => void;
+  onSessionDeleted: (id: number) => void;
+  onSubmitReview: (data: {
+    outlineId: number;
+    draftText: string;
+    studentNote?: string;
+  }) => Promise<void>;
+}
+
+function OfficeSubmissionPhase({
+  sessions,
+  outlines,
+  activeSessionId,
+  mobileSubmissionTab,
+  isSubmittingReview,
+  onMobileTabChange,
+  onSelectSession,
+  onNewSession,
+  onSessionDeleted,
+  onSubmitReview,
+}: OfficeSubmissionPhaseProps) {
+  return (
+    <div className="flex flex-col gap-4">
+      {/* Mobile Phase 1 Tab Switcher when sessions exist */}
+      {sessions.length > 0 && (
+        <div className="flex items-center rounded-lg border border-border bg-card p-1 text-xs lg:hidden">
+          <button
+            type="button"
+            onClick={() => onMobileTabChange("form")}
+            className={`flex-1 py-1.5 px-3 rounded-md font-medium transition-all cursor-pointer ${
+              mobileSubmissionTab === "form"
+                ? "bg-primary text-primary-foreground shadow-xs"
+                : "text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            Yeni Taslak Teslimi
+          </button>
+          <button
+            type="button"
+            onClick={() => onMobileTabChange("history")}
+            className={`flex-1 py-1.5 px-3 rounded-md font-medium transition-all cursor-pointer ${
+              mobileSubmissionTab === "history"
+                ? "bg-primary text-primary-foreground shadow-xs"
+                : "text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            Geçmiş Randevular ({sessions.length})
+          </button>
+        </div>
+      )}
+
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+        {/* Left Column: Past Sessions */}
+        <div
+          className={`lg:col-span-4 w-full ${
+            mobileSubmissionTab === "history" ? "block" : "hidden lg:block"
+          }`}
+        >
+          <OfficeSessionSidebar
+            sessions={sessions}
+            activeSessionId={activeSessionId}
+            onSelectSession={onSelectSession}
+            onNewSession={onNewSession}
+            onSessionDeleted={onSessionDeleted}
+          />
+        </div>
+
+        {/* Right Column: Submission Form & Guide Cards */}
+        <div
+          className={`lg:col-span-8 w-full ${
+            mobileSubmissionTab === "form" ? "block" : "hidden lg:block"
+          }`}
+        >
+          <OfficeSubmissionForm
+            outlines={outlines}
+            isSubmitting={isSubmittingReview}
+            onSubmit={onSubmitReview}
+          />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function useAdvisorOfficeWorkspace(initialSessionId?: number) {
+  const [initialData, setInitialData] = useState<{
+    isLoading: boolean;
+    outlines: OutlineOption[];
+    sessions: OfficeSessionSummary[];
+  }>({
+    isLoading: true,
+    outlines: [],
+    sessions: [],
+  });
 
   // Active Session & Review State
-  const [activeSessionId, setActiveSessionId] = useState<number | null>(
-    initialSessionId || null,
-  );
-  const [currentReport, setCurrentReport] = useState<OfficeReviewReport | null>(
-    null,
-  );
-  const [activeOutlineId, setActiveOutlineId] = useState<number | null>(null);
-  const [activeOutlineTitle, setActiveOutlineTitle] = useState<string>("");
+  const [sessionDetail, setSessionDetail] = useState<{
+    activeSessionId: number | null;
+    currentReport: OfficeReviewReport | null;
+    activeOutlineId: number | null;
+    activeOutlineTitle: string;
+  }>({
+    activeSessionId: initialSessionId || null,
+    currentReport: null,
+    activeOutlineId: null,
+    activeOutlineTitle: "",
+  });
 
   // Defense Chat State
-  const [defenseMessages, setDefenseMessages] = useState<DefenseMessage[]>([]);
-  const [hasStartedDefense, setHasStartedDefense] = useState(false);
-  const [isStreamingDefense, setIsStreamingDefense] = useState(false);
-  const [isSubmittingReview, setIsSubmittingReview] = useState(false);
-  const [activeCritique, setActiveCritique] = useState<JuryCritique | null>(
-    null,
-  );
-  const [mobileWorkspaceTab, setMobileWorkspaceTab] = useState<
-    "margin-notes" | "defense-chat"
-  >("margin-notes");
-  const [mobileSubmissionTab, setMobileSubmissionTab] = useState<
-    "form" | "history"
-  >("form");
+  const [defenseState, setDefenseState] = useState<{
+    messages: DefenseMessage[];
+    hasStarted: boolean;
+    isStreaming: boolean;
+    activeCritique: JuryCritique | null;
+  }>({
+    messages: [],
+    hasStarted: false,
+    isStreaming: false,
+    activeCritique: null,
+  });
+
+  // UI state
+  const [uiState, setUiState] = useState<{
+    isSubmittingReview: boolean;
+    mobileWorkspaceTab: "margin-notes" | "defense-chat";
+    mobileSubmissionTab: "form" | "history";
+  }>({
+    isSubmittingReview: false,
+    mobileWorkspaceTab: "margin-notes",
+    mobileSubmissionTab: "form",
+  });
 
   // Load session detail callback
   const loadSessionDetail = useCallback(
-    async (sessionId: number, outlineList: OutlineOption[] = outlines) => {
+    async (
+      sessionId: number,
+      outlineList: OutlineOption[] = initialData.outlines,
+    ) => {
       try {
         const res = await getOfficeSessionDetailAction(sessionId);
         if (res.success && res.data) {
           const detail = res.data;
-          setActiveSessionId(detail.id);
-          setCurrentReport(detail.reviewReport);
-          setActiveOutlineId(detail.outlineId);
-          setMobileSubmissionTab("form");
-
           const outlineMatch = outlineList.find(
             (o) => o.id === detail.outlineId,
           );
-          setActiveOutlineTitle(
-            detail.outlineTitle || outlineMatch?.title || "Tez Bölümü",
-          );
+
+          setSessionDetail({
+            activeSessionId: detail.id,
+            currentReport: detail.reviewReport,
+            activeOutlineId: detail.outlineId,
+            activeOutlineTitle:
+              detail.outlineTitle || outlineMatch?.title || "Tez Bölümü",
+          });
+
+          setUiState((prev) => ({ ...prev, mobileSubmissionTab: "form" }));
 
           // Filter messages for defense chat
           const chatMsgs: DefenseMessage[] = detail.messages
@@ -95,8 +325,12 @@ export function AdvisorOfficeWorkspace({
               createdAt: m.createdAt,
             }));
 
-          setDefenseMessages(chatMsgs);
-          setHasStartedDefense(chatMsgs.length > 0);
+          setDefenseState({
+            messages: chatMsgs,
+            hasStarted: chatMsgs.length > 0,
+            isStreaming: false,
+            activeCritique: null,
+          });
         } else {
           toast.error(res.error || "Oturum detayları yüklenemedi.");
         }
@@ -104,7 +338,7 @@ export function AdvisorOfficeWorkspace({
         toast.error("Oturum yüklenirken bir hata oluştu.");
       }
     },
-    [outlines],
+    [initialData.outlines],
   );
 
   // Load initial data on mount
@@ -116,22 +350,23 @@ export function AdvisorOfficeWorkspace({
         const res = await getOfficeInitialDataAction();
         if (!isMounted) return;
         if (res.success) {
-          setOutlines(res.outlines);
-          setSessions(res.sessions);
+          setInitialData({
+            isLoading: false,
+            outlines: res.outlines,
+            sessions: res.sessions,
+          });
 
           if (initialSessionId) {
             await loadSessionDetail(initialSessionId, res.outlines);
           }
         } else {
           toast.error(res.error || "Başlangıç verileri yüklenemedi.");
+          setInitialData((prev) => ({ ...prev, isLoading: false }));
         }
       } catch {
         if (isMounted) {
           toast.error("Danışman masası yüklenirken bir hata oluştu.");
-        }
-      } finally {
-        if (isMounted) {
-          setIsLoadingInitial(false);
+          setInitialData((prev) => ({ ...prev, isLoading: false }));
         }
       }
     }
@@ -149,7 +384,7 @@ export function AdvisorOfficeWorkspace({
     draftText: string;
     studentNote?: string;
   }) => {
-    setIsSubmittingReview(true);
+    setUiState((prev) => ({ ...prev, isSubmittingReview: true }));
     try {
       const response = await fetch("/api/advisor", {
         method: "POST",
@@ -167,19 +402,36 @@ export function AdvisorOfficeWorkspace({
         throw new Error(json.error || "Taslak denetimi başarısız oldu.");
       }
 
-      const outlineMatch = outlines.find((o) => o.id === data.outlineId);
-      setActiveOutlineId(data.outlineId);
-      setActiveOutlineTitle(outlineMatch?.title || "Tez Bölümü");
-      setActiveSessionId(json.sessionId);
-      setCurrentReport(json.reviewReport);
-      setDefenseMessages([]);
-      setHasStartedDefense(false);
-      setMobileWorkspaceTab("margin-notes");
+      const outlineMatch = initialData.outlines.find(
+        (o) => o.id === data.outlineId,
+      );
+
+      setSessionDetail({
+        activeSessionId: json.sessionId,
+        currentReport: json.reviewReport,
+        activeOutlineId: data.outlineId,
+        activeOutlineTitle: outlineMatch?.title || "Tez Bölümü",
+      });
+
+      setDefenseState({
+        messages: [],
+        hasStarted: false,
+        isStreaming: false,
+        activeCritique: null,
+      });
+
+      setUiState((prev) => ({
+        ...prev,
+        mobileWorkspaceTab: "margin-notes",
+      }));
 
       // Refresh session sidebar
       const initialRes = await getOfficeInitialDataAction();
       if (initialRes.success) {
-        setSessions(initialRes.sessions);
+        setInitialData((prev) => ({
+          ...prev,
+          sessions: initialRes.sessions,
+        }));
       }
 
       toast.success(
@@ -190,29 +442,14 @@ export function AdvisorOfficeWorkspace({
         err instanceof Error ? err.message : "Taslak incelenirken hata oluştu.",
       );
     } finally {
-      setIsSubmittingReview(false);
+      setUiState((prev) => ({ ...prev, isSubmittingReview: false }));
     }
-  };
-
-  // 2. Start Live Defense & Stream SSE
-  const handleStartDefense = async (critique?: JuryCritique) => {
-    if (!activeSessionId) return;
-    if (critique) {
-      setActiveCritique(critique);
-    }
-    setHasStartedDefense(true);
-    setMobileWorkspaceTab("defense-chat");
-
-    const userPrompt = critique
-      ? `Hocam, "${critique.title}" eleştirisine dair şu noktayı açıklamak ve savunmak istiyorum: ${critique.suggestedDefensePoint || critique.critique}`
-      : undefined;
-
-    await handleSendDefenseMessage(userPrompt);
   };
 
   // 3. Send message in live defense and stream response
   const handleSendDefenseMessage = async (userMessage?: string) => {
-    if (!activeSessionId || isStreamingDefense) return;
+    const sessionId = sessionDetail.activeSessionId;
+    if (!sessionId || defenseState.isStreaming) return;
 
     if (userMessage) {
       const userMsgItem: DefenseMessage = {
@@ -224,10 +461,13 @@ export function AdvisorOfficeWorkspace({
           minute: "2-digit",
         }),
       };
-      setDefenseMessages((prev) => [...prev, userMsgItem]);
+      setDefenseState((prev) => ({
+        ...prev,
+        messages: [...prev.messages, userMsgItem],
+      }));
     }
 
-    setIsStreamingDefense(true);
+    setDefenseState((prev) => ({ ...prev, isStreaming: true }));
 
     const tempAdvisorId = `advisor-${Date.now()}`;
     const streamingMsgItem: DefenseMessage = {
@@ -241,7 +481,10 @@ export function AdvisorOfficeWorkspace({
       }),
     };
 
-    setDefenseMessages((prev) => [...prev, streamingMsgItem]);
+    setDefenseState((prev) => ({
+      ...prev,
+      messages: [...prev.messages, streamingMsgItem],
+    }));
 
     try {
       const response = await fetch("/api/advisor", {
@@ -249,7 +492,7 @@ export function AdvisorOfficeWorkspace({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           action: "DEFENSE",
-          sessionId: activeSessionId,
+          sessionId,
           userMessage,
         }),
       });
@@ -278,13 +521,14 @@ export function AdvisorOfficeWorkspace({
               const parsed = JSON.parse(dataStr);
               if (parsed.type === "chunk" && parsed.text) {
                 accumulatedText += parsed.text;
-                setDefenseMessages((prev) =>
-                  prev.map((m) =>
+                setDefenseState((prev) => ({
+                  ...prev,
+                  messages: prev.messages.map((m) =>
                     m.id === tempAdvisorId
                       ? { ...m, content: accumulatedText }
                       : m,
                   ),
-                );
+                }));
               }
             } catch {
               // Ignore non-json lines
@@ -293,34 +537,100 @@ export function AdvisorOfficeWorkspace({
         }
       }
 
-      setDefenseMessages((prev) =>
-        prev.map((m) =>
+      setDefenseState((prev) => ({
+        ...prev,
+        messages: prev.messages.map((m) =>
           m.id === tempAdvisorId
             ? { ...m, content: accumulatedText, isStreaming: false }
             : m,
         ),
-      );
+      }));
     } catch {
       toast.error("Danışman yanıt verirken bir hata oluştu.");
-      setDefenseMessages((prev) => prev.filter((m) => m.id !== tempAdvisorId));
+      setDefenseState((prev) => ({
+        ...prev,
+        messages: prev.messages.filter((m) => m.id !== tempAdvisorId),
+      }));
     } finally {
-      setIsStreamingDefense(false);
+      setDefenseState((prev) => ({ ...prev, isStreaming: false }));
     }
+  };
+
+  // 2. Start Live Defense & Stream SSE
+  const handleStartDefense = async (critique?: JuryCritique) => {
+    if (!sessionDetail.activeSessionId) return;
+    setDefenseState((prev) => ({
+      ...prev,
+      hasStarted: true,
+      activeCritique: critique || prev.activeCritique,
+    }));
+    setUiState((prev) => ({ ...prev, mobileWorkspaceTab: "defense-chat" }));
+
+    const userPrompt = critique
+      ? `Hocam, "${critique.title}" eleştirisine dair şu noktayı açıklamak ve savunmak istiyorum: ${critique.suggestedDefensePoint || critique.critique}`
+      : undefined;
+
+    await handleSendDefenseMessage(userPrompt);
   };
 
   // Reset to submission form
   const handleResetToNewSubmission = () => {
-    setActiveSessionId(null);
-    setCurrentReport(null);
-    setActiveOutlineId(null);
-    setActiveOutlineTitle("");
-    setDefenseMessages([]);
-    setHasStartedDefense(false);
-    setMobileWorkspaceTab("margin-notes");
-    setMobileSubmissionTab("form");
+    setSessionDetail({
+      activeSessionId: null,
+      currentReport: null,
+      activeOutlineId: null,
+      activeOutlineTitle: "",
+    });
+    setDefenseState({
+      messages: [],
+      hasStarted: false,
+      isStreaming: false,
+      activeCritique: null,
+    });
+    setUiState({
+      isSubmittingReview: false,
+      mobileWorkspaceTab: "margin-notes",
+      mobileSubmissionTab: "form",
+    });
   };
 
-  if (isLoadingInitial) {
+  return {
+    initialData,
+    setInitialData,
+    sessionDetail,
+    defenseState,
+    uiState,
+    setUiState,
+    loadSessionDetail,
+    handleReviewSubmit,
+    handleStartDefense,
+    handleSendDefenseMessage,
+    handleResetToNewSubmission,
+  };
+}
+
+/**
+ * Root workspace for Danışmanın Çalışma Odası (Office Hours & Draft Audit Desk).
+ * Seamlessly fits into the standard Fabricca page layout with full responsive flow.
+ */
+export function AdvisorOfficeWorkspace({
+  initialSessionId,
+}: AdvisorOfficeWorkspaceProps) {
+  const {
+    initialData,
+    setInitialData,
+    sessionDetail,
+    defenseState,
+    uiState,
+    setUiState,
+    loadSessionDetail,
+    handleReviewSubmit,
+    handleStartDefense,
+    handleSendDefenseMessage,
+    handleResetToNewSubmission,
+  } = useAdvisorOfficeWorkspace(initialSessionId);
+
+  if (initialData.isLoading) {
     return (
       <div className="w-full space-y-6">
         <div className="flex items-center justify-between pb-4 border-b border-border">
@@ -335,7 +645,9 @@ export function AdvisorOfficeWorkspace({
     );
   }
 
-  const isReviewActive = activeSessionId !== null && currentReport !== null;
+  const isReviewActive =
+    sessionDetail.activeSessionId !== null &&
+    sessionDetail.currentReport !== null;
 
   return (
     <div className="w-full space-y-6 pb-12">
@@ -376,162 +688,46 @@ export function AdvisorOfficeWorkspace({
       </div>
 
       {/* Main Workspace Flow */}
-      {isReviewActive ? (
-        // PHASE 2: Split Workspace (Margin Notes + Live Defense Chat + Actions Toolbar)
-        <div className="flex flex-col gap-3">
-          {/* Active Section Context Bar */}
-          <div className="flex items-center justify-between p-3 rounded-lg bg-card border border-border text-xs">
-            <div className="flex items-center gap-2">
-              <Layers className="h-4 w-4 text-primary shrink-0" />
-              <span className="font-semibold text-foreground">
-                {activeOutlineTitle}
-              </span>
-            </div>
-
-            <div className="flex items-center gap-2 text-muted-foreground text-[11px]">
-              <Clock className="h-3.5 w-3.5" />
-              <span>Danışman Ofis Masası</span>
-            </div>
-          </div>
-
-          {/* Mobile Phase 2 Tab Switcher (Visible below lg) */}
-          <div className="flex items-center rounded-lg border border-border bg-card p-1 text-xs lg:hidden">
-            <button
-              type="button"
-              onClick={() => setMobileWorkspaceTab("margin-notes")}
-              className={`flex-1 py-1.5 px-3 rounded-md font-medium transition-all ${
-                mobileWorkspaceTab === "margin-notes"
-                  ? "bg-primary text-primary-foreground shadow-xs"
-                  : "text-muted-foreground hover:text-foreground"
-              }`}
-            >
-              Kenar Notları & Denetim
-            </button>
-            <button
-              type="button"
-              onClick={() => setMobileWorkspaceTab("defense-chat")}
-              className={`flex-1 py-1.5 px-3 rounded-md font-medium transition-all ${
-                mobileWorkspaceTab === "defense-chat"
-                  ? "bg-primary text-primary-foreground shadow-xs"
-                  : "text-muted-foreground hover:text-foreground"
-              }`}
-            >
-              Canlı Savunma Masası{" "}
-              {defenseMessages.length > 0 ? `(${defenseMessages.length})` : ""}
-            </button>
-          </div>
-
-          {/* Unified Split Workspace Card */}
-          <div className="rounded-xl border border-border bg-card shadow-xs overflow-hidden flex flex-col lg:flex-row h-[660px]">
-            {/* Left Panel: Margin Notes & Audit */}
-            <div
-              className={`w-full lg:w-1/2 h-full border-b lg:border-b-0 lg:border-r border-border overflow-hidden ${
-                mobileWorkspaceTab === "margin-notes"
-                  ? "block"
-                  : "hidden lg:block"
-              }`}
-            >
-              <OfficeMarginNotes
-                report={currentReport}
-                hasStartedDefense={hasStartedDefense}
-                onStartDefense={handleStartDefense}
-              />
-            </div>
-
-            {/* Right Panel: Live Defense Chat */}
-            <div
-              className={`w-full lg:w-1/2 h-full overflow-hidden ${
-                mobileWorkspaceTab === "defense-chat"
-                  ? "block"
-                  : "hidden lg:block"
-              }`}
-            >
-              <OfficeDefenseChat
-                messages={defenseMessages}
-                isStreaming={isStreamingDefense}
-                onSendMessage={(text) => handleSendDefenseMessage(text)}
-                hasStartedDefense={hasStartedDefense}
-                onStartDefense={handleStartDefense}
-                activeCritique={activeCritique}
-              />
-            </div>
-          </div>
-
-          {/* Footer Action Toolbar */}
-          <OfficeActionToolbar
-            outlineId={activeOutlineId || 0}
-            outlineTitle={activeOutlineTitle || "Tez Bölümü"}
-            report={currentReport}
-            defenseMessages={defenseMessages}
-            onResetToNewSubmission={handleResetToNewSubmission}
-          />
-        </div>
+      {isReviewActive && sessionDetail.currentReport ? (
+        <OfficeReviewPhase
+          activeOutlineId={sessionDetail.activeOutlineId}
+          activeOutlineTitle={sessionDetail.activeOutlineTitle}
+          currentReport={sessionDetail.currentReport}
+          mobileWorkspaceTab={uiState.mobileWorkspaceTab}
+          defenseMessages={defenseState.messages}
+          hasStartedDefense={defenseState.hasStarted}
+          isStreamingDefense={defenseState.isStreaming}
+          activeCritique={defenseState.activeCritique}
+          onMobileTabChange={(tab) =>
+            setUiState((prev) => ({ ...prev, mobileWorkspaceTab: tab }))
+          }
+          onStartDefense={handleStartDefense}
+          onSendMessage={(text) => handleSendDefenseMessage(text)}
+          onResetToNewSubmission={handleResetToNewSubmission}
+        />
       ) : (
-        // PHASE 1: Submission View (Past Sessions Sidebar + Submission Form + Guide Cards)
-        <div className="flex flex-col gap-4">
-          {/* Mobile Phase 1 Tab Switcher when sessions exist */}
-          {sessions.length > 0 && (
-            <div className="flex items-center rounded-lg border border-border bg-card p-1 text-xs lg:hidden">
-              <button
-                type="button"
-                onClick={() => setMobileSubmissionTab("form")}
-                className={`flex-1 py-1.5 px-3 rounded-md font-medium transition-all ${
-                  mobileSubmissionTab === "form"
-                    ? "bg-primary text-primary-foreground shadow-xs"
-                    : "text-muted-foreground hover:text-foreground"
-                }`}
-              >
-                Yeni Taslak Teslimi
-              </button>
-              <button
-                type="button"
-                onClick={() => setMobileSubmissionTab("history")}
-                className={`flex-1 py-1.5 px-3 rounded-md font-medium transition-all ${
-                  mobileSubmissionTab === "history"
-                    ? "bg-primary text-primary-foreground shadow-xs"
-                    : "text-muted-foreground hover:text-foreground"
-                }`}
-              >
-                Geçmiş Randevular ({sessions.length})
-              </button>
-            </div>
-          )}
-
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-            {/* Left Column: Past Sessions */}
-            <div
-              className={`lg:col-span-4 w-full ${
-                mobileSubmissionTab === "history" ? "block" : "hidden lg:block"
-              }`}
-            >
-              <OfficeSessionSidebar
-                sessions={sessions}
-                activeSessionId={activeSessionId}
-                onSelectSession={(id) => loadSessionDetail(id, outlines)}
-                onNewSession={handleResetToNewSubmission}
-                onSessionDeleted={(deletedId) => {
-                  setSessions((prev) => prev.filter((s) => s.id !== deletedId));
-                  if (activeSessionId === deletedId) {
-                    handleResetToNewSubmission();
-                  }
-                }}
-              />
-            </div>
-
-            {/* Right Column: Submission Form & Guide Cards */}
-            <div
-              className={`lg:col-span-8 w-full ${
-                mobileSubmissionTab === "form" ? "block" : "hidden lg:block"
-              }`}
-            >
-              <OfficeSubmissionForm
-                outlines={outlines}
-                isSubmitting={isSubmittingReview}
-                onSubmit={handleReviewSubmit}
-              />
-            </div>
-          </div>
-        </div>
+        <OfficeSubmissionPhase
+          sessions={initialData.sessions}
+          outlines={initialData.outlines}
+          activeSessionId={sessionDetail.activeSessionId}
+          mobileSubmissionTab={uiState.mobileSubmissionTab}
+          isSubmittingReview={uiState.isSubmittingReview}
+          onMobileTabChange={(tab) =>
+            setUiState((prev) => ({ ...prev, mobileSubmissionTab: tab }))
+          }
+          onSelectSession={(id) => loadSessionDetail(id, initialData.outlines)}
+          onNewSession={handleResetToNewSubmission}
+          onSessionDeleted={(deletedId) => {
+            setInitialData((prev) => ({
+              ...prev,
+              sessions: prev.sessions.filter((s) => s.id !== deletedId),
+            }));
+            if (sessionDetail.activeSessionId === deletedId) {
+              handleResetToNewSubmission();
+            }
+          }}
+          onSubmitReview={handleReviewSubmit}
+        />
       )}
     </div>
   );

@@ -121,7 +121,15 @@ export function CitationCard(props: CitationCardProps) {
 
   return (
     <Card
+      role="button"
+      tabIndex={0}
       onClick={() => onView(card)}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          onView(card);
+        }
+      }}
       className={cn(
         "cursor-pointer rounded-md p-4 transition-all duration-150 border bg-card hover:bg-card/90 flex flex-col justify-between group select-none w-full gap-3",
         isSelected
@@ -168,6 +176,7 @@ export function CitationCard(props: CitationCardProps) {
           role="presentation"
           className="flex items-center gap-1.5 shrink-0"
           onClick={(e) => e.stopPropagation()}
+          onKeyDown={(e) => e.stopPropagation()}
         >
           {/* Page Badge: s. 1 or ss. 15-18 */}
           <span className="font-mono text-xs font-semibold text-foreground bg-muted/60 border border-border px-2 py-0.5 rounded">
