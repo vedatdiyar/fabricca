@@ -28,30 +28,28 @@ export function CritiqueGridEditor({
   onFieldChange,
 }: CritiqueGridEditorProps) {
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
       {CRITIQUE_FIELDS.map((field, idx) => {
-        const Icon = field.icon;
         const isLast = idx === CRITIQUE_FIELDS.length - 1;
 
         return (
           <div
             key={field.key}
-            className={`rounded-lg border border-border/50 bg-card p-4 space-y-2.5 ${
+            className={`rounded-md border border-border/40 bg-background p-3.5 space-y-2.5 ${
               isLast ? "md:col-span-2" : ""
             }`}
           >
             <div className="flex items-start justify-between gap-2">
-              <div className="space-y-0.5">
+              <div className="space-y-0.5 min-w-0">
                 <div className="flex items-center gap-1.5">
-                  <span className="flex h-4.5 w-4.5 items-center justify-center rounded bg-primary/10 text-[10px] font-bold text-primary">
-                    {field.number}
+                  <span className="text-xs font-mono font-bold text-primary">
+                    {field.number}.
                   </span>
-                  <Icon className="h-3.5 w-3.5 text-primary" />
-                  <Label className="text-xs font-semibold text-foreground">
+                  <Label className="text-xs font-semibold text-foreground truncate">
                     {field.label}
                   </Label>
                 </div>
-                <p className="text-[11px] text-muted-foreground">
+                <p className="text-[11px] text-muted-foreground line-clamp-1">
                   {field.question}
                 </p>
               </div>
@@ -65,8 +63,8 @@ export function CritiqueGridEditor({
               value={values[field.key]}
               onChange={(e) => onFieldChange(field.key, e.target.value)}
               placeholder={field.question}
-              rows={5}
-              className="textarea-academic text-sm leading-relaxed p-3 min-h-[130px] resize-y rounded-md"
+              rows={4}
+              className="textarea-academic text-sm leading-relaxed p-3 resize-none"
             />
           </div>
         );
@@ -74,3 +72,4 @@ export function CritiqueGridEditor({
     </div>
   );
 }
+

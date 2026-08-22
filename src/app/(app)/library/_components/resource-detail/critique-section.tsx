@@ -118,25 +118,21 @@ export function CritiqueSection({
 
   return (
     <div className="space-y-4">
-      <Card className="border border-border bg-background shadow-xs">
-        <CardContent className="p-4 sm:p-5 space-y-4">
-          {/* Header Bar: Title, Save Status, View Mode Switcher, Evaluate Action */}
-          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border/40 pb-3.5">
-            <div className="flex items-center gap-2.5">
-              <div className="flex h-7 w-7 items-center justify-center rounded-md bg-primary/10 text-primary">
-                <BookMarked className="h-4 w-4" />
-              </div>
-              <div className="flex items-center gap-2">
-                <h3 className="font-serif text-base sm:text-lg font-medium tracking-tight text-foreground">
-                  Eser Analizi
-                </h3>
-                <Badge
-                  variant="outline"
-                  className="text-[10px] font-medium border-border/60 text-muted-foreground"
-                >
-                  {completedCount}/5 Tamamlandı
-                </Badge>
-              </div>
+      <Card className="border border-border bg-background">
+        <CardContent className="p-4 space-y-4">
+          {/* Header Bar: Title, Progress Badge, Save Status, View Mode Switcher, Evaluate Action */}
+          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border/40 pb-3">
+            <div className="flex items-center gap-2">
+              <BookMarked className="h-4 w-4 text-primary" />
+              <h3 className="font-serif text-lg font-medium tracking-tight text-foreground">
+                Eser Analizi
+              </h3>
+              <Badge
+                variant="outline"
+                className="text-[10px] font-medium border-border/60 text-muted-foreground ml-1"
+              >
+                {completedCount}/5 Tamamlandı
+              </Badge>
             </div>
 
             <div className="flex flex-wrap items-center gap-2 sm:gap-3">
@@ -170,32 +166,32 @@ export function CritiqueSection({
                 </div>
               )}
 
-              {/* View Mode Toggle */}
-              <div className="flex items-center rounded-lg border border-border/60 bg-muted/40 p-0.5 text-xs">
+              {/* Minimal View Mode Segmented Control */}
+              <div className="flex items-center gap-1 bg-muted p-1 rounded-md border border-border/40">
                 <button
                   type="button"
                   onClick={() => setViewMode("focus")}
-                  className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md font-medium text-[11px] transition-all ${
+                  className={`flex items-center gap-1.5 px-2.5 py-1 rounded text-xs transition-all ${
                     viewMode === "focus"
-                      ? "bg-background text-foreground shadow-xs font-semibold"
+                      ? "bg-background text-foreground font-medium border border-border/40 shadow-xs"
                       : "text-muted-foreground hover:text-foreground"
                   }`}
                   title="Adım adım odak modu"
                 >
-                  <Focus className="h-3 w-3 text-primary" />
+                  <Focus className="h-3.5 w-3.5 text-primary" />
                   <span>Odak Modu</span>
                 </button>
                 <button
                   type="button"
                   onClick={() => setViewMode("all")}
-                  className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md font-medium text-[11px] transition-all ${
+                  className={`flex items-center gap-1.5 px-2.5 py-1 rounded text-xs transition-all ${
                     viewMode === "all"
-                      ? "bg-background text-foreground shadow-xs font-semibold"
+                      ? "bg-background text-foreground font-medium border border-border/40 shadow-xs"
                       : "text-muted-foreground hover:text-foreground"
                   }`}
                   title="Tüm boyutları göster"
                 >
-                  <LayoutGrid className="h-3 w-3 text-muted-foreground" />
+                  <LayoutGrid className="h-3.5 w-3.5 text-muted-foreground" />
                   <span>Bütünsel</span>
                 </button>
               </div>
@@ -207,7 +203,7 @@ export function CritiqueSection({
                   size="sm"
                   onClick={() => onEvaluateCritique(resourceId)}
                   disabled={isEvaluating}
-                  className="h-7.5 gap-1.5 text-xs font-medium border-primary/30 text-primary hover:bg-primary/10 hover:text-primary transition-all shadow-xs"
+                  className="gap-1.5 text-xs font-medium border-primary/30 text-primary hover:bg-primary/10 hover:text-primary transition-all"
                 >
                   <Sparkles
                     className={`h-3.5 w-3.5 text-primary ${
@@ -240,3 +236,4 @@ export function CritiqueSection({
     </div>
   );
 }
+

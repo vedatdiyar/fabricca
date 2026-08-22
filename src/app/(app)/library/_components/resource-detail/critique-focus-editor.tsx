@@ -18,7 +18,7 @@ interface CritiqueFocusEditorProps {
 }
 
 /**
- * Step-by-step focused critique editor offering spacious writing area and progress indicators.
+ * Step-by-step focused critique editor offering a clean writing area and minimal progress pills.
  *
  * @param props - Component props.
  * @param props.values - Current draft values for all critique dimensions.
@@ -32,14 +32,12 @@ export function CritiqueFocusEditor({
   const [activeStepIndex, setActiveStepIndex] = useState(0);
 
   const currentField = CRITIQUE_FIELDS[activeStepIndex];
-  const CurrentIcon = currentField.icon;
 
   return (
     <div className="space-y-4">
-      {/* Step Navigation Tabs */}
-      <div className="grid grid-cols-2 sm:grid-cols-5 gap-1.5 p-1 bg-muted/40 rounded-lg border border-border/40">
+      {/* Minimal Segmented Step Navigation Bar */}
+      <div className="flex items-center gap-1 bg-muted p-1 rounded-md border border-border/40 overflow-x-auto">
         {CRITIQUE_FIELDS.map((field, idx) => {
-          const Icon = field.icon;
           const isActive = activeStepIndex === idx;
           const isFilled = values[field.key].trim().length > 0;
 
@@ -48,58 +46,40 @@ export function CritiqueFocusEditor({
               key={field.key}
               type="button"
               onClick={() => setActiveStepIndex(idx)}
-              className={`flex items-center justify-start sm:justify-center gap-1.5 px-2.5 py-2 rounded-md text-xs font-medium transition-all text-left sm:text-center ${
-                idx === 4 ? "col-span-2 sm:col-span-1" : ""
-              } ${
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded text-xs font-medium whitespace-nowrap transition-all ${
                 isActive
-                  ? "bg-background text-foreground shadow-xs border border-border/60 font-semibold text-primary"
-                  : "text-muted-foreground hover:text-foreground hover:bg-background/50"
+                  ? "bg-background text-foreground font-semibold border border-border/40 shadow-xs"
+                  : isFilled
+                    ? "text-foreground hover:bg-background/50"
+                    : "text-muted-foreground hover:text-foreground"
               }`}
             >
-              <span
-                className={`flex h-4.5 w-4.5 shrink-0 items-center justify-center rounded text-[10px] font-bold ${
-                  isActive
-                    ? "bg-primary text-primary-foreground"
-                    : isFilled
-                      ? "bg-success/20 text-success"
-                      : "bg-muted text-muted-foreground"
-                }`}
-              >
-                {isFilled && !isActive ? (
-                  <Check className="h-3 w-3" />
-                ) : (
-                  field.number
-                )}
-              </span>
-              <Icon className="h-3.5 w-3.5 shrink-0" />
-              <span className="truncate">{field.shortLabel}</span>
+              <span className="text-[11px] font-mono">{field.number}.</span>
+              <span>{field.shortLabel}</span>
+              {isFilled && <Check className="h-3 w-3 text-success ml-0.5" />}
             </button>
           );
         })}
       </div>
 
-      {/* Active Dimension Editor Box */}
-      <div className="rounded-lg border border-border/60 bg-card p-4 sm:p-5 space-y-3">
-        <div className="flex flex-wrap items-start justify-between gap-2 border-b border-border/30 pb-3">
-          <div className="space-y-1">
-            <div className="flex items-center gap-2">
-              <span className="flex h-5 w-5 items-center justify-center rounded bg-primary/10 text-[11px] font-bold text-primary">
-                {currentField.number}
-              </span>
-              <CurrentIcon className="h-4 w-4 text-primary" />
+      {/* Active Dimension Editor Flow (No redundant nested card frame) */}
+      <div className="space-y-3 pt-1">
+        <div className="flex flex-wrap items-baseline justify-between gap-2">
+          <div className="space-y-0.5">
+            <div className="flex flex-wrap items-center gap-2">
               <Label className="text-sm font-semibold text-foreground">
                 {currentField.label}
               </Label>
+              <span className="text-xs text-muted-foreground hidden sm:inline">
+                — {currentField.question}
+              </span>
             </div>
-            <p className="text-xs text-foreground/80 font-medium">
-              {currentField.question}
-            </p>
             <p className="text-[11px] text-muted-foreground">
               {currentField.hint}
             </p>
           </div>
 
-          <span className="text-[11px] text-muted-foreground font-mono self-start">
+          <span className="text-[11px] text-muted-foreground font-mono shrink-0">
             {getWordCount(values[currentField.key])} kelime
           </span>
         </div>
@@ -108,31 +88,31 @@ export function CritiqueFocusEditor({
           value={values[currentField.key]}
           onChange={(e) => onFieldChange(currentField.key, e.target.value)}
           placeholder={currentField.question}
-          rows={8}
-          className="textarea-academic text-sm leading-relaxed p-3.5 min-h-[220px] resize-y rounded-md"
+          rows={7}
+          className="textarea-academic text-sm leading-relaxed p-3.5 resize-none"
         />
 
         {/* Step Navigator Footer */}
-        <div className="flex items-center justify-between pt-2">
+        <div className="flex items-center justify-between pt-1">
           <Button
             type="button"
-            variant="outline"
+            variant="ghost"
             size="sm"
             onClick={() => setActiveStepIndex((prev) => Math.max(prev - 1, 0))}
             disabled={activeStepIndex === 0}
-            className="h-8 gap-1 text-xs"
+            className="h-8 gap-1 text-xs text-muted-foreground hover:text-foreground"
           >
             <ChevronLeft className="h-3.5 w-3.5" />
             Önceki Boyut
           </Button>
 
-          <div className="text-xs text-muted-foreground font-medium">
+          <div className="text-xs text-muted-foreground font-medium font-mono">
             Adım {activeStepIndex + 1} / {CRITIQUE_FIELDS.length}
           </div>
 
           <Button
             type="button"
-            variant="outline"
+            variant="ghost"
             size="sm"
             onClick={() =>
               setActiveStepIndex((prev) =>
@@ -140,7 +120,7 @@ export function CritiqueFocusEditor({
               )
             }
             disabled={activeStepIndex === CRITIQUE_FIELDS.length - 1}
-            className="h-8 gap-1 text-xs"
+            className="h-8 gap-1 text-xs text-muted-foreground hover:text-foreground"
           >
             Sonraki Boyut
             <ChevronRight className="h-3.5 w-3.5" />
@@ -150,3 +130,4 @@ export function CritiqueFocusEditor({
     </div>
   );
 }
+
