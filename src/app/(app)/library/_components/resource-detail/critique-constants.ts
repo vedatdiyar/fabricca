@@ -9,7 +9,12 @@ import {
 import type { LibraryResourceCritique } from "../../_lib/types";
 
 export interface CritiqueFieldConfig {
-  key: "researchQuestion" | "theoreticalFramework" | "methodology" | "mainArgument" | "literatureGap";
+  key:
+    | "researchQuestion"
+    | "theoreticalFramework"
+    | "methodology"
+    | "mainArgument"
+    | "literatureGap";
   icon: LucideIcon;
   number: number;
   label: string;

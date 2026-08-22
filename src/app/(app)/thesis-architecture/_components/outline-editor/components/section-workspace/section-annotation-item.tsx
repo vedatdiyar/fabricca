@@ -19,32 +19,29 @@ export function getNoteTypeBadgeConfig(noteType: CitationNoteType) {
       return {
         label: "Doğrudan Alıntı",
         icon: Quote,
-        className:
-          "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20",
-        borderAccent: "border-l-emerald-500",
+        className: "bg-secondary text-secondary-foreground border-border",
+        borderAccent: "border-l-primary",
       };
     case "PARAPHRASE":
       return {
         label: "Dolaylı Alıntı",
         icon: Sparkles,
-        className:
-          "bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20",
-        borderAccent: "border-l-blue-500",
+        className: "bg-secondary text-secondary-foreground border-border",
+        borderAccent: "border-l-primary/60",
       };
     case "PERSONAL_NOTE":
       return {
         label: "Kişisel Not",
         icon: Bookmark,
-        className:
-          "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20",
-        borderAccent: "border-l-amber-500",
+        className: "bg-secondary text-secondary-foreground border-border",
+        borderAccent: "border-l-border",
       };
     default:
       return {
         label: "Not",
         icon: BookOpen,
-        className: "bg-muted text-muted-foreground border-border",
-        borderAccent: "border-l-primary",
+        className: "bg-secondary text-secondary-foreground border-border",
+        borderAccent: "border-l-border",
       };
   }
 }

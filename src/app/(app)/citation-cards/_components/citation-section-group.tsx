@@ -196,9 +196,9 @@ export function CitationSectionGroup({
                 toggleSection("unassigned");
               }
             }}
-            className="flex items-center justify-between p-2.5 rounded-md bg-amber-500/10 hover:bg-amber-500/15 transition-colors cursor-pointer border border-amber-500/20 select-none"
+            className="flex items-center justify-between p-2.5 rounded-md bg-warning/10 hover:bg-warning/15 transition-colors cursor-pointer border border-warning/20 select-none"
           >
-            <div className="flex items-center gap-2 min-w-0 text-amber-600 dark:text-amber-400">
+            <div className="flex items-center gap-2 min-w-0 text-warning">
               {isUnassignedCollapsed ? (
                 <ChevronRight className="h-3.5 w-3.5 shrink-0" />
               ) : (
@@ -212,14 +212,14 @@ export function CitationSectionGroup({
 
             <Badge
               variant="outline"
-              className="font-mono text-[10px] text-amber-600 dark:text-amber-400 border-amber-500/30 bg-background shrink-0"
+              className="font-mono text-[10px] text-warning border-warning/20 bg-background shrink-0"
             >
               {unassignedCards.length} Fiş
             </Badge>
           </div>
 
           {!isUnassignedCollapsed && (
-            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3.5 pl-2 sm:pl-3 border-l-2 border-amber-500/30">
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3.5 pl-2 sm:pl-3 border-l-2 border-warning/20">
               {unassignedCards.map((card) => (
                 <CitationCard
                   key={card.id}

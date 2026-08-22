@@ -18,11 +18,11 @@ import { Button } from "@/components/ui/button";
  */
 export function MatrixCascadeAlert() {
   return (
-    <Card className="flex items-start gap-3 p-3.5 border-amber-500/30 bg-amber-500/5 text-foreground rounded-lg">
-      <AlertTriangle className="h-4 w-4 text-amber-500 shrink-0 mt-0.5" />
+    <Card className="flex items-start gap-3 p-3.5 border border-warning/20 bg-warning/10 text-foreground rounded-md">
+      <AlertTriangle className="h-4 w-4 text-warning shrink-0 mt-0.5" />
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 w-full">
         <div>
-          <h4 className="font-semibold text-xs text-amber-600 dark:text-amber-400">
+          <h4 className="font-semibold text-xs text-warning">
             Temel Omurga Değişiklikleri ve Dalga Etkisi
           </h4>
           <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed">
@@ -38,10 +38,10 @@ export function MatrixCascadeAlert() {
             asChild
             variant="outline"
             size="sm"
-            className="h-7 text-[11px] gap-1 border-amber-500/30 text-foreground hover:bg-amber-500/10 cursor-pointer"
+            className="h-7 text-[11px] gap-1 border-warning/20 text-foreground hover:bg-warning/10 cursor-pointer"
           >
             <Link href="/thesis-architecture/boxes">
-              <FolderKanban className="h-3 w-3 text-amber-500" />
+              <FolderKanban className="h-3 w-3 text-warning" />
               <span>Kutuları İncele</span>
             </Link>
           </Button>
@@ -50,10 +50,10 @@ export function MatrixCascadeAlert() {
             asChild
             variant="outline"
             size="sm"
-            className="h-7 text-[11px] gap-1 border-amber-500/30 text-foreground hover:bg-amber-500/10 cursor-pointer"
+            className="h-7 text-[11px] gap-1 border-warning/20 text-foreground hover:bg-warning/10 cursor-pointer"
           >
             <Link href="/thesis-architecture/outline">
-              <BookOpen className="h-3 w-3 text-amber-500" />
+              <BookOpen className="h-3 w-3 text-warning" />
               <span>Bölüm Planı</span>
               <ArrowRight className="h-2.5 w-2.5 opacity-60" />
             </Link>

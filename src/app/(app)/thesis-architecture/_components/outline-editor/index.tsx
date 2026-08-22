@@ -6,7 +6,8 @@ import { Plus } from "lucide-react";
 import { TabActions } from "../tab-actions";
 import { useOutlineState } from "./hooks/use-outline-state";
 import { useOutlineMetrics } from "./hooks/use-outline-metrics";
-import { useOutlineCrud } from "./hooks/use-outline-crud";
+import { useOutlineSectionCrud } from "./hooks/use-outline-section-crud";
+import { useOutlineLinks } from "./hooks/use-outline-links";
 import { usePanelHeightSync } from "./hooks/use-panel-height-sync";
 import { OutlineMetricsStrip } from "./components/outline-metrics-strip";
 import {
@@ -73,12 +74,15 @@ export function OutlineEditorView({
     outlinesList,
   );
 
-  const crud = useOutlineCrud({
+  const crud = useOutlineSectionCrud({
     outlinesList,
     rootOutlines: metrics.rootOutlines,
-    selectedOutline: state.selectedOutline,
     selectedOutlineId: state.selectedOutlineId,
     setSelectedOutlineId: state.setSelectedOutlineId,
+  });
+
+  const links = useOutlineLinks({
+    selectedOutline: state.selectedOutline,
     localPinnedAnnotationsMap: state.localPinnedAnnotationsMap,
     applyAnnotationLinkOverride: state.applyAnnotationLinkOverride,
     localLinkedSourcesMap: state.localLinkedSourcesMap,
@@ -151,8 +155,8 @@ export function OutlineEditorView({
                   displayedSources={metrics.displayedSources}
                   sourceSearchQuery={state.sourceSearchQuery}
                   onSourceSearchChange={state.setSourceSearchQuery}
-                  onManageAnnotationLinks={crud.openAnnotationLinkModal}
-                  onManageSourceLinks={crud.openSourceLinkModal}
+                  onManageAnnotationLinks={links.openAnnotationLinkModal}
+                  onManageSourceLinks={links.openSourceLinkModal}
                 />
               </div>
             ) : (
@@ -194,24 +198,24 @@ export function OutlineEditorView({
 
       {/* Modal: Manage Annotation (Citation Card) Links */}
       <ManageAnnotationLinksModal
-        open={crud.isAnnotationLinkModalOpen}
+        open={links.isAnnotationLinkModalOpen}
         outline={state.selectedOutline}
         annotationsList={annotationsList}
         boxesList={boxesList}
         localPinnedAnnotationsMap={state.localPinnedAnnotationsMap}
-        onToggleAnnotationLink={crud.toggleAnnotationLink}
-        onClose={crud.closeAnnotationLinkModal}
+        onToggleAnnotationLink={links.toggleAnnotationLink}
+        onClose={links.closeAnnotationLinkModal}
       />
 
       {/* Modal: Manage Source Links */}
       <ManageSourceLinksModal
-        open={crud.isSourceLinkModalOpen}
+        open={links.isSourceLinkModalOpen}
         outline={state.selectedOutline}
         sourcesList={sourcesList}
         boxesList={boxesList}
         localLinkedSourcesMap={state.localLinkedSourcesMap}
-        onToggleSourceLink={crud.toggleSourceLink}
-        onClose={crud.closeSourceLinkModal}
+        onToggleSourceLink={links.toggleSourceLink}
+        onClose={links.closeSourceLinkModal}
       />
     </div>
   );

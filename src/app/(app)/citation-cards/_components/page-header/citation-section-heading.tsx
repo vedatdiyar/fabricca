@@ -18,8 +18,8 @@ export function CitationCardsSectionHeading({
       <div className="flex items-center gap-2 min-w-0">
         {unassignedOnly ? (
           <>
-            <AlertCircle className="h-4 w-4 text-amber-500 shrink-0" />
-            <h2 className="font-serif text-sm font-semibold text-amber-600 dark:text-amber-400 truncate">
+            <AlertCircle className="h-4 w-4 text-warning shrink-0" />
+            <h2 className="font-serif text-sm font-semibold text-warning truncate">
               Henüz Bir Tez Bölümüne Atanmamış Fişler Havuzu
             </h2>
           </>

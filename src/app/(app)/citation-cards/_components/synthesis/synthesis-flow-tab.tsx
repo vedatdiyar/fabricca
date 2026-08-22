@@ -64,8 +64,8 @@ export function SynthesisFlowTab({
                 )}
 
                 {/* Transition Note */}
-                <div className="p-2 rounded-md bg-amber-500/10 border border-amber-500/20 text-[10px] leading-relaxed text-foreground">
-                  <span className="font-semibold text-amber-600 dark:text-amber-400 block mb-0.5">
+                <div className="p-2 rounded-md bg-warning/10 border border-warning/20 text-[10px] leading-relaxed text-foreground">
+                  <span className="font-semibold text-warning block mb-0.5">
                     🔗 Geçiş ve Eklemlenme Önerisi:
                   </span>
                   {step.transitionNote}

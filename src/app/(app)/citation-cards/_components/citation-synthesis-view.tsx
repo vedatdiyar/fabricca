@@ -7,16 +7,10 @@ import {
   Check,
   Loader2,
   ListOrdered,
-  Pin,
-  X,
-  RotateCw,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { toast } from "sonner";
-import type { CitationSynthesisReport } from "../ai-actions";
 import type { CitationCardItem, OutlineItem, SourceItem } from "../_lib/types";
 import { useCitationSynthesisLogic } from "../_hooks/use-citation-synthesis";
 import { SynthesisClustersTab } from "./synthesis/synthesis-clusters-tab";
@@ -118,7 +112,7 @@ export function CitationSynthesisView(props: CitationSynthesisViewProps) {
                   value="flow"
                   className="text-xs h-7 gap-1.5 data-[state=active]:bg-background data-[state=active]:text-foreground cursor-pointer"
                 >
-                  <ListOrdered className="h-3.5 w-3.5 text-amber-500" />
+                  <ListOrdered className="h-3.5 w-3.5 text-primary" />
                   <span>Word Argüman Akış Sırası</span>
                   <span className="px-1.5 py-0.2 bg-muted text-[10px] rounded-full">
                     {report.argumentFlow.length}

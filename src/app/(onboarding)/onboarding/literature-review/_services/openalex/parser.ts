@@ -7,7 +7,133 @@ import {
 import type { RawPaper, RefMetadata } from "../literature-review-papers";
 
 /**
- * Parses OpenAlex work records into RawPaper objects, filtering by type and language.
+ * Detects whether a raw OpenAlex work is a book review, editorial note,
+ * or journal review entry misclassified as an article.
+ *
+ * @param work - Raw OpenAlex work record
+ * @returns True if the work matches book review heuristics
+ */
+export function isSuspectedBookReview(work: Record<string, unknown>): boolean {
+  const type = work.type as string | undefined;
+  const title = ((work.title as string) ?? "").trim();
+  const primaryLoc = work.primary_location as
+    | {
+        source?: {
+          display_name?: string;
+          type?: string;
+        };
+      }
+    | null
+    | undefined;
+
+  const sourceName = primaryLoc?.source?.display_name ?? "";
+  const sourceType = primaryLoc?.source?.type ?? "";
+
+  // 1. Explicit OpenAlex Type
+  if (type === "book-review") {
+    return true;
+  }
+
+  // Legitimate books and chapters shouldn't be falsely flagged by publisher names
+  if (type === "book" || type === "book-chapter") {
+    const lowerTitle = title.toLowerCase();
+    return (
+      lowerTitle.startsWith("book review") ||
+      lowerTitle.startsWith("review of:") ||
+      lowerTitle.includes("(book review)")
+    );
+  }
+
+  const lowerTitle = title.toLowerCase();
+  const lowerSource = sourceName.toLowerCase();
+
+  // 2. Source checks (e.g. Review journals)
+  if (
+    lowerSource.includes("journal of reviews") ||
+    lowerSource.includes("book review") ||
+    sourceType === "review"
+  ) {
+    return true;
+  }
+
+  // 3. Explicit review prefixes / phrases in title
+  if (
+    lowerTitle.startsWith("book review") ||
+    lowerTitle.startsWith("review of:") ||
+    lowerTitle.startsWith("review of ") ||
+    lowerTitle.startsWith("review on:") ||
+    lowerTitle.startsWith("review on ") ||
+    lowerTitle.startsWith("a review of the book") ||
+    lowerTitle.includes("(book review)") ||
+    lowerTitle.includes("[book review]") ||
+    lowerTitle.endsWith("book review") ||
+    lowerTitle.endsWith("(recensión)") ||
+    lowerTitle.includes("recensão:") ||
+    lowerTitle.includes("compte rendu")
+  ) {
+    return true;
+  }
+
+  // 4. Pagination / Physical Book Metadata embedded in Title (e.g. "Pp. 265", "Pp XIII, 265", "págs.")
+  if (
+    /\bpp\.?\s*([0-9ivxlcdm]+|\d+)/i.test(title) ||
+    /\bpágs\.?/i.test(title) ||
+    /\b\d+\s*pp\b/i.test(title) ||
+    /\b\d+\s*pages\b/i.test(title)
+  ) {
+    return true;
+  }
+
+  // 5. Publisher/City embedded in Title of an Article (articles don't have "London: Longman" or "Londres: Routledge" in title unless reviewing a book)
+  const publisherKeywords = [
+    "routledge",
+    "cambridge:",
+    "oxford:",
+    "polity",
+    "sage",
+    "pearson",
+    "springer",
+    "palgrave",
+    "longman",
+    "londres:",
+    "london:",
+    "new york:",
+  ];
+  if (publisherKeywords.some((kw) => lowerTitle.includes(kw))) {
+    if (!lowerTitle.startsWith("in ") && !lowerTitle.includes("in: ")) {
+      return true;
+    }
+  }
+
+  // 6. Title starts with "Author Name, Title" pattern where listed name is NOT in authors list
+  // Example: "Norman Fairclough, Analyzing discourse..." (Actual author in authorships is Seyyed‐Abdolhamid Mirhosseini)
+  const authorCommaMatch = title.match(
+    /^([A-ZÇĞİÖŞÜ][a-zA-ZçğıöşüÇĞİÖŞÜ\s\.\-]{2,30}),\s+([A-ZÇĞİÖŞÜ].*)/,
+  );
+  if (authorCommaMatch) {
+    const titleAuthorPart = authorCommaMatch[1].toLowerCase().trim();
+    const authorships = work.authorships as
+      { author?: { display_name?: string } }[] | null | undefined;
+    const actualAuthors = (authorships ?? [])
+      .map((a) => a.author?.display_name?.toLowerCase() ?? "")
+      .filter(Boolean);
+
+    const authorMatches = actualAuthors.some(
+      (a) =>
+        a.includes(titleAuthorPart) ||
+        titleAuthorPart.includes(a.split(" ").pop() || "___"),
+    );
+
+    if (!authorMatches && actualAuthors.length > 0) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
+/**
+ * Parses OpenAlex work records into RawPaper objects, filtering by type, language, and book-review heuristics.
  *
  * @param results - The raw OpenAlex work records to parse.
  * @returns The parsed raw papers.
@@ -21,7 +147,8 @@ export function parseOpenAlexResults(
     const isArticleOrBook =
       type === "article" || type === "book-chapter" || type === "book";
     const isAllowedLang = !lang || lang === "en" || lang === "tr";
-    return isArticleOrBook && isAllowedLang;
+    const isReview = isSuspectedBookReview(work);
+    return isArticleOrBook && isAllowedLang && !isReview;
   });
 
   return results.map((work) => {

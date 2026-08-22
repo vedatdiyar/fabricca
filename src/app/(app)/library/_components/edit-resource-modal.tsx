@@ -1,9 +1,9 @@
 "use client";
 
 import React from "react";
-import { X, Loader2, Pencil } from "lucide-react";
+import { Loader2, Pencil } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
+import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { useEditResourceForm } from "../_hooks/use-edit-resource-form";
 import { BoxSelectionGrid } from "./box-selection-grid";
 import { ResourceMetadataFields } from "./resource-metadata-fields";
@@ -16,7 +16,7 @@ interface EditResourceModalProps {
   onUpdateSuccess: (updatedResource: LibraryResourceItem) => void;
 }
 
-interface EditResourceFormProps {
+interface EditResourceDialogProps {
   onClose: () => void;
   resource: LibraryResourceItem;
   onUpdateSuccess: (updatedResource: LibraryResourceItem) => void;
@@ -29,13 +29,13 @@ interface EditResourceFormProps {
  * @param root0.onClose - Callback invoked when the form is closed.
  * @param root0.resource - Resource being edited.
  * @param root0.onUpdateSuccess - Callback invoked with the updated resource after a successful save.
- * @returns The edit resource form markup.
+ * @returns The edit resource dialog markup.
  */
-function EditResourceForm({
+function EditResourceDialog({
   onClose,
   resource,
   onUpdateSuccess,
-}: EditResourceFormProps) {
+}: EditResourceDialogProps) {
   const {
     formFields,
     setField,
@@ -49,81 +49,86 @@ function EditResourceForm({
   } = useEditResourceForm({ resource, onClose, onUpdateSuccess });
 
   return (
-    <Card className="max-w-xl w-full rounded-md overflow-hidden max-h-[85vh] flex flex-col">
-      <div className="flex items-center justify-between border-b border-border p-5 bg-muted/20">
-        <div className="flex items-center gap-2">
-          <div className="p-2 rounded-lg bg-primary/10 text-primary">
-            <Pencil className="h-5 w-5" />
-          </div>
-          <div>
-            <h3 className="font-serif text-lg font-medium tracking-tight text-foreground">
-              Eser Künyesini Düzenle
-            </h3>
-            <p className="text-xs text-muted-foreground">
-              Akademik eserin başlık, yazar ve yayın bilgilerini güncelleyin.
-            </p>
-          </div>
-        </div>
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={onClose}
-          disabled={isSubmitting}
-          className="h-8 w-8 rounded-full"
-        >
-          <X className="h-4 w-4" />
-        </Button>
-      </div>
-
-      <form
-        onSubmit={handleSubmit}
-        className="p-6 space-y-4 overflow-y-auto flex-1"
+    <Dialog
+      open
+      onOpenChange={(next) => {
+        if (!next && !isSubmitting) onClose();
+      }}
+    >
+      <DialogContent
+        className="max-w-xl max-h-[85vh] flex flex-col overflow-hidden rounded-md p-0 gap-0"
+        onEscapeKeyDown={(e) => isSubmitting && e.preventDefault()}
+        onInteractOutside={(e) => isSubmitting && e.preventDefault()}
       >
-        <ResourceMetadataFields fields={formFields} onFieldChange={setField} />
-
-        {parentBoxes.length > 0 && (
-          <div className="space-y-3 pt-2 border-t border-border/40">
-            <BoxSelectionGrid
-              parentBoxes={parentBoxes}
-              selectedParentId={selectedParentId}
-              selectedSubBoxId={selectedSubBoxId}
-              onParentChange={setParentId}
-              onSubBoxChange={setSubBoxId}
-              variant="edit"
-              title="Bağlı Konu Kutusu (Box)"
-            />
+        <div className="flex items-center justify-between border-b border-border p-5 bg-muted/20">
+          <div className="flex items-center gap-2">
+            <div className="p-2 rounded-lg bg-primary/10 text-primary">
+              <Pencil className="h-5 w-5" />
+            </div>
+            <div>
+              <h3 className="font-serif text-lg font-medium tracking-tight text-foreground">
+                Eser Künyesini Düzenle
+              </h3>
+              <p className="text-xs text-muted-foreground">
+                Akademik eserin başlık, yazar ve yayın bilgilerini güncelleyin.
+              </p>
+            </div>
           </div>
-        )}
-
-        <div className="flex items-center justify-end gap-3 pt-4 border-t border-border">
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={onClose}
-            disabled={isSubmitting}
-          >
-            İptal
-          </Button>
-          <Button
-            type="submit"
-            variant="default"
-            size="sm"
-            disabled={isSubmitting}
-            className="gap-2 font-medium"
-          >
-            {isSubmitting ? (
-              <>
-                <Loader2 className="h-4 w-4 animate-spin" />
-                Güncelleniyor...
-              </>
-            ) : (
-              "Değişiklikleri Kaydet"
-            )}
-          </Button>
         </div>
-      </form>
-    </Card>
+
+        <form
+          onSubmit={handleSubmit}
+          className="p-6 space-y-4 overflow-y-auto flex-1"
+        >
+          <ResourceMetadataFields
+            fields={formFields}
+            onFieldChange={setField}
+          />
+
+          {parentBoxes.length > 0 && (
+            <div className="space-y-3 pt-2 border-t border-border/40">
+              <BoxSelectionGrid
+                parentBoxes={parentBoxes}
+                selectedParentId={selectedParentId}
+                selectedSubBoxId={selectedSubBoxId}
+                onParentChange={setParentId}
+                onSubBoxChange={setSubBoxId}
+                variant="edit"
+                title="Bağlı Konu Kutusu (Box)"
+              />
+            </div>
+          )}
+
+          <div className="flex items-center justify-end gap-3 pt-4 border-t border-border">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={onClose}
+              disabled={isSubmitting}
+            >
+              İptal
+            </Button>
+            <Button
+              type="submit"
+              variant="default"
+              size="sm"
+              disabled={isSubmitting}
+              className="gap-2 font-medium"
+            >
+              {isSubmitting ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Güncelleniyor...
+                </>
+              ) : (
+                "Değişiklikleri Kaydet"
+              )}
+            </Button>
+          </div>
+        </form>
+      </DialogContent>
+    </Dialog>
   );
 }
 
@@ -146,13 +151,10 @@ export function EditResourceModal({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in-0">
-      <EditResourceForm
-        key={`${resource.id}-${isOpen}`}
-        resource={resource}
-        onClose={onClose}
-        onUpdateSuccess={onUpdateSuccess}
-      />
-    </div>
+    <EditResourceDialog
+      resource={resource}
+      onClose={onClose}
+      onUpdateSuccess={onUpdateSuccess}
+    />
   );
 }

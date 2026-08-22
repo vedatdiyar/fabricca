@@ -17,83 +17,83 @@ interface OutlineMetricsStripProps {
  */
 export function OutlineMetricsStrip({ metrics }: OutlineMetricsStripProps) {
   return (
-    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
       {/* Metric 1: Root Chapters */}
       <Card className="border border-border bg-card transition-colors hover:border-border/80">
-        <CardContent className="flex items-center justify-between p-4">
-          <div className="space-y-1 min-w-0 flex-1">
+        <CardContent className="flex items-center justify-between p-3">
+          <div className="space-y-0.5 min-w-0 flex-1">
             <span className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">
               Ana Bölümler
             </span>
-            <p className="font-serif text-lg font-bold tracking-tight text-foreground">
+            <p className="font-sans text-lg font-semibold tracking-tight text-foreground">
               {metrics.totalRoots} Bölüm
             </p>
-            <p className="font-sans text-xs text-muted-foreground">
+            <p className="font-sans text-[10px] text-muted-foreground truncate">
               Hiyerarşik ana başlıklar
             </p>
           </div>
-          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md border border-primary/20 bg-primary/10 text-primary">
-            <BookOpen className="h-4.5 w-4.5" />
+          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-primary/20 bg-primary/10 text-primary">
+            <BookOpen className="h-4 w-4" />
           </div>
         </CardContent>
       </Card>
 
       {/* Metric 2: Sub-sections */}
       <Card className="border border-border bg-card transition-colors hover:border-border/80">
-        <CardContent className="flex items-center justify-between p-4">
-          <div className="space-y-1 min-w-0 flex-1">
+        <CardContent className="flex items-center justify-between p-3">
+          <div className="space-y-0.5 min-w-0 flex-1">
             <span className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">
               Alt Başlıklar
             </span>
-            <p className="font-serif text-lg font-bold tracking-tight text-foreground">
+            <p className="font-sans text-lg font-semibold tracking-tight text-foreground">
               {metrics.totalSubs} Alt Bölüm
             </p>
-            <p className="font-sans text-xs text-muted-foreground">
+            <p className="font-sans text-[10px] text-muted-foreground truncate">
               Detaylı alt araştırma başlıkları
             </p>
           </div>
-          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md border border-purple-500/20 bg-purple-500/10 text-purple-400">
-            <Layers className="h-4.5 w-4.5" />
+          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-primary/20 bg-primary/10 text-primary">
+            <Layers className="h-4 w-4" />
           </div>
         </CardContent>
       </Card>
 
       {/* Metric 3: Linked Sources */}
       <Card className="border border-border bg-card transition-colors hover:border-border/80">
-        <CardContent className="flex items-center justify-between p-4">
-          <div className="space-y-1 min-w-0 flex-1">
+        <CardContent className="flex items-center justify-between p-3">
+          <div className="space-y-0.5 min-w-0 flex-1">
             <span className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">
               Bağlı Literatür
             </span>
-            <p className="font-serif text-lg font-bold tracking-tight text-foreground">
+            <p className="font-sans text-lg font-semibold tracking-tight text-foreground">
               {metrics.totalSources} Kaynak
             </p>
-            <p className="font-sans text-xs text-muted-foreground">
+            <p className="font-sans text-[10px] text-muted-foreground truncate">
               Bölümlere doğrudan bağlı eserler
             </p>
           </div>
-          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md border border-amber-500/20 bg-amber-500/10 text-amber-400">
-            <FileText className="h-4.5 w-4.5" />
+          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-primary/20 bg-primary/10 text-primary">
+            <FileText className="h-4 w-4" />
           </div>
         </CardContent>
       </Card>
 
       {/* Metric 4: Pinned Citation Cards */}
       <Card className="border border-border bg-card transition-colors hover:border-border/80">
-        <CardContent className="flex items-center justify-between p-4">
-          <div className="space-y-1 min-w-0 flex-1">
+        <CardContent className="flex items-center justify-between p-3">
+          <div className="space-y-0.5 min-w-0 flex-1">
             <span className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">
               İliştirilmiş Fişler
             </span>
-            <p className="font-serif text-lg font-bold tracking-tight text-foreground">
+            <p className="font-sans text-lg font-semibold tracking-tight text-foreground">
               {metrics.totalCards} Fiş
             </p>
-            <p className="font-sans text-xs text-muted-foreground">
+            <p className="font-sans text-[10px] text-muted-foreground truncate">
               Bölümlere bağlı alıntı kartları
             </p>
           </div>
-          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md border border-emerald-500/20 bg-emerald-500/10 text-emerald-400">
-            <Quote className="h-4.5 w-4.5" />
+          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-primary/20 bg-primary/10 text-primary">
+            <Quote className="h-4 w-4" />
           </div>
         </CardContent>
       </Card>

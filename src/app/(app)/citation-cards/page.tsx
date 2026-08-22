@@ -1,11 +1,12 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
-import { toast } from "sonner";
+import { useState } from "react";
 import { CitationCardsPageHeader } from "./_components/page-header/citation-page-header";
 import { CitationCardsSectionHeading } from "./_components/page-header/citation-section-heading";
 import { CitationCardsSkeleton } from "./_components/citation-cards-skeleton";
 import { useCitationCardsFilter } from "./_hooks/use-citation-cards-filter";
+import { useCitationCardsData } from "./_hooks/use-citation-cards-data";
+import { useCardMutations } from "./_hooks/use-card-mutations";
 import { CitationOutlineSidebar } from "./_components/citation-outline-sidebar";
 import { CitationFilterBar } from "./_components/citation-filter-bar";
 import { AiMappingBanner } from "./_components/ai-mapping-banner";
@@ -13,20 +14,7 @@ import { CitationCard } from "./_components/citation-card";
 import { CitationCardDialog } from "./_components/citation-card-dialog";
 import { CitationCardsEmptyState } from "./_components/citation-cards-empty-state";
 import { CitationSynthesisView } from "./_components/citation-synthesis-view";
-import {
-  getCitationCardsDataAction,
-  createCitationCardAction,
-  updateCitationCardAction,
-  deleteCitationCardAction,
-  moveCitationCardBoxAction,
-  updateCardOutlineLinkAction,
-} from "./actions";
-import type {
-  BoxItem,
-  CitationCardItem,
-  OutlineItem,
-  SourceItem,
-} from "./_lib/types";
+import type { CitationCardItem } from "./_lib/types";
 
 /**
  * Citation Cards & Thesis Workbench (Alıntı Fişleri & Tez Masası) main page component.
@@ -36,17 +24,7 @@ import type {
  * - Centered Shadcn Dialog for card details and editing.
  */
 export default function CitationCardsPage() {
-  const [isLoading, setIsLoading] = useState(true);
   const [isSynthesisOpen, setIsSynthesisOpen] = useState(false);
-  const [data, setData] = useState<{
-    cards: CitationCardItem[];
-    boxes: BoxItem[];
-    sources: SourceItem[];
-    outlines: OutlineItem[];
-  }>({ cards: [], boxes: [], sources: [], outlines: [] });
-
-  const { filters, setFilter, clearFilters, filteredCards, counts } =
-    useCitationCardsFilter(data.cards);
 
   // Modal State (View / Edit / Add)
   const [dialog, setDialog] = useState<{
@@ -55,44 +33,11 @@ export default function CitationCardsPage() {
     cardToEdit: CitationCardItem | null;
   }>({ open: false, mode: "view", cardToEdit: null });
 
-  /**
-   * Refreshes citation cards data from database.
-   */
-  const refreshData = useCallback(async () => {
-    const res = await getCitationCardsDataAction();
-    if (res.success) {
-      setData({
-        cards: res.data.cards,
-        boxes: res.data.boxes,
-        sources: res.data.sources,
-        outlines: res.data.outlines,
-      });
-    } else {
-      toast.error(res.error);
-    }
-  }, []);
+  const { isLoading, data, refreshData, removeCardLocally } =
+    useCitationCardsData();
 
-  useEffect(() => {
-    let isMounted = true;
-    getCitationCardsDataAction().then((res) => {
-      if (!isMounted) return;
-      if (res.success) {
-        setData({
-          cards: res.data.cards,
-          boxes: res.data.boxes,
-          sources: res.data.sources,
-          outlines: res.data.outlines,
-        });
-      } else {
-        toast.error(res.error);
-      }
-      setIsLoading(false);
-    });
-
-    return () => {
-      isMounted = false;
-    };
-  }, []);
+  const { filters, setFilter, clearFilters, filteredCards, counts } =
+    useCitationCardsFilter(data.cards);
 
   /** Handlers for card dialogs & actions */
   const handleOpenAddDialog = () => {
@@ -107,86 +52,10 @@ export default function CitationCardsPage() {
     setDialog({ open: true, mode: "edit", cardToEdit: card });
   };
 
-  const handleSaveCard = async (
-    cardData: Omit<CitationCardItem, "id" | "createdAt" | "updatedAt"> & {
-      id?: number;
-    },
-  ) => {
-    const targetOutlineId =
-      cardData.outlineIds && cardData.outlineIds.length > 0
-        ? cardData.outlineIds[0]
-        : null;
-
-    if (cardData.id) {
-      // Update existing card
-      const res = await updateCitationCardAction({
-        id: cardData.id,
-        sourceId: cardData.sourceId,
-        boxId: cardData.boxId,
-        noteType: cardData.noteType,
-        pageNumber: cardData.pageNumber,
-        content: cardData.content,
-        comment: cardData.comment,
-      });
-
-      if (res.success) {
-        await updateCardOutlineLinkAction({
-          annotationId: cardData.id,
-          outlineId: targetOutlineId,
-        });
-        toast.success("Alıntı fişi başarıyla güncellendi.");
-        await refreshData();
-      } else {
-        toast.error(res.error);
-      }
-    } else {
-      // Add new card
-      const res = await createCitationCardAction({
-        sourceId: cardData.sourceId,
-        boxId: cardData.boxId,
-        noteType: cardData.noteType,
-        pageNumber: cardData.pageNumber,
-        content: cardData.content,
-        comment: cardData.comment,
-      });
-
-      if (res.success) {
-        if (targetOutlineId !== null) {
-          await updateCardOutlineLinkAction({
-            annotationId: res.data.id,
-            outlineId: targetOutlineId,
-          });
-        }
-        toast.success("Yeni alıntı fişi başarıyla eklendi.");
-        await refreshData();
-      } else {
-        toast.error(res.error);
-      }
-    }
-  };
-
-  const handleDeleteCard = async (id: number) => {
-    const res = await deleteCitationCardAction(id);
-    if (res.success) {
-      setData((prev) => ({
-        ...prev,
-        cards: prev.cards.filter((c) => c.id !== id),
-      }));
-      toast.success("Alıntı fişi silindi.");
-    } else {
-      toast.error(res.error);
-    }
-  };
-
-  const handleMoveBox = async (cardId: number, targetBoxId: number) => {
-    const res = await moveCitationCardBoxAction({ cardId, targetBoxId });
-    if (res.success) {
-      toast.success("Fiş yeni konu kutusuna taşındı.");
-      await refreshData();
-    } else {
-      toast.error(res.error);
-    }
-  };
+  const { handleSaveCard, handleDeleteCard, handleMoveBox } = useCardMutations({
+    refreshData,
+    removeCardLocally,
+  });
 
   if (isLoading) {
     return <CitationCardsSkeleton />;

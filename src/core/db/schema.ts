@@ -422,8 +422,16 @@ export const taskPriorityEnum = pgEnum("task_priority", [
   "MEDIUM",
   "LOW",
 ]);
+export const taskTypeEnum = pgEnum("task_type", [
+  "READING",
+  "NOTE_TAKING",
+  "CARD_SORTING",
+  "BOX_GAP",
+  "ADVISOR_REQUEST",
+  "MANUAL",
+]);
 
-/** Kanban Tasks table — user-added academic tasks linked to boxes; preserved (SET NULL) when a box is deleted. */
+/** Kanban Tasks table — academic tasks linked to boxes/sources with ADHD pacing & auto-generation support. */
 export const tasks = pgTable(
   "tasks",
   {
@@ -431,11 +439,18 @@ export const tasks = pgTable(
     userId: integer()
       .notNull()
       .references(() => users.id, { onDelete: "cascade" }),
-    boxId: integer().references(() => boxes.id, {
+    boxId: integer("box_id").references(() => boxes.id, {
       onDelete: "set null",
     }),
+    sourceId: integer("source_id").references(() => sources.id, {
+      onDelete: "cascade",
+    }),
+    taskType: taskTypeEnum("task_type").default("MANUAL").notNull(),
     title: text().notNull(),
     description: text(),
+    targetUrl: text("target_url"),
+    isAutomated: boolean("is_automated").default(false).notNull(),
+    metadata: jsonb("metadata").$type<Record<string, unknown>>(),
     status: taskStatusEnum("status").default("TODO").notNull(),
     priority: taskPriorityEnum("priority").default("MEDIUM").notNull(),
     createdAt: timestamp().defaultNow().notNull(),
@@ -444,12 +459,15 @@ export const tasks = pgTable(
   (table) => [
     index("idx_tasks_user_id").on(table.userId),
     index("idx_tasks_box_id").on(table.boxId),
+    index("idx_tasks_source_id").on(table.sourceId),
   ],
 );
 
 export type Task = InferSelectModel<typeof tasks>;
 
 export type NewTask = InferInsertModel<typeof tasks>;
+
+export type TaskType = (typeof taskTypeEnum.enumValues)[number];
 
 export const usersRelations = relations(users, ({ one, many }) => ({
   matrix: one(matrices),
@@ -557,6 +575,7 @@ export const sourcesRelations = relations(sources, ({ one, many }) => ({
     references: [critiques.sourceId],
   }),
   outlineSources: many(outlineSources),
+  tasks: many(tasks),
 }));
 
 export const critiquesRelations = relations(critiques, ({ one }) => ({
@@ -581,6 +600,10 @@ export const tasksRelations = relations(tasks, ({ one }) => ({
   box: one(boxes, {
     fields: [tasks.boxId],
     references: [boxes.id],
+  }),
+  source: one(sources, {
+    fields: [tasks.sourceId],
+    references: [sources.id],
   }),
 }));
 

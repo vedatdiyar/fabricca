@@ -19,7 +19,7 @@ export async function searchOpenAlex(
     "search.semantic": trimmedQuery,
     per_page: String(perPage),
     select:
-      "id,title,type,authorships,relevance_score,doi,referenced_works,language,abstract_inverted_index,cited_by_count",
+      "id,title,type,authorships,relevance_score,doi,referenced_works,language,abstract_inverted_index,cited_by_count,primary_location",
   });
 
   const apiKey = process.env.OPENALEX_API_KEY;

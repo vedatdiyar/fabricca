@@ -133,49 +133,20 @@ export function getBoxTypeBadgeConfig(boxType: ThesisBoxType) {
   };
   switch (boxType) {
     case "THEORETICAL_FRAMEWORK":
-      return {
-        ...base,
-        className:
-          "bg-purple-500/10 text-purple-600 dark:text-purple-400 border-purple-500/20",
-        dotClassName: "bg-purple-500",
-        textClassName: "text-purple-600 dark:text-purple-400",
-      };
     case "METHODOLOGY":
-      return {
-        ...base,
-        className:
-          "bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20",
-        dotClassName: "bg-blue-500",
-        textClassName: "text-blue-600 dark:text-blue-400",
-      };
     case "SUBJECT_PROBLEM":
-      return {
-        ...base,
-        className:
-          "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20",
-        dotClassName: "bg-amber-500",
-        textClassName: "text-amber-600 dark:text-amber-400",
-      };
     case "PRIMARY_MATERIAL":
-      return {
-        ...base,
-        className:
-          "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20",
-        dotClassName: "bg-emerald-500",
-        textClassName: "text-emerald-600 dark:text-emerald-400",
-      };
     case "RELATED_THESES":
       return {
         ...base,
-        className:
-          "bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/20",
-        dotClassName: "bg-rose-500",
-        textClassName: "text-rose-600 dark:text-rose-400",
+        className: "bg-secondary text-secondary-foreground border-border",
+        dotClassName: "bg-primary",
+        textClassName: "text-foreground",
       };
     default:
       return {
         label: "Genel",
-        className: "bg-muted text-muted-foreground border-border",
+        className: "bg-secondary text-secondary-foreground border-border",
         dotClassName: "bg-muted-foreground",
         textClassName: "text-muted-foreground",
       };

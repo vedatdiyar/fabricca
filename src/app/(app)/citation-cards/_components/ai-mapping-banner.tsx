@@ -62,11 +62,11 @@ export function AiMappingBanner({
   };
 
   return (
-    <Card className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 p-3 rounded-md border-amber-500/30 bg-amber-500/5 text-amber-900 dark:text-amber-200 animate-in fade-in-50 duration-200">
+    <Card className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 p-3 rounded-md border border-warning/20 bg-warning/10 text-foreground animate-in fade-in-50 duration-200">
       <div className="flex items-center gap-2 text-xs">
-        <AlertCircle className="h-4 w-4 text-amber-600 dark:text-amber-400 shrink-0" />
+        <AlertCircle className="h-4 w-4 text-warning shrink-0" />
         <span>
-          <strong className="font-semibold text-amber-700 dark:text-amber-300">
+          <strong className="font-semibold text-warning">
             {unassignedCount} alıntı fişiniz
           </strong>{" "}
           henüz bir tez bölümüne atanmadı.
@@ -77,7 +77,7 @@ export function AiMappingBanner({
         onClick={handleAutoMap}
         disabled={isMapping}
         size="sm"
-        className="gap-1.5 h-8 text-xs font-medium bg-amber-600 hover:bg-amber-700 text-white shrink-0 w-full sm:w-auto"
+        className="gap-1.5 h-8 text-xs font-medium bg-warning text-warning-foreground hover:bg-warning/90 shrink-0 w-full sm:w-auto"
       >
         {isMapping ? (
           <>

@@ -191,7 +191,7 @@ export function OfficeActionToolbar({
             onClick={handleOpenTaskDialog}
             className="text-xs h-8 gap-1.5 border-border bg-background hover:bg-muted text-foreground cursor-pointer"
           >
-            <CheckSquare className="h-3.5 w-3.5 text-amber-500" />
+            <CheckSquare className="h-3.5 w-3.5 text-primary" />
             <span>Revizyon Görevi Oluştur</span>
           </Button>
         </div>

@@ -58,12 +58,12 @@ export function OutlineSubItem({
       {(sourcesCount > 0 || cardsCount > 0) && (
         <div className="flex items-center gap-1.5 shrink-0 pt-0.5">
           {sourcesCount > 0 && (
-            <span className="font-mono text-[10px] text-amber-500">
+            <span className="font-mono text-[10px] text-muted-foreground">
               {sourcesCount}k
             </span>
           )}
           {cardsCount > 0 && (
-            <span className="flex items-center gap-0.5 font-mono text-[10px] text-emerald-500">
+            <span className="flex items-center gap-0.5 font-mono text-[10px] text-primary">
               <Quote className="h-2.5 w-2.5" />
               {cardsCount}
             </span>

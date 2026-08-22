@@ -1,22 +1,30 @@
 "use client";
 
 import { useState } from "react";
-import { X, Loader2 } from "lucide-react";
+import { Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import type { Box } from "@/core/db/schema";
+import type { Box, TaskType } from "@/core/db/schema";
 
 interface TaskFormModalProps {
   mode: "add" | "edit";
   open: boolean;
   initialTitle?: string;
   initialPriority?: "HIGH" | "MEDIUM" | "LOW";
+  initialTaskType?: TaskType;
   initialBoxId?: number | null;
   onSave: (data: {
     title: string;
     priority: "HIGH" | "MEDIUM" | "LOW";
+    taskType?: TaskType;
     thesisBoxId?: number | null;
   }) => Promise<boolean>;
   onClose: () => void;
@@ -24,17 +32,9 @@ interface TaskFormModalProps {
 }
 
 /**
- * Shared form modal for both the add and edit task flows.
+ * Shared form modal for both the add and edit task flows with academic task types.
  *
- * @param root0 - Component props.
- * @param root0.mode - Whether the modal operates in add or edit mode.
- * @param root0.open - Whether the modal is visible.
- * @param root0.initialTitle - Optional initial value for the task title.
- * @param root0.initialPriority - Optional initial value for the task priority.
- * @param root0.initialBoxId - Optional initial thesis box id for the task.
- * @param root0.onSave - Async callback invoked with the form data on submit.
- * @param root0.onClose - Callback invoked when the modal is closed.
- * @param root0.boxes - Topic boxes available for task assignment.
+ * @param props - Component props.
  * @returns The rendered task form modal.
  */
 export function TaskFormModal({
@@ -42,6 +42,7 @@ export function TaskFormModal({
   open,
   initialTitle = "",
   initialPriority = "MEDIUM",
+  initialTaskType = "MANUAL",
   initialBoxId = null,
   onSave,
   onClose,
@@ -51,17 +52,22 @@ export function TaskFormModal({
   const [priority, setPriority] = useState<"HIGH" | "MEDIUM" | "LOW">(
     initialPriority,
   );
+  const [taskType, setTaskType] = useState<TaskType>(initialTaskType);
   const [boxId, setBoxId] = useState(
     initialBoxId != null ? String(initialBoxId) : "",
   );
   const [saving, setSaving] = useState(false);
 
-  if (!open) return null;
-
   const resetForm = () => {
     setTitle(initialTitle);
     setPriority(initialPriority);
+    setTaskType(initialTaskType);
     setBoxId(initialBoxId != null ? String(initialBoxId) : "");
+  };
+
+  const handleClose = () => {
+    resetForm();
+    onClose();
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -72,6 +78,7 @@ export function TaskFormModal({
       const success = await onSave({
         title: title.trim(),
         priority,
+        taskType,
         thesisBoxId: boxId ? Number(boxId) : null,
       });
       if (success) {
@@ -86,30 +93,27 @@ export function TaskFormModal({
   const isAdd = mode === "add";
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm p-4 animate-in fade-in duration-200">
-      <Card className="w-full max-w-md rounded-md border border-border bg-card p-6 relative space-y-4 shadow-md">
-        <button
-          type="button"
-          onClick={() => {
-            resetForm();
-            onClose();
-          }}
-          className="absolute top-4 right-4 flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-secondary/40 transition-colors"
-          aria-label="Kapat"
-        >
-          <X className="h-4 w-4" />
-        </button>
-
-        <div className="space-y-1">
-          <h3 className="font-serif text-lg font-semibold tracking-tight text-foreground">
-            {isAdd ? "Yeni Tez Görevi Ekle" : "Görevi Düzenle"}
-          </h3>
-          <p className="font-sans text-xs text-muted-foreground leading-relaxed">
+    <Dialog
+      open={open}
+      onOpenChange={(next) => {
+        if (!next) handleClose();
+      }}
+    >
+      <DialogContent
+        className="max-w-md rounded-lg border-border bg-card gap-4"
+        onEscapeKeyDown={(e) => saving && e.preventDefault()}
+        onInteractOutside={(e) => saving && e.preventDefault()}
+      >
+        <DialogHeader>
+          <DialogTitle className="font-serif text-lg font-semibold tracking-tight text-foreground">
+            {isAdd ? "Yeni Akademik Görev Ekle" : "Görevi Düzenle"}
+          </DialogTitle>
+          <DialogDescription className="font-sans text-xs text-muted-foreground leading-relaxed">
             {isAdd
-              ? "Kanban tahtasına takip edeceğiniz akademik bir araştırma adımı ekleyin."
-              : "Seçili görevin başlık, öncelik veya konu kutusu bilgisini güncelleyin."}
-          </p>
-        </div>
+              ? "Danışmanınızla görüşmenizden çıkan bir talebi veya kişisel tez hedefinizi ekleyin."
+              : "Seçili görevin başlık, tür veya konu kutusu bilgisini güncelleyin."}
+          </DialogDescription>
+        </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-4 pt-1">
           <div className="space-y-1.5">
@@ -125,13 +129,36 @@ export function TaskFormModal({
               required
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              placeholder="Örn: Metodoloji bölümü taslağını oluştur"
+              placeholder="Örn: Danışmanın istediği metodoloji revizyonunu yap"
               className="h-9 font-sans text-sm rounded-md border-border bg-background"
               aria-label="Görev Başlığı"
             />
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="space-y-1.5">
+              <Label
+                htmlFor="taskFormType"
+                className="font-sans text-xs font-medium text-muted-foreground"
+              >
+                Görev Türü
+              </Label>
+              <select
+                id="taskFormType"
+                value={taskType}
+                onChange={(e) => setTaskType(e.target.value as TaskType)}
+                className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1.5 text-xs text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary focus-visible:border-primary transition-colors cursor-pointer"
+                aria-label="Görev Türü"
+              >
+                <option value="ADVISOR_REQUEST">Danışman Talebi</option>
+                <option value="MANUAL">Kişisel Hedef</option>
+                <option value="READING">Kaynak Okuma</option>
+                <option value="NOTE_TAKING">Not & Alıntı</option>
+                <option value="CARD_SORTING">Fiş Tasnifi</option>
+                <option value="BOX_GAP">Literatür Tarama</option>
+              </select>
+            </div>
+
             <div className="space-y-1.5">
               <Label
                 htmlFor="taskFormPriority"
@@ -153,39 +180,36 @@ export function TaskFormModal({
                 <option value="LOW">Düşük Öncelik</option>
               </select>
             </div>
+          </div>
 
-            <div className="space-y-1.5">
-              <Label
-                htmlFor="taskFormBoxSelect"
-                className="font-sans text-xs font-medium text-muted-foreground"
-              >
-                İlişkili Konu Kutusu
-              </Label>
-              <select
-                id="taskFormBoxSelect"
-                value={boxId}
-                onChange={(e) => setBoxId(e.target.value)}
-                className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1.5 text-xs text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary focus-visible:border-primary transition-colors cursor-pointer"
-                aria-label="İlişkili Konu Kutusu"
-              >
-                <option value="">Genel / Bağlantısız</option>
-                {boxes.map((box) => (
-                  <option key={box.id} value={box.id}>
-                    {box.title}
-                  </option>
-                ))}
-              </select>
-            </div>
+          <div className="space-y-1.5">
+            <Label
+              htmlFor="taskFormBoxSelect"
+              className="font-sans text-xs font-medium text-muted-foreground"
+            >
+              İlişkili Konu Kutusu
+            </Label>
+            <select
+              id="taskFormBoxSelect"
+              value={boxId}
+              onChange={(e) => setBoxId(e.target.value)}
+              className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1.5 text-xs text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary focus-visible:border-primary transition-colors cursor-pointer"
+              aria-label="İlişkili Konu Kutusu"
+            >
+              <option value="">Genel / Bağlantısız</option>
+              {boxes.map((box) => (
+                <option key={box.id} value={box.id}>
+                  {box.title}
+                </option>
+              ))}
+            </select>
           </div>
 
           <div className="flex justify-end gap-2.5 pt-3 border-t border-border/40">
             <Button
               type="button"
               variant="ghost"
-              onClick={() => {
-                resetForm();
-                onClose();
-              }}
+              onClick={handleClose}
               className="rounded-md font-sans text-xs px-3.5 h-8.5"
             >
               İptal
@@ -203,7 +227,7 @@ export function TaskFormModal({
             </Button>
           </div>
         </form>
-      </Card>
-    </div>
+      </DialogContent>
+    </Dialog>
   );
 }

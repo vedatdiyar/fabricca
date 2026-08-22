@@ -73,7 +73,7 @@ export function SectionSourcesList({
         <div className="space-y-3">
           <div className="flex items-center justify-between gap-3">
             <div className="flex items-center gap-2">
-              <Quote className="h-4 w-4 text-emerald-500" />
+              <Quote className="h-4 w-4 text-primary" />
               <h4 className="font-sans text-sm font-semibold text-foreground">
                 İliştirilmiş Alıntı Kartları
               </h4>
@@ -133,7 +133,7 @@ export function SectionSourcesList({
         <div className="space-y-3">
           <div className="flex items-center justify-between gap-3">
             <div className="flex items-center gap-2">
-              <Link2 className="h-4 w-4 text-amber-500" />
+              <Link2 className="h-4 w-4 text-primary" />
               <h4 className="font-sans text-sm font-semibold text-foreground">
                 Kullanılan Kaynaklar
               </h4>

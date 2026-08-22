@@ -34,8 +34,8 @@ export function InspectorQuoteSection({
           >
             {copied ? (
               <>
-                <Check className="h-3 w-3 text-emerald-500" />
-                <span className="text-emerald-500">Kopyalandı</span>
+                <Check className="h-3 w-3 text-primary" />
+                <span className="text-primary">Kopyalandı</span>
               </>
             ) : (
               <>

@@ -111,11 +111,11 @@ export function SectionDetailCard({
         {/* Linked Citation Cards & Sources Summary Bar */}
         <div className="pt-2 border-t border-border/40 flex items-center gap-x-4 gap-y-2 flex-wrap">
           <span className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
-            <Quote className="h-3.5 w-3.5 text-emerald-500" />
+            <Quote className="h-3.5 w-3.5 text-primary" />
             <span>{cardsCount} Alıntı Kartı</span>
           </span>
           <span className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
-            <FileText className="h-3.5 w-3.5 text-amber-500" />
+            <FileText className="h-3.5 w-3.5 text-primary" />
             <span>{sourcesCount} Kaynak</span>
           </span>
         </div>

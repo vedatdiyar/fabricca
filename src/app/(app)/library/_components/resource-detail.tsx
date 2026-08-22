@@ -143,67 +143,47 @@ export function ResourceDetail({
         <div className="space-y-5">
           {/* Segmented Workspace Navigation Tabs */}
           <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border/40 pb-3">
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1 bg-muted/60 p-1 rounded-md border border-border/50">
               {/* Tab 1: 5 Boyutlu Eser Analizi (Öncelikli) */}
               <button
                 type="button"
                 onClick={() => setActiveWorkspaceTab("critique")}
-                className={`flex items-center gap-2 px-3.5 py-2 rounded-md text-xs font-medium transition-all ${
+                className={`flex items-center gap-2 px-3 py-1.5 rounded text-xs font-medium transition-all ${
                   activeWorkspaceTab === "critique"
-                    ? "bg-primary text-primary-foreground font-semibold shadow-xs"
-                    : "bg-muted/40 text-muted-foreground hover:text-foreground hover:bg-muted/70 border border-border/40"
+                    ? "bg-card text-foreground font-semibold border border-border/60 shadow-xs"
+                    : "text-muted-foreground hover:text-foreground hover:bg-card/30"
                 }`}
               >
-                <Sparkles className="h-4 w-4 shrink-0" />
+                <Sparkles className="h-3.5 w-3.5 text-primary shrink-0" />
                 <span>5 Boyutlu Eser Analizi</span>
-                <Badge
-                  variant="outline"
-                  className={`text-[10px] font-semibold px-1.5 py-0 border ${
-                    activeWorkspaceTab === "critique"
-                      ? "bg-primary-foreground/20 text-primary-foreground border-primary-foreground/30"
-                      : "bg-background text-muted-foreground border-border/60"
-                  }`}
-                >
+                <span className="text-xs px-1.5 py-0.2 rounded font-mono bg-muted text-muted-foreground border border-border/40">
                   {completedCritiqueCount}/5
-                </Badge>
-
-                {critique?.aiEvaluation && (
-                  <span
-                    className={`hidden sm:inline-flex items-center gap-1 text-[10px] font-bold px-1.5 py-0.5 rounded border ${
-                      activeWorkspaceTab === "critique"
-                        ? "bg-primary-foreground/20 text-primary-foreground border-primary-foreground/30"
-                        : "bg-success/10 text-success border-success/30"
-                    }`}
-                  >
-                    Skor: {critique.aiEvaluation.overallScore}/100
-                  </span>
-                )}
+                </span>
               </button>
 
               {/* Tab 2: Alıntı Fişleri & Notlar */}
               <button
                 type="button"
                 onClick={() => setActiveWorkspaceTab("notes")}
-                className={`flex items-center gap-2 px-3.5 py-2 rounded-md text-xs font-medium transition-all ${
+                className={`flex items-center gap-2 px-3 py-1.5 rounded text-xs font-medium transition-all ${
                   activeWorkspaceTab === "notes"
-                    ? "bg-primary text-primary-foreground font-semibold shadow-xs"
-                    : "bg-muted/40 text-muted-foreground hover:text-foreground hover:bg-muted/70 border border-border/40"
+                    ? "bg-card text-foreground font-semibold border border-border/60 shadow-xs"
+                    : "text-muted-foreground hover:text-foreground hover:bg-card/30"
                 }`}
               >
-                <BookMarked className="h-4 w-4 shrink-0" />
+                <BookMarked className="h-3.5 w-3.5 text-primary shrink-0" />
                 <span>Alıntı Fişleri & Notlar</span>
-                <Badge
-                  variant="outline"
-                  className={`text-[10px] font-semibold px-1.5 py-0 border ${
-                    activeWorkspaceTab === "notes"
-                      ? "bg-primary-foreground/20 text-primary-foreground border-primary-foreground/30"
-                      : "bg-background text-muted-foreground border-border/60"
-                  }`}
-                >
-                  {notes.length} Fiş
-                </Badge>
+                <span className="text-xs px-1.5 py-0.2 rounded font-mono bg-muted text-muted-foreground border border-border/40">
+                  {notes.length}
+                </span>
               </button>
             </div>
+
+            {critique?.aiEvaluation && (
+              <span className="inline-flex items-center text-xs font-mono px-2 py-1 rounded bg-primary/10 text-primary border border-primary/20 font-semibold">
+                Değerlendirme Skoru: {critique.aiEvaluation.overallScore}/100
+              </span>
+            )}
           </div>
 
           {/* WORKSPACE 1: 5-DIMENSIONAL CRITIQUE & AI AUDIT (Varsayılan) */}

@@ -3,7 +3,6 @@
 import { BookOpen } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { getBoxTypeBadgeConfig } from "@/lib/box-constants";
-import { formatPageNumber } from "@/lib/academic/utils";
 import type { CitationCardItem } from "../../_lib/types";
 
 interface InspectorSourceSectionProps {

@@ -38,72 +38,54 @@ type FieldConfig = {
   rows: number;
 };
 
-type SectionConfig = {
-  id: string;
-  title: string;
-  fields: FieldConfig[];
-};
-
-const MATRIX_SECTIONS: SectionConfig[] = [
+const MATRIX_FIELDS: FieldConfig[] = [
   {
-    id: "odakVeTeori",
-    title: "Çalışma Odağı ve Kuramsal Altyapı",
-    fields: [
-      {
-        key: "subjectProblem",
-        id: "subjectProblem",
-        number: "01",
-        Icon: Target,
-        label: "Araştırma Problemi, Aktörler ve Odak",
-        description:
-          "Neyi, hangi temel problemi çözmek veya hangi hipotezi test etmek için inceliyorsun? Hangi aktörleri, grupları, kurumları mercek altına alıyorsun? Bir araştırma konusu ile onu oluşturan aktörler birbirinden ayrıksı değildir.",
-        placeholder:
-          "Çalışmanızın araştırma problemini, odağını, incelediğiniz aktörleri/grupları/kurumları ve araştırma sorularınızı bütünleşik olarak detaylandırın...",
-        rows: 5,
-      },
-      {
-        key: "theoreticalFramework",
-        id: "theoreticalFramework",
-        number: "02",
-        Icon: Compass,
-        label: "Teorik ve Kavramsal Çerçeve",
-        description:
-          "Çalışmanı hangi teorik mercekle, modelle veya kavramsal yaklaşımla ele alıyorsun?",
-        placeholder:
-          "Temel aldığınız teorik merceği, kavramsal modelleri ve analitik yaklaşımınızı açıklayın...",
-        rows: 4,
-      },
-    ],
+    key: "subjectProblem",
+    id: "subjectProblem",
+    number: "01",
+    Icon: Target,
+    label: "Araştırma Problemi, Aktörler ve Odak",
+    description:
+      "Neyi, hangi temel problemi çözmek veya hangi hipotezi test etmek için inceliyorsun? Hangi aktörleri, grupları, kurumları mercek altına alıyorsun?",
+    placeholder:
+      "Çalışmanızın araştırma problemini, odağını, incelediğiniz aktörleri/grupları/kurumları ve araştırma sorularınızı bütünleşik olarak detaylandırın...",
+    rows: 5,
   },
   {
-    id: "veriVeYontem",
-    title: "Veri Kaynağı ve Yöntem",
-    fields: [
-      {
-        key: "primaryMaterial",
-        id: "primaryMaterial",
-        number: "03",
-        Icon: Database,
-        label: "Veri Kaynağı / Birincil Malzeme",
-        description:
-          "Hangi birincil kaynakları, veri setlerini veya arşiv malzemelerini kullanacaksın? (mülakat, anket, gazete, arşiv belgeleri, mahkeme kararları vb.)",
-        placeholder:
-          "Kullanacağınız veri kaynaklarını, birincil malzemeleri veya arşiv belgelerini tanımlayın...",
-        rows: 4,
-      },
-      {
-        key: "methodology",
-        id: "methodology",
-        number: "04",
-        Icon: BookOpen,
-        label: "Metodoloji",
-        description:
-          "Veriyi nasıl topluyor, işliyor veya ölçüyorsun? (Nitel, nicel, deneysel, simülasyon vb.)",
-        placeholder:
-          "Veri toplama, veri işleme ve analiz yöntemlerinizi (nitel/nicel/deneysel/simülasyon) ve temel argümanınızı açıklayın...",
-        rows: 4,
-      },
-    ],
+    key: "theoreticalFramework",
+    id: "theoreticalFramework",
+    number: "02",
+    Icon: Compass,
+    label: "Teorik ve Kavramsal Çerçeve",
+    description:
+      "Çalışmanı hangi teorik mercekle, modelle veya kavramsal yaklaşımla ele alıyorsun?",
+    placeholder:
+      "Temel aldığınız teorik merceği, kavramsal modelleri ve analitik yaklaşımınızı açıklayın...",
+    rows: 4,
+  },
+  {
+    key: "primaryMaterial",
+    id: "primaryMaterial",
+    number: "03",
+    Icon: Database,
+    label: "Veri Kaynağı / Birincil Malzeme",
+    description:
+      "Hangi birincil kaynakları, veri setlerini veya arşiv malzemelerini kullanacaksın? (mülakat, anket, gazete, arşiv belgeleri, mahkeme kararları vb.)",
+    placeholder:
+      "Kullanacağınız veri kaynaklarını, birincil malzemeleri veya arşiv belgelerini tanımlayın...",
+    rows: 4,
+  },
+  {
+    key: "methodology",
+    id: "methodology",
+    number: "04",
+    Icon: BookOpen,
+    label: "Metodoloji",
+    description:
+      "Veriyi nasıl topluyor, işliyor veya ölçüyorsun? (Nitel, nicel, deneysel, simülasyon vb.)",
+    placeholder:
+      "Veri toplama, veri işleme ve analiz yöntemlerinizi (nitel/nicel/deneysel/simülasyon) ve temel argümanınızı açıklayın...",
+    rows: 4,
   },
 ];
 
@@ -247,47 +229,35 @@ export function MatrixForm({ initialMatrix }: MatrixFormProps) {
   };
 
   return (
-    <form onSubmit={handleSubmit} className="w-full space-y-8">
-      {MATRIX_SECTIONS.map((section) => (
-        <div key={section.id} className="space-y-6">
-          <div className="flex items-center gap-3">
-            <div className="h-px flex-1 bg-border" />
-            <span className="px-1 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
-              {section.title}
-            </span>
-            <div className="h-px flex-1 bg-border" />
-          </div>
-
-          <div className="grid grid-cols-1 gap-4">
-            {section.fields.map(
-              ({
-                key,
-                id,
-                number,
-                Icon,
-                label,
-                description,
-                placeholder,
-                rows,
-              }) => (
-                <MatrixCard
-                  key={id}
-                  fieldKey={key}
-                  id={id}
-                  number={number}
-                  Icon={Icon}
-                  label={label}
-                  description={description}
-                  placeholder={placeholder}
-                  value={formState[key]}
-                  rows={rows}
-                  onChange={handleFieldChange}
-                />
-              ),
-            )}
-          </div>
-        </div>
-      ))}
+    <form onSubmit={handleSubmit} className="w-full space-y-6">
+      <div className="grid grid-cols-1 gap-4">
+        {MATRIX_FIELDS.map(
+          ({
+            key,
+            id,
+            number,
+            Icon,
+            label,
+            description,
+            placeholder,
+            rows,
+          }) => (
+            <MatrixCard
+              key={id}
+              fieldKey={key}
+              id={id}
+              number={number}
+              Icon={Icon}
+              label={label}
+              description={description}
+              placeholder={placeholder}
+              value={formState[key]}
+              rows={rows}
+              onChange={handleFieldChange}
+            />
+          ),
+        )}
+      </div>
 
       <div className="flex justify-end mt-8 pb-8">
         <Button type="submit" size="lg" disabled={isPending}>

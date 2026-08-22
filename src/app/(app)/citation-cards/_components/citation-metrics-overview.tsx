@@ -38,25 +38,24 @@ export function CitationMetricsOverview({
       label: "Doğrudan Alıntı",
       count: quoteCount,
       icon: Quote,
-      activeClass:
-        "bg-emerald-600 text-white border-emerald-600 dark:bg-emerald-600",
-      badgeClass: "bg-white/20 text-white",
+      activeClass: "bg-primary text-primary-foreground border-primary",
+      badgeClass: "bg-primary-foreground/20 text-primary-foreground",
     },
     {
       id: "PARAPHRASE",
       label: "Dolaylı Alıntı",
       count: paraphraseCount,
       icon: Sparkles,
-      activeClass: "bg-blue-600 text-white border-blue-600 dark:bg-blue-600",
-      badgeClass: "bg-white/20 text-white",
+      activeClass: "bg-primary text-primary-foreground border-primary",
+      badgeClass: "bg-primary-foreground/20 text-primary-foreground",
     },
     {
       id: "PERSONAL_NOTE",
       label: "Kişisel Not",
       count: noteCount,
       icon: Bookmark,
-      activeClass: "bg-amber-600 text-white border-amber-600 dark:bg-amber-600",
-      badgeClass: "bg-white/20 text-white",
+      activeClass: "bg-primary text-primary-foreground border-primary",
+      badgeClass: "bg-primary-foreground/20 text-primary-foreground",
     },
   ];
 

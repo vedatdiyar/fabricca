@@ -137,7 +137,7 @@ export function ManageSourceLinksModal({
                 >
                   <div className="space-y-1 min-w-0 flex-1 pr-3">
                     <div className="flex items-center gap-2 flex-wrap">
-                      <FileText className="h-3.5 w-3.5 text-amber-500 shrink-0" />
+                      <FileText className="h-3.5 w-3.5 text-primary shrink-0" />
                       <span className="font-serif text-sm font-semibold text-foreground leading-snug break-words">
                         {source.title}
                       </span>

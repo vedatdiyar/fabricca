@@ -1,3 +1,5 @@
+import type { TaskType } from "@/core/db/schema";
+
 /**
  * Dashboard domain types for Fabricca.
  */
@@ -26,10 +28,13 @@ export interface KanbanTask {
   id: string;
   title: string;
   description?: string;
+  taskType: TaskType;
   status: "TODO" | "IN_PROGRESS" | "DONE";
   priority: "HIGH" | "MEDIUM" | "LOW";
-  isReadingTask?: boolean;
-  articleId?: string;
   thesisBoxId?: number | null;
   boxTitle?: string;
+  sourceId?: number | null;
+  targetUrl?: string | null;
+  isAutomated?: boolean;
+  metadata?: Record<string, unknown> | null;
 }

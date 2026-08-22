@@ -17,7 +17,7 @@ export function QuadrantMetricsStrip({
   pillarMetricsById,
 }: QuadrantMetricsStripProps) {
   return (
-    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
       {rootBoxes.map((rootBox) => {
         const config = getQuadrantConfig(rootBox.boxType, rootBox.title);
         const Icon = config.icon;
@@ -28,8 +28,8 @@ export function QuadrantMetricsStrip({
             key={rootBox.id}
             className="border border-border bg-card transition-all hover:border-border/80"
           >
-            <CardContent className="flex items-center justify-between p-4">
-              <div className="space-y-1 min-w-0 flex-1">
+            <CardContent className="flex items-center justify-between p-3">
+              <div className="space-y-0.5 min-w-0 flex-1">
                 <div className="flex items-center gap-1.5">
                   <span className="font-sans text-[10px] uppercase tracking-wider text-muted-foreground">
                     Sütun #{config.number}
@@ -38,15 +38,15 @@ export function QuadrantMetricsStrip({
                     • {metrics.subBoxCount} Alt Konu
                   </span>
                 </div>
-                <p className="font-serif text-sm font-semibold tracking-tight text-foreground truncate">
+                <p className="font-sans text-xs font-semibold tracking-tight text-foreground truncate">
                   {config.shortLabel}
                 </p>
-                <div className="flex items-center gap-2 pt-0.5 text-xs text-muted-foreground">
+                <div className="flex items-center gap-2 pt-0.5 text-muted-foreground">
                   <span className="flex items-center gap-0.5 text-[10px]">
                     <Hash className="h-3 w-3 text-muted-foreground/70" />
                     <span>{metrics.conceptCount} kavram</span>
                   </span>
-                  <span className="text-border/60">•</span>
+                  <span className="text-border/60 text-[10px]">•</span>
                   <span className="flex items-center gap-0.5 text-[10px]">
                     <Library className="h-3 w-3 text-muted-foreground/70" />
                     <span>{metrics.sourceCount} kaynak</span>
@@ -54,9 +54,9 @@ export function QuadrantMetricsStrip({
                 </div>
               </div>
               <div
-                className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-md border ${config.accentColor}`}
+                className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-md border ${config.accentColor}`}
               >
-                <Icon className="h-4.5 w-4.5" />
+                <Icon className="h-4 w-4" />
               </div>
             </CardContent>
           </Card>

@@ -62,13 +62,13 @@ export function OutlineTreeItem({
             <div className="flex items-center gap-2 flex-wrap pt-0.5">
               {sourcesCount > 0 && (
                 <span className="flex items-center gap-1 font-mono text-[10px] text-muted-foreground">
-                  <FileText className="h-3 w-3 shrink-0 text-amber-500" />
+                  <FileText className="h-3 w-3 shrink-0 text-primary" />
                   {sourcesCount} kaynak
                 </span>
               )}
               {cardsCount > 0 && (
                 <span className="flex items-center gap-1 font-mono text-[10px] text-muted-foreground">
-                  <Quote className="h-3 w-3 shrink-0 text-emerald-500" />
+                  <Quote className="h-3 w-3 shrink-0 text-primary" />
                   {cardsCount} fiş
                 </span>
               )}

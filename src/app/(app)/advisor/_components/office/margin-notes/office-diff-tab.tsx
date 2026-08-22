@@ -49,7 +49,7 @@ export function OfficeDiffTab({
       </div>
 
       {diff.changes && diff.changes.length > 0 && (
-        <div className="p-3 rounded-lg bg-amber-500/10 border border-amber-500/20 text-xs">
+        <div className="p-3 rounded-lg bg-primary/10 border border-primary/20 text-xs">
           <span className="font-semibold text-foreground block mb-1">
             Yapılan Editoryal İyileştirmeler:
           </span>

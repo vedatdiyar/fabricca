@@ -6,26 +6,14 @@ import {
   createOutlineSectionAction,
   updateOutlineSectionAction,
   deleteOutlineSectionAction,
-  linkAnnotationToOutlineAction,
-  unlinkAnnotationFromOutlineAction,
-  linkSourceToOutlineAction,
-  unlinkSourceFromOutlineAction,
 } from "../../../actions";
 import { toast } from "sonner";
 
-interface UseOutlineCrudOptions {
+interface UseOutlineSectionCrudOptions {
   outlinesList: Outline[];
   rootOutlines: Outline[];
-  selectedOutline: Outline | null;
   selectedOutlineId: number | null;
   setSelectedOutlineId: (id: number | null) => void;
-  localPinnedAnnotationsMap: Record<number, number[]>;
-  applyAnnotationLinkOverride: (
-    outlineId: number,
-    annotationIds: number[],
-  ) => void;
-  localLinkedSourcesMap: Record<number, number[]>;
-  applySourceLinkOverride: (outlineId: number, sourceIds: number[]) => void;
 }
 
 export interface CreateSectionInput {
@@ -39,7 +27,7 @@ export interface UpdateSectionInput {
   sortOrder: number;
 }
 
-interface UseOutlineCrudResult {
+interface UseOutlineSectionCrudResult {
   isAddOpen: boolean;
   addParentId: number | null;
   isAddSaving: boolean;
@@ -58,34 +46,9 @@ interface UseOutlineCrudResult {
   promptDelete: (outline: Outline) => void;
   closeDeleteModal: () => void;
   confirmDelete: () => Promise<void>;
-  isAnnotationLinkModalOpen: boolean;
-  openAnnotationLinkModal: () => void;
-  closeAnnotationLinkModal: () => void;
-  toggleAnnotationLink: (annotationId: number) => Promise<void>;
-  isSourceLinkModalOpen: boolean;
-  openSourceLinkModal: () => void;
-  closeSourceLinkModal: () => void;
-  toggleSourceLink: (sourceId: number) => Promise<void>;
 }
 
-/**
- * Wires the outline section CRUD server actions (add/edit/delete and
- * annotation/source linking) with their modal visibility states, toasts and
- * optimistic updates.
- *
- * @param root0 - Hook options.
- * @param root0.outlinesList - All outline sections of the thesis.
- * @param root0.rootOutlines - Root-level outline sections.
- * @param root0.selectedOutline - The currently selected outline section or null.
- * @param root0.selectedOutlineId - The currently selected outline id.
- * @param root0.setSelectedOutlineId - Selection mutator used to move off a deleted section.
- * @param root0.localPinnedAnnotationsMap - Effective annotation to outline link map (with optimistic overrides).
- * @param root0.applyAnnotationLinkOverride - Applies/rolls back an optimistic annotation-link change.
- * @param root0.localLinkedSourcesMap - Effective source to outline link map (with optimistic overrides).
- * @param root0.applySourceLinkOverride - Applies/rolls back an optimistic source-link change.
- * @returns Modal states, open/close handlers and server action triggers.
- */
-interface OutlineModalState {
+interface SectionModalState {
   isAddOpen: boolean;
   addParentId: number | null;
   isAddSaving: boolean;
@@ -95,22 +58,26 @@ interface OutlineModalState {
   isDeleteOpen: boolean;
   outlineToDelete: Outline | null;
   isDeleting: boolean;
-  isAnnotationLinkModalOpen: boolean;
-  isSourceLinkModalOpen: boolean;
 }
 
-export function useOutlineCrud({
+/**
+ * Wires the outline section CRUD server actions (add/edit/delete) with their
+ * modal visibility states, toasts and post-delete reselection logic.
+ *
+ * @param root0 - Hook options.
+ * @param root0.outlinesList - All outline sections of the thesis.
+ * @param root0.rootOutlines - Root-level outline sections.
+ * @param root0.selectedOutlineId - The currently selected outline id.
+ * @param root0.setSelectedOutlineId - Selection mutator used to move off a deleted section.
+ * @returns Modal states, open/close handlers and server action triggers.
+ */
+export function useOutlineSectionCrud({
   outlinesList,
   rootOutlines,
-  selectedOutline,
   selectedOutlineId,
   setSelectedOutlineId,
-  localPinnedAnnotationsMap,
-  applyAnnotationLinkOverride,
-  localLinkedSourcesMap,
-  applySourceLinkOverride,
-}: UseOutlineCrudOptions): UseOutlineCrudResult {
-  const [modalState, setModalState] = useState<OutlineModalState>({
+}: UseOutlineSectionCrudOptions): UseOutlineSectionCrudResult {
+  const [modalState, setModalState] = useState<SectionModalState>({
     isAddOpen: false,
     addParentId: null,
     isAddSaving: false,
@@ -120,11 +87,9 @@ export function useOutlineCrud({
     isDeleteOpen: false,
     outlineToDelete: null,
     isDeleting: false,
-    isAnnotationLinkModalOpen: false,
-    isSourceLinkModalOpen: false,
   });
 
-  const updateModalState = (patch: Partial<OutlineModalState>) =>
+  const updateModalState = (patch: Partial<SectionModalState>) =>
     setModalState((prev) => ({ ...prev, ...patch }));
 
   const openAddModal = (parentId: number | null = null) => {
@@ -223,79 +188,6 @@ export function useOutlineCrud({
     }
   };
 
-  const openAnnotationLinkModal = () =>
-    updateModalState({ isAnnotationLinkModalOpen: true });
-
-  const closeAnnotationLinkModal = () =>
-    updateModalState({ isAnnotationLinkModalOpen: false });
-
-  const toggleAnnotationLink = async (annotationId: number) => {
-    if (!selectedOutline) return;
-    const currentIds = localPinnedAnnotationsMap[selectedOutline.id] ?? [];
-    const isLinked = currentIds.includes(annotationId);
-
-    // Optimistic update
-    const updated = isLinked
-      ? currentIds.filter((id) => id !== annotationId)
-      : [...currentIds, annotationId];
-
-    applyAnnotationLinkOverride(selectedOutline.id, updated);
-
-    const res = isLinked
-      ? await unlinkAnnotationFromOutlineAction(
-          selectedOutline.id,
-          annotationId,
-        )
-      : await linkAnnotationToOutlineAction(selectedOutline.id, annotationId);
-
-    if (res.success) {
-      toast.success(
-        isLinked
-          ? "Alıntı kartının bölüm bağı kaldırıldı."
-          : "Alıntı kartı bölüme başarıyla bağlandı.",
-      );
-    } else {
-      toast.error(res.error ?? "İşlem gerçekleştirilemedi.");
-      // Rollback
-      applyAnnotationLinkOverride(selectedOutline.id, currentIds);
-    }
-  };
-
-  const openSourceLinkModal = () =>
-    updateModalState({ isSourceLinkModalOpen: true });
-
-  const closeSourceLinkModal = () =>
-    updateModalState({ isSourceLinkModalOpen: false });
-
-  const toggleSourceLink = async (sourceId: number) => {
-    if (!selectedOutline) return;
-    const currentIds = localLinkedSourcesMap[selectedOutline.id] ?? [];
-    const isLinked = currentIds.includes(sourceId);
-
-    // Optimistic update
-    const updated = isLinked
-      ? currentIds.filter((id) => id !== sourceId)
-      : [...currentIds, sourceId];
-
-    applySourceLinkOverride(selectedOutline.id, updated);
-
-    const res = isLinked
-      ? await unlinkSourceFromOutlineAction(selectedOutline.id, sourceId)
-      : await linkSourceToOutlineAction(selectedOutline.id, sourceId);
-
-    if (res.success) {
-      toast.success(
-        isLinked
-          ? "Kaynağın bölüm bağı kaldırıldı."
-          : "Kaynak bölüme başarıyla bağlandı.",
-      );
-    } else {
-      toast.error(res.error ?? "İşlem gerçekleştirilemedi.");
-      // Rollback
-      applySourceLinkOverride(selectedOutline.id, currentIds);
-    }
-  };
-
   return {
     isAddOpen: modalState.isAddOpen,
     addParentId: modalState.addParentId,
@@ -315,13 +207,5 @@ export function useOutlineCrud({
     promptDelete,
     closeDeleteModal,
     confirmDelete,
-    isAnnotationLinkModalOpen: modalState.isAnnotationLinkModalOpen,
-    openAnnotationLinkModal,
-    closeAnnotationLinkModal,
-    toggleAnnotationLink,
-    isSourceLinkModalOpen: modalState.isSourceLinkModalOpen,
-    openSourceLinkModal,
-    closeSourceLinkModal,
-    toggleSourceLink,
   };
 }

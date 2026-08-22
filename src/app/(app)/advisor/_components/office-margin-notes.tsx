@@ -110,7 +110,7 @@ export function OfficeMarginNotes({
               value="diff"
               className="text-xs h-7 data-[state=active]:bg-background data-[state=active]:text-foreground cursor-pointer"
             >
-              <Sparkles className="h-3 w-3 mr-1 text-amber-500" />
+              <Sparkles className="h-3 w-3 mr-1 text-primary" />
               Editoryal Diff
             </TabsTrigger>
 
@@ -118,7 +118,7 @@ export function OfficeMarginNotes({
               value="jury"
               className="text-xs h-7 data-[state=active]:bg-background data-[state=active]:text-foreground cursor-pointer"
             >
-              <Swords className="h-3 w-3 mr-1 text-blue-500" />
+              <Swords className="h-3 w-3 mr-1 text-warning" />
               Jüri Şerhleri
               {juryCritiques.length > 0 && (
                 <span className="ml-1 px-1.5 py-0.2 bg-muted text-[10px] rounded-full">

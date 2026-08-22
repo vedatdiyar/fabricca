@@ -79,7 +79,7 @@ export function UserMenu({
           {initials || <User className="h-3 w-3" />}
         </div>
 
-        <span className="max-w-28 truncate text-xs font-medium text-foreground hidden sm:block">
+        <span className="text-xs font-medium text-foreground hidden sm:block whitespace-nowrap">
           {userName}
         </span>
 

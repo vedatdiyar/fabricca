@@ -1,6 +1,6 @@
 "use client";
 
-import type { Box } from "@/core/db/schema";
+import type { Box, TaskType } from "@/core/db/schema";
 import type { KanbanTask } from "../_lib/types";
 import { TaskFormModal } from "./task-form-modal";
 
@@ -12,6 +12,7 @@ interface EditTaskModalProps {
     input: {
       title: string;
       priority: "HIGH" | "MEDIUM" | "LOW";
+      taskType?: TaskType;
       thesisBoxId?: number | null;
     },
   ) => Promise<boolean>;
@@ -19,13 +20,9 @@ interface EditTaskModalProps {
 }
 
 /**
- * Thin wrapper around TaskFormModal for the "edit task" flow.
+ * Wrapper around TaskFormModal for the "edit task" flow.
  *
- * @param root0 - Component props.
- * @param root0.task - The task being edited, or null when no task is selected.
- * @param root0.onClose - Callback invoked when the modal is closed.
- * @param root0.onEdit - Async callback invoked with the updated task data.
- * @param root0.boxes - Topic boxes available for task assignment.
+ * @param props - Component props.
  * @returns The rendered edit-task modal.
  */
 export function EditTaskModal({
@@ -40,6 +37,7 @@ export function EditTaskModal({
       open={task !== null}
       initialTitle={task?.title}
       initialPriority={task?.priority}
+      initialTaskType={task?.taskType}
       initialBoxId={task?.thesisBoxId}
       onSave={async (data) => onEdit(task!.id, data)}
       onClose={onClose}

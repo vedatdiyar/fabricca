@@ -124,8 +124,8 @@ export function CitationOutlineSidebar({
           className={cn(
             "w-full flex items-center justify-between px-2.5 py-1.5 rounded text-xs transition-colors cursor-pointer text-left font-medium",
             unassignedOnly
-              ? "bg-amber-500 text-white font-semibold shadow-xs"
-              : "text-amber-600 dark:text-amber-400 hover:bg-amber-500/10",
+              ? "bg-warning text-warning-foreground font-semibold"
+              : "text-warning hover:bg-warning/10",
           )}
         >
           <div className="flex items-center gap-2 min-w-0">
@@ -137,8 +137,8 @@ export function CitationOutlineSidebar({
             className={cn(
               "font-mono text-[10px] px-1.5 py-0 shrink-0",
               unassignedOnly
-                ? "bg-white/20 text-white border-transparent"
-                : "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/30",
+                ? "bg-warning-foreground/20 text-warning-foreground border-transparent"
+                : "bg-warning/10 text-warning border-warning/20",
             )}
           >
             {unassignedCount}

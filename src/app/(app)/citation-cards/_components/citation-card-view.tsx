@@ -105,7 +105,7 @@ export function CitationCardView(props: CitationCardViewProps) {
             ) : (
               <Badge
                 variant="outline"
-                className="text-xs font-normal border-dashed border-amber-500/40 text-amber-600 dark:text-amber-400 bg-amber-500/5"
+                className="text-xs font-normal border-dashed border-warning/20 text-warning bg-warning/10"
               >
                 ⚠️ Bölüme Atanmamış
               </Badge>
@@ -146,7 +146,7 @@ export function CitationCardView(props: CitationCardViewProps) {
           >
             {copied ? (
               <>
-                <Check className="h-3 w-3 text-emerald-500" />
+                <Check className="h-3 w-3 text-primary" />
                 <span>Kopyalandı</span>
               </>
             ) : (

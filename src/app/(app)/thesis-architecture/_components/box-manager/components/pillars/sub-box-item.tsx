@@ -119,7 +119,7 @@ export function SubBoxItem({
           className="flex items-center gap-1 text-muted-foreground hover:text-foreground transition-colors"
           title="Kütüphanedeki kaynakları görüntüle"
         >
-          <Library className="h-3 w-3 text-primary/70" />
+          <Library className="h-3 w-3 text-primary" />
           <span>{sourceCount} Kaynak</span>
         </Link>
 
@@ -128,7 +128,7 @@ export function SubBoxItem({
           className="flex items-center gap-1 text-muted-foreground hover:text-foreground transition-colors"
           title="İlişkili görevleri panoda görüntüle"
         >
-          <ListTodo className="h-3 w-3 text-amber-400/70" />
+          <ListTodo className="h-3 w-3 text-muted-foreground" />
           <span>{taskCount} Görev</span>
         </Link>
       </div>

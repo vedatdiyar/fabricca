@@ -19,19 +19,19 @@ export function DashboardSkeleton() {
       </div>
 
       {/* 4 Metric Cards Skeleton */}
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
         {Array.from({ length: 4 }).map((_, index) => (
           <Card
             key={`dash-metric-skel-${index}`}
             className="border border-border bg-card"
           >
-            <CardContent className="flex items-center justify-between p-4.5">
-              <div className="space-y-2 flex-1">
-                <Skeleton className="h-3.5 w-24 bg-border/20" />
-                <Skeleton className="h-6 w-16" />
-                <Skeleton className="h-3 w-32 bg-border/20" />
+            <CardContent className="flex items-center justify-between p-3">
+              <div className="space-y-1.5 flex-1 min-w-0">
+                <Skeleton className="h-3 w-20 bg-border/20" />
+                <Skeleton className="h-5 w-14" />
+                <Skeleton className="h-2.5 w-24 bg-border/20" />
               </div>
-              <Skeleton className="h-11 w-11 shrink-0 rounded-md bg-border/20" />
+              <Skeleton className="h-8 w-8 shrink-0 rounded-md bg-border/20" />
             </CardContent>
           </Card>
         ))}

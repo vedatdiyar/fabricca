@@ -1,8 +1,14 @@
 "use client";
 
 import React, { useState } from "react";
-import { UploadCloud, X, Loader2, Sparkles } from "lucide-react";
+import { UploadCloud, Loader2, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { useBoxHierarchySelection } from "../_hooks/use-box-hierarchy-selection";
@@ -44,8 +50,6 @@ export function AddResourceModal({
     setSubBoxId,
     isLoading: isLoadingBoxes,
   } = useBoxHierarchySelection();
-
-  if (!isOpen) return null;
 
   const parentBoxes = hierarchy ?? [];
   const selectedParent =
@@ -107,30 +111,32 @@ export function AddResourceModal({
     }
   };
 
+  const handleClose = () => {
+    if (!isSubmitting) onClose();
+  };
+
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4 animate-in fade-in-0 duration-200">
-      <div className="relative w-full max-w-2xl rounded-lg border border-border bg-background p-6 space-y-4">
-        <div className="flex items-center justify-between border-b border-border pb-4">
+    <Dialog
+      open={isOpen}
+      onOpenChange={(next) => {
+        if (!next) handleClose();
+      }}
+    >
+      <DialogContent
+        className="max-w-2xl rounded-lg"
+        onEscapeKeyDown={(e) => isSubmitting && e.preventDefault()}
+        onInteractOutside={(e) => isSubmitting && e.preventDefault()}
+      >
+        <DialogHeader className="space-y-1 border-b border-border pb-4">
           <div className="flex items-center gap-2">
             <div className="p-2 rounded-md bg-primary/10 border border-primary/20 text-primary">
               <Sparkles className="h-5 w-5" />
             </div>
-            <div>
-              <h2 className="font-serif text-xl font-semibold tracking-tight text-foreground">
-                Yeni Akademik PDF Yükle
-              </h2>
-            </div>
           </div>
-          <button
-            type="button"
-            onClick={onClose}
-            disabled={isSubmitting}
-            aria-label="Modalı kapat"
-            className="rounded-sm opacity-70 hover:opacity-100 p-1 text-muted-foreground hover:bg-muted"
-          >
-            <X className="h-4 w-4" />
-          </button>
-        </div>
+          <DialogTitle className="font-serif text-xl font-semibold tracking-tight text-foreground">
+            Yeni Akademik PDF Yükle
+          </DialogTitle>
+        </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <AddResourceBoxSelector
@@ -219,7 +225,7 @@ export function AddResourceModal({
             </Button>
           </div>
         </form>
-      </div>
-    </div>
+      </DialogContent>
+    </Dialog>
   );
 }

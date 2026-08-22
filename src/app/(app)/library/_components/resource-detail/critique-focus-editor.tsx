@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
-import { Check, ChevronLeft, ChevronRight } from "lucide-react";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -36,7 +36,7 @@ export function CritiqueFocusEditor({
   return (
     <div className="space-y-4">
       {/* Minimal Segmented Step Navigation Bar */}
-      <div className="flex items-center gap-1 bg-muted p-1 rounded-md border border-border/40 overflow-x-auto">
+      <div className="flex items-center gap-1 bg-muted/60 p-1 rounded-md border border-border/50">
         {CRITIQUE_FIELDS.map((field, idx) => {
           const isActive = activeStepIndex === idx;
           const isFilled = values[field.key].trim().length > 0;
@@ -46,23 +46,27 @@ export function CritiqueFocusEditor({
               key={field.key}
               type="button"
               onClick={() => setActiveStepIndex(idx)}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded text-xs font-medium whitespace-nowrap transition-all ${
+              className={`flex flex-1 min-w-0 items-center justify-center gap-1.5 px-2.5 py-1.5 rounded text-xs font-medium whitespace-nowrap overflow-hidden transition-all ${
                 isActive
-                  ? "bg-background text-foreground font-semibold border border-border/40 shadow-xs"
+                  ? "bg-card text-foreground font-semibold border border-border/70 shadow-xs"
                   : isFilled
-                    ? "text-foreground hover:bg-background/50"
+                    ? "text-foreground hover:bg-card/40 font-medium"
                     : "text-muted-foreground hover:text-foreground"
               }`}
             >
-              <span className="text-[11px] font-mono">{field.number}.</span>
-              <span>{field.shortLabel}</span>
-              {isFilled && <Check className="h-3 w-3 text-success ml-0.5" />}
+              <span className="font-mono text-xs shrink-0 text-muted-foreground">
+                {field.number}.
+              </span>
+              <span className="truncate">{field.shortLabel}</span>
+              {isFilled && (
+                <span className="h-1.5 w-1.5 rounded-full bg-primary shrink-0" />
+              )}
             </button>
           );
         })}
       </div>
 
-      {/* Active Dimension Editor Flow (No redundant nested card frame) */}
+      {/* Active Dimension Editor Flow */}
       <div className="space-y-3 pt-1">
         <div className="flex flex-wrap items-baseline justify-between gap-2">
           <div className="space-y-0.5">
@@ -74,12 +78,10 @@ export function CritiqueFocusEditor({
                 — {currentField.question}
               </span>
             </div>
-            <p className="text-[11px] text-muted-foreground">
-              {currentField.hint}
-            </p>
+            <p className="text-xs text-muted-foreground">{currentField.hint}</p>
           </div>
 
-          <span className="text-[11px] text-muted-foreground font-mono shrink-0">
+          <span className="text-xs text-muted-foreground font-mono shrink-0">
             {getWordCount(values[currentField.key])} kelime
           </span>
         </div>
@@ -89,7 +91,7 @@ export function CritiqueFocusEditor({
           onChange={(e) => onFieldChange(currentField.key, e.target.value)}
           placeholder={currentField.question}
           rows={7}
-          className="textarea-academic text-sm leading-relaxed p-3.5 resize-none"
+          className="textarea-academic text-sm leading-relaxed p-3.5 resize-none bg-card/60 hover:bg-card/80 focus:bg-card border-border/60 focus:border-primary/40"
         />
 
         {/* Step Navigator Footer */}
@@ -130,4 +132,3 @@ export function CritiqueFocusEditor({
     </div>
   );
 }
-

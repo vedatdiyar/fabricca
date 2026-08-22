@@ -18,14 +18,9 @@ interface DashboardContentProps {
 }
 
 /**
- * Renders the interactive dashboard with topic boxes, overview metrics, and the Kanban board.
+ * Renders the interactive dashboard with topic boxes, overview metrics, and the ADHD-balanced Kanban board.
  *
- * @param root0 - Component props.
- * @param root0.initialBoxes - Parent topic boxes loaded from the server.
- * @param root0.initialResources - Library resources loaded from the server.
- * @param root0.initialTasks - User tasks loaded from the server.
- * @param root0.childIdToParentId - Mapping from child box ids to their parent box ids.
- * @param root0.allBoxRows - All box rows including child boxes.
+ * @param props - Component props.
  * @returns The rendered dashboard content.
  */
 export function DashboardContent({
@@ -38,12 +33,16 @@ export function DashboardContent({
   const {
     topicBoxes,
     combinedTasks,
+    isSyncing,
+    isAuditing,
     handleTaskStatusChange,
     handleAddTask,
     handleEditTask,
     handleDeleteTask,
     handleDeleteArticle,
     handleExpansionSuccess,
+    handleSyncTasks,
+    handleRunStrategistAudit,
   } = useDashboard(
     initialBoxes,
     initialResources,
@@ -106,87 +105,87 @@ export function DashboardContent({
       </div>
 
       {/* Overview Metric Cards */}
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
         {/* Metric 1: Konu Kutuları */}
         <Card className="border border-border bg-card">
-          <CardContent className="flex items-center justify-between p-4.5">
-            <div className="space-y-1">
-              <p className="text-sm font-medium text-muted-foreground">
+          <CardContent className="flex items-center justify-between p-3">
+            <div className="space-y-0.5 min-w-0 flex-1">
+              <p className="text-xs font-medium text-muted-foreground truncate">
                 Konu Kutuları
               </p>
-              <p className="font-serif text-2xl font-bold tracking-tight text-foreground">
+              <p className="font-sans text-lg font-semibold tracking-tight text-foreground">
                 {stats.totalBoxes}
               </p>
-              <p className="text-xs text-muted-foreground">
+              <p className="text-[10px] text-muted-foreground truncate">
                 Aktif araştırma teması
               </p>
             </div>
-            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-md border border-primary/20 bg-primary/10 text-primary">
-              <FolderKanban className="h-5 w-5" />
+            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-primary/20 bg-primary/10 text-primary">
+              <FolderKanban className="h-4 w-4" />
             </div>
           </CardContent>
         </Card>
 
         {/* Metric 2: Okuma İlerlemesi */}
         <Card className="border border-border bg-card">
-          <CardContent className="flex items-center justify-between p-4.5">
-            <div className="space-y-1">
-              <p className="text-sm font-medium text-muted-foreground">
+          <CardContent className="flex items-center justify-between p-3">
+            <div className="space-y-0.5 min-w-0 flex-1">
+              <p className="text-xs font-medium text-muted-foreground truncate">
                 Okuma İlerlemesi
               </p>
-              <p className="font-serif text-2xl font-bold tracking-tight text-foreground">
+              <p className="font-sans text-lg font-semibold tracking-tight text-foreground">
                 {stats.readArticles} / {stats.totalArticles}
               </p>
-              <p className="text-xs text-muted-foreground">
+              <p className="text-[10px] text-muted-foreground truncate">
                 {stats.totalArticles > 0
                   ? `%${stats.readPercentage} tamamlandı`
                   : "Henüz eser eklenmedi"}
               </p>
             </div>
-            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-md border border-emerald-500/20 bg-emerald-500/10 text-emerald-400">
-              <BookOpen className="h-5 w-5" />
+            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-primary/20 bg-primary/10 text-primary">
+              <BookOpen className="h-4 w-4" />
             </div>
           </CardContent>
         </Card>
 
         {/* Metric 3: Akademik Görevler */}
         <Card className="border border-border bg-card">
-          <CardContent className="flex items-center justify-between p-4.5">
-            <div className="space-y-1">
-              <p className="text-sm font-medium text-muted-foreground">
+          <CardContent className="flex items-center justify-between p-3">
+            <div className="space-y-0.5 min-w-0 flex-1">
+              <p className="text-xs font-medium text-muted-foreground truncate">
                 Akademik Görevler
               </p>
-              <p className="font-serif text-2xl font-bold tracking-tight text-foreground">
+              <p className="font-sans text-lg font-semibold tracking-tight text-foreground">
                 {stats.activeTasks} Aktif
               </p>
-              <p className="text-xs text-muted-foreground">
+              <p className="text-[10px] text-muted-foreground truncate">
                 {stats.completedTasks} tamamlanan adım
               </p>
             </div>
-            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-md border border-info/20 bg-info/10 text-info">
-              <CheckSquare className="h-5 w-5" />
+            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-primary/20 bg-primary/10 text-primary">
+              <CheckSquare className="h-4 w-4" />
             </div>
           </CardContent>
         </Card>
 
         {/* Metric 4: Literatür Genişletme */}
         <Card className="border border-border bg-card">
-          <CardContent className="flex items-center justify-between p-4.5">
-            <div className="space-y-1">
-              <p className="text-sm font-medium text-muted-foreground">
+          <CardContent className="flex items-center justify-between p-3">
+            <div className="space-y-0.5 min-w-0 flex-1">
+              <p className="text-xs font-medium text-muted-foreground truncate">
                 Literatür Döngüsü
               </p>
-              <p className="font-serif text-2xl font-bold tracking-tight text-foreground">
+              <p className="font-sans text-lg font-semibold tracking-tight text-foreground">
                 Döngü #{stats.maxExpansionCycle}
               </p>
-              <p className="text-xs text-muted-foreground">
+              <p className="text-[10px] text-muted-foreground truncate">
                 {stats.anyReadyToExpand
                   ? "Genişletmeye hazır"
                   : "Kaynaklar inceleniyor"}
               </p>
             </div>
-            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-md border border-purple-500/20 bg-purple-500/10 text-purple-400">
-              <Sparkles className="h-5 w-5" />
+            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-primary/20 bg-primary/10 text-primary">
+              <Sparkles className="h-4 w-4" />
             </div>
           </CardContent>
         </Card>
@@ -234,10 +233,14 @@ export function DashboardContent({
       <section className="space-y-6">
         <KanbanBoard
           tasks={combinedTasks}
+          isSyncing={isSyncing}
+          isAuditing={isAuditing}
           onTaskStatusChange={handleTaskStatusChange}
           onAddTask={handleAddTask}
           onEditTask={handleEditTask}
           onDeleteTask={handleDeleteTask}
+          onSyncTasks={handleSyncTasks}
+          onRunStrategistAudit={handleRunStrategistAudit}
           boxes={initialBoxes}
         />
       </section>

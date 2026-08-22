@@ -9,15 +9,15 @@ import type { JuryCritique } from "../../../_services/pipeline/types";
 const CATEGORY_LABELS: Record<string, { label: string; color: string }> = {
   LOGIC_LEAP: {
     label: "Mantık Sıçraması",
-    color: "bg-blue-500/10 text-blue-500 border-blue-500/20",
+    color: "bg-warning/10 text-warning border-warning/20",
   },
   UNBACKED_CLAIM: {
     label: "Temellendirilmemiş İddia",
-    color: "bg-amber-500/10 text-amber-500 border-amber-500/20",
+    color: "bg-warning/10 text-warning border-warning/20",
   },
   METHODOLOGICAL_GAP: {
     label: "Metodolojik Boşluk",
-    color: "bg-purple-500/10 text-purple-500 border-purple-500/20",
+    color: "bg-warning/10 text-warning border-warning/20",
   },
 };
 
@@ -38,7 +38,7 @@ export function OfficeJuryTab({
 }: OfficeJuryTabProps) {
   return (
     <div className="space-y-4">
-      <div className="p-3 rounded-lg bg-blue-500/10 border border-blue-500/20 text-xs text-muted-foreground leading-relaxed">
+      <div className="p-3 rounded-lg bg-warning/10 border border-warning/20 text-xs text-muted-foreground leading-relaxed">
         <span className="font-semibold text-foreground block mb-0.5">
           Tez Savunması Provası:
         </span>

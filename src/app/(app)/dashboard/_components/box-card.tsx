@@ -89,8 +89,8 @@ export function BoxCard({
             )}
           </div>
 
-          {/* Title & Description */}
-          <div className="space-y-1.5">
+          {/* Title & Description (calibrated min-h keeps sibling cards aligned without excessive gap) */}
+          <div className="min-h-[76px] space-y-1">
             <CardTitle
               className="font-serif text-base sm:text-lg font-semibold tracking-tight text-foreground line-clamp-2"
               title={box.title}
@@ -108,22 +108,20 @@ export function BoxCard({
           </div>
 
           {/* Reading Progress Bar */}
-          {totalArticles > 0 && (
-            <div className="space-y-1.5 pt-1">
-              <div className="flex items-center justify-between text-xs text-muted-foreground">
-                <span>Okuma İlerlemesi</span>
-                <span className="font-medium text-foreground">
-                  {readArticles} / {totalArticles} Eser ({readPercent}%)
-                </span>
-              </div>
-              <div className="h-1.5 w-full overflow-hidden rounded-full bg-secondary">
-                <div
-                  className="h-full bg-primary transition-all duration-500 rounded-full"
-                  style={{ width: `${readPercent}%` }}
-                />
-              </div>
+          <div className="space-y-1.5">
+            <div className="flex items-center justify-between text-xs text-muted-foreground">
+              <span>Okuma İlerlemesi</span>
+              <span className="font-medium text-foreground">
+                {`${readArticles} / ${totalArticles} Eser (%${readPercent})`}
+              </span>
             </div>
-          )}
+            <div className="h-1.5 w-full overflow-hidden rounded-full bg-secondary">
+              <div
+                className="h-full bg-primary transition-all duration-500 rounded-full"
+                style={{ width: `${readPercent}%` }}
+              />
+            </div>
+          </div>
         </CardHeader>
 
         <CardContent className="flex flex-col flex-1 p-5 pt-0">

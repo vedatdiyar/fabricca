@@ -6,7 +6,7 @@ import {
   Sparkles,
   HelpCircle,
   Loader2,
-  Layers,
+  BookOpen,
   ShieldCheck,
   FileEdit,
   Swords,
@@ -55,10 +55,6 @@ export function OfficeSubmissionForm({
   );
   const [draftText, setDraftText] = useState("");
   const [studentNote, setStudentNote] = useState("");
-
-  const selectedOutline = outlines.find(
-    (o) => String(o.id) === selectedOutlineId,
-  );
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -109,9 +105,9 @@ export function OfficeSubmissionForm({
               <span
                 className={`text-xs font-mono px-2.5 py-1 rounded-md border flex items-center gap-1.5 transition-colors ${
                   isOptimalLength
-                    ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/30"
+                    ? "bg-primary/10 text-primary border-primary/20"
                     : isLongLength
-                      ? "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/30"
+                      ? "bg-warning/10 text-warning border-warning/20"
                       : "bg-muted text-muted-foreground border-border"
                 }`}
               >
@@ -126,59 +122,59 @@ export function OfficeSubmissionForm({
         </CardHeader>
 
         <CardContent className="p-5 sm:p-6 pt-5">
-          <form onSubmit={handleSubmit} className="flex flex-col gap-5">
-            {/* Outline Selection */}
-            <div className="flex flex-col gap-2">
-              <div className="flex items-center justify-between">
-                <Label
-                  htmlFor="outline-select"
-                  className="text-xs font-medium text-foreground flex items-center gap-1.5"
+          <form onSubmit={handleSubmit} className="space-y-4">
+            {/* Outline Chapter Selector */}
+            <div className="flex flex-col gap-1.5">
+              <Label
+                htmlFor="outline-selector"
+                className="text-xs font-medium text-foreground flex items-center justify-between"
+              >
+                <span>İnceleme Yapılacak Tez Bölümü</span>
+                <span className="text-[10px] text-muted-foreground font-normal">
+                  Zorunlu
+                </span>
+              </Label>
+              <Select
+                value={selectedOutlineId}
+                onValueChange={setSelectedOutlineId}
+              >
+                <SelectTrigger
+                  id="outline-selector"
+                  disabled={isSubmitting}
+                  className="w-full text-xs h-9 bg-background border-border"
                 >
-                  <Layers className="h-3.5 w-3.5 text-primary" />
-                  Hedef Tez Bölümü (Outline)
-                </Label>
-                {selectedOutline?.description && (
-                  <span className="text-[11px] text-muted-foreground max-w-sm truncate hidden sm:inline">
-                    {selectedOutline.description}
-                  </span>
-                )}
-              </div>
-
-              {outlines.length > 0 ? (
-                <Select
-                  value={selectedOutlineId}
-                  onValueChange={setSelectedOutlineId}
-                >
-                  <SelectTrigger
-                    id="outline-select"
-                    disabled={isSubmitting}
-                    className="w-full text-xs h-10 bg-background border-border cursor-pointer"
-                  >
-                    <SelectValue placeholder="İlgili tez bölümünü seçin..." />
-                  </SelectTrigger>
-                  <SelectContent className="max-h-72">
-                    {outlines.map((outline) => (
+                  <SelectValue placeholder="Bir tez bölümü seçin..." />
+                </SelectTrigger>
+                <SelectContent className="max-h-[300px]">
+                  {outlines.length === 0 ? (
+                    <SelectItem value="empty" disabled className="text-xs">
+                      Tanımlı tez bölümü bulunamadı
+                    </SelectItem>
+                  ) : (
+                    outlines.map((outline) => (
                       <SelectItem
                         key={outline.id}
                         value={String(outline.id)}
-                        className="text-xs cursor-pointer"
+                        className="text-xs py-2"
                       >
-                        {outline.parentId !== null ? "└─ " : ""}
-                        {outline.title}
+                        <div className="flex items-center gap-2">
+                          <BookOpen className="h-3.5 w-3.5 text-primary shrink-0" />
+                          <span className="truncate">{outline.title}</span>
+                          {outline.parentId && (
+                            <span className="text-[10px] text-muted-foreground">
+                              (Alt Bölüm)
+                            </span>
+                          )}
+                        </div>
                       </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              ) : (
-                <div className="p-3 text-xs rounded-md bg-muted text-muted-foreground border border-border">
-                  Henüz bir tez içindekiler (outline) planı bulunamadı. Lütfen
-                  önce İçindekiler modülünden bölüm oluşturun.
-                </div>
-              )}
+                    ))
+                  )}
+                </SelectContent>
+              </Select>
             </div>
 
-            {/* Draft Textarea */}
-            <div className="flex flex-col gap-2">
+            {/* Draft Passage Input */}
+            <div className="flex flex-col gap-1.5">
               <div className="flex items-center justify-between">
                 <Label
                   htmlFor="draft-text"
@@ -188,11 +184,11 @@ export function OfficeSubmissionForm({
                 </Label>
                 <span className="text-[11px] text-muted-foreground">
                   {isOptimalLength ? (
-                    <span className="text-emerald-500 font-medium">
+                    <span className="text-primary font-medium">
                       ✓ İdeal Analiz Boyutu
                     </span>
                   ) : isLongLength ? (
-                    <span className="text-amber-500 font-medium">
+                    <span className="text-warning font-medium">
                       ⚠ Geniş Pasaj (Bölümlere ayırmanız önerilir)
                     </span>
                   ) : isVeryShort ? (
@@ -212,15 +208,6 @@ export function OfficeSubmissionForm({
                 className="min-h-[160px] text-sm p-3.5 bg-background border-border resize-y leading-relaxed focus:border-primary/40 focus:ring-1 focus:ring-primary/20"
                 required
               />
-
-              <div className="p-2.5 rounded-md bg-muted/40 border border-border/50 text-[11px] text-muted-foreground leading-relaxed">
-                <span className="font-semibold text-foreground">
-                  💡 Pasaj Odaklama İpucu:
-                </span>{" "}
-                Tezin tamamı yerine 1–3 paragraflık odak pasajlar teslim etmek;
-                alıntı denetiminin, kaynakça eşleştirmesinin ve Sokratesçi jüri
-                eleştirilerinin en keskin sonucu vermesini sağlar.
-              </div>
             </div>
 
             {/* Student Note / Concern */}
@@ -287,7 +274,7 @@ export function OfficeSubmissionForm({
       {/* Guide Cards (3 Columns) */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <Card className="border-border bg-card p-4 flex flex-col gap-2">
-          <div className="flex items-center gap-2 text-destructive">
+          <div className="flex items-center gap-2 text-warning">
             <ShieldCheck className="h-4 w-4" />
             <h4 className="font-serif text-xs font-semibold text-foreground">
               Katı Kaynak & Sayfa Denetimi
@@ -300,7 +287,7 @@ export function OfficeSubmissionForm({
         </Card>
 
         <Card className="border-border bg-card p-4 flex flex-col gap-2">
-          <div className="flex items-center gap-2 text-amber-500">
+          <div className="flex items-center gap-2 text-primary">
             <FileEdit className="h-4 w-4" />
             <h4 className="font-serif text-xs font-semibold text-foreground">
               Zararsız Editoryal Rötuş
@@ -313,7 +300,7 @@ export function OfficeSubmissionForm({
         </Card>
 
         <Card className="border-border bg-card p-4 flex flex-col gap-2">
-          <div className="flex items-center gap-2 text-blue-500">
+          <div className="flex items-center gap-2 text-warning">
             <Swords className="h-4 w-4" />
             <h4 className="font-serif text-xs font-semibold text-foreground">
               Jüri Şerhleri & Savunma

@@ -40,7 +40,7 @@ export function OutlineSelectItems({
             <Ban className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
             <span>{noneLabel}</span>
             {unassignedCount !== undefined && unassignedCount > 0 && (
-              <span className="text-[10px] font-mono text-amber-600 dark:text-amber-400 bg-amber-500/10 px-1.5 py-0.5 rounded">
+              <span className="text-[10px] font-mono text-warning bg-warning/10 border border-warning/20 px-1.5 py-0.5 rounded">
                 {unassignedCount} Fiş
               </span>
             )}

@@ -21,7 +21,7 @@ interface MatrixMetricsStripProps {
  */
 export function MatrixMetricsStrip({ values, stats }: MatrixMetricsStripProps) {
   return (
-    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
       {MATRIX_CARDS.map((card) => {
         const wordCount = stats.counts[card.key];
         const isFilled = values[card.key]?.trim().length > 0;
@@ -32,14 +32,14 @@ export function MatrixMetricsStrip({ values, stats }: MatrixMetricsStripProps) {
             key={card.key}
             className="border border-border bg-card transition-colors hover:border-border/80"
           >
-            <CardContent className="flex items-center justify-between p-4">
-              <div className="space-y-1 min-w-0 flex-1">
+            <CardContent className="flex items-center justify-between p-3">
+              <div className="space-y-0.5 min-w-0 flex-1">
                 <div className="flex items-center gap-1.5">
                   <span className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">
                     Sütun #{card.number}
                   </span>
                   {isFilled ? (
-                    <span className="flex items-center gap-0.5 text-[10px] font-medium text-emerald-400">
+                    <span className="flex items-center gap-0.5 text-[10px] font-medium text-primary">
                       <CheckCircle2 className="h-3 w-3" />
                       <span>Dolu</span>
                     </span>
@@ -49,17 +49,17 @@ export function MatrixMetricsStrip({ values, stats }: MatrixMetricsStripProps) {
                     </span>
                   )}
                 </div>
-                <p className="font-serif text-sm font-semibold tracking-tight text-foreground truncate">
+                <p className="font-sans text-xs font-semibold tracking-tight text-foreground truncate">
                   {card.badgeLabel}
                 </p>
-                <p className="font-sans text-xs text-muted-foreground">
+                <p className="font-sans text-[10px] text-muted-foreground">
                   {wordCount > 0 ? `${wordCount} kelime` : "Veri girilmedi"}
                 </p>
               </div>
               <div
-                className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-md border ${card.accentColor}`}
+                className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-md border ${card.accentColor}`}
               >
-                <Icon className="h-4.5 w-4.5" />
+                <Icon className="h-4 w-4" />
               </div>
             </CardContent>
           </Card>

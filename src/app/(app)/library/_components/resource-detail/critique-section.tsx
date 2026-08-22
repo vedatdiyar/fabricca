@@ -1,25 +1,14 @@
 "use client";
 
 import React, { useCallback, useEffect, useRef, useState } from "react";
-import {
-  BookMarked,
-  Check,
-  RotateCcw,
-  Loader2,
-  Sparkles,
-  Focus,
-  LayoutGrid,
-} from "lucide-react";
+import { BookMarked, Check, RotateCcw, Loader2, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { useCritiqueDraft } from "../../_hooks/use-critique-draft";
 import {
   toCritiqueFieldValues,
   type CritiqueFieldKey,
 } from "./critique-constants";
 import { CritiqueFocusEditor } from "./critique-focus-editor";
-import { CritiqueGridEditor } from "./critique-grid-editor";
 import { CritiqueAuditPanel } from "./critique-audit-panel";
 import type {
   LibraryResourceCritique,
@@ -42,7 +31,7 @@ export interface CritiqueSectionProps {
 
 /**
  * Article analysis (Eser Analizi) container orchestrating step-by-step focus mode,
- * overview grid mode, debounced auto-save, and LLM audit evaluation.
+ * debounced auto-save, and LLM audit evaluation.
  *
  * @param props - Component props.
  * @param props.resourceId - ID of the target resource.
@@ -61,15 +50,9 @@ export function CritiqueSection({
 }: CritiqueSectionProps) {
   const baseValues = toCritiqueFieldValues(critique);
 
-  const {
-    values,
-    setFieldValue,
-    handleResetDraft,
-    hasDraft,
-    completedCount,
-  } = useCritiqueDraft(resourceId, baseValues);
+  const { values, setFieldValue, handleResetDraft, hasDraft, completedCount } =
+    useCritiqueDraft(resourceId, baseValues);
 
-  const [viewMode, setViewMode] = useState<"focus" | "all">("focus");
   const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved">(
     "idle",
   );
@@ -117,123 +100,81 @@ export function CritiqueSection({
   const auditReport = critique?.aiEvaluation;
 
   return (
-    <div className="space-y-4">
-      <Card className="border border-border bg-background">
-        <CardContent className="p-4 space-y-4">
-          {/* Header Bar: Title, Progress Badge, Save Status, View Mode Switcher, Evaluate Action */}
-          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border/40 pb-3">
-            <div className="flex items-center gap-2">
-              <BookMarked className="h-4 w-4 text-primary" />
-              <h3 className="font-serif text-lg font-medium tracking-tight text-foreground">
-                Eser Analizi
-              </h3>
-              <Badge
-                variant="outline"
-                className="text-[10px] font-medium border-border/60 text-muted-foreground ml-1"
-              >
-                {completedCount}/5 Tamamlandı
-              </Badge>
-            </div>
-
-            <div className="flex flex-wrap items-center gap-2 sm:gap-3">
-              {saveStatus === "saving" && (
-                <span className="flex items-center gap-1 text-[11px] text-muted-foreground font-medium animate-pulse">
-                  <Loader2 className="h-3 w-3 animate-spin text-primary" />
-                  Kaydediliyor...
-                </span>
-              )}
-
-              {saveStatus === "saved" && (
-                <span className="flex items-center gap-1 text-[11px] text-success font-medium">
-                  <Check className="h-3 w-3 text-success" /> Kaydedildi
-                </span>
-              )}
-
-              {saveStatus === "idle" && hasDraft && (
-                <div className="flex items-center gap-2">
-                  <span className="flex items-center gap-1 text-[10px] text-muted-foreground font-medium">
-                    <Check className="h-3 w-3 text-success" /> Taslak kaydedildi
-                  </span>
-                  <button
-                    type="button"
-                    onClick={handleResetDraft}
-                    className="flex items-center gap-1 text-[10px] text-muted-foreground hover:text-destructive transition-colors"
-                    title="Taslağı sıfırla"
-                  >
-                    <RotateCcw className="h-2.5 w-2.5" />
-                    <span>Sıfırla</span>
-                  </button>
-                </div>
-              )}
-
-              {/* Minimal View Mode Segmented Control */}
-              <div className="flex items-center gap-1 bg-muted p-1 rounded-md border border-border/40">
-                <button
-                  type="button"
-                  onClick={() => setViewMode("focus")}
-                  className={`flex items-center gap-1.5 px-2.5 py-1 rounded text-xs transition-all ${
-                    viewMode === "focus"
-                      ? "bg-background text-foreground font-medium border border-border/40 shadow-xs"
-                      : "text-muted-foreground hover:text-foreground"
-                  }`}
-                  title="Adım adım odak modu"
-                >
-                  <Focus className="h-3.5 w-3.5 text-primary" />
-                  <span>Odak Modu</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setViewMode("all")}
-                  className={`flex items-center gap-1.5 px-2.5 py-1 rounded text-xs transition-all ${
-                    viewMode === "all"
-                      ? "bg-background text-foreground font-medium border border-border/40 shadow-xs"
-                      : "text-muted-foreground hover:text-foreground"
-                  }`}
-                  title="Tüm boyutları göster"
-                >
-                  <LayoutGrid className="h-3.5 w-3.5 text-muted-foreground" />
-                  <span>Bütünsel</span>
-                </button>
-              </div>
-
-              {onEvaluateCritique && (
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={() => onEvaluateCritique(resourceId)}
-                  disabled={isEvaluating}
-                  className="gap-1.5 text-xs font-medium border-primary/30 text-primary hover:bg-primary/10 hover:text-primary transition-all"
-                >
-                  <Sparkles
-                    className={`h-3.5 w-3.5 text-primary ${
-                      isEvaluating ? "animate-spin" : ""
-                    }`}
-                  />
-                  {isEvaluating ? "Değerlendiriliyor..." : "Eseri Değerlendir"}
-                </Button>
-              )}
-            </div>
+    <div className="space-y-6">
+      {/* Workspace 1 Card: Eser Analizi Editor */}
+      <div className="rounded-md border border-border bg-card/50 p-4 sm:p-5 space-y-4">
+        {/* Header Bar: Title, Progress Badge, Save Status, Evaluate Action */}
+        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border/40 pb-3">
+          <div className="flex items-center gap-2">
+            <BookMarked className="h-4 w-4 text-primary" />
+            <h3 className="font-serif text-base sm:text-lg font-medium tracking-tight text-foreground">
+              Eser Analizi
+            </h3>
+            <span className="text-xs font-medium text-muted-foreground font-mono bg-muted/60 px-2 py-0.5 rounded border border-border/40">
+              {completedCount}/5 Tamamlandı
+            </span>
           </div>
 
-          {/* Render Active View Mode */}
-          {viewMode === "focus" ? (
-            <CritiqueFocusEditor
-              values={values}
-              onFieldChange={handleFieldChange}
-            />
-          ) : (
-            <CritiqueGridEditor
-              values={values}
-              onFieldChange={handleFieldChange}
-            />
-          )}
-        </CardContent>
-      </Card>
+          <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+            {saveStatus === "saving" && (
+              <span className="flex items-center gap-1 text-xs text-muted-foreground font-medium animate-pulse">
+                <Loader2 className="h-3 w-3 animate-spin text-primary" />
+                Kaydediliyor...
+              </span>
+            )}
+
+            {saveStatus === "saved" && (
+              <span className="flex items-center gap-1 text-xs text-primary font-medium">
+                <Check className="h-3 w-3 text-primary" /> Kaydedildi
+              </span>
+            )}
+
+            {saveStatus === "idle" && hasDraft && (
+              <div className="flex items-center gap-2">
+                <span className="flex items-center gap-1 text-xs text-muted-foreground">
+                  <Check className="h-3 w-3 text-primary" /> Taslak kaydedildi
+                </span>
+                <button
+                  type="button"
+                  onClick={handleResetDraft}
+                  className="flex items-center gap-1 text-xs text-muted-foreground hover:text-destructive transition-colors"
+                  title="Taslağı sıfırla"
+                >
+                  <RotateCcw className="h-3 w-3" />
+                  <span>Sıfırla</span>
+                </button>
+              </div>
+            )}
+
+            {onEvaluateCritique && (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => onEvaluateCritique(resourceId)}
+                disabled={isEvaluating}
+                className="h-8 gap-1.5 text-xs font-medium border-primary/30 text-primary hover:bg-primary/10 hover:border-primary/50 transition-all"
+              >
+                <Sparkles
+                  className={`h-3.5 w-3.5 text-primary ${
+                    isEvaluating ? "animate-spin" : ""
+                  }`}
+                />
+                {isEvaluating ? "Değerlendiriliyor..." : "Eseri Değerlendir"}
+              </Button>
+            )}
+          </div>
+        </div>
+
+        {/* Focused Step-by-Step Editor */}
+        <CritiqueFocusEditor
+          values={values}
+          onFieldChange={handleFieldChange}
+        />
+      </div>
 
       {/* Holistic AI Audit Report Panel */}
       {auditReport && <CritiqueAuditPanel auditReport={auditReport} />}
     </div>
   );
 }
-

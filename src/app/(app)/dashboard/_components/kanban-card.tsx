@@ -1,19 +1,20 @@
 "use client";
 
 import { memo } from "react";
+import Link from "next/link";
 import {
-  BookOpen,
-  Sparkles,
   Pencil,
   Trash2,
   GripVertical,
   FolderKanban,
+  ExternalLink,
+  Sparkles,
 } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import type { KanbanTask } from "../_lib/types";
-import { PRIORITY_CONFIG } from "./kanban-config";
+import { PRIORITY_CONFIG, TASK_TYPE_CONFIG } from "./kanban-config";
 
 export interface KanbanCardProps {
   task: KanbanTask;
@@ -30,102 +31,124 @@ export const KanbanCard = memo(function KanbanCard({
   onEdit,
   onDelete,
 }: KanbanCardProps) {
-  const isReading = task.isReadingTask;
+  const typeConfig = TASK_TYPE_CONFIG[task.taskType] ?? TASK_TYPE_CONFIG.MANUAL;
+  const TypeIcon = typeConfig.icon ?? Sparkles;
   const priorityInfo = PRIORITY_CONFIG[task.priority] ?? PRIORITY_CONFIG.MEDIUM;
+
+  const isCompleted = task.status === "DONE";
 
   return (
     <Card
       draggable="true"
       onDragStart={(e) => onDragStart(e, task.id)}
       onDragEnd={onDragEnd}
-      className="group relative rounded-md border border-border/60 bg-card p-3.5 transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/30 hover:shadow-xs cursor-grab active:cursor-grabbing select-none"
+      className={cn(
+        "group relative rounded-lg border border-border/70 bg-card p-3.5 transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-sm cursor-grab active:cursor-grabbing select-none",
+        isCompleted && "opacity-75 bg-muted/30",
+      )}
     >
       <div className="flex flex-col gap-2.5">
-        {/* Card Header: Type / Priority Badge + Hover Actions + Drag Handle */}
+        {/* Card Header: Type Badge + Priority Badge + Action Buttons in Top-Right */}
         <div className="flex items-center justify-between gap-2">
-          <div>
-            {isReading ? (
-              <Badge
-                variant="outline"
-                className="text-[10px] font-medium px-2 py-0.5 border-emerald-500/20 bg-emerald-500/10 text-emerald-400 rounded"
-              >
-                Okuma Görevi
-              </Badge>
-            ) : (
-              <Badge
-                variant="outline"
-                className={cn(
-                  "text-[10px] font-medium px-2 py-0.5 border rounded",
-                  priorityInfo.className,
-                )}
-              >
-                {priorityInfo.label}
-              </Badge>
-            )}
+          <div className="flex items-center gap-1.5 flex-wrap">
+            <Badge
+              variant="outline"
+              className={cn(
+                "text-[10px] font-medium px-2 py-0.5 border rounded flex items-center gap-1",
+                typeConfig.badgeClass,
+              )}
+            >
+              <TypeIcon className="h-3 w-3 shrink-0" />
+              <span>{typeConfig.label}</span>
+            </Badge>
+
+            <Badge
+              variant="outline"
+              className={cn(
+                "text-[10px] font-medium px-1.5 py-0.5 border rounded",
+                priorityInfo.className,
+              )}
+            >
+              {priorityInfo.label}
+            </Badge>
           </div>
 
           <div className="flex items-center gap-1">
-            {!isReading && (
-              <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onEdit(task);
-                  }}
-                  className="p-1 rounded text-muted-foreground hover:text-foreground hover:bg-accent/40 transition-colors"
-                  title="Görevi Düzenle"
+            <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+              {/* Direct Link to Source / Target Page in Top-Right */}
+              {task.targetUrl && !isCompleted && (
+                <Link
+                  href={task.targetUrl}
+                  onClick={(e) => e.stopPropagation()}
+                  className="p-1 rounded text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors"
+                  title="Kaynağa / Eyleme Git"
+                  aria-label="Kaynağa / Eyleme Git"
                 >
-                  <Pencil className="h-3 w-3" />
-                </button>
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    if (
-                      window.confirm(
-                        `"${task.title}" görevini silmek istediğinize emin misiniz?`,
-                      )
-                    ) {
-                      onDelete(task.id);
-                    }
-                  }}
-                  className="p-1 rounded text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
-                  title="Görevi Sil"
-                >
-                  <Trash2 className="h-3 w-3" />
-                </button>
-              </div>
-            )}
+                  <ExternalLink className="h-3.5 w-3.5" />
+                </Link>
+              )}
+
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onEdit(task);
+                }}
+                className="p-1 rounded text-muted-foreground hover:text-foreground hover:bg-accent/50 transition-colors"
+                title="Görevi Düzenle"
+                aria-label="Görevi Düzenle"
+              >
+                <Pencil className="h-3 w-3" />
+              </button>
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  if (
+                    window.confirm(
+                      `"${task.title}" görevini silmek istediğinize emin misiniz?`,
+                    )
+                  ) {
+                    onDelete(task.id);
+                  }
+                }}
+                className="p-1 rounded text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
+                title="Görevi Sil"
+                aria-label="Görevi Sil"
+              >
+                <Trash2 className="h-3 w-3" />
+              </button>
+            </div>
             <GripVertical className="h-3.5 w-3.5 text-muted-foreground/40 group-hover:text-muted-foreground transition-colors shrink-0" />
           </div>
         </div>
 
-        {/* Card Body: Icon + Title + Description */}
-        <div className="flex items-start gap-2.5">
-          {isReading ? (
-            <BookOpen className="h-4 w-4 text-emerald-400 mt-0.5 shrink-0" />
-          ) : (
-            <Sparkles className="h-4 w-4 text-primary mt-0.5 shrink-0" />
-          )}
-          <div className="space-y-1 min-w-0 flex-1">
-            <h4 className="font-sans text-xs sm:text-sm font-medium text-foreground leading-snug group-hover:text-primary transition-colors line-clamp-2">
+        {/* Card Body: Icon + Title & Full Description */}
+        <div className="space-y-1.5">
+          <div className="flex items-start gap-2">
+            <TypeIcon className="h-4 w-4 text-primary shrink-0 mt-0.5" />
+            <h4
+              className={cn(
+                "font-sans text-xs sm:text-sm font-medium text-foreground leading-snug group-hover:text-primary transition-colors",
+                isCompleted && "line-through text-muted-foreground",
+              )}
+            >
               {task.title}
             </h4>
-            {task.description && (
-              <p className="font-sans text-xs text-muted-foreground line-clamp-2 leading-relaxed">
-                {task.description}
-              </p>
-            )}
           </div>
+          {task.description && (
+            <p className="font-sans text-xs text-muted-foreground leading-relaxed pl-6">
+              {task.description}
+            </p>
+          )}
         </div>
 
-        {/* Card Footer: Topic Box Title with full available width without clipping */}
+        {/* Card Footer: Topic Box Title */}
         {task.boxTitle && (
           <div className="pt-2 border-t border-border/40 flex items-center gap-1.5 text-muted-foreground">
-            <FolderKanban className="h-3 w-3 text-primary shrink-0" />
+            <FolderKanban className="h-3 w-3 text-primary/80 shrink-0" />
             <span
-              className="font-sans text-[11px] font-medium text-primary/90 leading-normal break-words"
+              className="font-sans text-[11px] font-medium text-muted-foreground leading-normal truncate"
               title={task.boxTitle}
             >
               {task.boxTitle}

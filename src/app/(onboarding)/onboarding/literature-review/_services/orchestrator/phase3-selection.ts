@@ -68,7 +68,9 @@ export async function executePhase3Selection(
     }
 
     const relevantEvals = boxEvals.filter((ev) => ev.isRelevant);
-    const eliminatedEvals = boxEvals.filter((ev) => !ev.isRelevant);
+    const eliminatedEvals = boxEvals.filter(
+      (ev) => !ev.isRelevant && ev.relevanceScore >= 50,
+    );
 
     const isDuplicate = (title: string): boolean => {
       const normTitle = normalizeCleanTitle(title);

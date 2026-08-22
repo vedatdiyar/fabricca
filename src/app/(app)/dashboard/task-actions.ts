@@ -14,9 +14,14 @@ import {
   type UpdateTaskInput,
   type TaskRow,
 } from "./_lib/schemas";
+import { syncAcademicTasks } from "./_services/task-sync-service";
+import {
+  runThesisStrategistAudit,
+  type StrategistAuditResult,
+} from "./_services/task-strategist-service";
 
 /**
- * Fetches all tasks for the current user, resolving box titles via LEFT JOIN.
+ * Fetches all tasks for the current user, syncing automated tasks in the background.
  *
  * @returns The task list or an error message
  */
@@ -32,14 +37,22 @@ export async function getTasksAction(): Promise<{
     const session = await getSession();
     if (!session) return { success: false, error: SESSION_ERROR_MSG };
 
+    // Synchronize automated academic tasks (auto-complete, pacing, cross-pillar balance)
+    await syncAcademicTasks(session.userId);
+
     const rows = await db
       .select({
         id: tasks.id,
         title: tasks.title,
         description: tasks.description,
+        taskType: tasks.taskType,
         status: tasks.status,
         priority: tasks.priority,
         thesisBoxId: tasks.boxId,
+        sourceId: tasks.sourceId,
+        targetUrl: tasks.targetUrl,
+        isAutomated: tasks.isAutomated,
+        metadata: tasks.metadata,
         boxTitle: boxes.title,
         createdAt: tasks.createdAt,
         updatedAt: tasks.updatedAt,
@@ -56,6 +69,73 @@ export async function getTasksAction(): Promise<{
       error: err,
     });
     return { success: false, error: "Görevler yüklenirken bir hata oluştu." };
+  }
+}
+
+/**
+ * Explicitly triggers academic task synchronization.
+ *
+ * @returns Sync statistics or an error
+ */
+export async function syncTasksAction(): Promise<{
+  success: boolean;
+  autoCompletedCount?: number;
+  newTasksCreatedCount?: number;
+  error?: string;
+}> {
+  const flowId = createFlowId();
+  const log = new Logger(flowId);
+
+  try {
+    const session = await getSession();
+    if (!session) return { success: false, error: SESSION_ERROR_MSG };
+
+    const result = await syncAcademicTasks(session.userId);
+    revalidatePath("/dashboard");
+    return { success: true, ...result };
+  } catch (err) {
+    log.error("sync_tasks_action_failed", {
+      service: "dashboard",
+      error: err,
+    });
+    return {
+      success: false,
+      error: "Görevler senkronize edilirken bir hata oluştu.",
+    };
+  }
+}
+
+/**
+ * Runs the Gemini Flash LLM Thesis Strategist audit.
+ *
+ * @returns Strategist result or an error
+ */
+export async function runStrategistAuditAction(): Promise<{
+  success: boolean;
+  data?: StrategistAuditResult;
+  error?: string;
+}> {
+  const flowId = createFlowId();
+  const log = new Logger(flowId);
+
+  try {
+    const session = await getSession();
+    if (!session) return { success: false, error: SESSION_ERROR_MSG };
+
+    const result = await runThesisStrategistAudit(session.userId);
+    if (result.success) {
+      revalidatePath("/dashboard");
+    }
+    return result;
+  } catch (err) {
+    log.error("run_strategist_audit_action_failed", {
+      service: "dashboard",
+      error: err,
+    });
+    return {
+      success: false,
+      error: "Tez stratejisi analizi sırasında bir hata oluştu.",
+    };
   }
 }
 
@@ -115,9 +195,14 @@ export async function addTaskAction(input: TaskInput): Promise<{
         userId: session.userId,
         title: valid.title.trim(),
         description: valid.description ?? null,
+        taskType: valid.taskType ?? "MANUAL",
         status: valid.status ?? "TODO",
         priority: valid.priority ?? "MEDIUM",
         boxId: valid.thesisBoxId ?? null,
+        sourceId: valid.sourceId ?? null,
+        targetUrl: valid.targetUrl ?? null,
+        isAutomated: valid.isAutomated ?? false,
+        metadata: valid.metadata ?? null,
       })
       .returning();
 
@@ -150,7 +235,7 @@ export async function addTaskAction(input: TaskInput): Promise<{
 }
 
 /**
- * Updates a task's title, priority, or linked box.
+ * Updates a task's title, priority, linked box, or task type.
  *
  * @param taskId - The task ID to update
  * @param input - The fields to update
@@ -216,9 +301,12 @@ export async function updateTaskAction(
     if (valid.title !== undefined) updateValues.title = valid.title.trim();
     if (valid.description !== undefined)
       updateValues.description = valid.description;
+    if (valid.taskType !== undefined) updateValues.taskType = valid.taskType;
     if (valid.status !== undefined) updateValues.status = valid.status;
     if (valid.priority !== undefined) updateValues.priority = valid.priority;
     if (valid.thesisBoxId !== undefined) updateValues.boxId = valid.thesisBoxId;
+    if (valid.sourceId !== undefined) updateValues.sourceId = valid.sourceId;
+    if (valid.targetUrl !== undefined) updateValues.targetUrl = valid.targetUrl;
 
     const [updated] = await db
       .update(tasks)

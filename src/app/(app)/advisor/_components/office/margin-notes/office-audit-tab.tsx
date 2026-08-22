@@ -12,7 +12,7 @@ const SEVERITY_BADGES: Record<string, { label: string; variant: string }> = {
   },
   WARNING: {
     label: "Uyarı",
-    variant: "bg-amber-500/10 text-amber-500 border-amber-500/20",
+    variant: "bg-warning/10 text-warning border-warning/20",
   },
   NOTE: {
     label: "Doğrulandı",

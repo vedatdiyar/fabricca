@@ -35,35 +35,35 @@ function getDocumentTypeConfig(docType?: string) {
     return {
       label: "Kitap Bölümü",
       icon: BookOpen,
-      className: "border-sky-500/30 bg-sky-500/10 text-sky-400",
+      className: "border-border bg-secondary text-secondary-foreground",
     };
   }
   if (norm.includes("article") || norm.includes("journal")) {
     return {
       label: "Makale",
       icon: FileText,
-      className: "border-emerald-500/30 bg-emerald-500/10 text-emerald-400",
+      className: "border-border bg-secondary text-secondary-foreground",
     };
   }
   if (norm.includes("book") || norm.includes("monograph")) {
     return {
       label: "Kitap",
       icon: Book,
-      className: "border-amber-500/30 bg-amber-500/10 text-amber-400",
+      className: "border-border bg-secondary text-secondary-foreground",
     };
   }
   if (norm.includes("thesis") || norm.includes("dissertation")) {
     return {
       label: "Tez",
       icon: GraduationCap,
-      className: "border-purple-500/30 bg-purple-500/10 text-purple-400",
+      className: "border-border bg-secondary text-secondary-foreground",
     };
   }
   if (norm.includes("report")) {
     return {
       label: "Rapor",
       icon: FileSpreadsheet,
-      className: "border-slate-500/30 bg-slate-500/10 text-slate-400",
+      className: "border-border bg-secondary text-secondary-foreground",
     };
   }
   return null;
@@ -112,25 +112,31 @@ export function ResourceHeader({
   const sourceVenue = getPrimarySourceVenue(resource);
 
   return (
-    <div className="space-y-2.5 border-b border-border/60 pb-3.5">
+    <div className="space-y-2.5 border-b border-border/40 pb-3.5">
       {/* Top Bar: Subject Badges, Document Type, and Compact Icon Actions */}
       <div className="flex items-center justify-between gap-2">
         <div className="flex flex-wrap items-center gap-1.5 min-w-0">
           <Badge
             variant="outline"
             className={cn(
-              "text-[11px] px-2 py-0.5 font-medium shrink-0",
+              "text-xs px-2.5 py-0.5 font-medium shrink-0 flex items-center gap-1.5 border",
               boxBadge.className,
             )}
           >
-            {boxBadge.label}
+            <span
+              className={cn(
+                "h-1.5 w-1.5 rounded-full shrink-0",
+                boxBadge.dotClassName,
+              )}
+            />
+            <span>{boxBadge.label}</span>
           </Badge>
 
           {resource.subBoxTitle && (
             <Badge
               variant="outline"
               className={cn(
-                "text-[11px] px-2 py-0.5 border font-medium",
+                "text-xs px-2 py-0.5 font-medium border",
                 boxBadge.className,
               )}
             >
@@ -142,7 +148,7 @@ export function ResourceHeader({
             <Badge
               variant="outline"
               className={cn(
-                "text-[11px] px-2 py-0.5 font-medium flex items-center gap-1 shrink-0",
+                "text-xs px-2 py-0.5 font-medium flex items-center gap-1 shrink-0 border",
                 docTypeConfig.className,
               )}
             >
@@ -153,27 +159,27 @@ export function ResourceHeader({
         </div>
 
         {/* Compact Action Buttons Toolbar: Düzenle - Sil - Okundu - PDF */}
-        <div className="flex items-center gap-1.5 shrink-0">
+        <div className="flex items-center gap-1 shrink-0">
           {/* 1. Düzenle */}
           <Button
-            variant="outline"
+            variant="ghost"
             size="sm"
             onClick={onOpenEditModal}
             title="Künyeyi Düzenle"
-            className="h-7 w-7 p-0 border-border/40 text-muted-foreground hover:text-foreground hover:bg-muted/80"
+            className="h-7 w-7 p-0 text-muted-foreground hover:text-foreground hover:bg-muted/60 rounded"
           >
-            <Pencil className="h-3.5 w-3.5 text-primary" />
+            <Pencil className="h-3.5 w-3.5" />
             <span className="sr-only">Künyeyi Düzenle</span>
           </Button>
 
           {/* 2. Sil */}
           {resource.pdfStatus === "READY" && onDeletePdfClick && (
             <Button
-              variant="outline"
+              variant="ghost"
               size="sm"
               onClick={onDeletePdfClick}
               title="PDF Sil"
-              className="h-7 w-7 p-0 border-border/40 text-muted-foreground hover:text-destructive hover:bg-destructive/10 hover:border-destructive/20"
+              className="h-7 w-7 p-0 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded"
             >
               <Trash2 className="h-3.5 w-3.5" />
               <span className="sr-only">PDF Sil</span>
@@ -182,16 +188,16 @@ export function ResourceHeader({
 
           {/* 3. Okundu */}
           <Button
-            variant="outline"
+            variant="ghost"
             size="sm"
             onClick={() => onToggleReadStatus(resource.id)}
             title={resource.isRead ? "Okunacak Yap" : "Okundu Olarak İşaretle"}
-            className="h-7 w-7 p-0 border-border/40 text-muted-foreground hover:text-foreground hover:bg-muted/80"
+            className="h-7 w-7 p-0 text-muted-foreground hover:text-foreground hover:bg-muted/60 rounded"
           >
             {resource.isRead ? (
-              <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500" />
+              <CheckCircle2 className="h-3.5 w-3.5 text-primary" />
             ) : (
-              <Circle className="h-3.5 w-3.5 text-muted-foreground/70" />
+              <Circle className="h-3.5 w-3.5 text-muted-foreground/60" />
             )}
             <span className="sr-only">
               {resource.isRead ? "Okundu" : "Okundu Olarak İşaretle"}
@@ -201,7 +207,7 @@ export function ResourceHeader({
           {/* 4. PDF Durumu */}
           {resource.pdfStatus === "READY" && (
             <div
-              className="flex h-7 w-7 items-center justify-center rounded-md border border-emerald-500/30 bg-emerald-500/10 text-emerald-400"
+              className="flex h-7 w-7 items-center justify-center rounded text-muted-foreground/70"
               title="PDF Yüklendi"
             >
               <FileText className="h-3.5 w-3.5" />
@@ -266,7 +272,7 @@ export function ResourceHeader({
                 href={`https://doi.org/${resource.doi}`}
                 target="_blank"
                 rel="noreferrer"
-                className="flex items-center gap-1 text-sky-400 hover:text-sky-300 hover:underline font-mono text-[11px]"
+                className="flex items-center gap-1 text-primary hover:underline font-mono text-[11px]"
               >
                 {resource.doi}
                 <ExternalLink className="h-2.5 w-2.5" />

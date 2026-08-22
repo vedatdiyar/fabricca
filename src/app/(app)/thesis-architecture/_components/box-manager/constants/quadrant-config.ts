@@ -42,8 +42,8 @@ export const QUADRANTS: Record<string, QuadrantConfig> = {
     description:
       "Tezin ana araştırma sorunsalını, aktörlerini ve inceleme kapsamını gruplandıran tematik havuz.",
     icon: Target,
-    accentColor: "bg-amber-500/10 text-amber-400 border-amber-500/20",
-    badgeColor: "bg-amber-500/10 text-amber-400 border-amber-500/20",
+    accentColor: "bg-primary/10 text-primary border-primary/20",
+    badgeColor: "bg-secondary text-secondary-foreground border-border",
   },
   THEORETICAL_FRAMEWORK: {
     type: "THEORETICAL_FRAMEWORK",
@@ -53,8 +53,8 @@ export const QUADRANTS: Record<string, QuadrantConfig> = {
     description:
       "Çalışmanın yaslandığı kuramsal merceği, analitik kavramları ve teorik modelleri içeren havuz.",
     icon: Compass,
-    accentColor: "bg-purple-500/10 text-purple-400 border-purple-500/20",
-    badgeColor: "bg-purple-500/10 text-purple-400 border-purple-500/20",
+    accentColor: "bg-primary/10 text-primary border-primary/20",
+    badgeColor: "bg-secondary text-secondary-foreground border-border",
   },
   METHODOLOGY: {
     type: "METHODOLOGY",
@@ -64,8 +64,8 @@ export const QUADRANTS: Record<string, QuadrantConfig> = {
     description:
       "Nitel/söylemsel analiz yöntemlerini, kodlama şemalarını ve araştırma tasarımını içeren havuz.",
     icon: Microscope,
-    accentColor: "bg-blue-500/10 text-blue-400 border-blue-500/20",
-    badgeColor: "bg-blue-500/10 text-blue-400 border-blue-500/20",
+    accentColor: "bg-primary/10 text-primary border-primary/20",
+    badgeColor: "bg-secondary text-secondary-foreground border-border",
   },
   PRIMARY_MATERIAL: {
     type: "PRIMARY_MATERIAL",
@@ -75,8 +75,8 @@ export const QUADRANTS: Record<string, QuadrantConfig> = {
     description:
       "Ampirik belgeleri, arşiv metinlerini, parti/kurum kayıtlarını ve saha verilerini gruplayan havuz.",
     icon: BookOpen,
-    accentColor: "bg-emerald-500/10 text-emerald-400 border-emerald-500/20",
-    badgeColor: "bg-emerald-500/10 text-emerald-400 border-emerald-500/20",
+    accentColor: "bg-primary/10 text-primary border-primary/20",
+    badgeColor: "bg-secondary text-secondary-foreground border-border",
   },
 };
 

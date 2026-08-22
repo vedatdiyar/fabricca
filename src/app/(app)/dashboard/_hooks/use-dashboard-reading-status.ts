@@ -52,10 +52,11 @@ export function useDashboardReadingStatus(
           id: `read-task-${a.id}`,
           title: a.title,
           description: `${a.author}${a.year && a.year > 0 ? ` (${a.year})` : ""} kaynağını okuyup tezine katkılarını çıkar.`,
+          taskType: "READING" as const,
           status: readingTaskStatuses[a.id] || "TODO",
           priority: "MEDIUM" as const,
-          isReadingTask: true,
-          articleId: a.id,
+          sourceId: Number(a.id),
+          targetUrl: "/library",
           boxTitle: a.boxTitle,
         }));
     },
