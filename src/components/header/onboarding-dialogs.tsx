@@ -33,21 +33,15 @@ export function ReopenOnboardingDialog({
     <AlertDialog open={open} onOpenChange={onOpenChange}>
       <AlertDialogContent>
         <AlertDialogHeader>
-          <AlertDialogTitle>
-            Onboarding Adımlarına Dön
-          </AlertDialogTitle>
+          <AlertDialogTitle>Onboarding Adımlarına Dön</AlertDialogTitle>
           <AlertDialogDescription>
             Mevcut akademik verileriniz silinmeden onboarding kurulum adımlarını
             kaldığınız yerden gözden geçirmek istiyor musunuz?
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
-          <AlertDialogCancel>
-            Vazgeç
-          </AlertDialogCancel>
-          <AlertDialogAction
-            onClick={onConfirm}
-          >
+          <AlertDialogCancel>Vazgeç</AlertDialogCancel>
+          <AlertDialogAction onClick={onConfirm}>
             Evet, Devam Et
           </AlertDialogAction>
         </AlertDialogFooter>

@@ -1,67 +1,56 @@
 "use client";
 
-import { Card, CardContent } from "@/components/ui/card";
-import { Hash, Library } from "lucide-react";
-import { getQuadrantConfig } from "../../constants/quadrant-config";
-import type { BoxWithRelations } from "../../constants/quadrant-config";
-import type { PillarMetrics } from "../../hooks/use-box-data";
+import { Plus, Layers, Hash, Library } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import type { TotalBoxMetrics } from "../../hooks/use-box-data";
 
 interface QuadrantMetricsStripProps {
-  rootBoxes: BoxWithRelations[];
-  pillarMetricsById: Record<number, PillarMetrics>;
+  totalMetrics: TotalBoxMetrics;
+  onAddNewSubBox: () => void;
 }
 
-/** Top overview strip rendering one compact metric card per research quadrant. */
+/**
+ * Top summary bar with thesis metrics and primary sub-box creation action.
+ */
 export function QuadrantMetricsStrip({
-  rootBoxes,
-  pillarMetricsById,
+  totalMetrics,
+  onAddNewSubBox,
 }: QuadrantMetricsStripProps) {
   return (
-    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
-      {rootBoxes.map((rootBox) => {
-        const config = getQuadrantConfig(rootBox.boxType, rootBox.title);
-        const Icon = config.icon;
-        const metrics = pillarMetricsById[rootBox.id];
+    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-card/60 border border-border/60 rounded-lg p-3 sm:px-4">
+      {/* Metric Pills */}
+      <div className="flex flex-wrap items-center gap-2 sm:gap-3 text-xs">
+        <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-secondary/80 text-foreground font-sans">
+          <Layers className="h-3.5 w-3.5 text-primary" />
+          <span className="font-medium">4 Ana Eksen</span>
+        </div>
 
-        return (
-          <Card
-            key={rootBox.id}
-            className="border border-border bg-card transition-all hover:border-border/80"
-          >
-            <CardContent className="flex items-center justify-between p-3">
-              <div className="space-y-0.5 min-w-0 flex-1">
-                <div className="flex items-center gap-1.5">
-                  <span className="font-sans text-[10px] uppercase tracking-wider text-muted-foreground">
-                    Sütun #{config.number}
-                  </span>
-                  <span className="text-[10px] font-medium text-muted-foreground">
-                    • {metrics.subBoxCount} Alt Konu
-                  </span>
-                </div>
-                <p className="font-sans text-xs font-semibold tracking-tight text-foreground truncate">
-                  {config.shortLabel}
-                </p>
-                <div className="flex items-center gap-2 pt-0.5 text-muted-foreground">
-                  <span className="flex items-center gap-0.5 text-[10px]">
-                    <Hash className="h-3 w-3 text-muted-foreground/70" />
-                    <span>{metrics.conceptCount} kavram</span>
-                  </span>
-                  <span className="text-border/60 text-[10px]">•</span>
-                  <span className="flex items-center gap-0.5 text-[10px]">
-                    <Library className="h-3 w-3 text-muted-foreground/70" />
-                    <span>{metrics.sourceCount} kaynak</span>
-                  </span>
-                </div>
-              </div>
-              <div
-                className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-md border ${config.accentColor}`}
-              >
-                <Icon className="h-4 w-4" />
-              </div>
-            </CardContent>
-          </Card>
-        );
-      })}
+        <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-secondary/50 text-muted-foreground font-sans">
+          <Hash className="h-3.5 w-3.5 text-muted-foreground" />
+          <span className="font-mono font-medium text-foreground">
+            {totalMetrics.totalConcepts}
+          </span>
+          <span>Kavram</span>
+        </div>
+
+        <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-secondary/50 text-muted-foreground font-sans">
+          <Library className="h-3.5 w-3.5 text-primary/80" />
+          <span className="font-mono font-medium text-foreground">
+            {totalMetrics.totalSources}
+          </span>
+          <span>Kaynak</span>
+        </div>
+      </div>
+
+      {/* Primary Action */}
+      <Button
+        onClick={onAddNewSubBox}
+        size="sm"
+        className="h-8 text-xs font-medium gap-1.5 bg-primary text-primary-foreground hover:bg-primary/90 rounded-md shrink-0"
+      >
+        <Plus className="h-3.5 w-3.5" />
+        <span>Yeni Alt Konu Ekle</span>
+      </Button>
     </div>
   );
 }

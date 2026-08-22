@@ -1,6 +1,7 @@
 "use client";
 
-import { Sparkles, ChevronDown, ChevronUp } from "lucide-react";
+import { Sparkles, ChevronDown, ChevronUp, Copy } from "lucide-react";
+import { toast } from "sonner";
 import type { BoxWithRelations } from "../../constants/quadrant-config";
 
 interface SemanticQueryPreviewProps {
@@ -15,18 +16,26 @@ export function SemanticQueryPreview({
   isOpen,
   onToggle,
 }: SemanticQueryPreviewProps) {
+  if (!subBox.semanticQuery) return null;
+
+  const handleCopyQuery = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (subBox.semanticQuery) {
+      navigator.clipboard.writeText(subBox.semanticQuery);
+      toast.success("RAG arama sorgusu kopyalandı.");
+    }
+  };
+
   return (
-    <div className="pl-6 pt-1">
+    <div className="pt-0.5">
       <button
         type="button"
         onClick={onToggle}
-        className="flex items-center gap-1 text-[10px] font-sans text-muted-foreground hover:text-primary transition-colors"
+        className="inline-flex items-center gap-1.5 text-xs font-sans text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
       >
-        <Sparkles className="h-3 w-3 text-primary/80" />
-        <span>
-          {isOpen
-            ? "Semantik Arama Sorgusunu Gizle"
-            : "RAG & Literatür Arama Sorgusu"}
+        <Sparkles className="h-3 w-3 text-primary" />
+        <span className="font-medium">
+          {isOpen ? "RAG Sorgusunu Gizle" : "RAG Arama Sorgusu"}
         </span>
         {isOpen ? (
           <ChevronUp className="h-3 w-3" />
@@ -36,11 +45,24 @@ export function SemanticQueryPreview({
       </button>
 
       {isOpen && (
-        <div className="mt-1.5 p-2 rounded-md bg-background/80 border border-border/60 text-[10px] font-sans text-foreground leading-relaxed">
-          <p className="text-muted-foreground mb-1 text-[9px] uppercase tracking-wider font-sans">
-            Akademik Veritabanı Arama İfadesi:
+        <div className="mt-2 p-2.5 rounded-md bg-secondary/40 border border-border/60 text-xs font-sans space-y-1.5">
+          <div className="flex items-center justify-between text-[11px] text-muted-foreground">
+            <span className="font-medium">
+              Akademik Literatür Arama İfadesi
+            </span>
+            <button
+              type="button"
+              onClick={handleCopyQuery}
+              className="inline-flex items-center gap-1 hover:text-foreground transition-colors cursor-pointer"
+              title="Sorguyu kopyala"
+            >
+              <Copy className="h-3 w-3" />
+              <span>Kopyala</span>
+            </button>
+          </div>
+          <p className="font-mono text-xs text-foreground select-all leading-relaxed bg-background/50 p-2 rounded border border-border/40">
+            {subBox.semanticQuery}
           </p>
-          <p className="select-all">{subBox.semanticQuery}</p>
         </div>
       )}
     </div>

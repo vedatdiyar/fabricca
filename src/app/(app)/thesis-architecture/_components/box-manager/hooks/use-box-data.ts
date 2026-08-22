@@ -10,17 +10,27 @@ export interface PillarMetrics {
   subBoxCount: number;
   conceptCount: number;
   sourceCount: number;
+  taskCount: number;
+}
+
+export interface TotalBoxMetrics {
+  totalRootBoxes: number;
+  totalSubBoxes: number;
+  totalConcepts: number;
+  totalSources: number;
+  totalTasks: number;
 }
 
 export interface BoxData {
   rootBoxes: BoxWithRelations[];
   subBoxesByParent: Record<number, BoxWithRelations[]>;
   pillarMetricsById: Record<number, PillarMetrics>;
+  totalMetrics: TotalBoxMetrics;
 }
 
 /**
  * Derives the canonical root box ordering, the parent → sub-box grouping and
- * the aggregate quadrant metrics (sub-box, concept, source counts) from the
+ * the aggregate quadrant metrics (sub-box, concept, source, task counts) from the
  * flat boxes list.
  */
 export function useBoxData(boxesList: BoxWithRelations[] | Box[]): BoxData {
@@ -54,10 +64,38 @@ export function useBoxData(boxesList: BoxWithRelations[] | Box[]): BoxData {
         sourceCount: subs.reduce((acc, sub) => {
           return acc + (sub.sources?.length ?? 0);
         }, 0),
+        taskCount: subs.reduce((acc, sub) => {
+          return acc + (sub.tasks?.length ?? 0);
+        }, 0),
       };
     }
     return map;
   }, [rootBoxes, subBoxesByParent]);
 
-  return { rootBoxes, subBoxesByParent, pillarMetricsById };
+  const totalMetrics = useMemo<TotalBoxMetrics>(() => {
+    let totalSubBoxes = 0;
+    let totalConcepts = 0;
+    let totalSources = 0;
+    let totalTasks = 0;
+
+    for (const root of rootBoxes) {
+      const m = pillarMetricsById[root.id];
+      if (m) {
+        totalSubBoxes += m.subBoxCount;
+        totalConcepts += m.conceptCount;
+        totalSources += m.sourceCount;
+        totalTasks += m.taskCount;
+      }
+    }
+
+    return {
+      totalRootBoxes: rootBoxes.length,
+      totalSubBoxes,
+      totalConcepts,
+      totalSources,
+      totalTasks,
+    };
+  }, [rootBoxes, pillarMetricsById]);
+
+  return { rootBoxes, subBoxesByParent, pillarMetricsById, totalMetrics };
 }

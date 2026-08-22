@@ -46,10 +46,7 @@ export function CitationCardsPageHeader({
         </Button>
 
         {/* Global Add Card Button */}
-        <Button
-          onClick={onOpenAddDialog}
-          className="shrink-0 cursor-pointer"
-        >
+        <Button onClick={onOpenAddDialog} className="shrink-0 cursor-pointer">
           <Plus className="size-3.5" />
           <span>Yeni Fiş</span>
         </Button>

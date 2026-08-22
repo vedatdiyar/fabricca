@@ -33,16 +33,16 @@ export function SubBoxList({
         onKeyDown={(e) =>
           (e.key === "Enter" || e.key === " ") && onAddSubBox?.()
         }
-        className="flex flex-1 cursor-pointer flex-col items-center justify-center rounded-md border border-dashed border-border/60 bg-muted/5 p-6 text-center hover:border-primary/40 hover:bg-muted/15 transition-colors min-h-[140px] space-y-2 group"
+        className="flex flex-1 cursor-pointer flex-col items-center justify-center rounded-lg border border-dashed border-border/60 bg-card/30 p-6 text-center hover:border-primary/40 hover:bg-card/70 transition-colors min-h-[130px] space-y-2 group"
       >
-        <div className="flex h-8 w-8 items-center justify-center rounded-full bg-muted/40 text-muted-foreground group-hover:text-primary transition-colors">
-          <Plus className="h-4 w-4" />
+        <div className="flex h-7 w-7 items-center justify-center rounded-full bg-secondary text-muted-foreground group-hover:text-primary transition-colors">
+          <Plus className="h-3.5 w-3.5" />
         </div>
         <p className="font-serif text-xs font-semibold text-foreground">
-          Bu eksen altında alt konu bulunmuyor
+          Henüz alt konu eklenmedi
         </p>
-        <p className="font-sans text-[10px] text-muted-foreground max-w-xs">
-          Yeni bir tematik odak veya ampirik alt havuz eklemek için tıklayın.
+        <p className="font-sans text-xs text-muted-foreground max-w-xs">
+          Bu eksene yeni bir tematik havuz eklemek için tıklayın.
         </p>
       </div>
     );

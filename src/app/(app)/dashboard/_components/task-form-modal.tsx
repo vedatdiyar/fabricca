@@ -205,11 +205,7 @@ export function TaskFormModal({
           </div>
 
           <div className="flex justify-end gap-2.5 pt-3 border-t border-border/40">
-            <Button
-              type="button"
-              variant="ghost"
-              onClick={handleClose}
-            >
+            <Button type="button" variant="ghost" onClick={handleClose}>
               İptal
             </Button>
             <Button

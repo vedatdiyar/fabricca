@@ -48,7 +48,9 @@ function SubBoxQuery({
       <div className="p-4 text-center border border-destructive/20 rounded-md bg-destructive/5 space-y-1.5">
         <AlertCircle className="size-5 text-destructive mx-auto" />
         <p className="text-xs text-destructive font-medium">Tarama hatası</p>
-        <p className="font-sans text-xs text-muted-foreground">{errorMessage}</p>
+        <p className="font-sans text-xs text-muted-foreground">
+          {errorMessage}
+        </p>
       </div>
     );
   }
@@ -272,7 +274,10 @@ export function LiteratureReviewContent() {
                 );
 
           return (
-            <Card key={subBox.title} className="p-5 sm:p-6 space-y-4 rounded-md">
+            <Card
+              key={subBox.title}
+              className="p-5 sm:p-6 space-y-4 rounded-md"
+            >
               <div className="flex items-center gap-2">
                 <h2 className="font-serif text-base font-semibold tracking-tight text-foreground">
                   {subBox.title}
@@ -369,5 +374,3 @@ export function LiteratureReviewContent() {
     </div>
   );
 }
-
-

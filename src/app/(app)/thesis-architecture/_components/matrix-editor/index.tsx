@@ -5,7 +5,6 @@ import { MATRIX_CARDS } from "./constants/matrix-cards";
 import { useMatrixValues } from "./hooks/use-matrix-values";
 import { useMatrixStats } from "./hooks/use-matrix-stats";
 import { useMatrixModal } from "./hooks/use-matrix-modal";
-import { MatrixCascadeAlert } from "./components/matrix-cascade-alert";
 import { MatrixMetricsStrip } from "./components/matrix-metrics-strip";
 import { MatrixPillarGrid } from "./components/matrix-pillar-grid";
 import { EditMatrixColumnModal } from "./components/modals/edit-matrix-column-modal";
@@ -33,9 +32,6 @@ export function MatrixEditorView({ initialMatrix }: MatrixEditorViewProps) {
     <div className="w-full space-y-6">
       {/* Top Overview & Metric Strip */}
       <MatrixMetricsStrip values={values} stats={stats} />
-
-      {/* Cascade Invalidation Advisory Banner */}
-      <MatrixCascadeAlert />
 
       {/* Main 4-Pillar Grid */}
       <MatrixPillarGrid values={values} onEdit={modal.openModal} />

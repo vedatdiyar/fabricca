@@ -36,14 +36,11 @@ export function useDashboard(
 
   const {
     tasks: combinedTasks,
-    isSyncing,
-    isAuditing,
     handleAddTask,
     handleEditTask,
     handleTaskStatusChange,
     handleDeleteTask,
     handleSyncTasks,
-    handleRunStrategistAudit,
   } = useDashboardTasks(initialTasks);
 
   const handleDeleteArticle = useCallback(
@@ -99,15 +96,11 @@ export function useDashboard(
   return {
     topicBoxes,
     combinedTasks,
-    isSyncing,
-    isAuditing,
     handleTaskStatusChange,
     handleAddTask,
     handleEditTask,
     handleDeleteTask,
     handleDeleteArticle,
     handleExpansionSuccess,
-    handleSyncTasks,
-    handleRunStrategistAudit,
   };
 }

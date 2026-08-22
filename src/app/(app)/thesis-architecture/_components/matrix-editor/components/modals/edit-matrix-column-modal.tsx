@@ -63,7 +63,7 @@ export function EditMatrixColumnModal({
               variant="outline"
               className={`text-[10px] font-semibold px-2 py-0.5 border ${card.badgeColor}`}
             >
-              Sütun #{card.number}
+              {card.badgeLabel}
             </Badge>
             <span className="text-xs text-muted-foreground font-sans">
               Düzenleme Modu

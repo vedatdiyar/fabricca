@@ -60,9 +60,7 @@ export function DeleteConfirmDialog({
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>
-              Vazgeç
-            </AlertDialogCancel>
+            <AlertDialogCancel>Vazgeç</AlertDialogCancel>
             <AlertDialogAction
               onClick={onConfirmDeleteNote}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"

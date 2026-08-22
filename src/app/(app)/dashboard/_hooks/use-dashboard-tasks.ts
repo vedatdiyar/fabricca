@@ -10,10 +10,8 @@ import {
   deleteTaskAction,
   updateTaskAction,
   syncTasksAction,
-  runStrategistAuditAction,
   getTasksAction,
 } from "@/app/(app)/dashboard/task-actions";
-import { toggleResourceReadStatusAction } from "@/app/(app)/library/actions";
 
 /**
  * Maps a database task row into a Kanban task model.
@@ -48,8 +46,6 @@ export function useDashboardTasks(initialTasks: TaskRow[]) {
   const [tasks, setTasks] = useState<KanbanTask[]>(() =>
     initialTasks.map(mapTaskRow),
   );
-  const [isSyncing, setIsSyncing] = useState(false);
-  const [isAuditing, setIsAuditing] = useState(false);
 
   const [prevInitialTasks, setPrevInitialTasks] = useState(initialTasks);
   if (prevInitialTasks !== initialTasks) {
@@ -119,20 +115,15 @@ export function useDashboardTasks(initialTasks: TaskRow[]) {
 
       if (!previousTask) return;
 
-      const currentTask = previousTask as KanbanTask;
-
       try {
         const res = await updateTaskStatusAction(Number(taskId), newStatus);
         if (!res.success) {
           throw new Error(res.error);
         }
 
-        // If this is a reading task linked to a source, sync resource read status
-        if (currentTask.taskType === "READING" && currentTask.sourceId) {
-          await toggleResourceReadStatusAction(
-            currentTask.sourceId,
-            newStatus === "DONE",
-          );
+        // When a task is marked DONE, sync in the background to replenish candidate tasks if needed
+        if (newStatus === "DONE") {
+          syncTasksAction().then(() => refreshTasksFromServer());
         }
       } catch (err) {
         setTasks((prev) =>
@@ -147,7 +138,7 @@ export function useDashboardTasks(initialTasks: TaskRow[]) {
         );
       }
     },
-    [],
+    [refreshTasksFromServer],
   );
 
   const handleDeleteTask = useCallback(async (taskId: string) => {
@@ -187,56 +178,27 @@ export function useDashboardTasks(initialTasks: TaskRow[]) {
   }, []);
 
   const handleSyncTasks = useCallback(async () => {
-    setIsSyncing(true);
     try {
       const res = await syncTasksAction();
       if (!res.success) {
         throw new Error(res.error);
       }
       await refreshTasksFromServer();
-      toast.success("Akademik görevler senkronize edildi.");
     } catch (err) {
       toast.error(
         `Senkronizasyon hatası: ${
           err instanceof Error ? err.message : "Bilinmeyen hata."
         }`,
       );
-    } finally {
-      setIsSyncing(false);
-    }
-  }, [refreshTasksFromServer]);
-
-  const handleRunStrategistAudit = useCallback(async () => {
-    setIsAuditing(true);
-    try {
-      const res = await runStrategistAuditAction();
-      if (!res.success || !res.data) {
-        throw new Error(res.error);
-      }
-      await refreshTasksFromServer();
-      toast.success("Yapay Zeka Tez Stratejisi analizi tamamlandı.");
-      return res.data;
-    } catch (err) {
-      toast.error(
-        `Strateji analizi başarısız: ${
-          err instanceof Error ? err.message : "Bilinmeyen hata."
-        }`,
-      );
-      return null;
-    } finally {
-      setIsAuditing(false);
     }
   }, [refreshTasksFromServer]);
 
   return {
     tasks,
-    isSyncing,
-    isAuditing,
     handleAddTask,
     handleEditTask,
     handleTaskStatusChange,
     handleDeleteTask,
     handleSyncTasks,
-    handleRunStrategistAudit,
   };
 }

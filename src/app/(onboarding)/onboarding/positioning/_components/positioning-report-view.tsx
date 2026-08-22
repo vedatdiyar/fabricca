@@ -122,9 +122,7 @@ export function PositioningReportView({
               ? AlertTriangle
               : HelpCircle
         }
-        variant={
-          isNovelGap ? "success" : isDirectOverlap ? "warning" : "info"
-        }
+        variant={isNovelGap ? "success" : isDirectOverlap ? "warning" : "info"}
         title={
           isNovelGap
             ? "Özgün Katkı: Belirgin Bir Literatür Boşluğu Tespit Edildi"
@@ -210,9 +208,7 @@ export function PositioningReportView({
                       <span className="font-medium text-foreground">
                         {thesis.author}
                       </span>
-                      {thesis.university && (
-                        <span> · {thesis.university}</span>
-                      )}
+                      {thesis.university && <span> · {thesis.university}</span>}
                     </p>
                   </div>
 

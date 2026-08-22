@@ -39,11 +39,6 @@ export function CitationFilterBar({
   boxes,
   onFilterChange,
 }: CitationFilterBarProps) {
-  const selectedBox = boxes.find((b) => b.id === filters.selectedBoxId);
-  const boxSelectLabel = selectedBox
-    ? `Kutu: ${selectedBox.title}`
-    : "Tüm Kutular";
-
   return (
     <div className="flex flex-col gap-2.5 w-full">
       {/* Search Input + Box Filter + Sort */}
@@ -85,9 +80,7 @@ export function CitationFilterBar({
             >
               <SelectTrigger className="text-xs bg-card border-border">
                 <BoxIcon className="size-3.5 mr-1 text-muted-foreground shrink-0" />
-                <SelectValue placeholder="Tüm Kutular">
-                  {boxSelectLabel}
-                </SelectValue>
+                <SelectValue placeholder="Tüm Kutular" />
               </SelectTrigger>
               <SelectContent className="max-h-64">
                 <SelectItem value="ALL">Tüm Kutular</SelectItem>

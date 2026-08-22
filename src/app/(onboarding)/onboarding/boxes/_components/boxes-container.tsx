@@ -23,7 +23,10 @@ import { BOX_TYPE_LABELS, sortByBoxType } from "@/lib/box-constants";
 import type { ThesisBoxType } from "@/lib/box-constants";
 import type { GeminiThesisBox } from "@/lib/types";
 
-const BOX_TYPE_ICONS: Record<ThesisBoxType, React.ComponentType<{ className?: string }>> = {
+const BOX_TYPE_ICONS: Record<
+  ThesisBoxType,
+  React.ComponentType<{ className?: string }>
+> = {
   SUBJECT_PROBLEM: Target,
   THEORETICAL_FRAMEWORK: Compass,
   METHODOLOGY: Microscope,
@@ -183,7 +186,8 @@ const PrimaryMaterialSection = memo(function PrimaryMaterialSection() {
         </span>
       </div>
       <p className="font-sans text-xs text-muted-foreground leading-relaxed">
-        Bu kutu saha çalışması ve birincil kaynaklar için ayrılmıştır. Arşiv belgeleri literatür taramasından sonra doğrudan eklenecektir.
+        Bu kutu saha çalışması ve birincil kaynaklar için ayrılmıştır. Arşiv
+        belgeleri literatür taramasından sonra doğrudan eklenecektir.
       </p>
     </div>
   );

@@ -79,19 +79,6 @@ export function LiteratureMatrixToolbar({
     });
   };
 
-  const selectedBox =
-    filters.boxId === "all"
-      ? null
-      : availableBoxes.find((b) => b.id === filters.boxId);
-  const boxLabel = selectedBox ? selectedBox.title : "Tüm Temalar";
-
-  const statusLabelMap: Record<string, string> = {
-    all: "Tüm Durumlar",
-    read: "Okunmuş",
-    unread: "Okunmamış",
-  };
-  const statusLabel = statusLabelMap[filters.readStatus] || "Tüm Durumlar";
-
   return (
     <div className="flex flex-row items-center justify-between gap-3 rounded-lg border border-border bg-card p-3 shadow-xs overflow-x-auto scrollbar-none">
       {/* Left Group: Search & Filters strictly side-by-side in single line */}
@@ -121,7 +108,7 @@ export function LiteratureMatrixToolbar({
         >
           <SelectTrigger className="h-8 w-52 text-xs bg-background shrink-0">
             <Filter className="mr-1.5 size-3.5 text-muted-foreground shrink-0" />
-            <SelectValue className="truncate">{boxLabel}</SelectValue>
+            <SelectValue />
           </SelectTrigger>
           <SelectContent className="text-xs">
             <SelectItem value="all">
@@ -147,7 +134,7 @@ export function LiteratureMatrixToolbar({
         >
           <SelectTrigger className="h-8 w-44 text-xs bg-background shrink-0">
             <BookOpenCheck className="mr-1.5 size-3.5 text-muted-foreground shrink-0" />
-            <SelectValue>{statusLabel}</SelectValue>
+            <SelectValue />
           </SelectTrigger>
           <SelectContent className="text-xs">
             <SelectItem value="all">Tüm Durumlar</SelectItem>

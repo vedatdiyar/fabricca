@@ -65,10 +65,7 @@ export function EditSubBoxModal({
       <DialogContent className="max-w-2xl max-h-[90vh] flex flex-col p-6 gap-4 bg-card border-border">
         <DialogHeader className="space-y-1 pb-3 border-b border-border/40">
           <div className="flex items-center gap-2">
-            <Badge
-              variant="outline"
-              className={`border ${badgeColor}`}
-            >
+            <Badge variant="outline" className={`border ${badgeColor}`}>
               {shortLabel}
             </Badge>
             <span className="text-xs text-muted-foreground font-sans">

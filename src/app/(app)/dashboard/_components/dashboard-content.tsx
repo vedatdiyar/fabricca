@@ -33,16 +33,12 @@ export function DashboardContent({
   const {
     topicBoxes,
     combinedTasks,
-    isSyncing,
-    isAuditing,
     handleTaskStatusChange,
     handleAddTask,
     handleEditTask,
     handleDeleteTask,
     handleDeleteArticle,
     handleExpansionSuccess,
-    handleSyncTasks,
-    handleRunStrategistAudit,
   } = useDashboard(
     initialBoxes,
     initialResources,
@@ -233,14 +229,10 @@ export function DashboardContent({
       <section className="space-y-6">
         <KanbanBoard
           tasks={combinedTasks}
-          isSyncing={isSyncing}
-          isAuditing={isAuditing}
           onTaskStatusChange={handleTaskStatusChange}
           onAddTask={handleAddTask}
           onEditTask={handleEditTask}
           onDeleteTask={handleDeleteTask}
-          onSyncTasks={handleSyncTasks}
-          onRunStrategistAudit={handleRunStrategistAudit}
           boxes={initialBoxes}
         />
       </section>

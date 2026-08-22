@@ -18,12 +18,11 @@ export interface BoxManagerViewProps {
 }
 
 /**
- * Orchestrator layout: wires the data/clipboard/modal hooks together and
- * renders the metric strip, the quadrant pillar grid and the four dialogs.
+ * Orchestrator layout: renders the summary metrics strip, the 4-pillar quadrant grid,
+ * and manages modal dialogs for topic boxes.
  */
 export function BoxManagerView({ boxesList }: BoxManagerViewProps) {
-  const { rootBoxes, subBoxesByParent, pillarMetricsById } =
-    useBoxData(boxesList);
+  const { rootBoxes, subBoxesByParent, totalMetrics } = useBoxData(boxesList);
   const { copySubBox } = useClipboardExport();
   const {
     editSubBox,
@@ -63,14 +62,14 @@ export function BoxManagerView({ boxesList }: BoxManagerViewProps) {
 
   return (
     <div className="w-full space-y-6">
-      {/* 1. TOP OVERVIEW & METRIC STRIP */}
+      {/* 1. TOP SUMMARY METRIC STRIP */}
       <QuadrantMetricsStrip
-        rootBoxes={rootBoxes}
-        pillarMetricsById={pillarMetricsById}
+        totalMetrics={totalMetrics}
+        onAddNewSubBox={() => openAddModal()}
       />
 
-      {/* 2. QUADRANT PILLAR CARDS GRID */}
-      <div className="grid gap-6 md:grid-cols-2">
+      {/* 2. MAIN 2X2 QUADRANT PILLARS GRID */}
+      <div className="grid gap-5 md:grid-cols-2">
         {rootBoxes.map((rootBox) => (
           <QuadrantPillarCard
             key={rootBox.id}

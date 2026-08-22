@@ -17,7 +17,6 @@ import {
   splitParagraphs,
   copyToClipboard,
 } from "../utils/text-metrics";
-import { MatrixGuidingAccordion } from "./matrix-guiding-accordion";
 
 interface MatrixPillarCardProps {
   card: MatrixCardDef;
@@ -56,15 +55,9 @@ export function MatrixPillarCard({
           </div>
           <div className="min-w-0 flex-1 space-y-0.5">
             <div className="flex items-center gap-2">
-              <Badge
-                variant="outline"
-                className={`border ${card.badgeColor}`}
-              >
-                Sütun #{card.number}
-              </Badge>
-              <span className="font-sans text-xs text-muted-foreground">
+              <Badge variant="outline" className={`border ${card.badgeColor}`}>
                 {card.badgeLabel}
-              </span>
+              </Badge>
             </div>
             <CardTitle className="font-serif text-base font-semibold tracking-tight text-foreground">
               {card.title}
@@ -135,9 +128,6 @@ export function MatrixPillarCard({
             </p>
           </div>
         )}
-
-        {/* Guiding Questions Accordion */}
-        <MatrixGuidingAccordion questions={card.guidingQuestions} />
       </CardContent>
 
       {/* Card Footer */}

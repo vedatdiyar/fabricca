@@ -18,14 +18,6 @@ import type {
   CitationCardCounts,
 } from "../_hooks/use-citation-cards-filter";
 
-/** Turkish display labels dictionary for sorting options. */
-const SORT_DISPLAY_LABELS: Record<string, string> = {
-  NEWEST: "En Yeni",
-  OLDEST: "En Eski",
-  SOURCE_TITLE: "Kaynağa Göre",
-  PAGE_NUMBER: "Sayfa No",
-};
-
 interface CitationCardsToolbarProps {
   filters: CitationCardFilters;
   counts: CitationCardCounts;
@@ -95,7 +87,7 @@ export function CitationCardsToolbar({
           >
             <SelectTrigger className="w-36 text-xs bg-background border-border">
               <SlidersHorizontal className="size-3.5 mr-1 text-muted-foreground shrink-0" />
-              <SelectValue>{SORT_DISPLAY_LABELS[filters.sortBy]}</SelectValue>
+              <SelectValue />
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="NEWEST">En Yeni Ekleme</SelectItem>
@@ -106,11 +98,7 @@ export function CitationCardsToolbar({
           </Select>
 
           {/* Add New Card Button */}
-          <Button
-            onClick={onAddNew}
-            size="sm"
-            className="gap-1.5 shrink-0"
-          >
+          <Button onClick={onAddNew} size="sm" className="gap-1.5 shrink-0">
             <Plus className="size-3.5" />
             <span className="hidden sm:inline">Yeni Fiş</span>
           </Button>

@@ -35,9 +35,6 @@ export function MatrixMetricsStrip({ values, stats }: MatrixMetricsStripProps) {
             <CardContent className="flex items-center justify-between p-3">
               <div className="space-y-0.5 min-w-0 flex-1">
                 <div className="flex items-center gap-1.5">
-                  <span className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">
-                    Sütun #{card.number}
-                  </span>
                   {isFilled ? (
                     <span className="flex items-center gap-0.5 text-[10px] font-medium text-primary">
                       <CheckCircle2 className="h-3 w-3" />

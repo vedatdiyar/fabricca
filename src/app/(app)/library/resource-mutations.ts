@@ -3,7 +3,7 @@
 import { eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { db } from "@/core/db";
-import { sources } from "@/core/db/schema";
+import { sources, tasks } from "@/core/db/schema";
 import { getSession } from "@/lib/session";
 import { createFlowId, Logger } from "@/lib/logger";
 import { deletePdfFromR2 } from "@/core/services/storage/r2";
@@ -45,6 +45,12 @@ export async function toggleResourceReadStatusAction(
       .update(sources)
       .set({ isRead: newIsRead })
       .where(eq(sources.id, resourceId));
+
+    // Event-driven: Instantly sync matching automated reading task
+    await db
+      .update(tasks)
+      .set({ status: newIsRead ? "DONE" : "TODO", updatedAt: new Date() })
+      .where(eq(tasks.sourceId, resourceId));
 
     log.info("toggle_resource_read_status_success", {
       service: "library",

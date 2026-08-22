@@ -4,7 +4,7 @@ import { eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { createFlowId, Logger } from "@/lib/logger";
 import { db } from "@/core/db";
-import { tasks, boxes } from "@/core/db/schema";
+import { tasks, boxes, sources } from "@/core/db/schema";
 import { getSession, SESSION_ERROR_MSG } from "@/lib/session";
 import {
   AddTaskSchema,
@@ -37,10 +37,7 @@ export async function getTasksAction(): Promise<{
     const session = await getSession();
     if (!session) return { success: false, error: SESSION_ERROR_MSG };
 
-    // Synchronize automated academic tasks (auto-complete, pacing, cross-pillar balance)
-    await syncAcademicTasks(session.userId);
-
-    const rows = await db
+    let rows = await db
       .select({
         id: tasks.id,
         title: tasks.title,
@@ -61,6 +58,32 @@ export async function getTasksAction(): Promise<{
       .leftJoin(boxes, eq(tasks.boxId, boxes.id))
       .where(eq(tasks.userId, session.userId))
       .orderBy(tasks.createdAt);
+
+    // If user has no tasks at all, trigger initial sync once
+    if (rows.length === 0) {
+      await syncAcademicTasks(session.userId);
+      rows = await db
+        .select({
+          id: tasks.id,
+          title: tasks.title,
+          description: tasks.description,
+          taskType: tasks.taskType,
+          status: tasks.status,
+          priority: tasks.priority,
+          thesisBoxId: tasks.boxId,
+          sourceId: tasks.sourceId,
+          targetUrl: tasks.targetUrl,
+          isAutomated: tasks.isAutomated,
+          metadata: tasks.metadata,
+          boxTitle: boxes.title,
+          createdAt: tasks.createdAt,
+          updatedAt: tasks.updatedAt,
+        })
+        .from(tasks)
+        .leftJoin(boxes, eq(tasks.boxId, boxes.id))
+        .where(eq(tasks.userId, session.userId))
+        .orderBy(tasks.createdAt);
+    }
 
     return { success: true, data: rows };
   } catch (err) {
@@ -375,10 +398,26 @@ export async function updateTaskStatusAction(
 
     await db
       .update(tasks)
-      .set({ status: parsed.data })
+      .set({ status: parsed.data, updatedAt: new Date() })
       .where(eq(tasks.id, taskId));
 
+    // Sync linked source read status if this is a reading task
+    if (existing.taskType === "READING" && existing.sourceId) {
+      if (parsed.data === "DONE") {
+        await db
+          .update(sources)
+          .set({ isRead: true, updatedAt: new Date() })
+          .where(eq(sources.id, existing.sourceId));
+      } else if (existing.status === "DONE") {
+        await db
+          .update(sources)
+          .set({ isRead: false, updatedAt: new Date() })
+          .where(eq(sources.id, existing.sourceId));
+      }
+    }
+
     revalidatePath("/dashboard");
+    revalidatePath("/library");
 
     return { success: true };
   } catch (err) {

@@ -1,13 +1,6 @@
 "use client";
 
-import {
-  MessageSquareQuote,
-  BookOpen,
-  FolderTree,
-  Folder,
-  CornerDownRight,
-  Ban,
-} from "lucide-react";
+import { MessageSquareQuote, BookOpen, FolderTree } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { DialogFooter } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -23,7 +16,6 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { getBoxTypeBadgeConfig } from "@/lib/box-constants";
 import { cn } from "@/lib/utils";
-import { NOTE_TYPE_DISPLAY_LABELS } from "../_lib/note-type-labels";
 import { OutlineSelectItems } from "./outline-select-items";
 import {
   useCitationCardForm,
@@ -46,9 +38,7 @@ export function CitationCardForm(props: CitationCardFormProps) {
   const {
     formFields,
     setField,
-    selectedSourceObj,
     selectedBoxObj,
-    selectedOutlineObj,
     handleSubmit,
     handleContentPaste,
     isEditing,
@@ -98,11 +88,7 @@ export function CitationCardForm(props: CitationCardFormProps) {
               id="source-select"
               className="text-xs bg-background border-border"
             >
-              <SelectValue placeholder="Kaynak Seçin">
-                {selectedSourceObj
-                  ? `${selectedSourceObj.title} (${selectedSourceObj.authors[0] ?? "Yazar"}, ${selectedSourceObj.publicationYear})`
-                  : "Kaynak Seçin"}
-              </SelectValue>
+              <SelectValue placeholder="Kaynak Seçin" />
             </SelectTrigger>
             <SelectContent className="max-h-60">
               {sources.map((src) => (
@@ -136,25 +122,7 @@ export function CitationCardForm(props: CitationCardFormProps) {
               id="outline-select"
               className="text-xs bg-background border-border"
             >
-              <SelectValue placeholder="Bölüm Seçin">
-                {formFields.selectedOutlineId === "NONE" ? (
-                  <span className="flex items-center gap-1.5 text-muted-foreground">
-                    <Ban className="h-3.5 w-3.5 shrink-0" />
-                    <span>Bölüme Bağlanmadı (Boşta)</span>
-                  </span>
-                ) : selectedOutlineObj ? (
-                  <span className="flex items-center gap-1.5 text-foreground font-medium truncate">
-                    {selectedOutlineObj.parentId ? (
-                      <CornerDownRight className="h-3 w-3 text-primary shrink-0" />
-                    ) : (
-                      <Folder className="h-3.5 w-3.5 text-primary shrink-0" />
-                    )}
-                    <span className="truncate">{selectedOutlineObj.title}</span>
-                  </span>
-                ) : (
-                  "Bölüm Seçin"
-                )}
-              </SelectValue>
+              <SelectValue placeholder="Bölüm Seçin" />
             </SelectTrigger>
             <SelectContent className="max-h-72">
               <OutlineSelectItems
@@ -187,9 +155,7 @@ export function CitationCardForm(props: CitationCardFormProps) {
               id="note-type-select"
               className="text-xs bg-background border-border"
             >
-              <SelectValue>
-                {NOTE_TYPE_DISPLAY_LABELS[formFields.noteType]}
-              </SelectValue>
+              <SelectValue placeholder="Not Türü Seçin" />
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="DIRECT_QUOTE" className="text-xs">
