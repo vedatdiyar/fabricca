@@ -80,25 +80,23 @@ export async function getOfficeInitialDataAction(): Promise<{
       for (const c of counts) countMap.set(c.sessionId, Number(c.value));
     }
 
-    const sessionSummaries: OfficeSessionSummary[] = sessionRows.map(
-      (row) => ({
-        id: row.id,
-        title: row.title,
-        outlineId: row.outlineId,
-        outlineTitle: row.outlineId
-          ? (outlineMap.get(row.outlineId) ?? null)
-          : null,
-        draftText: row.draftText,
-        studentNote: row.studentNote,
-        createdAt: row.createdAt.toLocaleDateString("tr-TR", {
-          day: "numeric",
-          month: "short",
-          hour: "2-digit",
-          minute: "2-digit",
-        }),
-        messageCount: countMap.get(row.id) ?? 0,
+    const sessionSummaries: OfficeSessionSummary[] = sessionRows.map((row) => ({
+      id: row.id,
+      title: row.title,
+      outlineId: row.outlineId,
+      outlineTitle: row.outlineId
+        ? (outlineMap.get(row.outlineId) ?? null)
+        : null,
+      draftText: row.draftText,
+      studentNote: row.studentNote,
+      createdAt: row.createdAt.toLocaleDateString("tr-TR", {
+        day: "numeric",
+        month: "short",
+        hour: "2-digit",
+        minute: "2-digit",
       }),
-    );
+      messageCount: countMap.get(row.id) ?? 0,
+    }));
 
     return {
       success: true,

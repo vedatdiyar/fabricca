@@ -70,6 +70,7 @@ export async function extractDocumentMetadata(
         seed: GEMINI_SEED,
         payloadStage: "pdf_parser_metadata",
         operation: "pdf_read",
+        quiet: true,
       },
     );
 
@@ -116,6 +117,7 @@ export async function extractDocumentReferences(
         seed: GEMINI_SEED,
         payloadStage: "pdf_parser_references",
         operation: "pdf_read",
+        quiet: true,
       },
     );
 

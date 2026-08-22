@@ -7,12 +7,17 @@ import { getSession } from "@/lib/session";
 import { createFlowId, Logger } from "@/lib/logger";
 import { ensureUserMatrixAndBoxes } from "@/core/services/box/ownership";
 import { mapSourceToResource } from "@/app/(app)/library/_services/resource-mapper";
-import type { NoteType } from "./_lib/types";
+import type {
+  LibraryResourceNote,
+  LibraryResourceCritique,
+  NoteType,
+  NoteVerificationStatus,
+} from "./_lib/types";
 
 /**
- * Server Action: Fetches all library resources and notes for the current user, seeding default boxes if absent.
+ * Server Action: Fetches all library resources, notes, and critiques for the current user, seeding default boxes if absent.
  *
- * @returns The resources and notes on success, or an error message on failure.
+ * @returns The resources, notes, and critiques on success, or an error message on failure.
  */
 export async function getLibraryResourcesAction() {
   const flowId = createFlowId();
@@ -62,7 +67,7 @@ export async function getLibraryResourcesAction() {
       }),
     );
 
-    const notes = dbNotes.map((n) => ({
+    const notes: LibraryResourceNote[] = dbNotes.map((n) => ({
       id: n.id,
       resourceId: n.sourceId,
       pageNumber: n.pageNumber,
@@ -70,10 +75,13 @@ export async function getLibraryResourcesAction() {
       content: n.content,
       comment: n.comment ?? undefined,
       sentToCitationCards: n.sentToCitationCards,
+      verificationStatus:
+        (n.verificationStatus as NoteVerificationStatus) || "UNVERIFIED",
+      verificationData: n.verificationData ?? undefined,
       createdAt: n.createdAt.toISOString(),
     }));
 
-    const critiques = dbResources
+    const critiques: LibraryResourceCritique[] = dbResources
       .map((r) => r.critique)
       .filter((c): c is NonNullable<typeof c> => c !== null)
       .map((c) => ({
@@ -83,6 +91,8 @@ export async function getLibraryResourcesAction() {
         methodology: c.methodology ?? undefined,
         mainArgument: c.mainArgument ?? undefined,
         literatureGap: c.literatureGap ?? undefined,
+        aiEvaluation: c.aiEvaluation ?? undefined,
+        evaluatedAt: c.evaluatedAt?.toISOString(),
         updatedAt: c.updatedAt.toISOString(),
       }));
 

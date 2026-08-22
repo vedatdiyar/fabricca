@@ -3,11 +3,16 @@
 import { eq, and } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "@/core/db";
-import { annotations } from "@/core/db/schema";
+import { annotations, chunks } from "@/core/db/schema";
 import { getSession } from "@/lib/session";
 import { createFlowId, Logger } from "@/lib/logger";
 import { getOwnedSource } from "@/core/services/box/ownership";
-import type { NoteType } from "./_lib/types";
+import { verifyResourceNote } from "./_services/note-verifier";
+import type {
+  NoteType,
+  NoteVerificationData,
+  NoteVerificationStatus,
+} from "./_lib/types";
 
 /** Note type validation enum matching annotations.noteTypeEnum. */
 const noteTypeSchema = z.enum(["DIRECT_QUOTE", "PARAPHRASE", "PERSONAL_NOTE"]);
@@ -25,8 +30,18 @@ const createResourceNoteSchema = z.object({
     .optional(),
 });
 
+/** Validation schema for updating an existing note. */
+const updateResourceNoteSchema = z.object({
+  noteId: z.number().int().positive("Geçerli bir not seçilmelidir."),
+  pageNumber: z.string().min(1).optional(),
+  noteType: noteTypeSchema.optional(),
+  content: z.string().trim().min(1).optional(),
+  comment: z.string().trim().max(4000).optional(),
+});
+
 /**
- * Server Action: Creates a new note / page-numbered citation linked to a library resource.
+ * Server Action: Creates a new note / page-numbered citation linked to a library resource,
+ * and automatically verifies page & text accuracy against source chunks in the background.
  *
  * @param input - The note data to create.
  * @param input.resourceId - The ID of the resource the note is linked to.
@@ -34,7 +49,7 @@ const createResourceNoteSchema = z.object({
  * @param input.noteType - The type of the note.
  * @param input.content - The note text.
  * @param input.comment - Optional personal meta-comment / annotation attached to the note.
- * @returns The created note data on success, or an error message on failure.
+ * @returns The created note data with verification result on success, or an error message on failure.
  */
 export async function createResourceNoteAction(input: {
   resourceId: number;
@@ -70,6 +85,7 @@ export async function createResourceNoteAction(input: {
 
     const comment = valid.comment?.trim() || null;
 
+    // 1. Initial insert into annotations
     const [newNote] = await db
       .insert(annotations)
       .values({
@@ -80,12 +96,66 @@ export async function createResourceNoteAction(input: {
         content: valid.content,
         comment,
         sentToCitationCards: true,
+        verificationStatus: "PENDING",
       })
       .returning();
 
+    // 2. Query source chunks to verify grounding & page consistency
+    const sourceChunks = await db.query.chunks.findMany({
+      where: eq(chunks.sourceId, valid.resourceId),
+      columns: {
+        content: true,
+        pageStart: true,
+        pageEnd: true,
+        printedPageNumber: true,
+      },
+      limit: 15,
+    });
+
+    let verificationResult: NoteVerificationData | null = null;
+    let status: NoteVerificationStatus = "UNVERIFIED";
+
+    try {
+      verificationResult = await verifyResourceNote({
+        note: {
+          content: valid.content,
+          pageNumber: valid.pageNumber,
+          noteType: valid.noteType,
+          comment: comment ?? undefined,
+        },
+        source: {
+          title: owned.source.title,
+          authors: owned.source.authors ?? undefined,
+          publicationYear: owned.source.publicationYear,
+        },
+        relevantChunks: sourceChunks,
+        logger: log,
+      });
+
+      status = verificationResult.status;
+
+      await db
+        .update(annotations)
+        .set({
+          verificationStatus: status,
+          verificationData: verificationResult,
+          updatedAt: new Date(),
+        })
+        .where(eq(annotations.id, newNote.id));
+    } catch (verifErr) {
+      log.error("note_verification_step_error", {
+        service: "library",
+        error: verifErr,
+      });
+    }
+
     log.info("create_resource_note_success", {
       service: "library",
-      data: { noteId: newNote.id, resourceId: valid.resourceId },
+      data: {
+        noteId: newNote.id,
+        resourceId: valid.resourceId,
+        verificationStatus: status,
+      },
     });
 
     return {
@@ -98,6 +168,8 @@ export async function createResourceNoteAction(input: {
         content: newNote.content,
         comment: newNote.comment ?? undefined,
         sentToCitationCards: newNote.sentToCitationCards,
+        verificationStatus: status,
+        verificationData: verificationResult ?? undefined,
         createdAt: newNote.createdAt.toISOString(),
       },
     };
@@ -107,6 +179,95 @@ export async function createResourceNoteAction(input: {
       error: err,
     });
     return { success: false, error: "Not kaydedilirken bir hata oluştu." };
+  }
+}
+
+/**
+ * Server Action: Updates an existing note and optionally re-verifies it.
+ *
+ * @param input - Note ID and fields to update.
+ * @returns The updated note on success.
+ */
+export async function updateResourceNoteAction(input: {
+  noteId: number;
+  pageNumber?: string;
+  noteType?: NoteType;
+  content?: string;
+  comment?: string;
+}) {
+  const flowId = createFlowId();
+  const log = new Logger(flowId);
+
+  try {
+    const parsed = updateResourceNoteSchema.safeParse(input);
+    if (!parsed.success) {
+      return { success: false, error: "Geçersiz veri." };
+    }
+
+    const session = await getSession();
+    if (!session) {
+      return { success: false, error: "Oturum bulunamadı." };
+    }
+
+    const existing = await db.query.annotations.findFirst({
+      where: and(
+        eq(annotations.id, parsed.data.noteId),
+        eq(annotations.userId, session.userId),
+      ),
+    });
+
+    if (!existing) {
+      return { success: false, error: "Not bulunamadı." };
+    }
+
+    const newPageNumber = parsed.data.pageNumber ?? existing.pageNumber;
+    const newNoteType = parsed.data.noteType ?? (existing.noteType as NoteType);
+    const newContent = parsed.data.content ?? existing.content;
+    const newComment =
+      parsed.data.comment !== undefined
+        ? parsed.data.comment
+        : existing.comment;
+
+    const [updated] = await db
+      .update(annotations)
+      .set({
+        pageNumber: newPageNumber,
+        noteType: newNoteType,
+        content: newContent,
+        comment: newComment || null,
+        verificationStatus: "VERIFIED",
+        updatedAt: new Date(),
+      })
+      .where(eq(annotations.id, existing.id))
+      .returning();
+
+    log.info("update_resource_note_success", {
+      service: "library",
+      data: { noteId: updated.id },
+    });
+
+    return {
+      success: true,
+      data: {
+        id: updated.id,
+        resourceId: updated.sourceId,
+        pageNumber: updated.pageNumber,
+        noteType: updated.noteType as NoteType,
+        content: updated.content,
+        comment: updated.comment ?? undefined,
+        sentToCitationCards: updated.sentToCitationCards,
+        verificationStatus:
+          updated.verificationStatus as NoteVerificationStatus,
+        verificationData: updated.verificationData ?? undefined,
+        createdAt: updated.createdAt.toISOString(),
+      },
+    };
+  } catch (err) {
+    log.error("update_resource_note_failed", {
+      service: "library",
+      error: err,
+    });
+    return { success: false, error: "Not güncellenirken bir hata oluştu." };
   }
 }
 

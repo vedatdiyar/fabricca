@@ -2,9 +2,7 @@ import { HarmCategory, HarmBlockThreshold, ThinkingLevel } from "@google/genai";
 import { getAi } from "@/core/services/ai";
 import { dispatchGeminiCall } from "@/core/services/ai/gemini-scheduler";
 import { FLASH_LITE_35, GEMINI_SEED } from "@/lib/constants";
-import {
-  ADVISOR_TOOL_DECLARATIONS,
-} from "@/app/(app)/advisor/_tools";
+import { ADVISOR_TOOL_DECLARATIONS } from "@/app/(app)/advisor/_tools";
 import type { AdvisorStreamWriter } from "./stream";
 import {
   extractTextFromChunk,

@@ -37,8 +37,6 @@ export function OutlineContainer({
   );
 }
 
-
-
 function OutlineEditor({
   sections: initialSections,
   academicField: initialAcademicField,

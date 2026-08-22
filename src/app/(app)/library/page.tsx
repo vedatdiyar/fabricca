@@ -55,11 +55,15 @@ function LibraryPageContent() {
     handleUpdateResource,
   } = useLibraryResources(initialSelectedId);
 
-  const { notes, setNotes, handleAddNote, handleDeleteNote } = useResourceNotes(
-    { selectedResourceId },
-  );
+  const { notes, setNotes, handleAddNote, handleUpdateNote, handleDeleteNote } =
+    useResourceNotes({ selectedResourceId });
 
-  const { getCritiqueFor, handleSaveCritique } = useResourceCritique({
+  const {
+    getCritiqueFor,
+    handleSaveCritique,
+    handleEvaluateCritique,
+    isEvaluating,
+  } = useResourceCritique({
     selectedResourceId,
   });
 
@@ -168,7 +172,10 @@ function LibraryPageContent() {
               notes={selectedResourceNotes}
               critique={selectedCritique}
               onAddNote={handleAddNote}
+              onUpdateNote={handleUpdateNote}
               onSaveCritique={handleSaveCritique}
+              onEvaluateCritique={handleEvaluateCritique}
+              isEvaluating={isEvaluating}
               onDeleteNote={handleDeleteNote}
               onToggleReadStatus={handleToggleReadStatus}
               onUpdateResource={handleUpdateResource}

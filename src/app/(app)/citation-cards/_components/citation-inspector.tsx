@@ -1,10 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import {
-  Pencil,
-  Trash2,
-} from "lucide-react";
+import { Pencil, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { getNoteTypeBadgeConfig } from "./citation-card";
@@ -37,9 +34,6 @@ interface CitationInspectorProps {
  * @param props - Component props.
  * @returns Rendered inspector panel markup or null.
  */
-
-
-
 
 /**
  * Slide-over Inspector Panel (Linear & Notion style) for Citation Cards.

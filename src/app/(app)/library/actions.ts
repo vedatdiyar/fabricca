@@ -14,6 +14,10 @@ export {
 export { getBoxHierarchyForLibraryAction } from "./box-actions";
 export {
   createResourceNoteAction,
+  updateResourceNoteAction,
   deleteResourceNoteAction,
 } from "./note-actions";
-export { saveResourceCritiqueAction } from "./critique-actions";
+export {
+  saveResourceCritiqueAction,
+  evaluateResourceNotesAction,
+} from "./critique-actions";

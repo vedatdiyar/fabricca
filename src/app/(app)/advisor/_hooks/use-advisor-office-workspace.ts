@@ -8,7 +8,10 @@ import {
   type OutlineOption,
   type OfficeSessionSummary,
 } from "../office-actions";
-import type { OfficeReviewReport, JuryCritique } from "../_services/pipeline/types";
+import type {
+  OfficeReviewReport,
+  JuryCritique,
+} from "../_services/pipeline/types";
 import type { DefenseMessage } from "../_components/office-defense-chat";
 
 /**

@@ -1,7 +1,12 @@
 "use client";
 
 import { FolderTree } from "lucide-react";
-import { Select, SelectContent, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { OutlineSelectItems } from "../outline-select-items";
 import type { OutlineItem } from "../../_lib/types";
 

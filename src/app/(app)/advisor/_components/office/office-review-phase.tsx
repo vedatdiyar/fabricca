@@ -4,7 +4,10 @@ import { Layers, Clock } from "lucide-react";
 import { OfficeMarginNotes } from "../office-margin-notes";
 import { OfficeDefenseChat, type DefenseMessage } from "../office-defense-chat";
 import { OfficeActionToolbar } from "../office-action-toolbar";
-import type { OfficeReviewReport, JuryCritique } from "../../_services/pipeline/types";
+import type {
+  OfficeReviewReport,
+  JuryCritique,
+} from "../../_services/pipeline/types";
 
 interface OfficeReviewPhaseProps {
   activeOutlineId: number | null;

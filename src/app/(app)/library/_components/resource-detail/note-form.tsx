@@ -1,7 +1,7 @@
 "use client";
 
-import React, { useEffect, useRef, useState } from "react";
-import { Plus, MessageSquareQuote } from "lucide-react";
+import React, { useEffect, useRef } from "react";
+import { Plus, MessageSquareQuote, Check, RotateCcw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -11,12 +11,20 @@ import { toast } from "sonner";
 import { formatPageNumber } from "@/lib/academic/utils";
 import { normalizePastedText } from "@/lib/text-utils";
 import { getNoteTypeBadgeConfig } from "./note-item";
+import { useNoteDraft } from "../../_hooks/use-note-draft";
 import type { LibraryResourceNote, NoteType } from "../../_lib/types";
 
 interface NoteFormProps {
   resourceId: number;
   onAddNote: (
-    note: Omit<LibraryResourceNote, "id" | "createdAt" | "sentToCitationCards">,
+    note: Omit<
+      LibraryResourceNote,
+      | "id"
+      | "createdAt"
+      | "sentToCitationCards"
+      | "verificationStatus"
+      | "verificationData"
+    >,
   ) => void;
 }
 
@@ -29,10 +37,18 @@ interface NoteFormProps {
  * @returns The note form markup.
  */
 export function NoteForm({ resourceId, onAddNote }: NoteFormProps) {
-  const [content, setContent] = useState("");
-  const [comment, setComment] = useState("");
-  const [pageNumber, setPageNumber] = useState("");
-  const [noteType, setNoteType] = useState<NoteType>("DIRECT_QUOTE");
+  const {
+    content,
+    setContent,
+    comment,
+    setComment,
+    pageNumber,
+    setPageNumber,
+    noteType,
+    setNoteType,
+    hasDraft,
+    clearDraft,
+  } = useNoteDraft(resourceId);
 
   const contentRef = useRef<HTMLTextAreaElement>(null);
   const commentRef = useRef<HTMLTextAreaElement>(null);
@@ -90,10 +106,7 @@ export function NoteForm({ resourceId, onAddNote }: NoteFormProps) {
       comment: comment.trim() || undefined,
     });
 
-    setContent("");
-    setComment("");
-    setPageNumber("");
-    setNoteType("DIRECT_QUOTE");
+    clearDraft();
   };
 
   const handleContentPaste = (e: React.ClipboardEvent<HTMLTextAreaElement>) => {
@@ -118,11 +131,30 @@ export function NoteForm({ resourceId, onAddNote }: NoteFormProps) {
   return (
     <Card className="border border-border bg-background">
       <CardContent className="p-4 space-y-4">
-        <div className="flex items-center gap-2">
-          <Plus className="h-4 w-4 text-primary" />
-          <h3 className="font-serif text-lg font-medium tracking-tight text-foreground">
-            Yeni Not veya Alıntı Ekle
-          </h3>
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2">
+            <Plus className="h-4 w-4 text-primary" />
+            <h3 className="font-serif text-lg font-medium tracking-tight text-foreground">
+              Yeni Not veya Alıntı Ekle
+            </h3>
+          </div>
+
+          {hasDraft && (
+            <div className="flex items-center gap-2">
+              <span className="flex items-center gap-1 text-[10px] text-muted-foreground font-medium">
+                <Check className="h-3 w-3 text-success" /> Otomatik kaydedildi
+              </span>
+              <button
+                type="button"
+                onClick={clearDraft}
+                className="flex items-center gap-1 text-[10px] text-muted-foreground hover:text-destructive transition-colors"
+                title="Taslağı temizle"
+              >
+                <RotateCcw className="h-2.5 w-2.5" />
+                <span>Taslağı Temizle</span>
+              </button>
+            </div>
+          )}
         </div>
 
         <form onSubmit={handleSaveNote} className="space-y-4">

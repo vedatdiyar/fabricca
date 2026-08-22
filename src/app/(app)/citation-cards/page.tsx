@@ -28,8 +28,6 @@ import type {
   SourceItem,
 } from "./_lib/types";
 
-
-
 /**
  * Citation Cards & Thesis Workbench (Alıntı Fişleri & Tez Masası) main page component.
  * Features:

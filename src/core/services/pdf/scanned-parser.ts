@@ -35,6 +35,7 @@ export async function parseScannedPdf(
 
   const pageMarkdowns = await runMistralOcr(r2Key, logger);
 
+  const pdfParseContentStart = performance.now();
   logger?.info("pdf_parse_content_start", {
     service: "pdf-parser",
     data: { fileName },
@@ -84,6 +85,12 @@ export async function parseScannedPdf(
     metadataPromise,
     referencesPromise,
   ]);
+
+  logger?.info("pdf_parse_content_success", {
+    service: "pdf-parser",
+    durationMs: Math.round(performance.now() - pdfParseContentStart),
+    data: { fileName, referenceCount: extractedReferences.length },
+  });
 
   logger?.info("pdf_parser_scanned_mistral_success", {
     service: "pdf-parser",

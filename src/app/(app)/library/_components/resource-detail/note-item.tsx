@@ -1,7 +1,17 @@
 "use client";
 
-import React from "react";
-import { BookmarkCheck, MessageSquareQuote, Trash2 } from "lucide-react";
+import React, { useState } from "react";
+import {
+  BookmarkCheck,
+  MessageSquareQuote,
+  Trash2,
+  ShieldCheck,
+  AlertTriangle,
+  Loader2,
+  ChevronDown,
+  ChevronUp,
+  Sparkles,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -10,6 +20,11 @@ import type { LibraryResourceNote, NoteType } from "../../_lib/types";
 interface NoteItemProps {
   note: LibraryResourceNote;
   onDeleteNoteClick: (noteId: number) => void;
+  onUpdateNote?: (input: {
+    noteId: number;
+    pageNumber?: string;
+    noteType?: NoteType;
+  }) => void;
 }
 
 /**
@@ -39,18 +54,29 @@ export function getNoteTypeBadgeConfig(noteType: NoteType) {
 }
 
 /**
- * Renders an individual note or citation card.
+ * Renders an individual note or citation card with verification badge and diagnostic alerts.
  *
  * @param root0 - Component props.
  * @param root0.note - Note item to display.
  * @param root0.onDeleteNoteClick - Callback triggered when the delete button is clicked.
+ * @param root0.onUpdateNote - Optional callback to update note fields upon verification suggestions.
  * @returns The note item markup.
  */
-export function NoteItem({ note, onDeleteNoteClick }: NoteItemProps) {
+export function NoteItem({
+  note,
+  onDeleteNoteClick,
+  onUpdateNote,
+}: NoteItemProps) {
   const noteBadge = getNoteTypeBadgeConfig(note.noteType);
+  const [isIssuesExpanded, setIsIssuesExpanded] = useState(false);
+
+  const verification = note.verificationData;
+  const hasIssues =
+    note.verificationStatus === "WARNING" ||
+    (verification?.issues && verification.issues.length > 0);
 
   return (
-    <Card className="border border-border bg-background transition-all hover:border-primary/20">
+    <Card className="border border-border bg-background transition-all hover:border-primary/20 shadow-xs">
       <CardContent className="p-4 space-y-3">
         <div className="flex items-center justify-between gap-2 border-b border-border/40 pb-2">
           <div className="flex items-center gap-2">
@@ -68,9 +94,48 @@ export function NoteItem({ note, onDeleteNoteClick }: NoteItemProps) {
             </Badge>
           </div>
 
-          <span className="flex items-center gap-2 text-[10px] text-success font-medium">
-            <BookmarkCheck className="h-3.5 w-3.5" /> {"Alıntı Fişi"}
-          </span>
+          <div className="flex items-center gap-2.5">
+            {/* Verification Status Badge */}
+            {note.verificationStatus === "PENDING" && (
+              <span className="flex items-center gap-1 text-[10px] text-muted-foreground font-medium animate-pulse">
+                <Loader2 className="h-3 w-3 animate-spin text-primary" />{" "}
+                Doğrulanıyor...
+              </span>
+            )}
+
+            {note.verificationStatus === "VERIFIED" && (
+              <span
+                className="flex items-center gap-1 text-[10px] text-success font-medium"
+                title={
+                  verification?.summary ||
+                  "Kaynak metinle ve sayfayla tam örtüşüyor."
+                }
+              >
+                <ShieldCheck className="h-3.5 w-3.5 text-success" /> Doğrulandı
+              </span>
+            )}
+
+            {hasIssues && (
+              <button
+                type="button"
+                onClick={() => setIsIssuesExpanded(!isIssuesExpanded)}
+                className="flex items-center gap-1 text-[10px] font-semibold text-warning bg-warning/10 hover:bg-warning/20 border border-warning/30 px-2 py-0.5 rounded transition-all cursor-pointer"
+              >
+                <AlertTriangle className="h-3 w-3 text-warning" />
+                <span>Olası Uyuşmazlık</span>
+                {isIssuesExpanded ? (
+                  <ChevronUp className="h-3 w-3" />
+                ) : (
+                  <ChevronDown className="h-3 w-3" />
+                )}
+              </button>
+            )}
+
+            <span className="flex items-center gap-1 text-[10px] text-muted-foreground font-medium">
+              <BookmarkCheck className="h-3.5 w-3.5 text-primary/70" /> Alıntı
+              Fişi
+            </span>
+          </div>
         </div>
 
         <p className="font-sans text-sm text-foreground leading-relaxed whitespace-pre-wrap">
@@ -88,6 +153,61 @@ export function NoteItem({ note, onDeleteNoteClick }: NoteItemProps) {
                 {note.comment}
               </p>
             </div>
+          </div>
+        )}
+
+        {/* Expandable Verification Issues / Suggestions Panel */}
+        {hasIssues && isIssuesExpanded && verification && (
+          <div className="rounded-md border border-warning/30 bg-warning/5 p-3 space-y-2 text-xs">
+            <div className="flex items-center gap-1.5 text-warning font-semibold text-[11px]">
+              <Sparkles className="h-3.5 w-3.5" /> LLM Doğrulama Uyarısı & İpucu
+            </div>
+
+            <p className="text-muted-foreground leading-relaxed">
+              {verification.summary}
+            </p>
+
+            <div className="space-y-2 pt-1">
+              {verification.issues.map((issue, idx) => (
+                <div
+                  key={idx}
+                  className="p-2 rounded bg-background/80 border border-warning/20 space-y-1"
+                >
+                  <p className="font-medium text-foreground text-[11px]">
+                    {issue.title}
+                  </p>
+                  <p className="text-muted-foreground text-[11px] leading-relaxed">
+                    {issue.description}
+                  </p>
+
+                  {issue.suggestedPage && onUpdateNote && (
+                    <div className="pt-1">
+                      <Button
+                        type="button"
+                        variant="secondary"
+                        size="sm"
+                        onClick={() =>
+                          onUpdateNote({
+                            noteId: note.id,
+                            pageNumber: issue.suggestedPage,
+                          })
+                        }
+                        className="h-6 text-[10px] font-medium gap-1 text-primary hover:bg-primary/10"
+                      >
+                        Sayfayı &quot;{issue.suggestedPage}&quot; Olarak
+                        Güncelle
+                      </Button>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+
+            {verification.academicAdvice && (
+              <p className="text-[11px] text-muted-foreground italic pt-1 border-t border-warning/20">
+                💡 {verification.academicAdvice}
+              </p>
+            )}
           </div>
         )}
 

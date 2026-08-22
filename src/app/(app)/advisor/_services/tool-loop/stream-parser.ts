@@ -33,7 +33,11 @@ export function extractTextFromChunk(chunk: {
  */
 export function extractFunctionCalls(chunk: {
   functionCalls?: Array<{ name?: string; args?: unknown }>;
-  candidates?: Array<{ content?: { parts?: Array<{ functionCall?: { name?: string; args?: unknown } }> } }>;
+  candidates?: Array<{
+    content?: {
+      parts?: Array<{ functionCall?: { name?: string; args?: unknown } }>;
+    };
+  }>;
 }): Array<{ name?: string; args?: unknown }> {
   if (chunk.functionCalls && chunk.functionCalls.length > 0) {
     return chunk.functionCalls;

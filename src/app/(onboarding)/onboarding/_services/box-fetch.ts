@@ -26,8 +26,7 @@ function rowsToGeminiBoxes(
       list.push({
         id: r.id,
         title: r.title,
-        boxType:
-          (r.boxType as GeminiThesisBox["boxType"]) ?? "SUBJECT_PROBLEM",
+        boxType: (r.boxType as GeminiThesisBox["boxType"]) ?? "SUBJECT_PROBLEM",
         description: r.description ?? "",
         parentId: r.parentId,
         semanticQuery: r.semanticQuery,

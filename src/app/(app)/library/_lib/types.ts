@@ -6,6 +6,48 @@ export type ThesisBoxType = BaseThesisBoxType | "ALL";
 /** Note types for individual citations and academic notes. */
 export type NoteType = "DIRECT_QUOTE" | "PARAPHRASE" | "PERSONAL_NOTE";
 
+/** Verification status for note grounding and page check. */
+export type NoteVerificationStatus =
+  "UNVERIFIED" | "PENDING" | "VERIFIED" | "WARNING";
+
+/** Issue item detected during single note verification. */
+export interface NoteVerificationIssue {
+  type:
+    | "PAGE_MISMATCH"
+    | "VERBATIM_DIFF"
+    | "INTERPRETATION_CONFLICT"
+    | "NOTE_TYPE_MISMATCH"
+    | "FORMAT_WARNING";
+  severity: "LOW" | "MEDIUM" | "HIGH";
+  title: string;
+  description: string;
+  suggestedFix?: string;
+  suggestedPage?: string;
+}
+
+/** Detailed verification result stored per note. */
+export interface NoteVerificationData {
+  status: "VERIFIED" | "WARNING";
+  confidence: number;
+  detectedPage?: string;
+  summary: string;
+  issues: NoteVerificationIssue[];
+  academicAdvice?: string;
+  verifiedAt: string;
+}
+
+/** Holistic audit report generated for a resource's notes and critique. */
+export interface ResourceAuditReport {
+  overallScore: number;
+  statusBadge: "EXCELLENT" | "SOLID" | "NEEDS_ATTENTION";
+  summary: string;
+  strengths: string[];
+  blindSpots: string[];
+  commentaryRisks: string[];
+  thesisAlignmentAdvice: string;
+  evaluatedAt: string;
+}
+
 /** A single academic resource item stored in the Library. */
 export interface LibraryResourceItem {
   id: number;
@@ -37,6 +79,8 @@ export interface LibraryResourceNote {
   content: string;
   comment?: string;
   sentToCitationCards: boolean;
+  verificationStatus: NoteVerificationStatus;
+  verificationData?: NoteVerificationData;
   createdAt: string;
 }
 
@@ -48,5 +92,7 @@ export interface LibraryResourceCritique {
   methodology?: string;
   mainArgument?: string;
   literatureGap?: string;
+  aiEvaluation?: ResourceAuditReport;
+  evaluatedAt?: string;
   updatedAt?: string;
 }

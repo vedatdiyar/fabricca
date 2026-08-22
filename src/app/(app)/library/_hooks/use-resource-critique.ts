@@ -5,8 +5,12 @@ import { toast } from "sonner";
 import {
   getLibraryResourcesAction,
   saveResourceCritiqueAction,
+  evaluateResourceNotesAction,
 } from "../actions";
-import type { LibraryResourceCritique } from "../_lib/types";
+import type {
+  LibraryResourceCritique,
+  ResourceAuditReport,
+} from "../_lib/types";
 
 interface UseResourceCritiqueParams {
   selectedResourceId: number | null;
@@ -21,16 +25,17 @@ export interface CritiqueFormInput {
 }
 
 /**
- * Manages the 1:1 article analysis (Eser Analizi) state and save operation for the currently selected resource.
+ * Manages the 1:1 article analysis (Eser Analizi) state, debounced auto-save, and on-demand AI evaluation for the currently selected resource.
  *
  * @param params - The currently selected resource ID.
  * @param params.selectedResourceId - The ID of the resource whose analysis is managed.
- * @returns Critiques list, state setter, lookup helper, and save handler.
+ * @returns Critiques list, state setter, lookup helper, save handler, evaluation handler, and loading state.
  */
 export function useResourceCritique({
   selectedResourceId,
 }: UseResourceCritiqueParams) {
   const [critiques, setCritiques] = useState<LibraryResourceCritique[]>([]);
+  const [isEvaluating, setIsEvaluating] = useState(false);
 
   useEffect(() => {
     /**
@@ -57,7 +62,7 @@ export function useResourceCritique({
   );
 
   const handleSaveCritique = useCallback(
-    async (input: CritiqueFormInput) => {
+    async (input: CritiqueFormInput, silent = false) => {
       if (!selectedResourceId) return;
 
       const res = await saveResourceCritiqueAction({
@@ -70,9 +75,46 @@ export function useResourceCritique({
           res.data,
           ...prev.filter((c) => c.resourceId !== res.data?.resourceId),
         ]);
-        toast.success("Eser analizi kaydedildi.");
-      } else {
+        if (!silent) {
+          toast.success("Eser analizi kaydedildi.");
+        }
+      } else if (!silent) {
         toast.error(res.error || "Eser analizi kaydedilirken hata oluştu.");
+      }
+    },
+    [selectedResourceId],
+  );
+
+  const handleEvaluateCritique = useCallback(
+    async (resourceId?: number): Promise<ResourceAuditReport | null> => {
+      const targetId = resourceId || selectedResourceId;
+      if (!targetId) return null;
+
+      setIsEvaluating(true);
+      try {
+        const res = await evaluateResourceNotesAction(targetId);
+        if (res.success && res.data) {
+          setCritiques((prev) => {
+            const existing = prev.find((c) => c.resourceId === targetId);
+            const updated: LibraryResourceCritique = {
+              resourceId: targetId,
+              ...existing,
+              aiEvaluation: res.data,
+              evaluatedAt: new Date().toISOString(),
+            };
+            return [updated, ...prev.filter((c) => c.resourceId !== targetId)];
+          });
+          toast.success("Akademik not değerlendirmesi tamamlandı.");
+          return res.data;
+        } else {
+          toast.error(res.error || "Değerlendirme yapılırken hata oluştu.");
+          return null;
+        }
+      } catch {
+        toast.error("Değerlendirme servisine bağlanılamadı.");
+        return null;
+      } finally {
+        setIsEvaluating(false);
       }
     },
     [selectedResourceId],
@@ -83,5 +125,7 @@ export function useResourceCritique({
     setCritiques,
     getCritiqueFor,
     handleSaveCritique,
+    handleEvaluateCritique,
+    isEvaluating,
   };
 }

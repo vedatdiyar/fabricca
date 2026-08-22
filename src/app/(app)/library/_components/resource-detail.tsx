@@ -15,6 +15,8 @@ import type {
   LibraryResourceItem,
   LibraryResourceNote,
   LibraryResourceCritique,
+  ResourceAuditReport,
+  NoteType,
 } from "../_lib/types";
 import type { CritiqueFormInput } from "../_hooks/use-resource-critique";
 
@@ -25,9 +27,24 @@ export interface ResourceDetailProps {
   notes: LibraryResourceNote[];
   critique?: LibraryResourceCritique;
   onAddNote: (
-    note: Omit<LibraryResourceNote, "id" | "createdAt" | "sentToCitationCards">,
+    note: Omit<
+      LibraryResourceNote,
+      "id" | "createdAt" | "sentToCitationCards" | "verificationStatus"
+    >,
   ) => void;
-  onSaveCritique: (input: CritiqueFormInput) => void | Promise<void>;
+  onUpdateNote?: (input: {
+    noteId: number;
+    pageNumber?: string;
+    noteType?: NoteType;
+  }) => void;
+  onSaveCritique: (
+    input: CritiqueFormInput,
+    silent?: boolean,
+  ) => void | Promise<void>;
+  onEvaluateCritique?: (
+    resourceId?: number,
+  ) => Promise<ResourceAuditReport | null>;
+  isEvaluating?: boolean;
   onDeleteNote: (noteId: number) => void;
   onToggleReadStatus: (resourceId: number) => void;
   onUpdateResource?: (updatedResource: LibraryResourceItem) => void;
@@ -36,12 +53,17 @@ export interface ResourceDetailProps {
 }
 
 /**
- * Detailed view for a selected library resource with note taking and automatic citation card integration.
+ * Detailed view for a selected library resource with note taking, debounced critique auto-save, and on-demand LLM audit.
  *
  * @param root0 - Component props.
  * @param root0.resource - Selected library resource.
  * @param root0.notes - Notes associated with the resource.
+ * @param root0.critique - Saved critique / analysis.
  * @param root0.onAddNote - Callback to add a new note to the resource.
+ * @param root0.onUpdateNote - Callback to update a note.
+ * @param root0.onSaveCritique - Callback to auto-save critique fields.
+ * @param root0.onEvaluateCritique - Callback to trigger holistic LLM evaluation.
+ * @param root0.isEvaluating - Loading state for LLM evaluation.
  * @param root0.onDeleteNote - Callback to delete a note by id.
  * @param root0.onToggleReadStatus - Callback to toggle the read status of a resource.
  * @param root0.onUpdateResource - Optional callback invoked after the resource metadata is updated.
@@ -54,7 +76,10 @@ export function ResourceDetail({
   notes,
   critique,
   onAddNote,
+  onUpdateNote,
   onSaveCritique,
+  onEvaluateCritique,
+  isEvaluating = false,
   onDeleteNote,
   onToggleReadStatus,
   onUpdateResource,
@@ -103,8 +128,11 @@ export function ResourceDetail({
       {resource.pdfStatus === "READY" && (
         <>
           <CritiqueSection
+            resourceId={resource.id}
             critique={critique}
             onSaveCritique={onSaveCritique}
+            onEvaluateCritique={onEvaluateCritique}
+            isEvaluating={isEvaluating}
           />
 
           <NoteForm resourceId={resource.id} onAddNote={onAddNote} />
@@ -143,6 +171,7 @@ export function ResourceDetail({
                     key={note.id}
                     note={note}
                     onDeleteNoteClick={(id) => setNoteToDeleteId(id)}
+                    onUpdateNote={onUpdateNote}
                   />
                 ))}
               </div>

@@ -1,4 +1,8 @@
-import { isReadTool, executeReadTool, getToolPreviousState } from "@/app/(app)/advisor/_tools";
+import {
+  isReadTool,
+  executeReadTool,
+  getToolPreviousState,
+} from "@/app/(app)/advisor/_tools";
 import { formatToolExplanation } from "@/app/(app)/advisor/_tools/format-tool";
 import type { AdvisorStreamWriter } from "../stream";
 

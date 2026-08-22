@@ -1,7 +1,13 @@
 "use client";
 
 import { useState } from "react";
-import { CheckSquare, Copy, PlusCircle, Check, BookmarkPlus } from "lucide-react";
+import {
+  CheckSquare,
+  Copy,
+  PlusCircle,
+  Check,
+  BookmarkPlus,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import {

@@ -31,6 +31,11 @@ import type {
   JuryCritique,
   OfficeReviewReport,
 } from "@/app/(app)/advisor/_services/pipeline/types";
+import type {
+  NoteVerificationData,
+  NoteVerificationStatus,
+  ResourceAuditReport,
+} from "@/app/(app)/library/_lib/types";
 
 export type {
   ParsedReference,
@@ -39,6 +44,9 @@ export type {
   JuryCritique,
   OfficeReviewReport,
   RagSearchResultItem,
+  NoteVerificationData,
+  NoteVerificationStatus,
+  ResourceAuditReport,
 };
 
 /** Users table — email is unique, password is bcrypt-hashed, onboardingCompleted tracks onboarding state. */
@@ -267,6 +275,13 @@ export const annotations = pgTable(
     sentToCitationCards: boolean("sent_to_citation_cards")
       .default(true)
       .notNull(),
+    verificationStatus: text("verification_status")
+      .$type<NoteVerificationStatus>()
+      .default("UNVERIFIED")
+      .notNull(),
+    verificationData: jsonb(
+      "verification_data",
+    ).$type<NoteVerificationData | null>(),
     createdAt: timestamp("created_at").defaultNow().notNull(),
     updatedAt: timestamp("updated_at").defaultNow().notNull(),
   },
@@ -341,6 +356,8 @@ export const critiques = pgTable(
     methodology: text("methodology"),
     mainArgument: text("main_argument"),
     literatureGap: text("literature_gap"),
+    aiEvaluation: jsonb("ai_evaluation").$type<ResourceAuditReport | null>(),
+    evaluatedAt: timestamp("evaluated_at"),
     createdAt: timestamp("created_at").defaultNow().notNull(),
     updatedAt: timestamp("updated_at").defaultNow().notNull(),
   },

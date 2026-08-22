@@ -70,9 +70,7 @@ export function useLiteratureReview(): UseLiteratureReviewResult {
 
   const subBoxes = useMemo(() => {
     if (!allBoxes) return [];
-    return [...allBoxes].sort((a, b) =>
-      compareBoxTypes(a.boxType, b.boxType),
-    );
+    return [...allBoxes].sort((a, b) => compareBoxTypes(a.boxType, b.boxType));
   }, [allBoxes]);
 
   const loading = boxesLoading || poolLoading || allBoxes === undefined;

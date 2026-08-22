@@ -8,7 +8,11 @@ import {
   deleteOfficeSessionAction as _deleteOfficeSessionAction,
 } from "./office-actions";
 
-export type { OutlineOption, OfficeSessionSummary, OfficeSessionDetail } from "./office-actions";
+export type {
+  OutlineOption,
+  OfficeSessionSummary,
+  OfficeSessionDetail,
+} from "./office-actions";
 
 export async function getOfficeInitialDataAction(
   ...args: Parameters<typeof _getOfficeInitialDataAction>

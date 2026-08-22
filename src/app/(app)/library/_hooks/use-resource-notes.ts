@@ -5,6 +5,7 @@ import { toast } from "sonner";
 import {
   getLibraryResourcesAction,
   createResourceNoteAction,
+  updateResourceNoteAction,
   deleteResourceNoteAction,
 } from "../actions";
 import type { LibraryResourceNote, NoteType } from "../_lib/types";
@@ -67,6 +68,27 @@ export function useResourceNotes({
     [selectedResourceId],
   );
 
+  const handleUpdateNote = useCallback(
+    async (input: {
+      noteId: number;
+      pageNumber?: string;
+      noteType?: NoteType;
+      content?: string;
+      comment?: string;
+    }) => {
+      const res = await updateResourceNoteAction(input);
+      if (res.success && res.data) {
+        setNotes((prev) =>
+          prev.map((n) => (n.id === input.noteId ? res.data : n)),
+        );
+        toast.success("Alıntı fişi güncellendi.");
+      } else {
+        toast.error(res.error || "Not güncellenirken hata oluştu.");
+      }
+    },
+    [],
+  );
+
   const handleDeleteNote = useCallback(async (noteId: number) => {
     const res = await deleteResourceNoteAction(noteId);
     if (res.success) {
@@ -81,6 +103,7 @@ export function useResourceNotes({
     notes,
     setNotes,
     handleAddNote,
+    handleUpdateNote,
     handleDeleteNote,
   };
 }

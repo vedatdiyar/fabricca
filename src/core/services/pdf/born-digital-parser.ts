@@ -82,6 +82,7 @@ export async function parseBornDigitalPdf(
   const bibPages = findBibliographyPages(targetPages, (p) => p.markdown);
 
   // Step 3: Parallel Gemini Flash-Lite extraction (Metadata + 1-Page Chunked References)
+  const pdfParseContentStart = performance.now();
   logger?.info("pdf_parse_content_start", {
     service: "pdf-parser",
     data: { fileName },
@@ -110,6 +111,12 @@ export async function parseBornDigitalPdf(
     metadataPromise,
     referencesPromise,
   ]);
+
+  logger?.info("pdf_parse_content_success", {
+    service: "pdf-parser",
+    durationMs: Math.round(performance.now() - pdfParseContentStart),
+    data: { fileName, referenceCount: extractedReferences.length },
+  });
 
   const finalMetadata: DocumentAnalysisResult["metadata"] = {
     title: extractedMetadata.title?.trim() || fileName.replace(/\.pdf$/i, ""),

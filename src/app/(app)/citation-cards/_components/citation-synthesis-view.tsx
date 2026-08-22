@@ -1,6 +1,5 @@
 "use client";
 
-
 import {
   Sparkles,
   Layers,
@@ -37,8 +36,6 @@ interface CitationSynthesisViewProps {
  * In-place Fikir & Sentez Düzenleyici Panel.
  * Renders directly inside the active section workspace on /citation-cards.
  */
-
-
 
 /**
  * In-place Fikir & Sentez Düzenleyici Panel.

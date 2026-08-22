@@ -93,6 +93,11 @@ export async function enrichWithCrossref(
 
   if (!title && !doi) return null;
 
+  logger?.info("crossref_doi_lookup_start", {
+    service: "crossref",
+    data: { title: title?.slice(0, 80), doi: doi ?? undefined },
+  });
+
   const timeoutSignal = AbortSignal.timeout(4000);
 
   // Case 1: Direct DOI lookup
