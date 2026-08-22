@@ -164,7 +164,7 @@ function paragraphKey(paragraph: string): string {
 }
 
 /**
- * Renders the 3 fixed jury synthesis sections as cards with designated icons.
+ * Renders the 3 fixed jury synthesis sections inside an elegant, unified editorial container.
  *
  * @param root0 - The component props.
  * @param root0.content - The gap analysis content to render.
@@ -179,81 +179,58 @@ export function PositioningMarkdownRenderer({
 
   const data = normalizeGapAnalysis(content);
 
+  const sections = [
+    {
+      step: "01",
+      title: "Mevcut Literatürün Haritalandırılması",
+      icon: Compass,
+      content: data.literatureMapping,
+      accentClass: "text-info",
+    },
+    {
+      step: "02",
+      title: "Literatürdeki Boşluk",
+      icon: ScanEye,
+      content: data.academicGap,
+      accentClass: "text-warning",
+    },
+    {
+      step: "03",
+      title: "Çalışmanın Özgün Katkısı",
+      icon: Sparkles,
+      content: data.originalContribution,
+      accentClass: "text-success",
+    },
+  ];
+
   return (
-    <div className={`space-y-4 ${className}`}>
-      {/* 1. Mevcut Literatürün Haritalandırılması */}
-      <Card className="rounded-md border border-border bg-card hover:border-border/60 transition-colors">
-        <CardHeader className="p-4 sm:p-6 pb-3 sm:pb-3 flex flex-row items-center justify-between gap-3 border-b border-border/40 space-y-0">
-          <div className="flex items-center gap-3">
-            <div className="p-2 rounded-md bg-info/10 text-info border border-info/20 shrink-0">
-              <Compass className="h-4 w-4" />
+    <div className={`w-full ${className}`}>
+      <Card className="rounded-md border border-border bg-card divide-y divide-border/40">
+        {sections.map((sec) => {
+          const Icon = sec.icon;
+          return (
+            <div key={sec.step} className="p-4 sm:p-5 space-y-2">
+              <div className="flex items-center justify-between gap-2">
+                <div className="flex items-center gap-2">
+                  <Icon className={`h-3.5 w-3.5 ${sec.accentClass}`} />
+                  <h3 className="font-serif text-sm font-semibold tracking-tight text-foreground">
+                    {sec.title}
+                  </h3>
+                </div>
+                <span className="font-mono text-[11px] text-muted-foreground/50">
+                  {sec.step}
+                </span>
+              </div>
+              <div className="text-xs leading-relaxed text-muted-foreground space-y-1.5 font-sans pl-5.5">
+                {sec.content.split("\n\n").map((para) => (
+                  <p key={paragraphKey(para)} className="text-muted-foreground leading-relaxed">
+                    {parseInlineMarkdown(para)}
+                  </p>
+                ))}
+              </div>
             </div>
-            <CardTitle className="font-serif text-lg font-semibold tracking-tight text-foreground">
-              Mevcut Literatürün Haritalandırılması
-            </CardTitle>
-          </div>
-          <Badge
-            variant="outline"
-            className="bg-info/10 text-info border-info/20 px-2.5 py-0.5 text-xs font-medium shrink-0 hidden sm:inline-flex"
-          >
-            Literatür Analizi
-          </Badge>
-        </CardHeader>
-        <CardContent className="p-4 sm:p-6 pt-4 text-sm leading-relaxed text-foreground space-y-3 font-sans">
-          {data.literatureMapping.split("\n\n").map((para) => (
-            <p key={paragraphKey(para)}>{parseInlineMarkdown(para)}</p>
-          ))}
-        </CardContent>
-      </Card>
-
-      {/* 2. Literatürdeki Boşluk */}
-      <Card className="rounded-md border border-border bg-card hover:border-border/60 transition-colors">
-        <CardHeader className="p-4 sm:p-6 pb-3 sm:pb-3 flex flex-row items-center justify-between gap-3 border-b border-border/40 space-y-0">
-          <div className="flex items-center gap-3">
-            <div className="p-2 rounded-md bg-warning/10 text-warning border border-warning/20 shrink-0">
-              <ScanEye className="h-4 w-4" />
-            </div>
-            <CardTitle className="font-serif text-lg font-semibold tracking-tight text-foreground">
-              Literatürdeki Boşluk
-            </CardTitle>
-          </div>
-          <Badge
-            variant="outline"
-            className="bg-warning/10 text-warning border-warning/20 px-2.5 py-0.5 text-xs font-medium shrink-0 hidden sm:inline-flex"
-          >
-            Akademik Boşluk
-          </Badge>
-        </CardHeader>
-        <CardContent className="p-4 sm:p-6 pt-4 text-sm leading-relaxed text-foreground space-y-3 font-sans">
-          {data.academicGap.split("\n\n").map((para) => (
-            <p key={paragraphKey(para)}>{parseInlineMarkdown(para)}</p>
-          ))}
-        </CardContent>
-      </Card>
-
-      {/* 3. Çalışmanın Özgün Katkısı */}
-      <Card className="rounded-md border border-border bg-card hover:border-border/60 transition-colors">
-        <CardHeader className="p-4 sm:p-6 pb-3 sm:pb-3 flex flex-row items-center justify-between gap-3 border-b border-border/40 space-y-0">
-          <div className="flex items-center gap-3">
-            <div className="p-2 rounded-md bg-success/10 text-success border border-success/20 shrink-0">
-              <Sparkles className="h-4 w-4" />
-            </div>
-            <CardTitle className="font-serif text-lg font-semibold tracking-tight text-foreground">
-              Çalışmanın Özgün Katkısı
-            </CardTitle>
-          </div>
-          <Badge
-            variant="outline"
-            className="bg-success/10 text-success border-success/20 px-2.5 py-0.5 text-xs font-medium shrink-0 hidden sm:inline-flex"
-          >
-            Özgün Değer
-          </Badge>
-        </CardHeader>
-        <CardContent className="p-4 sm:p-6 pt-4 text-sm leading-relaxed text-foreground space-y-3 font-sans">
-          {data.originalContribution.split("\n\n").map((para) => (
-            <p key={paragraphKey(para)}>{parseInlineMarkdown(para)}</p>
-          ))}
-        </CardContent>
+          );
+        })}
       </Card>
     </div>
   );
