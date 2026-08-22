@@ -31,8 +31,8 @@ export function CritiqueAuditPanel({ auditReport }: CritiqueAuditPanelProps) {
       {/* Header Bar */}
       <div className="flex items-center justify-between gap-2 border-b border-border/40 pb-3">
         <div className="flex items-center gap-2">
-          <ShieldCheck className="h-4 w-4 text-primary" />
-          <h3 className="font-serif text-base sm:text-lg font-medium tracking-tight text-foreground">
+          <ShieldCheck className="size-3.5 text-primary" />
+          <h3 className="font-serif text-sm font-semibold tracking-tight text-foreground">
             Akademik Değerlendirme Raporu
           </h3>
           <Badge
@@ -40,8 +40,8 @@ export function CritiqueAuditPanel({ auditReport }: CritiqueAuditPanelProps) {
             className={
               auditReport.statusBadge === "EXCELLENT" ||
               auditReport.statusBadge === "SOLID"
-                ? "bg-primary/10 text-primary border-primary/20 text-xs font-semibold px-2 py-0.5"
-                : "bg-warning/10 text-warning border-warning/20 text-xs font-semibold px-2 py-0.5"
+                ? "bg-primary/10 text-primary border-primary/20"
+                : "bg-warning/10 text-warning border-warning/20"
             }
           >
             Skor: {auditReport.overallScore}/100
@@ -55,9 +55,9 @@ export function CritiqueAuditPanel({ auditReport }: CritiqueAuditPanelProps) {
           aria-label="Raporu genişlet veya daralt"
         >
           {isOpen ? (
-            <ChevronUp className="h-4 w-4" />
+            <ChevronUp className="size-3.5" />
           ) : (
-            <ChevronDown className="h-4 w-4" />
+            <ChevronDown className="size-3.5" />
           )}
         </button>
       </div>

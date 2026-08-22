@@ -45,7 +45,7 @@ export function CreateTaskDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md bg-card border-border">
         <DialogHeader>
-          <DialogTitle className="font-serif text-lg font-medium text-foreground">
+          <DialogTitle className="font-serif text-base font-semibold tracking-tight text-foreground">
             Revizyon Görevi Oluştur
           </DialogTitle>
           <DialogDescription className="text-xs text-muted-foreground">
@@ -65,7 +65,7 @@ export function CreateTaskDialog({
               id="task-title"
               value={taskTitle}
               onChange={(e) => onChangeTaskTitle(e.target.value)}
-              className="text-xs h-9 bg-background border-border"
+              className="text-xs bg-background border-border"
             />
           </div>
 
@@ -91,7 +91,7 @@ export function CreateTaskDialog({
             variant="outline"
             size="sm"
             onClick={() => onOpenChange(false)}
-            className="text-xs h-9"
+            className="text-xs"
           >
             Vazgeç
           </Button>
@@ -100,12 +100,12 @@ export function CreateTaskDialog({
             size="sm"
             onClick={onSave}
             disabled={isSaving || !taskTitle.trim()}
-            className="bg-primary text-primary-foreground text-xs h-9 gap-1.5"
+            className="bg-primary text-primary-foreground text-xs gap-1.5"
           >
             {isSaving ? (
-              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              <Loader2 className="size-3.5 animate-spin" />
             ) : (
-              <CheckSquare className="h-3.5 w-3.5" />
+              <CheckSquare className="size-3.5" />
             )}
             <span>Görevi Ekle</span>
           </Button>

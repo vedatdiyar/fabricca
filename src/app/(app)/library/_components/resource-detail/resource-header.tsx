@@ -217,7 +217,7 @@ export function ResourceHeader({
       </div>
 
       {/* Main Academic Title */}
-      <h2 className="font-serif text-xl sm:text-2xl font-bold tracking-tight text-foreground leading-snug">
+      <h2 className="font-serif text-base font-semibold tracking-tight text-foreground leading-snug">
         {resource.title}
       </h2>
 

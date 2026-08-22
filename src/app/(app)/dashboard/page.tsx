@@ -24,10 +24,10 @@ export default async function DashboardPage() {
   if ("error" in boxResult) {
     return (
       <Card className="flex flex-col items-center justify-center rounded-md border border-dashed border-border/40 p-8 text-center">
-        <p className="font-sans text-lg font-medium tracking-tight text-foreground">
+        <p className="font-serif text-sm font-semibold tracking-tight text-foreground">
           Tez matrisi henüz oluşturulmadı
         </p>
-        <p className="mt-1 text-sm text-muted-foreground">
+        <p className="mt-1 font-sans text-xs text-muted-foreground">
           Henüz bir tez matrisi oluşturulmamış. Lütfen onboarding adımlarını
           tamamlayın.
         </p>

@@ -50,13 +50,13 @@ export function CitationFilterBar({
       <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2.5">
         {/* Search Bar */}
         <div className="relative flex-1 min-w-[200px]">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 size-3.5 text-muted-foreground" />
           <Input
             aria-label="Alıntı fişi ara"
             placeholder="Fiş içeriği, yazar, eser veya sayfa ara..."
             value={filters.searchQuery}
             onChange={(e) => onFilterChange("searchQuery", e.target.value)}
-            className="pl-9 pr-8 text-xs h-9 bg-card border-border"
+            className="pl-8 pr-8 text-xs bg-card border-border"
           />
           {filters.searchQuery && (
             <button
@@ -64,7 +64,7 @@ export function CitationFilterBar({
               onClick={() => onFilterChange("searchQuery", "")}
               className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground cursor-pointer"
             >
-              <X className="h-3.5 w-3.5" />
+              <X className="size-3.5" />
             </button>
           )}
         </div>
@@ -83,8 +83,8 @@ export function CitationFilterBar({
                 onFilterChange("selectedBoxId", v === "ALL" ? null : Number(v))
               }
             >
-              <SelectTrigger className="text-xs h-9 bg-card border-border">
-                <BoxIcon className="h-3 w-3 mr-1 text-muted-foreground shrink-0" />
+              <SelectTrigger className="text-xs bg-card border-border">
+                <BoxIcon className="size-3.5 mr-1 text-muted-foreground shrink-0" />
                 <SelectValue placeholder="Tüm Kutular">
                   {boxSelectLabel}
                 </SelectValue>
@@ -106,8 +106,8 @@ export function CitationFilterBar({
               value={filters.sortBy}
               onValueChange={(v) => onFilterChange("sortBy", v)}
             >
-              <SelectTrigger className="text-xs h-9 bg-card border-border">
-                <SlidersHorizontal className="h-3 w-3 mr-1 text-muted-foreground shrink-0" />
+              <SelectTrigger className="text-xs bg-card border-border">
+                <SlidersHorizontal className="size-3.5 mr-1 text-muted-foreground shrink-0" />
                 <SelectValue placeholder="Sıralama" />
               </SelectTrigger>
               <SelectContent>

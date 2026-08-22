@@ -77,7 +77,7 @@ export const SelectTrigger = React.forwardRef<
       type="button"
       onClick={() => ctx?.setOpen((prev) => !prev)}
       className={cn(
-        "flex h-10 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-xs shadow-xs ring-offset-background placeholder:text-muted-foreground hover:border-primary/20 focus:outline-hidden focus:ring-1 focus:ring-ring disabled:cursor-not-allowed disabled:opacity-50 transition-colors text-left",
+        "flex h-8 w-full items-center justify-between rounded-md border border-input bg-background px-2.5 py-1 text-xs shadow-xs ring-offset-background placeholder:text-muted-foreground hover:border-primary/20 focus:outline-hidden focus:ring-1 focus:ring-ring disabled:cursor-not-allowed disabled:opacity-50 transition-colors text-left [&_svg]:size-3.5",
         className,
       )}
       {...rest}
@@ -85,7 +85,7 @@ export const SelectTrigger = React.forwardRef<
       <span className="flex items-center gap-2 min-w-0 truncate text-left">
         {children}
       </span>
-      <ChevronDown className="h-4 w-4 opacity-50 shrink-0 ml-1" />
+      <ChevronDown className="size-3.5 opacity-50 shrink-0 ml-1" />
     </button>
   );
 });
@@ -212,7 +212,7 @@ export const SelectItem = React.forwardRef<HTMLDivElement, SelectItemProps>(
           onClick?.(e);
         }}
         className={cn(
-          "relative flex w-full cursor-pointer select-none items-center justify-between rounded-sm py-2 px-2 text-xs outline-hidden hover:bg-accent hover:text-accent-foreground data-disabled:pointer-events-none data-disabled:opacity-50",
+          "relative flex w-full cursor-pointer select-none items-center justify-between rounded-sm py-1.5 px-2 text-xs outline-hidden hover:bg-accent hover:text-accent-foreground data-disabled:pointer-events-none data-disabled:opacity-50 [&_svg]:size-3.5",
           isSelected && "bg-accent/60 font-medium text-accent-foreground",
           disabled && "opacity-50 cursor-not-allowed",
           className,
@@ -221,7 +221,7 @@ export const SelectItem = React.forwardRef<HTMLDivElement, SelectItemProps>(
       >
         <span className="truncate">{children}</span>
         {isSelected && (
-          <Check className="h-3.5 w-3.5 ml-2 text-primary shrink-0" />
+          <Check className="size-3.5 ml-2 text-primary shrink-0" />
         )}
       </div>
     );

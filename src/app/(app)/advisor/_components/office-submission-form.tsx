@@ -87,10 +87,10 @@ export function OfficeSubmissionForm({
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div className="flex items-center gap-3">
               <div className="p-2.5 rounded-lg bg-primary/10 border border-primary/20 text-primary shrink-0">
-                <PenLine className="h-5 w-5" />
+                <PenLine className="size-3.5" />
               </div>
               <div>
-                <CardTitle className="font-serif text-lg font-semibold tracking-tight text-foreground">
+                <CardTitle className="font-serif text-sm font-semibold tracking-tight text-foreground">
                   Taslak Teslim Masası
                 </CardTitle>
                 <CardDescription className="text-xs text-muted-foreground mt-0.5">
@@ -141,7 +141,7 @@ export function OfficeSubmissionForm({
                 <SelectTrigger
                   id="outline-selector"
                   disabled={isSubmitting}
-                  className="w-full text-xs h-9 bg-background border-border"
+                  className="w-full text-xs bg-background border-border"
                 >
                   <SelectValue placeholder="Bir tez bölümü seçin..." />
                 </SelectTrigger>
@@ -252,16 +252,16 @@ export function OfficeSubmissionForm({
                   !selectedOutlineId ||
                   draftText.trim().length < 10
                 }
-                className="bg-primary text-primary-foreground hover:bg-primary/90 text-xs font-medium px-5 h-10 gap-2 shrink-0 cursor-pointer shadow-xs"
+                className="bg-primary text-primary-foreground hover:bg-primary/90 text-xs font-medium px-4 h-8 gap-1.5 shrink-0 cursor-pointer shadow-xs"
               >
                 {isSubmitting ? (
                   <>
-                    <Loader2 className="h-4 w-4 animate-spin" />
+                    <Loader2 className="size-3.5 animate-spin" />
                     <span>Danışman İnceliyor...</span>
                   </>
                 ) : (
                   <>
-                    <Send className="h-4 w-4" />
+                    <Send className="size-3.5" />
                     <span>İncelemeye Gönder</span>
                   </>
                 )}

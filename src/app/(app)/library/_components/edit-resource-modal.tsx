@@ -3,7 +3,12 @@
 import React from "react";
 import { Loader2, Pencil } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { useEditResourceForm } from "../_hooks/use-edit-resource-form";
 import { BoxSelectionGrid } from "./box-selection-grid";
 import { ResourceMetadataFields } from "./resource-metadata-fields";
@@ -63,15 +68,15 @@ function EditResourceDialog({
         <div className="flex items-center justify-between border-b border-border p-5 bg-muted/20">
           <div className="flex items-center gap-2">
             <div className="p-2 rounded-lg bg-primary/10 text-primary">
-              <Pencil className="h-5 w-5" />
+              <Pencil className="size-3.5" />
             </div>
             <div>
-              <h3 className="font-serif text-lg font-medium tracking-tight text-foreground">
+              <DialogTitle className="font-serif text-base font-semibold tracking-tight text-foreground">
                 Eser Künyesini Düzenle
-              </h3>
-              <p className="text-xs text-muted-foreground">
+              </DialogTitle>
+              <DialogDescription className="text-xs text-muted-foreground">
                 Akademik eserin başlık, yazar ve yayın bilgilerini güncelleyin.
-              </p>
+              </DialogDescription>
             </div>
           </div>
         </div>

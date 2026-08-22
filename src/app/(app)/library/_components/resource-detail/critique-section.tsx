@@ -106,8 +106,8 @@ export function CritiqueSection({
         {/* Header Bar: Title, Progress Badge, Save Status, Evaluate Action */}
         <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border/40 pb-3">
           <div className="flex items-center gap-2">
-            <BookMarked className="h-4 w-4 text-primary" />
-            <h3 className="font-serif text-base sm:text-lg font-medium tracking-tight text-foreground">
+            <BookMarked className="size-3.5 text-primary" />
+            <h3 className="font-serif text-sm font-semibold tracking-tight text-foreground">
               Eser Analizi
             </h3>
             <span className="text-xs font-medium text-muted-foreground font-mono bg-muted/60 px-2 py-0.5 rounded border border-border/40">
@@ -118,14 +118,14 @@ export function CritiqueSection({
           <div className="flex flex-wrap items-center gap-2 sm:gap-3">
             {saveStatus === "saving" && (
               <span className="flex items-center gap-1 text-xs text-muted-foreground font-medium animate-pulse">
-                <Loader2 className="h-3 w-3 animate-spin text-primary" />
+                <Loader2 className="size-3.5 animate-spin text-primary" />
                 Kaydediliyor...
               </span>
             )}
 
             {saveStatus === "saved" && (
               <span className="flex items-center gap-1 text-xs text-primary font-medium">
-                <Check className="h-3 w-3 text-primary" /> Kaydedildi
+                <Check className="size-3.5 text-primary" /> Kaydedildi
               </span>
             )}
 

@@ -9,9 +9,6 @@ import {
   ExternalLink,
   Target,
   Loader2,
-  Calendar,
-  User,
-  GraduationCap,
   Layers,
   GitFork,
   BookOpen,
@@ -19,13 +16,7 @@ import {
   Sparkles,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardHeader,
-  CardTitle,
-  CardContent,
-  CardFooter,
-} from "@/components/ui/card";
+import { Card } from "@/components/ui/card";
 import { AIBanner } from "@/components/shared/ai-banner";
 import { splitBilingualTitle } from "@/lib/academic/title-utils";
 import type { JuryAnalysisResult } from "../_services/analysis";
@@ -121,7 +112,7 @@ export function PositioningReportView({
   };
 
   return (
-    <div className="w-full space-y-8">
+    <div className="w-full space-y-6">
       {/* 1. Global Jury Evaluation Status Banner (Standard Central AIBanner) */}
       <AIBanner
         icon={
@@ -151,14 +142,14 @@ export function PositioningReportView({
       />
 
       {/* 2. 3-Dimensional Gap Analysis Report */}
-      <div className="space-y-4">
+      <div className="space-y-3">
         <div className="flex flex-col space-y-1">
-          <h2 className="font-serif text-xl font-semibold tracking-tight text-foreground">
+          <h2 className="font-serif text-base font-semibold tracking-tight text-foreground">
             Akademik Boşluk Analizi ve Literatür Sentezi
           </h2>
           <p className="text-sm leading-relaxed text-muted-foreground">
             Çalışmanızın literatürdeki konumu, tespit edilen boşluklar ve özgün
-            katkısı aşağıda 3 boyutta sentezlenmiştir.
+            katkısı aşağıda 3 stratejik boyutta sentezlenmiştir.
           </p>
         </div>
 
@@ -167,9 +158,9 @@ export function PositioningReportView({
 
       {/* 3. Strategic Recommended Theses Cards */}
       {sortedTheses.length > 0 && (
-        <div className="space-y-4">
+        <div className="space-y-3">
           <div className="flex flex-col space-y-1">
-            <h2 className="font-serif text-xl font-semibold tracking-tight text-foreground">
+            <h2 className="font-serif text-base font-semibold tracking-tight text-foreground">
               Kılavuz ve Öncül Tezler ({sortedTheses.length})
             </h2>
             <p className="text-sm leading-relaxed text-muted-foreground">
@@ -182,88 +173,68 @@ export function PositioningReportView({
             {sortedTheses.map((thesis, idx) => {
               const roleConfig = getRoleBadgeConfig(thesis.strategicRole);
               const RoleIcon = roleConfig.icon;
-              const { mainTitle, secondaryTitle } = splitBilingualTitle(
-                thesis.title,
-              );
+              const { mainTitle } = splitBilingualTitle(thesis.title);
               const yökUrl =
                 thesis.tezaraUrl ||
                 `https://tez.yok.gov.tr/UlusalTezMerkezi/tezDetay.jsp?id=${thesis.externalThesisId || thesis.id}`;
 
               return (
                 <Card
-                  key={thesis.id || thesis.externalThesisId || `thesis-${idx}`}
-                  className="group flex flex-col justify-between rounded-md border border-border bg-card hover:border-primary/20 transition-all duration-200"
+                  key={`thesis-${idx}-${thesis.title.slice(0, 20)}`}
+                  className="flex flex-col justify-between p-4 rounded-md border border-border bg-card hover:border-primary/30 transition-colors space-y-3"
                 >
-                  <CardHeader className="p-5 pb-3 space-y-3">
-                    {/* Top Row: Role Badge & Thesis Type */}
-                    <div className="flex items-center justify-between gap-2">
-                      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium bg-secondary text-secondary-foreground border border-border/40">
-                        <RoleIcon className="w-3.5 h-3.5 text-primary" />
+                  {/* Top Bar: Role & Degree Badge on Left, Year on Right */}
+                  <div className="flex items-center justify-between gap-2 text-xs">
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-xs font-medium bg-secondary text-secondary-foreground border border-border">
+                        <RoleIcon className="size-3 text-primary shrink-0" />
                         <span>{roleConfig.label}</span>
                       </span>
                       {thesis.thesisType && (
-                        <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-semibold border border-primary/20 bg-primary/10 text-primary">
-                          {thesis.thesisType}
+                        <span className="font-sans text-xs font-medium text-muted-foreground">
+                          · {thesis.thesisType}
                         </span>
                       )}
                     </div>
+                    <span className="font-mono text-xs text-muted-foreground shrink-0">
+                      {thesis.year}
+                    </span>
+                  </div>
 
-                    {/* Title & Secondary Title */}
-                    <div className="space-y-1">
-                      <CardTitle className="font-serif text-base font-semibold leading-snug tracking-tight text-foreground line-clamp-2 break-words hyphens-auto">
-                        {mainTitle}
-                      </CardTitle>
-                      {secondaryTitle && (
-                        <p className="font-sans text-xs text-muted-foreground leading-normal italic line-clamp-2">
-                          {secondaryTitle}
-                        </p>
-                      )}
-                    </div>
-
-                    {/* Metadata Strip */}
-                    <div className="flex items-center gap-x-3 gap-y-1 text-xs text-muted-foreground flex-wrap pt-0.5 border-b border-border/40 pb-3">
-                      <span className="inline-flex items-center gap-1.5 font-medium text-foreground">
-                        <User className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-                        <span className="truncate max-w-[150px]">{thesis.author}</span>
-                      </span>
-                      <span className="text-border/80">·</span>
-                      <span className="inline-flex items-center gap-1.5">
-                        <Calendar className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-                        <span>{thesis.year}</span>
+                  {/* Title & Author */}
+                  <div className="space-y-1">
+                    <h3 className="font-serif text-sm font-semibold leading-snug tracking-tight text-foreground line-clamp-2">
+                      {mainTitle}
+                    </h3>
+                    <p className="font-sans text-xs text-muted-foreground">
+                      <span className="font-medium text-foreground">
+                        {thesis.author}
                       </span>
                       {thesis.university && (
-                        <>
-                          <span className="text-border/80">·</span>
-                          <span className="inline-flex items-center gap-1.5">
-                            <GraduationCap className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-                            <span className="truncate max-w-[180px]">{thesis.university}</span>
-                          </span>
-                        </>
+                        <span> · {thesis.university}</span>
                       )}
-                    </div>
-                  </CardHeader>
+                    </p>
+                  </div>
 
-                  <CardContent className="px-5 pb-4 pt-0 space-y-3.5 flex-1 flex flex-col justify-start">
-                    {/* Literatürdeki Yeri */}
+                  {/* Clearly Labeled Content Sections */}
+                  <div className="space-y-2.5 text-xs">
                     {thesis.literaturePosition && (
-                      <div className="space-y-1.5">
-                        <h4 className="font-sans text-xs font-medium uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
-                          <BookOpen className="h-3 w-3 text-muted-foreground" />
-                          <span>Literatürdeki Yeri</span>
-                        </h4>
+                      <div className="space-y-1">
+                        <span className="font-sans text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+                          Literatür Kapsamı
+                        </span>
                         <p className="text-xs leading-relaxed text-muted-foreground">
                           {thesis.literaturePosition}
                         </p>
                       </div>
                     )}
 
-                    {/* Stratejik Boşluk Doldurma (Hero Strategic Callout) */}
                     {thesis.relevanceReason && (
-                      <div className="rounded-md border border-primary/20 bg-primary/5 p-3.5 space-y-1.5 mt-auto">
-                        <div className="flex items-center gap-1.5">
-                          <Sparkles className="h-3.5 w-3.5 text-primary shrink-0" />
-                          <span className="font-sans text-xs font-semibold text-primary">
-                            Stratejik Boşluk Doldurma
+                      <div className="rounded-md border border-primary/20 bg-primary/10 p-2.5 space-y-1">
+                        <div className="flex items-center gap-1.5 text-primary">
+                          <Sparkles className="size-3 shrink-0" />
+                          <span className="font-sans text-[11px] font-semibold">
+                            Tez Konumlandırma Stratejisi
                           </span>
                         </div>
                         <p className="text-xs leading-relaxed text-foreground">
@@ -271,26 +242,23 @@ export function PositioningReportView({
                         </p>
                       </div>
                     )}
-                  </CardContent>
+                  </div>
 
-                  <CardFooter className="px-5 py-3 border-t border-border/40 flex items-center justify-between text-xs text-muted-foreground bg-secondary/10">
-                    <div className="flex items-center gap-1.5">
-                      <span className="text-[10px] uppercase font-semibold text-muted-foreground">ID</span>
-                      <code className="font-mono text-xs font-medium text-foreground bg-muted/60 px-1.5 py-0.5 rounded border border-border/40">
-                        {thesis.externalThesisId || thesis.id}
-                      </code>
-                    </div>
-
+                  {/* Minimal Footer: Thesis ID & YÖK Link */}
+                  <div className="flex items-center justify-between pt-2 border-t border-border/40 text-xs">
+                    <span className="font-mono text-xs text-muted-foreground">
+                      Tez No: {thesis.externalThesisId || thesis.id}
+                    </span>
                     <a
                       href={yökUrl}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="inline-flex items-center gap-1.5 font-medium text-primary hover:text-primary transition-colors text-xs group/link"
+                      className="inline-flex items-center gap-1 font-medium text-primary hover:underline text-xs"
                     >
-                      <span className="group-hover/link:underline">YÖK Tez Merkezi</span>
-                      <ExternalLink className="h-3.5 w-3.5 group-hover/link:translate-x-0.5 group-hover/link:-translate-y-0.5 transition-transform" />
+                      <span>YÖK Tez Merkezi</span>
+                      <ExternalLink className="size-3" />
                     </a>
-                  </CardFooter>
+                  </div>
                 </Card>
               );
             })}
@@ -299,17 +267,17 @@ export function PositioningReportView({
       )}
 
       {/* 4. Bottom Action Bar (Standard Onboarding) */}
-      <div className="flex justify-end mt-8 pb-8">
+      <div className="flex justify-end pt-4 pb-8">
         <Button onClick={handleConfirm} disabled={confirming} size="lg">
           {confirming ? (
             <span className="flex items-center justify-center gap-2">
-              <Loader2 className="w-4 h-4 animate-spin" />
+              <Loader2 className="size-4 animate-spin" />
               Konu Kutuları Hazırlanıyor...
             </span>
           ) : (
             <span className="flex items-center gap-2">
               Konumlandırmayı Onayla ve Konu Kutularını Oluştur
-              <ArrowRight className="w-4 h-4" />
+              <ArrowRight className="size-4" />
             </span>
           )}
         </Button>

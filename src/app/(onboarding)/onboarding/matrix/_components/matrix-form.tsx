@@ -61,7 +61,7 @@ const MATRIX_FIELDS: FieldConfig[] = [
       "Çalışmanı hangi teorik mercekle, modelle veya kavramsal yaklaşımla ele alıyorsun?",
     placeholder:
       "Temel aldığınız teorik merceği, kavramsal modelleri ve analitik yaklaşımınızı açıklayın...",
-    rows: 4,
+    rows: 5,
   },
   {
     key: "primaryMaterial",
@@ -73,7 +73,7 @@ const MATRIX_FIELDS: FieldConfig[] = [
       "Hangi birincil kaynakları, veri setlerini veya arşiv malzemelerini kullanacaksın? (mülakat, anket, gazete, arşiv belgeleri, mahkeme kararları vb.)",
     placeholder:
       "Kullanacağınız veri kaynaklarını, birincil malzemeleri veya arşiv belgelerini tanımlayın...",
-    rows: 4,
+    rows: 5,
   },
   {
     key: "methodology",
@@ -85,7 +85,7 @@ const MATRIX_FIELDS: FieldConfig[] = [
       "Veriyi nasıl topluyor, işliyor veya ölçüyorsun? (Nitel, nicel, deneysel, simülasyon vb.)",
     placeholder:
       "Veri toplama, veri işleme ve analiz yöntemlerinizi (nitel/nicel/deneysel/simülasyon) ve temel argümanınızı açıklayın...",
-    rows: 4,
+    rows: 5,
   },
 ];
 
@@ -134,7 +134,7 @@ const MatrixCard = memo(function MatrixCard({
     <Card className="space-y-3 p-6 hover:border-primary/20 rounded-md transition-all">
       <div className="space-y-1">
         <div className="flex items-center gap-2">
-          <span className="inline-flex h-5 w-7 items-center justify-center rounded bg-primary/10 text-[10px] font-bold tracking-wider text-primary">
+          <span className="inline-flex h-5 w-7 items-center justify-center rounded bg-primary/10 text-xs font-mono font-semibold tracking-wider text-primary">
             {number}
           </span>
           <Icon className="h-4 w-4 text-muted-foreground shrink-0" />
@@ -146,7 +146,7 @@ const MatrixCard = memo(function MatrixCard({
           </Label>
         </div>
         {description && (
-          <p className="text-xs text-muted-foreground pl-9 leading-relaxed">
+          <p className="font-sans text-xs text-muted-foreground pl-9 leading-relaxed">
             {description}
           </p>
         )}

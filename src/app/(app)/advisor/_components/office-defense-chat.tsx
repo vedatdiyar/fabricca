@@ -119,9 +119,9 @@ export function OfficeDefenseChat({
             </p>
             <Button
               onClick={() => onStartDefense(activeCritique || undefined)}
-              className="bg-primary text-primary-foreground hover:bg-primary/90 text-xs font-medium h-9 px-4 gap-2 cursor-pointer shadow-xs"
+              className="bg-primary text-primary-foreground hover:bg-primary/90 text-xs font-medium gap-2 cursor-pointer shadow-xs"
             >
-              <Swords className="h-4 w-4" />
+              <Swords className="size-3.5" />
               <span>Savunmaya Başla (Müzakereyi Aç)</span>
             </Button>
           </div>
@@ -223,14 +223,15 @@ export function OfficeDefenseChat({
 
             <Button
               type="button"
+              size="icon"
               onClick={handleSend}
               disabled={!inputText.trim() || isStreaming}
-              className="h-10 w-10 p-0 bg-primary text-primary-foreground hover:bg-primary/90 shrink-0 cursor-pointer"
+              className="bg-primary text-primary-foreground hover:bg-primary/90 shrink-0 cursor-pointer"
             >
               {isStreaming ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
+                <Loader2 className="size-3.5 animate-spin" />
               ) : (
-                <Send className="h-4 w-4" />
+                <Send className="size-3.5" />
               )}
             </Button>
           </div>

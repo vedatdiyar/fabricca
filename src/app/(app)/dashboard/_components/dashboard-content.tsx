@@ -94,7 +94,7 @@ export function DashboardContent({
       {/* Page Header */}
       <div className="flex w-full flex-col sm:flex-row justify-between items-start sm:items-center gap-4 pb-6 border-b border-border">
         <div>
-          <h1 className="font-serif text-2xl font-bold tracking-tight text-foreground">
+          <h1 className="font-serif text-xl font-semibold tracking-tight text-foreground">
             Genel Özet ve Araştırma Paneli
           </h1>
           <p className="font-sans text-sm text-muted-foreground mt-1">
@@ -113,15 +113,15 @@ export function DashboardContent({
               <p className="text-xs font-medium text-muted-foreground truncate">
                 Konu Kutuları
               </p>
-              <p className="font-sans text-lg font-semibold tracking-tight text-foreground">
+              <p className="font-mono text-xs font-semibold tracking-tight text-foreground">
                 {stats.totalBoxes}
               </p>
-              <p className="text-[10px] text-muted-foreground truncate">
+              <p className="text-xs text-muted-foreground truncate">
                 Aktif araştırma teması
               </p>
             </div>
             <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-primary/20 bg-primary/10 text-primary">
-              <FolderKanban className="h-4 w-4" />
+              <FolderKanban className="size-3.5" />
             </div>
           </CardContent>
         </Card>
@@ -133,17 +133,17 @@ export function DashboardContent({
               <p className="text-xs font-medium text-muted-foreground truncate">
                 Okuma İlerlemesi
               </p>
-              <p className="font-sans text-lg font-semibold tracking-tight text-foreground">
+              <p className="font-mono text-xs font-semibold tracking-tight text-foreground">
                 {stats.readArticles} / {stats.totalArticles}
               </p>
-              <p className="text-[10px] text-muted-foreground truncate">
+              <p className="text-xs text-muted-foreground truncate">
                 {stats.totalArticles > 0
                   ? `%${stats.readPercentage} tamamlandı`
                   : "Henüz eser eklenmedi"}
               </p>
             </div>
             <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-primary/20 bg-primary/10 text-primary">
-              <BookOpen className="h-4 w-4" />
+              <BookOpen className="size-3.5" />
             </div>
           </CardContent>
         </Card>
@@ -155,15 +155,15 @@ export function DashboardContent({
               <p className="text-xs font-medium text-muted-foreground truncate">
                 Akademik Görevler
               </p>
-              <p className="font-sans text-lg font-semibold tracking-tight text-foreground">
+              <p className="font-mono text-xs font-semibold tracking-tight text-foreground">
                 {stats.activeTasks} Aktif
               </p>
-              <p className="text-[10px] text-muted-foreground truncate">
+              <p className="text-xs text-muted-foreground truncate">
                 {stats.completedTasks} tamamlanan adım
               </p>
             </div>
             <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-primary/20 bg-primary/10 text-primary">
-              <CheckSquare className="h-4 w-4" />
+              <CheckSquare className="size-3.5" />
             </div>
           </CardContent>
         </Card>
@@ -175,17 +175,17 @@ export function DashboardContent({
               <p className="text-xs font-medium text-muted-foreground truncate">
                 Literatür Döngüsü
               </p>
-              <p className="font-sans text-lg font-semibold tracking-tight text-foreground">
+              <p className="font-mono text-xs font-semibold tracking-tight text-foreground">
                 Döngü #{stats.maxExpansionCycle}
               </p>
-              <p className="text-[10px] text-muted-foreground truncate">
+              <p className="text-xs text-muted-foreground truncate">
                 {stats.anyReadyToExpand
                   ? "Genişletmeye hazır"
                   : "Kaynaklar inceleniyor"}
               </p>
             </div>
             <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-primary/20 bg-primary/10 text-primary">
-              <Sparkles className="h-4 w-4" />
+              <Sparkles className="size-3.5" />
             </div>
           </CardContent>
         </Card>
@@ -195,7 +195,7 @@ export function DashboardContent({
       <section className="space-y-6">
         <div className="flex w-full flex-col sm:flex-row justify-between items-start sm:items-center gap-4 pb-4 border-b border-border/60">
           <div>
-            <h2 className="font-serif text-xl font-semibold tracking-tight text-foreground">
+            <h2 className="font-serif text-base font-semibold tracking-tight text-foreground">
               Konu Kutuları ve Okuma Listeleri
             </h2>
             <p className="font-sans text-sm text-muted-foreground mt-1">

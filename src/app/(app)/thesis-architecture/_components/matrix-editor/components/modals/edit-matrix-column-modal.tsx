@@ -69,7 +69,7 @@ export function EditMatrixColumnModal({
               Düzenleme Modu
             </span>
           </div>
-          <DialogTitle className="font-serif text-lg font-semibold text-foreground">
+          <DialogTitle className="font-serif text-base font-semibold text-foreground">
             {card.title}
           </DialogTitle>
           <DialogDescription className="font-sans text-xs text-muted-foreground">
@@ -80,7 +80,7 @@ export function EditMatrixColumnModal({
         {/* Guide questions in modal */}
         <div className="rounded-md border border-border/40 bg-muted/20 p-3 space-y-1.5">
           <p className="text-xs font-semibold text-foreground flex items-center gap-1.5">
-            <HelpCircle className="h-3.5 w-3.5 text-primary" />
+            <HelpCircle className="size-3.5 text-primary" />
             <span>Bu Sütunu Yapılandırırken Dikkat Edilecek Hususlar:</span>
           </p>
           <div className="space-y-1 pl-5">

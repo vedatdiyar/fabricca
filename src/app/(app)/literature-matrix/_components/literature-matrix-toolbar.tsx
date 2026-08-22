@@ -98,14 +98,14 @@ export function LiteratureMatrixToolbar({
       <div className="flex items-center gap-2.5 shrink-0">
         {/* Realtime Search Input */}
         <div className="relative w-64 sm:w-72 md:w-80 shrink-0">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <Search className="absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
           <Input
             placeholder="Makale başlığı, yazar veya içerik ara..."
             value={filters.searchTerm}
             onChange={(e) =>
               onFilterChange({ ...filters, searchTerm: e.target.value })
             }
-            className="pl-9.5 text-sm text-foreground bg-background focus-visible:ring-primary h-10 w-full"
+            className="pl-8 text-xs text-foreground bg-background focus-visible:ring-primary h-8 w-full"
           />
         </div>
 
@@ -119,11 +119,11 @@ export function LiteratureMatrixToolbar({
             })
           }
         >
-          <SelectTrigger className="h-10 w-52 text-sm bg-background shrink-0">
-            <Filter className="mr-2 h-4 w-4 text-muted-foreground shrink-0" />
+          <SelectTrigger className="h-8 w-52 text-xs bg-background shrink-0">
+            <Filter className="mr-1.5 size-3.5 text-muted-foreground shrink-0" />
             <SelectValue className="truncate">{boxLabel}</SelectValue>
           </SelectTrigger>
-          <SelectContent className="text-sm">
+          <SelectContent className="text-xs">
             <SelectItem value="all">
               Tüm Temalar ({availableBoxes.length})
             </SelectItem>
@@ -145,11 +145,11 @@ export function LiteratureMatrixToolbar({
             })
           }
         >
-          <SelectTrigger className="h-10 w-44 text-sm bg-background shrink-0">
-            <BookOpenCheck className="mr-2 h-4 w-4 text-muted-foreground shrink-0" />
+          <SelectTrigger className="h-8 w-44 text-xs bg-background shrink-0">
+            <BookOpenCheck className="mr-1.5 size-3.5 text-muted-foreground shrink-0" />
             <SelectValue>{statusLabel}</SelectValue>
           </SelectTrigger>
-          <SelectContent className="text-sm">
+          <SelectContent className="text-xs">
             <SelectItem value="all">Tüm Durumlar</SelectItem>
             <SelectItem value="read">Okunmuş</SelectItem>
             <SelectItem value="unread">Okunmamış</SelectItem>
@@ -161,9 +161,9 @@ export function LiteratureMatrixToolbar({
             variant="ghost"
             size="sm"
             onClick={onResetFilters}
-            className="h-10 text-sm text-muted-foreground hover:text-foreground shrink-0"
+            className="h-8 text-xs text-muted-foreground hover:text-foreground shrink-0"
           >
-            <RotateCcw className="mr-1.5 h-4 w-4" />
+            <RotateCcw className="mr-1.5 size-3.5" />
             Sıfırla
           </Button>
         )}
@@ -177,17 +177,17 @@ export function LiteratureMatrixToolbar({
             <Button
               variant="outline"
               size="sm"
-              className="h-10 text-sm gap-1.5 px-3.5"
+              className="h-8 text-xs gap-1.5 px-3"
             >
-              <Columns3 className="h-4 w-4" />
+              <Columns3 className="size-3.5" />
               <span>Sütunlar</span>
             </Button>
           </PopoverTrigger>
-          <PopoverContent className="w-60 p-3.5 text-sm" align="end">
-            <p className="mb-2.5 font-medium text-foreground text-sm">
+          <PopoverContent className="w-60 p-3 text-xs" align="end">
+            <p className="mb-2 font-medium text-foreground text-xs">
               Sütun Görünürlüğü
             </p>
-            <div className="space-y-2.5 max-h-64 overflow-y-auto pr-1">
+            <div className="space-y-2 max-h-64 overflow-y-auto pr-1">
               {allColumns.map((col) => (
                 <div key={col.key} className="flex items-center space-x-2">
                   <Checkbox
@@ -199,7 +199,7 @@ export function LiteratureMatrixToolbar({
                   />
                   <Label
                     htmlFor={`col-${col.key}`}
-                    className="text-sm font-normal leading-none cursor-pointer"
+                    className="text-xs font-normal leading-none cursor-pointer"
                   >
                     {col.label}
                   </Label>
@@ -214,9 +214,9 @@ export function LiteratureMatrixToolbar({
           variant="outline"
           size="sm"
           onClick={onExportCSV}
-          className="h-10 text-sm gap-1.5 px-3.5 border-primary/20 bg-primary/5 text-primary hover:bg-primary/10"
+          className="h-8 text-xs gap-1.5 px-3 border-primary/20 bg-primary/5 text-primary hover:bg-primary/10"
         >
-          <Download className="h-4 w-4" />
+          <Download className="size-3.5" />
           <span>CSV İndir</span>
         </Button>
       </div>

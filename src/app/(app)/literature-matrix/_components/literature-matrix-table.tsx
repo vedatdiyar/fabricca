@@ -82,8 +82,8 @@ export function LiteratureMatrixTable({
   if (rows.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center rounded-lg border border-dashed border-border p-12 text-center bg-card">
-        <FileSpreadsheet className="h-12 w-12 text-muted-foreground/50 mb-3" />
-        <h3 className="font-serif text-lg font-medium text-foreground">
+        <FileSpreadsheet className="size-8 text-muted-foreground/50 mb-3" />
+        <h3 className="font-serif text-sm font-semibold tracking-tight text-foreground">
           Eşleşen Kaynak Bulunamadı
         </h3>
         <p className="mt-1 text-xs text-muted-foreground max-w-sm">

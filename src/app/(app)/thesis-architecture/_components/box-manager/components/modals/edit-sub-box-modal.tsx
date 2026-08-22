@@ -67,7 +67,7 @@ export function EditSubBoxModal({
           <div className="flex items-center gap-2">
             <Badge
               variant="outline"
-              className={`text-[10px] font-semibold px-2 py-0.5 border ${badgeColor}`}
+              className={`border ${badgeColor}`}
             >
               {shortLabel}
             </Badge>
@@ -75,7 +75,7 @@ export function EditSubBoxModal({
               Alt Konu Düzenleme
             </span>
           </div>
-          <DialogTitle className="font-serif text-lg font-semibold text-foreground">
+          <DialogTitle className="font-serif text-base font-semibold text-foreground">
             {box.title}
           </DialogTitle>
           <DialogDescription className="font-sans text-xs text-muted-foreground">
@@ -94,7 +94,7 @@ export function EditSubBoxModal({
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               placeholder="Örn: 1991-1999 Dönemi Aktörler Arası Hegemonya Mücadelesi"
-              className="font-sans text-sm bg-background border-border rounded-md"
+              className="font-sans bg-background border-border rounded-md"
             />
           </div>
 

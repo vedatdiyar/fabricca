@@ -94,7 +94,7 @@ export function BoxSelectionGrid({
                 e.target.value ? parseInt(e.target.value, 10) : null,
               )
             }
-            className="w-full h-9 rounded-md border border-border bg-background px-3 py-1 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-primary cursor-pointer"
+            className="w-full h-8 rounded-md border border-border bg-background px-2.5 py-1 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-primary cursor-pointer"
           >
             {selectedParent.children.map((sub) => (
               <option key={sub.id} value={sub.id}>

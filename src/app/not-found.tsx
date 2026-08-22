@@ -9,9 +9,9 @@ import { Button } from "@/components/ui/button";
 export default function NotFound() {
   return (
     <div className="flex min-h-[60vh] flex-col items-center justify-center gap-4 px-6 text-center">
-      <p className="font-sans text-2xl font-semibold tracking-tight text-foreground">
+      <h1 className="font-serif text-xl font-semibold tracking-tight text-foreground">
         Sayfa bulunamadı
-      </p>
+      </h1>
       <p className="max-w-md text-sm leading-relaxed text-muted-foreground">
         Aradığın sayfa taşınmış ya da hiç var olmamış olabilir. Ana sayfadan
         devam edebilirsin.

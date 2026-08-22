@@ -78,18 +78,18 @@ export default function LoginPage() {
             className="h-20 w-20 shrink-0"
           />
           <div className="space-y-1">
-            <h1 className="font-logo text-3xl font-semibold tracking-tight text-foreground">
+            <h1 className="font-logo text-xl font-semibold tracking-tight text-foreground">
               Fabricca
             </h1>
-            <p className="text-base leading-relaxed text-muted-foreground">
+            <p className="text-sm font-normal leading-relaxed text-muted-foreground">
               Dijital Tez Asistanı
             </p>
           </div>
         </div>
 
         <Card className="w-full">
-          <CardHeader className="space-y-1 pb-4">
-            <CardTitle className="font-sans text-xl font-semibold tracking-tight text-foreground">
+          <CardHeader className="space-y-1.5 pb-4">
+            <CardTitle className="font-serif text-sm font-semibold tracking-tight text-foreground">
               Giriş Yap
             </CardTitle>
             <CardDescription className="text-xs text-muted-foreground">
@@ -103,7 +103,7 @@ export default function LoginPage() {
                   htmlFor="email"
                   className="text-xs font-medium text-muted-foreground flex items-center gap-2"
                 >
-                  <Mail className="h-3.5 w-3.5" />
+                  <Mail className="size-3.5" />
                   E-posta
                 </Label>
                 <Input
@@ -122,7 +122,7 @@ export default function LoginPage() {
                   htmlFor="password"
                   className="text-xs font-medium text-muted-foreground flex items-center gap-2"
                 >
-                  <Lock className="h-3.5 w-3.5" />
+                  <Lock className="size-3.5" />
                   Şifre
                 </Label>
                 <div className="relative flex items-center">
@@ -138,16 +138,16 @@ export default function LoginPage() {
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3 text-muted-foreground hover:text-foreground transition-colors"
+                    className="absolute right-3 text-muted-foreground hover:text-foreground transition-colors [&_svg]:size-3.5"
                     tabIndex={-1}
                     aria-label={
                       showPassword ? "Şifreyi gizle" : "Şifreyi göster"
                     }
                   >
                     {showPassword ? (
-                      <EyeOff className="h-4 w-4" />
+                      <EyeOff className="size-3.5" />
                     ) : (
-                      <Eye className="h-4 w-4" />
+                      <Eye className="size-3.5" />
                     )}
                   </button>
                 </div>

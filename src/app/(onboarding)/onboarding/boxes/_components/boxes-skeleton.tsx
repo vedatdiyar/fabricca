@@ -23,41 +23,51 @@ export function BoxesSkeleton() {
         {Array.from({ length: 3 }).map((_, index) => (
           <Card
             key={`box-card-skel-${index}`}
-            className="flex flex-col p-4 sm:p-5 rounded-md border border-border bg-card space-y-3"
+            className="flex flex-col p-5 sm:p-6 rounded-md border border-border bg-card space-y-4"
           >
             <div className="flex items-center justify-between gap-2">
               <div className="flex items-center gap-2">
                 <Skeleton className="size-5 rounded bg-border/20" />
-                <Skeleton className="h-3 w-14 bg-border/20" />
+                <Skeleton className="h-3.5 w-14 bg-border/20" />
               </div>
               <Skeleton className="h-5 w-28 rounded-md bg-border/20" />
             </div>
 
             <div className="space-y-1.5">
-              <Skeleton className="h-5 w-3/4" />
-              <Skeleton className="h-3.5 w-full bg-border/20" />
+              <Skeleton className="h-6 w-3/4" />
+              <Skeleton className="h-4 w-full bg-border/20" />
             </div>
 
             <div className="flex flex-wrap gap-1.5 pt-1">
               {Array.from({ length: 3 }).map((_, conceptIndex) => (
                 <Skeleton
                   key={`box-concept-skel-${conceptIndex}`}
-                  className="h-4 w-16 rounded bg-border/20"
+                  className="h-5 w-20 rounded-md bg-border/20"
                 />
               ))}
             </div>
 
-            <div className="pt-3 border-t border-border/40 space-y-2">
-              <Skeleton className="h-2.5 w-24 bg-border/20" />
-              <div className="grid grid-cols-1 gap-2">
+            <div className="pt-3 border-t border-border/40 space-y-3">
+              <Skeleton className="h-3 w-32 bg-border/20" />
+              <div className="grid grid-cols-1 gap-3">
                 {Array.from({ length: 2 }).map((_, subIndex) => (
-                  <div
+                  <Card
                     key={`box-sub-skel-${subIndex}`}
-                    className="rounded-md border border-border/40 bg-muted/20 p-3 space-y-1.5"
+                    className="flex flex-col justify-between p-4 rounded-md border border-border bg-background/50 space-y-3"
                   >
-                    <Skeleton className="h-3.5 w-1/2" />
-                    <Skeleton className="h-3 w-4/5 bg-border/20" />
-                  </div>
+                    <div className="flex items-center justify-between">
+                      <Skeleton className="h-4 w-8 rounded bg-border/20" />
+                      <Skeleton className="h-3.5 w-14 bg-border/20" />
+                    </div>
+                    <div className="space-y-2">
+                      <Skeleton className="h-4 w-3/4" />
+                      <Skeleton className="h-3.5 w-full bg-border/20" />
+                    </div>
+                    <div className="flex gap-1.5 pt-1">
+                      <Skeleton className="h-5 w-16 rounded-md bg-border/20" />
+                      <Skeleton className="h-5 w-16 rounded-md bg-border/20" />
+                    </div>
+                  </Card>
                 ))}
               </div>
             </div>

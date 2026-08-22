@@ -191,19 +191,19 @@ export function KanbanBoard({
       <div className="flex w-full flex-col lg:flex-row justify-between items-start lg:items-center gap-4 pb-4 border-b border-border/60">
         <div>
           <div className="flex items-center gap-2.5">
-            <h2 className="font-serif text-xl font-semibold tracking-tight text-foreground">
+            <h2 className="font-serif text-base font-semibold tracking-tight text-foreground">
               Akademik Kanban Panosu
             </h2>
             <Badge
               variant="outline"
-              className="text-[11px] font-normal border-primary/20 bg-primary/5 text-primary"
+              className="border-primary/20 bg-primary/5 text-primary"
             >
               ADHD Denge Motoru Aktif
             </Badge>
           </div>
           <p className="font-sans text-xs text-muted-foreground mt-1">
             Okuma, not çıkarma, fiş tasnifi ve danışman taleplerinizi dengeli
-            mikro adımlarla takip edin.
+            şekilde yürütün.
           </p>
         </div>
 
@@ -215,10 +215,10 @@ export function KanbanBoard({
               size="sm"
               onClick={handleAuditClick}
               disabled={isAuditing}
-              className="flex items-center gap-1.5 text-xs font-sans rounded-md border-primary/30 hover:bg-primary/5 text-primary"
+              className="border-primary/30 text-primary hover:bg-primary/5"
             >
               <Sparkles
-                className={`h-3.5 w-3.5 ${isAuditing ? "animate-spin" : ""}`}
+                className={`size-3.5 ${isAuditing ? "animate-spin" : ""}`}
               />
               <span>
                 {isAuditing ? "Analiz Ediliyor..." : "Strateji Analizi"}
@@ -232,23 +232,21 @@ export function KanbanBoard({
               size="sm"
               onClick={onSyncTasks}
               disabled={isSyncing}
-              className="flex items-center gap-1.5 text-xs font-sans rounded-md"
             >
               <RefreshCw
-                className={`h-3.5 w-3.5 ${isSyncing ? "animate-spin" : ""}`}
+                className={`size-3.5 ${isSyncing ? "animate-spin" : ""}`}
               />
               <span>{isSyncing ? "Taranıyor..." : "Senkronize Et"}</span>
             </Button>
           )}
 
           <Button
-            variant="default"
             size="sm"
             onClick={() => setIsAddModalOpen(true)}
-            className="flex items-center gap-1.5 text-xs font-sans rounded-md shadow-xs"
+            className="shadow-xs"
           >
-            <Plus className="h-4 w-4" />
-            <span>Yeni Görev Ekle</span>
+            <Plus className="size-3.5" />
+            <span>Yeni Görev</span>
           </Button>
         </div>
       </div>
@@ -258,14 +256,14 @@ export function KanbanBoard({
         <div className="rounded-lg border border-primary/20 bg-primary/5 p-4 space-y-2">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <Sparkles className="h-4 w-4 text-primary shrink-0" />
-              <h4 className="font-serif text-sm font-semibold text-foreground">
+              <Sparkles className="size-3.5 text-primary shrink-0" />
+              <h3 className="font-serif text-sm font-semibold tracking-tight text-foreground">
                 Tez Stratejisti Durum Analizi
-              </h4>
+              </h3>
             </div>
             <Badge
               variant="outline"
-              className="text-[10px] bg-card border-primary/20 text-primary"
+              className="bg-card border-primary/20 text-primary"
             >
               Öncelikli Alan:{" "}
               {TASK_TYPE_CONFIG[

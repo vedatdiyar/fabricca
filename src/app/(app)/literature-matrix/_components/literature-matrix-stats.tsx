@@ -62,17 +62,17 @@ export function LiteratureMatrixStats({ stats }: LiteratureMatrixStatsProps) {
                 <p className="text-xs font-medium text-muted-foreground truncate">
                   {item.label}
                 </p>
-                <p className="font-sans text-lg font-semibold tracking-tight text-foreground">
+                <p className="font-mono text-xs font-semibold tracking-tight text-foreground">
                   {item.value}
                 </p>
-                <p className="text-[10px] text-muted-foreground truncate">
+                <p className="text-xs text-muted-foreground truncate">
                   {item.subtext}
                 </p>
               </div>
               <div
                 className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-md border ${item.colorClass}`}
               >
-                <Icon className="h-4 w-4" />
+                <Icon className="size-3.5" />
               </div>
             </CardContent>
           </Card>

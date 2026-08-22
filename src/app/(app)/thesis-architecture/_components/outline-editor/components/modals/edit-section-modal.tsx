@@ -62,7 +62,7 @@ export function EditSectionModal({
     <Dialog open={open} onOpenChange={onClose}>
       <DialogContent className="max-w-xl bg-card border-border">
         <DialogHeader>
-          <DialogTitle className="font-serif text-lg font-semibold text-foreground">
+          <DialogTitle className="font-serif text-base font-semibold text-foreground">
             Bölümü Düzenle
           </DialogTitle>
           <DialogDescription className="font-sans text-xs text-muted-foreground">
@@ -79,7 +79,7 @@ export function EditSectionModal({
             <Input
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              className="h-9 text-xs"
+              className="text-xs"
             />
           </div>
 
@@ -92,7 +92,7 @@ export function EditSectionModal({
               type="number"
               value={sortOrder}
               onChange={(e) => setSortOrder(Number(e.target.value))}
-              className="h-9 text-xs font-mono"
+              className="text-xs font-mono"
             />
           </div>
 

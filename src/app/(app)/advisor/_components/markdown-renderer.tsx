@@ -11,7 +11,7 @@ import { CITATION_ATTR, formatContent } from "../_lib/citation-matching";
 const components: Components = {
   h1: ({ children, ...props }) => (
     <h1
-      className="font-serif text-2xl font-bold tracking-tight text-foreground mt-4 mb-2"
+      className="font-serif text-xl font-semibold tracking-tight text-foreground mt-4 mb-2"
       {...props}
     >
       {children}
@@ -19,7 +19,7 @@ const components: Components = {
   ),
   h2: ({ children, ...props }) => (
     <h2
-      className="font-serif text-xl font-semibold tracking-tight text-foreground mt-4 mb-2"
+      className="font-serif text-base font-semibold tracking-tight text-foreground mt-4 mb-2"
       {...props}
     >
       {children}
@@ -27,7 +27,7 @@ const components: Components = {
   ),
   h3: ({ children, ...props }) => (
     <h3
-      className="font-serif text-lg font-medium tracking-tight text-foreground mt-4 mb-2"
+      className="font-serif text-sm font-semibold tracking-tight text-foreground mt-4 mb-2"
       {...props}
     >
       {children}

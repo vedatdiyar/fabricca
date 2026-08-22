@@ -1,7 +1,6 @@
 import React from "react";
 import { Compass, ScanEye, Sparkles } from "lucide-react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
+import { Card } from "@/components/ui/card";
 import type { GapAnalysisStructured } from "@/app/(onboarding)/onboarding/positioning/_services/validation";
 
 interface PositioningMarkdownRendererProps {
@@ -164,7 +163,7 @@ function paragraphKey(paragraph: string): string {
 }
 
 /**
- * Renders the 3 fixed jury synthesis sections inside an elegant, unified editorial container.
+ * Renders the 3 fixed jury synthesis sections inside an elegant, structured 3-dimensional layout.
  *
  * @param root0 - The component props.
  * @param root0.content - The gap analysis content to render.
@@ -183,55 +182,72 @@ export function PositioningMarkdownRenderer({
     {
       step: "01",
       title: "Mevcut Literatürün Haritalandırılması",
+      subtitle: "Literatür Haritası",
       icon: Compass,
       content: data.literatureMapping,
-      accentClass: "text-info",
+      isHighlight: false,
     },
     {
       step: "02",
       title: "Literatürdeki Boşluk",
+      subtitle: "Akademik Boşluk",
       icon: ScanEye,
       content: data.academicGap,
-      accentClass: "text-warning",
+      isHighlight: false,
     },
     {
       step: "03",
       title: "Çalışmanın Özgün Katkısı",
+      subtitle: "Özgün Katkı",
       icon: Sparkles,
       content: data.originalContribution,
-      accentClass: "text-success",
+      isHighlight: true,
     },
   ];
 
   return (
-    <div className={`w-full ${className}`}>
-      <Card className="rounded-md border border-border bg-card divide-y divide-border/40">
-        {sections.map((sec) => {
-          const Icon = sec.icon;
-          return (
-            <div key={sec.step} className="p-4 sm:p-5 space-y-2">
-              <div className="flex items-center justify-between gap-2">
-                <div className="flex items-center gap-2">
-                  <Icon className={`h-3.5 w-3.5 ${sec.accentClass}`} />
-                  <h3 className="font-serif text-sm font-semibold tracking-tight text-foreground">
-                    {sec.title}
-                  </h3>
-                </div>
-                <span className="font-mono text-[11px] text-muted-foreground/50">
+    <div className={`w-full space-y-3.5 ${className}`}>
+      {sections.map((sec) => {
+        const Icon = sec.icon;
+        return (
+          <Card
+            key={sec.step}
+            className={`p-4 sm:p-5 rounded-md border transition-all duration-200 space-y-3 ${
+              sec.isHighlight
+                ? "border-primary/30 bg-primary/5 hover:border-primary/40"
+                : "border-border bg-card hover:border-primary/20"
+            }`}
+          >
+            {/* Header: Step Badge + Icon + Title + Role Tag */}
+            <div className="flex items-center justify-between gap-3 flex-wrap">
+              <div className="flex items-center gap-2.5">
+                <span className="font-mono text-xs font-semibold px-2 py-0.5 rounded-md border border-primary/20 bg-primary/10 text-primary shrink-0">
                   {sec.step}
                 </span>
+                <Icon className="size-4 text-primary shrink-0" />
+                <h3 className="font-serif text-sm font-semibold tracking-tight text-foreground">
+                  {sec.title}
+                </h3>
               </div>
-              <div className="text-xs leading-relaxed text-muted-foreground space-y-1.5 font-sans pl-5.5">
-                {sec.content.split("\n\n").map((para) => (
-                  <p key={paragraphKey(para)} className="text-muted-foreground leading-relaxed">
-                    {parseInlineMarkdown(para)}
-                  </p>
-                ))}
-              </div>
+              <span className="font-sans text-xs font-medium text-muted-foreground bg-secondary px-2 py-0.5 rounded-md border border-border shrink-0">
+                {sec.subtitle}
+              </span>
             </div>
-          );
-        })}
-      </Card>
+
+            {/* Content Paragraphs */}
+            <div className="text-sm font-normal leading-relaxed text-muted-foreground space-y-2 font-sans">
+              {sec.content.split("\n\n").map((para) => (
+                <p
+                  key={paragraphKey(para)}
+                  className="text-muted-foreground leading-relaxed"
+                >
+                  {parseInlineMarkdown(para)}
+                </p>
+              ))}
+            </div>
+          </Card>
+        );
+      })}
     </div>
   );
 }

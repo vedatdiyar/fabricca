@@ -92,7 +92,7 @@ export function BoxCard({
           {/* Title & Description (calibrated min-h keeps sibling cards aligned without excessive gap) */}
           <div className="min-h-[76px] space-y-1">
             <CardTitle
-              className="font-serif text-base sm:text-lg font-semibold tracking-tight text-foreground line-clamp-2"
+              className="font-serif text-sm font-semibold tracking-tight text-foreground line-clamp-2"
               title={box.title}
             >
               {box.title}
@@ -220,10 +220,10 @@ export function BoxCard({
       >
         <AlertDialogContent className="rounded-md border border-border bg-card">
           <AlertDialogHeader>
-            <AlertDialogTitle className="font-serif text-lg font-semibold text-foreground">
+            <AlertDialogTitle>
               Eseri Silmek İstediğinize Emin Misiniz?
             </AlertDialogTitle>
-            <AlertDialogDescription className="text-sm text-muted-foreground leading-relaxed">
+            <AlertDialogDescription className="leading-relaxed">
               Bu akademik eser, PDF dosyası, vektör verileri ve tüm notlarınızla
               birlikte Kütüphaneden kalıcı olarak silinecektir. Bu işlem geri
               alınamaz.

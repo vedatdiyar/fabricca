@@ -109,11 +109,11 @@ export function PdfUploadDropzone({
         ) : (
           <div className="flex flex-col items-center space-y-3">
             <div className="p-3 rounded-full bg-primary/10 border border-primary/20 text-primary">
-              <UploadCloud className="h-8 w-8" />
+              <UploadCloud className="size-6" />
             </div>
 
             <div className="space-y-1 max-w-md">
-              <h3 className="font-serif text-lg font-medium tracking-tight text-foreground">
+              <h3 className="font-serif text-sm font-semibold tracking-tight text-foreground">
                 PDF Dokümanı Yükle
               </h3>
               <p className="text-xs text-muted-foreground leading-relaxed">
@@ -127,7 +127,7 @@ export function PdfUploadDropzone({
 
             {pdfStatus === "FAILED" && (
               <div className="flex items-center gap-2 text-xs text-destructive bg-destructive/10 p-2 rounded-md border border-destructive/20">
-                <AlertCircle className="h-4 w-4" />
+                <AlertCircle className="size-3.5" />
                 <span>
                   Son yükleme denemesi başarısız oldu. Lütfen tekrar deneyiniz.
                 </span>

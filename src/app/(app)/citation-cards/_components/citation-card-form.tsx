@@ -96,7 +96,7 @@ export function CitationCardForm(props: CitationCardFormProps) {
           >
             <SelectTrigger
               id="source-select"
-              className="h-9 text-xs bg-background border-border"
+              className="text-xs bg-background border-border"
             >
               <SelectValue placeholder="Kaynak Seçin">
                 {selectedSourceObj
@@ -134,7 +134,7 @@ export function CitationCardForm(props: CitationCardFormProps) {
           >
             <SelectTrigger
               id="outline-select"
-              className="h-9 text-xs bg-background border-border"
+              className="text-xs bg-background border-border"
             >
               <SelectValue placeholder="Bölüm Seçin">
                 {formFields.selectedOutlineId === "NONE" ? (
@@ -185,7 +185,7 @@ export function CitationCardForm(props: CitationCardFormProps) {
           >
             <SelectTrigger
               id="note-type-select"
-              className="h-9 text-xs bg-background border-border"
+              className="text-xs bg-background border-border"
             >
               <SelectValue>
                 {NOTE_TYPE_DISPLAY_LABELS[formFields.noteType]}
@@ -218,7 +218,7 @@ export function CitationCardForm(props: CitationCardFormProps) {
             placeholder="Örn: 15 veya 15-17"
             value={formFields.pageNumber}
             onChange={(e) => setField("pageNumber", e.target.value)}
-            className="h-9 text-xs font-mono bg-background border-border"
+            className="text-xs font-mono bg-background border-border"
           />
         </div>
       </div>

@@ -33,21 +33,20 @@ export function ReopenOnboardingDialog({
     <AlertDialog open={open} onOpenChange={onOpenChange}>
       <AlertDialogContent>
         <AlertDialogHeader>
-          <AlertDialogTitle className="font-serif text-lg font-semibold text-foreground">
+          <AlertDialogTitle>
             Onboarding Adımlarına Dön
           </AlertDialogTitle>
-          <AlertDialogDescription className="text-sm text-muted-foreground">
+          <AlertDialogDescription>
             Mevcut akademik verileriniz silinmeden onboarding kurulum adımlarını
             kaldığınız yerden gözden geçirmek istiyor musunuz?
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
-          <AlertDialogCancel className="text-xs font-medium">
+          <AlertDialogCancel>
             Vazgeç
           </AlertDialogCancel>
           <AlertDialogAction
             onClick={onConfirm}
-            className="text-xs font-medium"
           >
             Evet, Devam Et
           </AlertDialogAction>
@@ -79,10 +78,10 @@ export function ResetAllDataDialog({
     <AlertDialog open={open} onOpenChange={onOpenChange}>
       <AlertDialogContent className="border-destructive/20">
         <AlertDialogHeader>
-          <AlertDialogTitle className="font-serif text-lg font-semibold text-destructive">
+          <AlertDialogTitle className="text-destructive">
             Tüm Verileri Sıfırla ve Baştan Başla
           </AlertDialogTitle>
-          <AlertDialogDescription className="text-sm text-muted-foreground leading-relaxed">
+          <AlertDialogDescription className="leading-relaxed">
             Bu işlem Tez Matrisi, Konumlandırma, Kütüphane Kaynakları, Alıntı
             Fişleri, Danışman Sohbetleri ve Görevler dahil tüm akademik
             verilerinizi kalıcı olarak siler. Bu işlem geri alınamaz. Devam

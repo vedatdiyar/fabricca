@@ -49,22 +49,22 @@ export function LiteratureArticleCard({ article }: LiteratureArticleCardProps) {
   const displayTitle = cleanDisplayTitle(article.title);
 
   return (
-    <Card className="p-3.5 space-y-1.5 rounded-md hover:border-primary/20 transition-all">
-      <div className="flex items-start justify-between gap-2">
+    <Card className="p-4 space-y-2 rounded-md hover:border-primary/30 transition-all bg-card/60">
+      <div className="flex items-start justify-between gap-2.5">
         <h4
-          className="text-xs font-medium text-foreground leading-snug break-words hyphens-auto min-w-0"
+          className="font-serif text-sm font-semibold text-foreground leading-snug break-words hyphens-auto min-w-0 tracking-tight"
           title={article.title}
         >
           {displayTitle}
         </h4>
         {article.thesisType && (
-          <span className="shrink-0 inline-flex items-center px-1.5 py-0.5 rounded-md text-[10px] font-semibold border bg-primary/10 border-primary/20 text-primary">
+          <span className="shrink-0 inline-flex items-center px-2 py-0.5 rounded-md text-xs font-medium border bg-primary/10 border-primary/20 text-primary">
             {getThesisDegreeLabel(article.thesisType)}
           </span>
         )}
       </div>
       {hasMetadata && (
-        <div className="text-[11px] text-muted-foreground leading-tight truncate">
+        <div className="font-sans text-xs text-muted-foreground leading-relaxed truncate">
           <span>{authorDisplay}</span>
           {article.publisher &&
             article.authors &&

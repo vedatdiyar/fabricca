@@ -28,9 +28,9 @@ export default function AppRouteError({
 
   return (
     <div className="flex min-h-[60vh] flex-col items-center justify-center gap-4 px-6 text-center">
-      <p className="font-sans text-xl font-semibold tracking-tight text-foreground">
+      <h1 className="font-serif text-xl font-semibold tracking-tight text-foreground">
         Bir şeyler ters gitti.
-      </p>
+      </h1>
       <p className="max-w-md text-sm leading-relaxed text-muted-foreground">
         İşlemin tamamlanması sırasında beklenmeyen bir hata oluştu. Yeniden
         deneyerek sayfa içeriğini kurtarabilirsin.

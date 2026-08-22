@@ -29,7 +29,7 @@ export default async function ThesisOutlinePage() {
       <div className="w-full space-y-6">
         <div className="flex w-full flex-col sm:flex-row justify-between items-start sm:items-center gap-4 pb-6 border-b border-border">
           <div>
-            <h1 className="font-serif text-2xl font-bold tracking-tight text-foreground">
+            <h1 className="font-serif text-xl font-semibold tracking-tight text-foreground">
               Tez Bölüm Planı ve İskelet
             </h1>
             <p className="font-sans text-sm text-muted-foreground mt-1">
@@ -40,10 +40,10 @@ export default async function ThesisOutlinePage() {
         </div>
 
         <Card className="flex flex-col items-center justify-center rounded-md border border-dashed border-border/40 p-8 text-center bg-card">
-          <p className="font-sans text-lg font-medium tracking-tight text-foreground">
+          <p className="font-serif text-sm font-semibold tracking-tight text-foreground">
             Tez matrisi henüz oluşturulmadı
           </p>
-          <p className="mt-1 text-sm text-muted-foreground">
+          <p className="mt-1 font-sans text-xs text-muted-foreground">
             Lütfen onboarding adımlarını tamamlayın.
           </p>
         </Card>
@@ -59,16 +59,17 @@ export default async function ThesisOutlinePage() {
     where: eq(outlines.matrixId, userMatrix.id),
   });
 
-  // Fetch all sources for user's boxes
-  const boxIds = userBoxes.map((b) => b.id);
-  const userSources =
-    boxIds.length > 0
-      ? await db.query.sources.findMany({
-          where: inArray(sources.boxId, boxIds),
-        })
-      : [];
+  const userSources = await db.query.sources.findMany({
+    where: inArray(
+      sources.boxId,
+      userBoxes.map((b) => b.id),
+    ),
+  });
 
-  const sourceMap = new Map(userSources.map((s) => [s.id, s]));
+  const sourceMap = new Map<number, typeof sources.$inferSelect>();
+  for (const s of userSources) {
+    sourceMap.set(s.id, s);
+  }
 
   // Fetch user's annotations
   const userAnnotationsRaw = await db.query.annotations.findMany({
@@ -128,7 +129,7 @@ export default async function ThesisOutlinePage() {
       {/* Page Header */}
       <div className="flex w-full flex-col sm:flex-row justify-between items-start sm:items-center gap-4 pb-6 border-b border-border">
         <div>
-          <h1 className="font-serif text-2xl font-bold tracking-tight text-foreground">
+          <h1 className="font-serif text-xl font-semibold tracking-tight text-foreground">
             Tez Bölüm Planı ve İskelet
           </h1>
           <p className="font-sans text-sm text-muted-foreground mt-1">

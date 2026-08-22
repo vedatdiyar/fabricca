@@ -184,11 +184,11 @@ function LibraryPageContent() {
             />
           ) : (
             <Card className="flex flex-col items-center justify-center h-full rounded-md border border-border p-8 text-center text-muted-foreground">
-              <BookMarked className="h-10 w-10 opacity-30 mb-3" />
-              <h3 className="font-serif text-lg font-medium text-foreground">
+              <BookMarked className="size-8 opacity-30 mb-3" />
+              <h3 className="font-serif text-sm font-semibold tracking-tight text-foreground">
                 Eser Seçilmedi
               </h3>
-              <p className="text-sm text-muted-foreground mt-1">
+              <p className="font-sans text-xs text-muted-foreground mt-1">
                 Detayları ve akademik notları görüntülemek için sol menüden bir
                 eser seçiniz.
               </p>

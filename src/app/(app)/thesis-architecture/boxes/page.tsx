@@ -21,7 +21,7 @@ export default async function ThesisBoxesPage() {
       <div className="w-full space-y-6">
         <div className="flex w-full flex-col sm:flex-row justify-between items-start sm:items-center gap-4 pb-6 border-b border-border">
           <div>
-            <h1 className="font-serif text-2xl font-bold tracking-tight text-foreground">
+            <h1 className="font-serif text-xl font-semibold tracking-tight text-foreground">
               Konu Kutuları ve Araştırma Temaları
             </h1>
             <p className="font-sans text-sm text-muted-foreground mt-1">
@@ -32,7 +32,7 @@ export default async function ThesisBoxesPage() {
         </div>
 
         <Card className="flex flex-col items-center justify-center rounded-md border border-dashed border-border/40 p-8 text-center bg-card">
-          <p className="font-serif text-base font-medium tracking-tight text-foreground">
+          <p className="font-serif text-sm font-semibold tracking-tight text-foreground">
             Tez matrisi henüz oluşturulmadı
           </p>
           <p className="mt-1 font-sans text-xs text-muted-foreground">
@@ -60,7 +60,7 @@ export default async function ThesisBoxesPage() {
       {/* Page Header */}
       <div className="flex w-full flex-col sm:flex-row justify-between items-start sm:items-center gap-4 pb-6 border-b border-border">
         <div>
-          <h1 className="font-serif text-2xl font-bold tracking-tight text-foreground">
+          <h1 className="font-serif text-xl font-semibold tracking-tight text-foreground">
             Konu Kutuları ve Araştırma Temaları
           </h1>
           <p className="font-sans text-sm text-muted-foreground mt-1">

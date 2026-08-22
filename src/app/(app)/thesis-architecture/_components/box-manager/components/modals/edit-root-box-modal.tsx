@@ -59,7 +59,7 @@ export function EditRootBoxModal({
               Ana Eksen Düzenleme
             </span>
           </div>
-          <DialogTitle className="font-serif text-lg font-semibold text-foreground">
+          <DialogTitle className="font-serif text-base font-semibold text-foreground">
             Ana Araştırma Sütununu Düzenle
           </DialogTitle>
         </DialogHeader>
@@ -72,7 +72,7 @@ export function EditRootBoxModal({
             <Input
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              className="font-sans text-sm bg-background border-border rounded-md"
+              className="font-sans bg-background border-border rounded-md"
             />
           </div>
 

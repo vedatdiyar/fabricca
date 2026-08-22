@@ -161,10 +161,10 @@ export function LiteratureExpansionButton({
       >
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle className="font-serif text-lg font-semibold text-foreground">
+            <AlertDialogTitle>
               Son Genişletme Döngüsünü Geri Almak İstediğinize Emin Misiniz?
             </AlertDialogTitle>
-            <AlertDialogDescription className="text-sm text-muted-foreground">
+            <AlertDialogDescription>
               Döngü #{expansionCycle} sırasında eklenen tüm kaynaklar silinecek
               ve döngü bir önceki hale ({`Döngü #${expansionCycle - 1}`})
               dönecektir. Bu işlem geri alınamaz.

@@ -14,6 +14,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Loader2, Check, Hash, X, Sparkles } from "lucide-react";
+import { cn } from "@/lib/utils";
 import { QUADRANTS } from "../../constants/quadrant-config";
 import type { BoxWithRelations } from "../../constants/quadrant-config";
 import { useConceptTags } from "../../hooks/use-concept-tags";
@@ -67,7 +68,7 @@ export function AddSubBoxModal({
           <div className="flex items-center gap-2">
             <Badge
               variant="outline"
-              className="text-[10px] font-semibold px-2 py-0.5 border border-primary/20 bg-primary/10 text-primary"
+              className="border border-primary/20 bg-primary/10 text-primary"
             >
               Yeni Konu Havuzu
             </Badge>
@@ -75,7 +76,7 @@ export function AddSubBoxModal({
               Alt Konu Ekle
             </span>
           </div>
-          <DialogTitle className="font-serif text-lg font-semibold text-foreground">
+          <DialogTitle className="font-serif text-base font-semibold text-foreground">
             Yeni Alt Konu Tanımla
           </DialogTitle>
           <DialogDescription className="font-sans text-xs text-muted-foreground">
@@ -104,20 +105,27 @@ export function AddSubBoxModal({
                       (e.key === "Enter" || e.key === " ") &&
                       onParentIdChange(root.id)
                     }
-                    className={`cursor-pointer flex items-center gap-2.5 p-2.5 rounded-md border text-xs transition-all ${
+                    className={cn(
+                      "flex items-center gap-2.5 p-2.5 rounded-md border text-left cursor-pointer transition-all",
                       isSelected
-                        ? "border-primary bg-primary/10 text-foreground font-semibold"
-                        : "border-border/60 bg-muted/10 text-muted-foreground hover:border-border"
-                    }`}
+                        ? "border-primary bg-primary/5 text-foreground shadow-2xs ring-1 ring-primary/30"
+                        : "border-border/60 bg-muted/10 text-muted-foreground hover:bg-muted/20 hover:border-border",
+                    )}
                   >
                     <div
-                      className={`h-2.5 w-2.5 rounded-full ${
-                        isSelected ? "bg-primary" : "bg-muted-foreground/40"
-                      }`}
+                      className={cn(
+                        "w-2.5 h-2.5 rounded-full shrink-0",
+                        isSelected ? "bg-primary" : "bg-muted-foreground/40",
+                      )}
                     />
-                    <span className="truncate">
-                      {config?.shortLabel ?? root.title}
-                    </span>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-xs font-medium truncate text-foreground">
+                        {root.title}
+                      </p>
+                      <p className="text-[10px] text-muted-foreground truncate">
+                        {config?.label ?? root.boxType}
+                      </p>
+                    </div>
                   </div>
                 );
               })}
@@ -133,7 +141,7 @@ export function AddSubBoxModal({
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               placeholder="Örn: Karşılaştırmalı Anayasa Mahkemesi Kararları Analizi"
-              className="font-sans text-sm bg-background border-border rounded-md"
+              className="font-sans bg-background border-border rounded-md"
             />
           </div>
 

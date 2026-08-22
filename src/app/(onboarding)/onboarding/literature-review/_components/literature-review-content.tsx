@@ -45,10 +45,10 @@ function SubBoxQuery({
 
   if (status === "error") {
     return (
-      <div className="p-4 text-center border border-destructive/20 rounded-md bg-destructive/5 space-y-1">
+      <div className="p-4 text-center border border-destructive/20 rounded-md bg-destructive/5 space-y-1.5">
         <AlertCircle className="size-5 text-destructive mx-auto" />
         <p className="text-xs text-destructive font-medium">Tarama hatası</p>
-        <p className="text-[11px] text-muted-foreground">{errorMessage}</p>
+        <p className="font-sans text-xs text-muted-foreground">{errorMessage}</p>
       </div>
     );
   }
@@ -93,7 +93,7 @@ function SubBoxDone({
                       {sub.title}
                     </h3>
                     {sub.description && (
-                      <p className="text-xs text-muted-foreground leading-relaxed font-light">
+                      <p className="font-sans text-xs text-muted-foreground leading-relaxed">
                         {sub.description}
                       </p>
                     )}
@@ -171,21 +171,21 @@ function SubBoxDone({
             <div key={`${sub.title}-${idx}`} className="relative space-y-2">
               <span className="absolute -left-[21.5px] top-1.5 size-2 rounded-full border-2 border-primary bg-background" />
 
-              <div className="space-y-0.5">
+              <div className="space-y-1">
                 <h3 className="font-serif text-sm font-semibold tracking-tight text-foreground leading-snug">
                   {sub.title}
                 </h3>
                 {sub.description && (
-                  <p className="text-xs text-muted-foreground leading-relaxed">
+                  <p className="font-sans text-xs text-muted-foreground leading-relaxed">
                     {sub.description}
                   </p>
                 )}
                 {sub.concepts && sub.concepts.length > 0 && (
-                  <div className="flex flex-wrap gap-1.5 pt-0.5">
+                  <div className="flex flex-wrap gap-1.5 pt-1">
                     {sub.concepts.map((concept, cIdx) => (
                       <span
                         key={`${concept}-${cIdx}`}
-                        className="inline-flex items-center px-1.5 py-0.5 rounded bg-primary/10 border border-primary/20 text-[10px] text-primary font-medium"
+                        className="inline-flex items-center px-2 py-0.5 rounded-md bg-secondary text-secondary-foreground border border-border text-xs font-medium"
                       >
                         {concept}
                       </span>
@@ -272,19 +272,19 @@ export function LiteratureReviewContent() {
                 );
 
           return (
-            <Card key={subBox.title} className="p-5 space-y-3 rounded-md">
+            <Card key={subBox.title} className="p-5 sm:p-6 space-y-4 rounded-md">
               <div className="flex items-center gap-2">
                 <h2 className="font-serif text-base font-semibold tracking-tight text-foreground">
                   {subBox.title}
                 </h2>
                 {subBox.boxType && (
-                  <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-semibold border bg-primary/10 border-primary/20 text-primary ml-auto">
+                  <span className="inline-flex items-center px-2.5 py-0.5 rounded-md text-xs font-medium border bg-primary/10 border-primary/20 text-primary ml-auto">
                     {getBoxTypeLabel(subBox.boxType)}
                   </span>
                 )}
               </div>
               {subBox.description && (
-                <p className="text-xs text-muted-foreground leading-relaxed">
+                <p className="font-sans text-sm text-muted-foreground leading-relaxed">
                   {subBox.description}
                 </p>
               )}
@@ -324,17 +324,17 @@ export function LiteratureReviewContent() {
           const boxType = relatedThesesBox?.boxType ?? "RELATED_THESES";
 
           return (
-            <Card className="p-5 space-y-3 rounded-md">
+            <Card className="p-5 sm:p-6 space-y-4 rounded-md">
               <div className="flex items-center gap-2">
                 <h2 className="font-serif text-base font-semibold tracking-tight text-foreground">
                   {title}
                 </h2>
-                <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-semibold border bg-primary/10 border-primary/20 text-primary ml-auto">
+                <span className="inline-flex items-center px-2.5 py-0.5 rounded-md text-xs font-medium border bg-primary/10 border-primary/20 text-primary ml-auto">
                   {getBoxTypeLabel(boxType)}
                 </span>
               </div>
               {description && (
-                <p className="text-xs text-muted-foreground leading-relaxed">
+                <p className="font-sans text-sm text-muted-foreground leading-relaxed">
                   {description}
                 </p>
               )}

@@ -60,14 +60,14 @@ export function AdvisorOfficeWorkspace({
         <div>
           <div className="flex items-center gap-2.5">
             <div className="p-1.5 rounded-md bg-primary/10 text-primary border border-primary/20">
-              <BookOpen className="h-5 w-5" />
+              <BookOpen className="size-3.5" />
             </div>
-            <h1 className="font-serif text-2xl font-bold tracking-tight text-foreground">
+            <h1 className="font-serif text-xl font-semibold tracking-tight text-foreground">
               Danışmanın Çalışma Odası
             </h1>
             <Badge
               variant="outline"
-              className="text-xs bg-primary/10 text-primary border-primary/20"
+              className="bg-primary/10 text-primary border-primary/20"
             >
               {isReviewActive ? "İnceleme & Savunma Masası" : "Ofis Randevusu"}
             </Badge>
@@ -83,9 +83,9 @@ export function AdvisorOfficeWorkspace({
             size="sm"
             variant="outline"
             onClick={handleResetToNewSubmission}
-            className="text-xs h-9 gap-1.5 border-border bg-background hover:bg-muted text-foreground shrink-0 cursor-pointer self-start sm:self-auto"
+            className="gap-1.5 border-border bg-background hover:bg-muted text-foreground shrink-0 cursor-pointer self-start sm:self-auto"
           >
-            <ArrowLeft className="h-3.5 w-3.5" />
+            <ArrowLeft className="size-3.5" />
             <span>Yeni Taslak Teslimi</span>
           </Button>
         )}

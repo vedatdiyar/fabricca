@@ -49,15 +49,15 @@ export function QuadrantPillarCard({
         <div className="flex items-start justify-between gap-3">
           <div className="flex items-start gap-3 min-w-0 flex-1">
             <div
-              className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-md border ${config.accentColor}`}
+              className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-md border ${config.accentColor}`}
             >
-              <Icon className="h-4.5 w-4.5" />
+              <Icon className="size-3.5" />
             </div>
             <div className="min-w-0 flex-1 space-y-0.5">
               <div className="flex items-center gap-2">
                 <Badge
                   variant="outline"
-                  className={`text-[10px] font-semibold px-2 py-0.5 border ${config.badgeColor}`}
+                  className={`border ${config.badgeColor}`}
                 >
                   Sütun #{config.number}
                 </Badge>

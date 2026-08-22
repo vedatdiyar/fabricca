@@ -59,7 +59,7 @@ export function AddSectionModal({
     <Dialog open={open} onOpenChange={onClose}>
       <DialogContent className="max-w-xl bg-card border-border">
         <DialogHeader>
-          <DialogTitle className="font-serif text-lg font-semibold text-foreground">
+          <DialogTitle className="font-serif text-base font-semibold text-foreground">
             {parentId ? "Yeni Alt Bölüm Ekle" : "Yeni Ana Bölüm Ekle"}
           </DialogTitle>
           <DialogDescription className="font-sans text-xs text-muted-foreground">
@@ -100,7 +100,7 @@ export function AddSectionModal({
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               placeholder="Örn: 2.1. Hegemonya ve Karşı-Hegemonya Kavramı"
-              className="h-9 text-xs"
+              className="text-xs"
             />
           </div>
 

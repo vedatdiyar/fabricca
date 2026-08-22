@@ -42,7 +42,7 @@ export function SaveNoteDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md bg-card border-border">
         <DialogHeader>
-          <DialogTitle className="font-serif text-lg font-medium text-foreground">
+          <DialogTitle className="font-serif text-base font-semibold tracking-tight text-foreground">
             Savunma Notunu Bölüme Kaydet
           </DialogTitle>
           <DialogDescription className="text-xs text-muted-foreground">
@@ -72,7 +72,7 @@ export function SaveNoteDialog({
             variant="outline"
             size="sm"
             onClick={() => onOpenChange(false)}
-            className="text-xs h-9"
+            className="text-xs"
           >
             Vazgeç
           </Button>
@@ -81,12 +81,12 @@ export function SaveNoteDialog({
             size="sm"
             onClick={onSave}
             disabled={isSaving || !noteContent.trim()}
-            className="bg-primary text-primary-foreground text-xs h-9 gap-1.5"
+            className="bg-primary text-primary-foreground text-xs gap-1.5"
           >
             {isSaving ? (
-              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              <Loader2 className="size-3.5 animate-spin" />
             ) : (
-              <BookmarkPlus className="h-3.5 w-3.5" />
+              <BookmarkPlus className="size-3.5" />
             )}
             <span>Fiş Olarak Kaydet</span>
           </Button>

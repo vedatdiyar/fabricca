@@ -130,10 +130,10 @@ export function AddResourceModal({
         <DialogHeader className="space-y-1 border-b border-border pb-4">
           <div className="flex items-center gap-2">
             <div className="p-2 rounded-md bg-primary/10 border border-primary/20 text-primary">
-              <Sparkles className="h-5 w-5" />
+              <Sparkles className="size-3.5" />
             </div>
           </div>
-          <DialogTitle className="font-serif text-xl font-semibold tracking-tight text-foreground">
+          <DialogTitle className="font-serif text-base font-semibold tracking-tight text-foreground">
             Yeni Akademik PDF Yükle
           </DialogTitle>
         </DialogHeader>

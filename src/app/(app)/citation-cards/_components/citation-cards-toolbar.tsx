@@ -67,13 +67,13 @@ export function CitationCardsToolbar({
       <div className="flex flex-col sm:flex-row gap-2.5 items-stretch sm:items-center justify-between">
         {/* Search Bar */}
         <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 size-3.5 text-muted-foreground" />
           <Input
             aria-label="Alıntı fişi ara"
             placeholder="Fiş içeriği, yazar, eser veya sayfa ara..."
             value={filters.searchQuery}
             onChange={(e) => onFilterChange("searchQuery", e.target.value)}
-            className="pl-9 pr-8 text-xs h-9 bg-background border-border"
+            className="pl-8 pr-8 text-xs bg-background border-border"
           />
           {filters.searchQuery && (
             <button
@@ -81,7 +81,7 @@ export function CitationCardsToolbar({
               onClick={() => onFilterChange("searchQuery", "")}
               className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground cursor-pointer"
             >
-              <X className="h-3.5 w-3.5" />
+              <X className="size-3.5" />
             </button>
           )}
         </div>
@@ -93,8 +93,8 @@ export function CitationCardsToolbar({
             value={filters.sortBy}
             onValueChange={(v) => onFilterChange("sortBy", v)}
           >
-            <SelectTrigger className="w-36 text-xs h-9 bg-background border-border">
-              <SlidersHorizontal className="h-3 w-3 mr-1 text-muted-foreground shrink-0" />
+            <SelectTrigger className="w-36 text-xs bg-background border-border">
+              <SlidersHorizontal className="size-3.5 mr-1 text-muted-foreground shrink-0" />
               <SelectValue>{SORT_DISPLAY_LABELS[filters.sortBy]}</SelectValue>
             </SelectTrigger>
             <SelectContent>
@@ -109,9 +109,9 @@ export function CitationCardsToolbar({
           <Button
             onClick={onAddNew}
             size="sm"
-            className="gap-1.5 h-9 px-3 shrink-0"
+            className="gap-1.5 shrink-0"
           >
-            <Plus className="h-3.5 w-3.5" />
+            <Plus className="size-3.5" />
             <span className="hidden sm:inline">Yeni Fiş</span>
           </Button>
         </div>

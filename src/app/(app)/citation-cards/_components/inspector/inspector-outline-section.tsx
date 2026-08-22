@@ -43,7 +43,7 @@ export function InspectorOutlineSection({
       >
         <SelectTrigger
           disabled={isUpdatingOutline}
-          className="w-full text-xs h-9 bg-background border-border font-medium cursor-pointer"
+          className="w-full text-xs bg-background border-border font-medium cursor-pointer"
         >
           <SelectValue placeholder="Bölüm Seçin" />
         </SelectTrigger>

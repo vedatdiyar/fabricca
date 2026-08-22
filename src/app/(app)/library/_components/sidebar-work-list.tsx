@@ -125,8 +125,8 @@ export function SidebarWorkList({
     <Card className="flex h-full w-full flex-col min-h-0 space-y-4 rounded-md p-4">
       <div className="flex items-center justify-between pb-2 border-b border-border">
         <div className="flex items-center gap-2">
-          <BookOpen className="h-5 w-5 text-primary" />
-          <h2 className="font-serif text-xl font-semibold tracking-tight text-foreground">
+          <BookOpen className="size-3.5 text-primary" />
+          <h2 className="font-serif text-base font-semibold tracking-tight text-foreground">
             Eserlerim
           </h2>
         </div>
@@ -137,9 +137,9 @@ export function SidebarWorkList({
               type="button"
               onClick={onOpenAddModal}
               title="Yeni Kaynak Ekle"
-              className="flex items-center gap-1 text-xs font-medium bg-primary/10 text-primary hover:bg-primary/20 px-2 py-1 rounded border border-primary/20 transition-all"
+              className="flex items-center gap-1 text-xs font-medium bg-primary/10 text-primary hover:bg-primary/20 px-2 py-1 rounded border border-primary/20 transition-all [&_svg]:size-3.5"
             >
-              <Plus className="h-3.5 w-3.5" />
+              <Plus className="size-3.5" />
               <span>Yeni Ekle</span>
             </button>
           )}
@@ -297,10 +297,10 @@ export function SidebarWorkList({
       >
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle className="font-serif text-lg font-semibold text-foreground">
+            <AlertDialogTitle>
               Eseri Silmek İstediğinize Emin Misiniz?
             </AlertDialogTitle>
-            <AlertDialogDescription className="text-sm text-muted-foreground">
+            <AlertDialogDescription>
               Bu akademik eser, PDF dosyası, vektör verileri ve tüm notlarınızla
               birlikte kalıcı olarak silinecektir. Bu işlem geri alınamaz.
             </AlertDialogDescription>

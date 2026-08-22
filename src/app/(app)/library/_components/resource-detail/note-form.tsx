@@ -131,8 +131,8 @@ export function NoteForm({ resourceId, onAddNote }: NoteFormProps) {
     <div className="rounded-md border border-border bg-card/50 p-4 sm:p-5 space-y-4">
       <div className="flex items-center justify-between gap-2 border-b border-border/40 pb-3">
         <div className="flex items-center gap-2">
-          <Plus className="h-4 w-4 text-primary" />
-          <h3 className="font-serif text-base sm:text-lg font-medium tracking-tight text-foreground">
+          <Plus className="size-3.5 text-primary" />
+          <h3 className="font-serif text-sm font-semibold tracking-tight text-foreground">
             Yeni Not veya Alıntı Ekle
           </h3>
         </div>
@@ -140,7 +140,7 @@ export function NoteForm({ resourceId, onAddNote }: NoteFormProps) {
         {hasDraft && (
           <div className="flex items-center gap-2">
             <span className="flex items-center gap-1 text-xs text-muted-foreground font-medium">
-              <Check className="h-3 w-3 text-primary" /> Otomatik kaydedildi
+              <Check className="size-3.5 text-primary" /> Otomatik kaydedildi
             </span>
             <button
               type="button"

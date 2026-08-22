@@ -153,11 +153,11 @@ export function OfficeMarginNotes({
         <div className="p-4 border-t border-border bg-card/90 shrink-0">
           <Button
             onClick={() => onStartDefense()}
-            className="w-full bg-primary text-primary-foreground hover:bg-primary/90 text-xs font-medium h-9 gap-2 shadow-xs cursor-pointer"
+            className="w-full bg-primary text-primary-foreground hover:bg-primary/90 text-xs font-medium gap-2 shadow-xs cursor-pointer"
           >
-            <Swords className="h-4 w-4" />
+            <Swords className="size-3.5" />
             <span>Savunmaya Başla (Danışmanla Müzakere Et)</span>
-            <ArrowRight className="h-3.5 w-3.5 ml-auto" />
+            <ArrowRight className="size-3.5 ml-auto" />
           </Button>
         </div>
       )}

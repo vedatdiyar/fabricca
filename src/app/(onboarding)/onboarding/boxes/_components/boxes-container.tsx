@@ -102,7 +102,7 @@ export function BoxesContainer() {
 }
 
 /**
- * Renders the sub-box nested section cleanly without bulky timelines or heavy cards.
+ * Renders the sub-box nested section with each focus area presented as a dedicated card.
  *
  * @param root0 - The section props object.
  * @param root0.subBoxes - The sub-boxes to render.
@@ -117,47 +117,51 @@ const SubBoxSection = memo(function SubBoxSection({
   parentIndex: number;
 }) {
   return (
-    <div className="pt-3 border-t border-border/40 space-y-2">
-      <div className="flex items-center justify-between text-xs text-muted-foreground">
-        <span className="font-sans text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
+    <div className="pt-3 border-t border-border/40 space-y-3">
+      <div className="flex items-center justify-between">
+        <span className="font-sans text-xs font-medium uppercase tracking-wider text-muted-foreground">
           Alt Odak Alanları ({subBoxes.length})
         </span>
       </div>
 
-      <div className="grid grid-cols-1 gap-2">
+      <div className="grid grid-cols-1 gap-3">
         {subBoxes.map((subBox, sbIdx) => (
-          <div
+          <Card
             key={`${subBox.title}-${sbIdx}`}
-            className="rounded-md border border-border/40 bg-muted/20 p-3 space-y-1.5 transition-colors hover:border-border"
+            className="flex flex-col justify-between p-4 rounded-md border border-border bg-background/50 transition-colors hover:border-primary/30 space-y-3"
           >
-            <div className="flex items-start justify-between gap-2">
-              <h4 className="font-sans text-xs font-semibold text-foreground leading-snug">
-                <span className="font-mono text-muted-foreground font-normal mr-1.5">
+            <div className="space-y-2">
+              <div className="flex items-center justify-between gap-2">
+                <span className="inline-flex items-center font-mono text-xs font-semibold px-2 py-0.5 rounded bg-primary/10 border border-primary/20 text-primary">
                   {parentIndex}.{sbIdx + 1}
                 </span>
+                <span className="font-sans text-xs font-medium text-muted-foreground">
+                  Alt Odak
+                </span>
+              </div>
+              <h4 className="font-serif text-sm font-semibold text-foreground tracking-tight leading-snug">
                 {subBox.title}
               </h4>
+              {subBox.description && (
+                <p className="font-sans text-xs text-muted-foreground leading-relaxed">
+                  {subBox.description}
+                </p>
+              )}
             </div>
 
-            {subBox.description && (
-              <p className="text-xs text-muted-foreground leading-relaxed line-clamp-2">
-                {subBox.description}
-              </p>
-            )}
-
             {subBox.concepts && subBox.concepts.length > 0 && (
-              <div className="flex flex-wrap gap-1.5 pt-0.5">
+              <div className="flex flex-wrap gap-1.5 pt-1">
                 {subBox.concepts.map((concept, cIdx) => (
                   <span
                     key={`${concept}-${cIdx}`}
-                    className="inline-flex items-center px-1.5 py-0.5 rounded bg-secondary text-secondary-foreground border border-border text-[10px] font-medium"
+                    className="inline-flex items-center px-2 py-0.5 rounded-md bg-secondary text-secondary-foreground border border-border text-xs font-medium"
                   >
                     {concept}
                   </span>
                 ))}
               </div>
             )}
-          </div>
+          </Card>
         ))}
       </div>
     </div>
@@ -171,14 +175,14 @@ const SubBoxSection = memo(function SubBoxSection({
  */
 const PrimaryMaterialSection = memo(function PrimaryMaterialSection() {
   return (
-    <div className="pt-3 border-t border-border/40 space-y-1">
+    <div className="pt-3 border-t border-border/40 space-y-1.5">
       <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-        <Archive className="size-3 text-muted-foreground" />
-        <span className="font-sans text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
+        <Archive className="size-3.5 text-muted-foreground" />
+        <span className="font-sans text-xs font-medium uppercase tracking-wider text-muted-foreground">
           Arşiv / Birincil Kaynak Alanı
         </span>
       </div>
-      <p className="text-xs text-muted-foreground leading-relaxed">
+      <p className="font-sans text-xs text-muted-foreground leading-relaxed">
         Bu kutu saha çalışması ve birincil kaynaklar için ayrılmıştır. Arşiv belgeleri literatür taramasından sonra doğrudan eklenecektir.
       </p>
     </div>
@@ -204,29 +208,29 @@ const BoxCard = memo(function BoxCard({
   const parentConcepts = box.concepts ?? [];
 
   return (
-    <Card className="flex flex-col p-4 sm:p-5 rounded-md border border-border bg-card transition-colors hover:border-primary/20 space-y-3">
+    <Card className="flex flex-col p-5 sm:p-6 rounded-md border border-border bg-card transition-colors hover:border-primary/20 space-y-4">
       {/* Top Header Row */}
       <div className="flex items-center justify-between gap-2">
         <div className="flex items-center gap-2">
           <span className="flex items-center justify-center size-5 rounded bg-primary/10 border border-primary/20 text-primary shrink-0">
-            <Icon className="size-3" />
+            <Icon className="size-3.5" />
           </span>
           <span className="font-mono text-xs font-medium text-muted-foreground">
             Kutu 0{index + 1}
           </span>
         </div>
-        <span className="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-medium bg-secondary text-secondary-foreground border border-border">
+        <span className="inline-flex items-center px-2.5 py-0.5 rounded-md text-xs font-medium bg-secondary text-secondary-foreground border border-border">
           {BOX_TYPE_LABELS[box.boxType as ThesisBoxType] ?? box.boxType}
         </span>
       </div>
 
       {/* Main Title & Description */}
-      <div className="space-y-1">
-        <h3 className="font-serif text-lg font-semibold text-foreground tracking-tight leading-snug">
+      <div className="space-y-1.5">
+        <h3 className="font-serif text-base font-semibold text-foreground tracking-tight leading-snug">
           {box.title}
         </h3>
         {box.description && (
-          <p className="text-xs text-muted-foreground leading-relaxed line-clamp-2">
+          <p className="font-sans text-sm text-muted-foreground leading-relaxed">
             {box.description}
           </p>
         )}
@@ -238,7 +242,7 @@ const BoxCard = memo(function BoxCard({
           {parentConcepts.map((concept, i) => (
             <span
               key={`${concept}-${i}`}
-              className="inline-flex items-center px-1.5 py-0.5 rounded bg-secondary text-secondary-foreground border border-border text-[10px] font-medium"
+              className="inline-flex items-center px-2 py-0.5 rounded-md bg-secondary text-secondary-foreground border border-border text-xs font-medium"
             >
               {concept}
             </span>

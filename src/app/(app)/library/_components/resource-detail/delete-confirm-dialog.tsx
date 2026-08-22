@@ -51,21 +51,21 @@ export function DeleteConfirmDialog({
       >
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle className="font-serif text-lg font-semibold text-foreground">
+            <AlertDialogTitle>
               Notu Silmek İstediğinize Emin Misiniz?
             </AlertDialogTitle>
-            <AlertDialogDescription className="text-sm text-muted-foreground">
+            <AlertDialogDescription>
               Bu akademik not ve alıntı fişlerinizden kalıcı olarak
               silinecektir. Bu işlem geri alınamaz.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel className="text-xs font-medium">
+            <AlertDialogCancel>
               Vazgeç
             </AlertDialogCancel>
             <AlertDialogAction
               onClick={onConfirmDeleteNote}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90 text-xs font-medium"
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
               Evet, Sil
             </AlertDialogAction>
@@ -81,10 +81,10 @@ export function DeleteConfirmDialog({
       >
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle className="font-serif text-lg font-semibold text-foreground">
+            <AlertDialogTitle>
               PDF&apos;i Silmek İstediğinize Emin Misiniz?
             </AlertDialogTitle>
-            <AlertDialogDescription className="text-sm text-muted-foreground">
+            <AlertDialogDescription>
               Bu PDF ve ilişkili tüm vektör verileri kalıcı olarak silinecektir.
               Bu işlem geri alınamaz.
             </AlertDialogDescription>

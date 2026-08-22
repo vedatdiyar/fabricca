@@ -105,7 +105,7 @@ export function TaskFormModal({
         onInteractOutside={(e) => saving && e.preventDefault()}
       >
         <DialogHeader>
-          <DialogTitle className="font-serif text-lg font-semibold tracking-tight text-foreground">
+          <DialogTitle className="font-serif text-base font-semibold tracking-tight text-foreground">
             {isAdd ? "Yeni Akademik Görev Ekle" : "Görevi Düzenle"}
           </DialogTitle>
           <DialogDescription className="font-sans text-xs text-muted-foreground leading-relaxed">
@@ -130,7 +130,6 @@ export function TaskFormModal({
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               placeholder="Örn: Danışmanın istediği metodoloji revizyonunu yap"
-              className="h-9 font-sans text-sm rounded-md border-border bg-background"
               aria-label="Görev Başlığı"
             />
           </div>
@@ -147,7 +146,7 @@ export function TaskFormModal({
                 id="taskFormType"
                 value={taskType}
                 onChange={(e) => setTaskType(e.target.value as TaskType)}
-                className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1.5 text-xs text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary focus-visible:border-primary transition-colors cursor-pointer"
+                className="flex h-8 w-full rounded-md border border-input bg-background px-2.5 py-1 text-xs text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary focus-visible:border-primary transition-colors cursor-pointer"
                 aria-label="Görev Türü"
               >
                 <option value="ADVISOR_REQUEST">Danışman Talebi</option>
@@ -172,7 +171,7 @@ export function TaskFormModal({
                 onChange={(e) =>
                   setPriority(e.target.value as "HIGH" | "MEDIUM" | "LOW")
                 }
-                className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1.5 text-xs text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary focus-visible:border-primary transition-colors cursor-pointer"
+                className="flex h-8 w-full rounded-md border border-input bg-background px-2.5 py-1 text-xs text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary focus-visible:border-primary transition-colors cursor-pointer"
                 aria-label="Öncelik Derecesi"
               >
                 <option value="HIGH">Yüksek Öncelik</option>
@@ -193,7 +192,7 @@ export function TaskFormModal({
               id="taskFormBoxSelect"
               value={boxId}
               onChange={(e) => setBoxId(e.target.value)}
-              className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1.5 text-xs text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary focus-visible:border-primary transition-colors cursor-pointer"
+              className="flex h-8 w-full rounded-md border border-input bg-background px-2.5 py-1 text-xs text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary focus-visible:border-primary transition-colors cursor-pointer"
               aria-label="İlişkili Konu Kutusu"
             >
               <option value="">Genel / Bağlantısız</option>
@@ -210,7 +209,6 @@ export function TaskFormModal({
               type="button"
               variant="ghost"
               onClick={handleClose}
-              className="rounded-md font-sans text-xs px-3.5 h-8.5"
             >
               İptal
             </Button>

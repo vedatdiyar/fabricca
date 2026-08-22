@@ -79,7 +79,7 @@ export function ManageAnnotationLinksModal({
     <Dialog open={open} onOpenChange={onClose}>
       <DialogContent className="max-w-2xl bg-card border-border">
         <DialogHeader>
-          <DialogTitle className="font-serif text-lg font-semibold text-foreground">
+          <DialogTitle className="font-serif text-base font-semibold text-foreground">
             Bölüme Bağlı Alıntı Kartlarını Yönet
           </DialogTitle>
           <DialogDescription className="font-sans text-xs text-muted-foreground">
@@ -92,12 +92,12 @@ export function ManageAnnotationLinksModal({
         {/* Filter Bar */}
         <div className="flex flex-col sm:flex-row gap-2 py-2">
           <div className="relative flex-1">
-            <Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-muted-foreground" />
+            <Search className="absolute left-2.5 top-2.5 size-3.5 text-muted-foreground" />
             <Input
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Fiş metni, eser başlığı veya yazar ara..."
-              className="h-9 pl-8 pr-3 text-xs bg-background/50 border-border/60"
+              className="pl-8 pr-3 text-xs bg-background/50 border-border/60"
             />
           </div>
           <select
@@ -107,7 +107,7 @@ export function ManageAnnotationLinksModal({
                 e.target.value === "" ? null : Number(e.target.value),
               )
             }
-            className="h-9 rounded-md border border-border/60 bg-background/50 px-3 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+            className="h-8 rounded-md border border-border/60 bg-background/50 px-2.5 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
             aria-label="Konu kutusuna göre filtrele"
           >
             <option value="">Tüm Konu Kutuları</option>

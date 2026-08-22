@@ -20,7 +20,7 @@ export function OutlineEmptyState({ onAddRoot }: OutlineEmptyStateProps) {
       <div className="flex h-12 w-12 items-center justify-center rounded-full bg-muted/40 text-muted-foreground mb-4">
         <BookOpen className="h-6 w-6" />
       </div>
-      <h2 className="font-serif text-xl font-semibold tracking-tight text-foreground mb-1">
+      <h2 className="font-serif text-base font-semibold tracking-tight text-foreground mb-1">
         Henüz Tez Bölüm Planı Oluşturulmadı
       </h2>
       <p className="font-sans text-sm text-muted-foreground max-w-md mb-6">
@@ -32,7 +32,7 @@ export function OutlineEmptyState({ onAddRoot }: OutlineEmptyStateProps) {
         onClick={onAddRoot}
         className="gap-2 bg-primary text-primary-foreground hover:bg-primary/90"
       >
-        <Plus className="h-4 w-4" />
+        <Plus className="size-3.5" />
         <span>İlk Ana Bölümü Ekle</span>
       </Button>
     </Card>
@@ -45,8 +45,8 @@ export function OutlineEmptyState({ onAddRoot }: OutlineEmptyStateProps) {
 export function NoSectionSelectedState() {
   return (
     <Card className="flex flex-col items-center justify-center p-12 text-center border-dashed border-border bg-card min-h-[350px]">
-      <BookOpen className="h-10 w-10 text-muted-foreground mb-3" />
-      <h3 className="font-serif text-base font-semibold text-foreground mb-1">
+      <BookOpen className="size-8 text-muted-foreground mb-3" />
+      <h3 className="font-serif text-sm font-semibold text-foreground mb-1">
         Bölüm Detaylarını Görüntüleyin
       </h3>
       <p className="text-xs text-muted-foreground max-w-sm">

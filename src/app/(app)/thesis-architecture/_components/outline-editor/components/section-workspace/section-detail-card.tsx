@@ -49,13 +49,13 @@ export function SectionDetailCard({
               >
                 {outline.parentId ? "Alt Bölüm" : "Ana Bölüm"}
               </Badge>
-              <Badge variant="secondary" className="text-[10px] font-mono">
+              <Badge variant="secondary" className="font-mono">
                 Sıra #{outline.sortOrder}
               </Badge>
             </div>
 
             {/* Title */}
-            <CardTitle className="font-serif text-xl font-semibold text-foreground leading-snug break-words">
+            <CardTitle className="font-serif text-sm font-semibold text-foreground leading-snug break-words">
               {outline.title}
             </CardTitle>
           </div>

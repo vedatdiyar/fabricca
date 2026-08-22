@@ -79,36 +79,47 @@
     @apply border-border;
   }
   body {
-    @apply bg-background text-foreground;
+    @apply bg-background text-foreground text-sm leading-relaxed;
     font-family: var(--font-sans);
   }
-  h1,
-  h2,
+  h1 {
+    font-family: var(--font-serif);
+    @apply text-xl font-semibold tracking-tight text-foreground;
+  }
+  h2 {
+    font-family: var(--font-serif);
+    @apply text-base font-semibold tracking-tight text-foreground;
+  }
   h3 {
     font-family: var(--font-serif);
-    @apply font-semibold tracking-tight;
+    @apply text-sm font-semibold tracking-tight text-foreground;
   }
   h4,
   h5,
-  h6 {
+  h6,
+  label {
     font-family: var(--font-sans);
-    @apply font-semibold tracking-tight;
+    @apply text-xs font-medium tracking-tight text-foreground;
+  }
+  p {
+    @apply text-sm font-normal leading-relaxed;
   }
   code,
   pre {
     font-family: var(--font-mono);
+    @apply text-xs;
   }
   .badge-brand {
     font-family: var(--font-logo);
   }
   .academic-reading-zone {
-    @apply text-base leading-relaxed tracking-normal;
+    @apply text-sm leading-relaxed tracking-normal;
   }
   .header-nav-item {
-    @apply flex items-center px-3 py-2;
+    @apply flex items-center px-3 py-1.5 text-xs font-medium;
   }
   .bottom-nav-item {
-    @apply flex flex-col items-center gap-2 px-3 py-1 text-xs font-medium transition-colors;
+    @apply flex flex-col items-center gap-1.5 px-3 py-1 text-xs font-medium transition-colors;
   }
   /* Küresel Modern Scrollbar */
   * {
@@ -131,7 +142,7 @@
   }
 
   .textarea-academic {
-    @apply overflow-y-auto resize-none leading-relaxed text-foreground font-normal bg-background/40 hover:bg-background/60 focus:bg-background/80 transition-all border border-border/40 hover:border-border focus:border-primary/20;
+    @apply overflow-y-auto resize-none leading-relaxed text-foreground text-xs font-normal bg-background/40 hover:bg-background/60 focus:bg-background/80 transition-all border border-border/40 hover:border-border focus:border-primary/20;
   }
 
   button,

@@ -23,16 +23,16 @@ export function OnboardingGlobalLoader() {
 
   return (
     <div className="flex flex-col items-center justify-center space-y-10 text-center px-6 w-full">
-      <div className="space-y-4">
-        <h2 className="font-serif text-xl font-semibold tracking-tight text-foreground">
+      <div className="space-y-3">
+        <h2 className="font-serif text-base font-semibold tracking-tight text-foreground">
           {loadingTitle}
         </h2>
-        <p className="text-sm text-muted-foreground leading-relaxed max-w-lg mx-auto">
+        <p className="text-sm font-normal text-muted-foreground leading-relaxed max-w-lg mx-auto">
           {loadingDescription}
         </p>
       </div>
 
-      <Card className="w-full p-6 rounded-md">
+      <Card className="w-full p-4 rounded-md">
         <div className="flex flex-wrap items-start justify-center gap-y-6 gap-x-6 w-full">
           {loadingSteps.map((step, index) => {
             const isActive = step.status === "active";
@@ -90,7 +90,7 @@ export function OnboardingGlobalLoader() {
         <Button
           variant="destructive"
           onClick={cancelLoading}
-          className="w-full sm:w-auto px-8"
+          className="w-full sm:w-auto"
         >
           {"\u0130ptal Et"}
         </Button>

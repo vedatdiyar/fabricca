@@ -115,7 +115,7 @@ function DialogBody(props: DialogBodyProps) {
   return (
     <div className="space-y-4">
       <DialogHeader className="space-y-1 text-left pb-2 border-b border-border">
-        <DialogTitle className="font-serif text-xl font-bold tracking-tight text-foreground">
+        <DialogTitle className="font-serif text-base font-semibold tracking-tight text-foreground">
           {title}
         </DialogTitle>
         <DialogDescription className="text-xs text-muted-foreground">
