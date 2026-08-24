@@ -1,4 +1,4 @@
-import type { TezaraThesisDetails } from "@/lib/types";
+import type { ThesisDetails } from "@/lib/types";
 
 /** Constant for Reciprocal Rank Fusion smoothing (standard: 60). */
 const RRF_K = 60;
@@ -7,7 +7,7 @@ const RRF_K = 60;
 const MIN_ABSTRACT_LENGTH = 50;
 
 /**
- * Combines multiple ranked candidate lists from parallel Tezara searches
+ * Combines multiple ranked candidate lists from parallel thesis index searches
  * using Reciprocal Rank Fusion (RRF).
  *
  * @param searchLists - Array of thesis result arrays from distinct query aspects.
@@ -15,12 +15,12 @@ const MIN_ABSTRACT_LENGTH = 50;
  * @returns Deduplicated array of candidate theses sorted by descending RRF score.
  */
 export function reciprocalRankFusion(
-  searchLists: TezaraThesisDetails[][],
+  searchLists: ThesisDetails[][],
   k = RRF_K,
-): TezaraThesisDetails[] {
+): ThesisDetails[] {
   const scoreMap = new Map<
     number,
-    { thesis: TezaraThesisDetails; score: number }
+    { thesis: ThesisDetails; score: number }
   >();
 
   for (const list of searchLists) {
@@ -52,10 +52,10 @@ export function reciprocalRankFusion(
  * @returns Filtered candidates array with valid content.
  */
 export function filterValidCandidates(
-  candidates: TezaraThesisDetails[],
-): TezaraThesisDetails[] {
+  candidates: ThesisDetails[],
+): ThesisDetails[] {
   const seenIds = new Set<number>();
-  const valid: TezaraThesisDetails[] = [];
+  const valid: ThesisDetails[] = [];
 
   for (const thesis of candidates) {
     if (!thesis.id || seenIds.has(thesis.id)) continue;

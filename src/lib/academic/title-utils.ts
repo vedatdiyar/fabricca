@@ -65,7 +65,7 @@ export function splitBilingualTitle(rawTitle: string | null | undefined): {
 }
 
 /**
- * Strips the alternate-language portion from a bilingual thesis title (TEZARA "TR / EN" format).
+ * Strips the alternate-language portion from a bilingual thesis title (YÖK "TR / EN" format).
  *
  * @param title - Raw thesis title in "TR / EN" format.
  * @returns The primary-language title.

@@ -142,7 +142,7 @@ Katkı/Odak Alanları: ${e.contributionAreas.join(", ") || "Yok"}`;
       relevanceReason: e.strategicUtility || e.relevanceReasoning || "",
       thesisType: t.thesisType,
       abstract: t.abstract,
-      tezaraUrl: `https://tez.yok.gov.tr/UlusalTezMerkezi/tezDetay.jsp?id=${t.id}`,
+      yokUrl: `https://tez.yok.gov.tr/UlusalTezMerkezi/tezDetay.jsp?id=${t.id}`,
     };
   });
 

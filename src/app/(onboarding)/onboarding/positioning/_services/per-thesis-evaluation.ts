@@ -27,7 +27,7 @@ const BATCH_CHUNK_SIZE = 4;
  * literature position, and strategic utility.
  *
  * @param matrix - The 3-field positioning matrix.
- * @param theses - The sifted candidate theses from Tezara & Cohere.
+ * @param theses - The sifted candidate theses from Qdrant & Cohere.
  * @param logger - Optional structured logger.
  * @returns Array of evaluated theses pairing metadata with AI evaluations.
  */

@@ -4,7 +4,7 @@ export type OnboardingActionResult =
   | { success: true; isProcessing?: boolean; error?: never }
   | { success?: never; error: string };
 
-export interface TezaraThesisSummary {
+export interface ThesisSummary {
   id: number;
   title: string;
   author: string;
@@ -15,7 +15,7 @@ export interface TezaraThesisSummary {
   language?: string;
 }
 
-export interface TezaraThesisDetails {
+export interface ThesisDetails {
   id: number;
   title: string;
   author: string;

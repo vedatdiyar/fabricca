@@ -33,7 +33,7 @@ export async function savePositioningReportTransaction(
       doi: t.doi,
       thesisType: t.thesisType,
       abstract: t.abstract,
-      tezaraUrl: t.tezaraUrl,
+      yokUrl: t.yokUrl,
     }));
 
   const savedRecord = await db.transaction(async (tx) => {

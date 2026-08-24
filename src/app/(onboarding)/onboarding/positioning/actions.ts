@@ -18,7 +18,7 @@ import { savePositioningReportTransaction } from "./_services/decision-engine";
 import { sanitizeAcademicDataBulk } from "@/core/services/academic";
 
 /**
- * 1. Kademe: Çok boyutlu sorgu üretir, Tezara (Qdrant) taraması ve Cohere Rerank v4.0 Pro çalıştırır.
+ * 1. Kademe: Çok boyutlu sorgu üretir, Qdrant vektör taraması ve Cohere Rerank v4.0 Pro çalıştırır.
  *
  * @param matrixInput - Kullanıcının sunduğu tez matrisi.
  * @param flowId - Gözlemlenebilirlik log akış kimliği.

@@ -129,7 +129,7 @@ export async function placeEssentialThesesInBoxes(
     const titleKey = normalizeTitle(cleanedTitle);
     const thesisUrl =
       thesis.doi ||
-      thesis.tezaraUrl ||
+      thesis.yokUrl ||
       (thesis.externalThesisId
         ? `https://tez.yok.gov.tr/UlusalTezMerkezi/tezDetay.jsp?id=${thesis.externalThesisId}`
         : null);

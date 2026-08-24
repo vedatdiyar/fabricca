@@ -1,4 +1,4 @@
-import type { TezaraThesisDetails } from "@/lib/types";
+import type { ThesisDetails } from "@/lib/types";
 import type { PositioningQuery } from "./query-generator";
 import type { PositioningMatrixInput } from "./validation";
 
@@ -37,10 +37,10 @@ konusal_anahtar_kavramlar: ${distilledQuery.substantiveKeywords.join(", ")}`;
 /**
  * Formats a candidate thesis into structured YAML for Cohere Rerank v4.0 Pro.
  *
- * @param thesis - The candidate thesis from Tezara.
+ * @param thesis - The candidate thesis from the Qdrant thesis index.
  * @returns YAML formatted string representing the candidate document.
  */
-export function formatThesisToYaml(thesis: TezaraThesisDetails): string {
+export function formatThesisToYaml(thesis: ThesisDetails): string {
   return `baslik: ${thesis.title}
 yazar: ${thesis.author || "Bilinmiyor"} (${thesis.year || "N/A"})
 tur: ${thesis.thesisType || "N/A"}

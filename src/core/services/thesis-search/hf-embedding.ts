@@ -92,8 +92,8 @@ export async function getE5QueryEmbedding(
         },
         onRetry: (attempt, delayMs, error) => {
           logger?.info("hf_embedding_retry", {
-            service: "tezara",
-            filePath: "src/features/tezara/index.ts",
+            service: "thesis-search",
+            filePath: "src/core/services/thesis-search/hf-embedding.ts",
             step: "get_query_embedding",
             data: {
               attempt,
@@ -109,8 +109,8 @@ export async function getE5QueryEmbedding(
     const durationMs = performance.now() - startTime;
     if (!silent) {
       logger?.info("hf_embedding_success", {
-        service: "tezara",
-        filePath: "src/features/tezara/index.ts",
+        service: "thesis-search",
+        filePath: "src/core/services/thesis-search/hf-embedding.ts",
         step: "get_query_embedding",
         durationMs,
         data: { query: trimmed, dimensions: vector.length },
@@ -121,8 +121,8 @@ export async function getE5QueryEmbedding(
   } catch (err) {
     const durationMs = performance.now() - startTime;
     logger?.error("hf_embedding_failed", {
-      service: "tezara",
-      filePath: "src/features/tezara/index.ts",
+      service: "thesis-search",
+      filePath: "src/core/services/thesis-search/hf-embedding.ts",
       step: "get_query_embedding",
       durationMs,
       data: { query: trimmed },

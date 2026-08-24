@@ -27,7 +27,7 @@ export interface TokenUsage {
 export type ServiceName =
   | "gemini"
   | "cloudflare"
-  | "tezara"
+  | "thesis-search"
   | "db"
   | "auth"
   | "flow"

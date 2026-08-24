@@ -1,5 +1,5 @@
 import type { Logger } from "@/lib/logger";
-import type { TezaraThesisDetails } from "@/lib/types";
+import type { ThesisDetails } from "@/lib/types";
 import { getQdrantClient } from "./qdrant-client";
 import { getE5QueryEmbedding } from "./hf-embedding";
 import { mapPayloadToDetails } from "./thesis-mapper";
@@ -7,7 +7,7 @@ import { mapPayloadToDetails } from "./thesis-mapper";
 export { getE5QueryEmbedding };
 
 /** Search options for precision tuning. */
-export interface TezaraSearchOptions {
+export interface ThesisSearchOptions {
   limit?: number;
   rankingScoreThreshold?: number;
   filter?: string;
@@ -26,11 +26,11 @@ export interface TezaraSearchOptions {
  * @returns Matching thesis details.
  * @throws Error if embedding generation or vector search fails.
  */
-export async function searchTezara(
+export async function searchTheses(
   query: string,
   logger?: Logger,
-  options?: TezaraSearchOptions,
-): Promise<TezaraThesisDetails[]> {
+  options?: ThesisSearchOptions,
+): Promise<ThesisDetails[]> {
   const startTime = performance.now();
   const limit = options?.limit ?? 100;
   const silent = options?.silent ?? false;
@@ -50,7 +50,7 @@ export async function searchTezara(
     const qdrantDurationMs = performance.now() - queryStart;
     const totalDurationMs = performance.now() - startTime;
 
-    const results: TezaraThesisDetails[] = [];
+    const results: ThesisDetails[] = [];
     for (const point of searchRes.points) {
       if (!point.id) continue;
       const payload = (point.payload ?? {}) as Record<string, unknown>;
@@ -59,8 +59,8 @@ export async function searchTezara(
 
     if (!silent) {
       logger?.info("qdrant_vector_search_success", {
-        service: "tezara",
-        filePath: "src/features/tezara/index.ts",
+        service: "thesis-search",
+        filePath: "src/core/services/thesis-search/index.ts",
         step: "search_qdrant_vector",
         durationMs: totalDurationMs,
         data: {
@@ -76,8 +76,8 @@ export async function searchTezara(
   } catch (err) {
     const durationMs = performance.now() - startTime;
     logger?.error("qdrant_vector_search_failed", {
-      service: "tezara",
-      filePath: "src/features/tezara/index.ts",
+      service: "thesis-search",
+      filePath: "src/core/services/thesis-search/index.ts",
       step: "search_failed",
       durationMs,
       data: { query },

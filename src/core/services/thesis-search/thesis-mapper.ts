@@ -1,4 +1,4 @@
-import type { TezaraThesisDetails } from "@/lib/types";
+import type { ThesisDetails } from "@/lib/types";
 
 /**
  * Extracts the most reliable abstract text from a raw thesis payload.
@@ -17,7 +17,7 @@ export function extractAbstract(payload: Record<string, unknown>): string {
 }
 
 /**
- * Maps a Qdrant point payload to TezaraThesisDetails.
+ * Maps a Qdrant point payload to ThesisDetails.
  *
  * @param id - Point ID.
  * @param payload - Raw payload from Qdrant.
@@ -26,7 +26,7 @@ export function extractAbstract(payload: Record<string, unknown>): string {
 export function mapPayloadToDetails(
   id: number,
   payload: Record<string, unknown>,
-): TezaraThesisDetails {
+): ThesisDetails {
   const titleOriginal = String(
     payload.title_original ?? payload.title ?? "",
   ).trim();

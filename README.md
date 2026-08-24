@@ -19,7 +19,7 @@ tamamlar:
 1. Çalışma Matrisi (Matrix)
         ↓
 2. Akademik Konumlandırma (Positioning)
-   └─ TEZARA (Qdrant Cloud E5) + Cohere Rerank + Gemini jüri analizi
+   └─ Thesis Search (Qdrant Cloud E5) + Cohere Rerank + Gemini jüri analizi
         ↓
 3. Konu Kutuları (Boxes)
    └─ Gemini ile otomatik kutu üretimi + kullanıcı onayı
@@ -200,7 +200,7 @@ src/
 │   ├── db/                          # Neon DB bağlantısı, 10 tablo şeması, reset.ts ve seed.ts
 │   ├── config/                      # Rate limit konfigürasyonu
 │   ├── providers/                   # QueryProvider, LoadingOverlayProvider
-│   └── services/                    # Ortak çekirdek servisler (ai, search, pdf, storage, box, academic, tezara)
+│   └── services/                    # Ortak çekirdek servisler (ai, search, pdf, storage, box, academic, thesis-search)
 ├── lib/
 │   ├── session.ts                   # Cookie tabanlı session yönetimi
 │   ├── constants.ts                 # Model sabitleri

@@ -172,8 +172,8 @@ export function PositioningReportView({
               const roleConfig = getRoleBadgeConfig(thesis.strategicRole);
               const RoleIcon = roleConfig.icon;
               const { mainTitle } = splitBilingualTitle(thesis.title);
-              const yökUrl =
-                thesis.tezaraUrl ||
+              const yokUrl =
+                thesis.yokUrl ||
                 `https://tez.yok.gov.tr/UlusalTezMerkezi/tezDetay.jsp?id=${thesis.externalThesisId || thesis.id}`;
 
               return (
@@ -246,7 +246,7 @@ export function PositioningReportView({
                       Tez No: {thesis.externalThesisId || thesis.id}
                     </span>
                     <a
-                      href={yökUrl}
+                      href={yokUrl}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="inline-flex items-center gap-1 font-medium text-primary hover:underline text-xs"

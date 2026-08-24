@@ -1,5 +1,5 @@
-import { searchTezara } from "@/core/services/tezara";
-import type { TezaraThesisDetails } from "@/lib/types";
+import { searchTheses } from "@/core/services/thesis-search";
+import type { ThesisDetails } from "@/lib/types";
 import {
   rerankWithCohere,
   COHERE_RERANK_MODEL,
@@ -20,7 +20,7 @@ import {
 export { sanitizeSearchQuery };
 
 /** Candidate thesis extended with Cohere semantic relevance score. */
-export interface SiftedThesis extends TezaraThesisDetails {
+export interface SiftedThesis extends ThesisDetails {
   relevanceScore?: number;
 }
 
@@ -86,23 +86,23 @@ export async function searchAndSiftTheses(
   const searchStart = performance.now();
 
   logger?.info("sifting_multi_search_start", {
-    service: "tezara",
+    service: "thesis-search",
     filePath:
       "src/app/(onboarding)/onboarding/positioning/_services/sifting.ts",
     data: { queries: [query1, query2, query3], singleQueryLimit },
   });
 
-  // 1. Parallel Multi-Aspect Vector Searches in Tezara (Qdrant E5)
+  // 1. Parallel Multi-Aspect Vector Searches in the Qdrant thesis index (E5)
   const [res1, res2, res3] = await Promise.all([
-    searchTezara(query1, logger, {
+    searchTheses(query1, logger, {
       limit: singleQueryLimit,
       silent: true,
     }),
-    searchTezara(query2, logger, {
+    searchTheses(query2, logger, {
       limit: singleQueryLimit,
       silent: true,
     }),
-    searchTezara(query3, logger, {
+    searchTheses(query3, logger, {
       limit: singleQueryLimit,
       silent: true,
     }),
@@ -116,7 +116,7 @@ export async function searchAndSiftTheses(
 
   if (filteredCandidates.length === 0) {
     logger?.info("sifting_multi_search_success", {
-      service: "tezara",
+      service: "thesis-search",
       filePath:
         "src/app/(onboarding)/onboarding/positioning/_services/sifting.ts",
       durationMs: performance.now() - searchStart,
@@ -126,7 +126,7 @@ export async function searchAndSiftTheses(
   }
 
   logger?.info("sifting_multi_search_success", {
-    service: "tezara",
+    service: "thesis-search",
     filePath:
       "src/app/(onboarding)/onboarding/positioning/_services/sifting.ts",
     durationMs: performance.now() - searchStart,

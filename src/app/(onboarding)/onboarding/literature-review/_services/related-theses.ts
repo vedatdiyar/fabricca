@@ -84,7 +84,7 @@ export async function persistRelatedTheses(userId: number): Promise<void> {
     const toInsert = theses.map((t) => {
       const thesisUrl =
         t.doi ||
-        t.tezaraUrl ||
+        t.yokUrl ||
         (t.externalThesisId
           ? `https://tez.yok.gov.tr/UlusalTezMerkezi/tezDetay.jsp?id=${t.externalThesisId}`
           : null);

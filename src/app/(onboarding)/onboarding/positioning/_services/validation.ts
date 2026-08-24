@@ -51,7 +51,7 @@ export interface RecommendedThesisItem {
   doi?: string;
   thesisType?: string;
   abstract?: string;
-  tezaraUrl?: string;
+  yokUrl?: string;
 }
 
 /** Zod validation schema for the 3 structured gap analysis sections. */
