@@ -147,10 +147,10 @@ export function OfficeActionToolbar({
       `--- ÖNERİLEN RÖTUŞLU METİN (WORD İÇİN) ---`,
       report.diff.polished,
       ``,
-      `--- YAPILAN EDİTORYAL DEĞİŞİKLİKLER ---`,
+      `--- YAPILAN ÜSLUP VE ANLATIM İYİLEŞTİRMELERİ ---`,
       ...(report.diff.changes || []).map((c) => `- ${c}`),
       ``,
-      `--- SAYFA & KAYNAK DENETİMİ BULGULARI ---`,
+      `--- KAYNAK & ATIF DENETİMİ BULGULARI ---`,
       ...(report.audit.findings || []).map(
         (f) =>
           `[${f.severity}] ${f.citedPages || ""} ${f.sourceTitle || ""}: ${f.message}`,

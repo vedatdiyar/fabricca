@@ -2,7 +2,6 @@
 
 import { BookOpen, ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { OfficeReviewPhase } from "./office/office-review-phase";
 import { OfficeSubmissionPhase } from "./office/office-submission-phase";
@@ -55,7 +54,7 @@ export function AdvisorOfficeWorkspace({
     sessionDetail.currentReport !== null;
 
   return (
-    <div className="w-full space-y-6 pb-12">
+    <div className="w-full space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-border pb-4">
         <div>
           <div className="flex items-center gap-2.5">
@@ -65,14 +64,8 @@ export function AdvisorOfficeWorkspace({
             <h1 className="font-serif text-xl font-semibold tracking-tight text-foreground">
               Danışmanın Çalışma Odası
             </h1>
-            <Badge
-              variant="outline"
-              className="bg-primary/10 text-primary border-primary/20"
-            >
-              {isReviewActive ? "İnceleme & Savunma Masası" : "Ofis Randevusu"}
-            </Badge>
           </div>
-          <p className="text-xs text-muted-foreground mt-1">
+          <p className="text-sm text-muted-foreground mt-1 leading-normal">
             Word taslak pasajlarınızı teslim edin, sayfa denetimi ve editoryal
             rötuşları inceleyin, danışmanla canlı müzakere edin.
           </p>
@@ -96,13 +89,13 @@ export function AdvisorOfficeWorkspace({
           activeOutlineId={sessionDetail.activeOutlineId}
           activeOutlineTitle={sessionDetail.activeOutlineTitle}
           currentReport={sessionDetail.currentReport}
-          mobileWorkspaceTab={uiState.mobileWorkspaceTab}
+          isDefenseModalOpen={uiState.isDefenseModalOpen}
           defenseMessages={defenseState.messages}
           hasStartedDefense={defenseState.hasStarted}
           isStreamingDefense={defenseState.isStreaming}
           activeCritique={defenseState.activeCritique}
-          onMobileTabChange={(tab) =>
-            setUiState((prev) => ({ ...prev, mobileWorkspaceTab: tab }))
+          onDefenseModalOpenChange={(open) =>
+            setUiState((prev) => ({ ...prev, isDefenseModalOpen: open }))
           }
           onStartDefense={handleStartDefense}
           onSendMessage={(text) => handleSendDefenseMessage(text)}

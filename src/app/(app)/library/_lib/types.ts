@@ -70,6 +70,16 @@ export interface LibraryResourceItem {
   createdAt: string;
 }
 
+/** A single outline section item for chapter selection in library. */
+export interface LibraryOutlineItem {
+  id: number;
+  parentId: number | null;
+  title: string;
+  description: string | null;
+  sortOrder: number;
+  academicField?: string | null;
+}
+
 /** A note or page-numbered citation linked to a library resource. */
 export interface LibraryResourceNote {
   id: number;
@@ -78,6 +88,7 @@ export interface LibraryResourceNote {
   noteType: NoteType;
   content: string;
   comment?: string;
+  outlineIds?: number[];
   sentToCitationCards: boolean;
   verificationStatus: NoteVerificationStatus;
   verificationData?: NoteVerificationData;

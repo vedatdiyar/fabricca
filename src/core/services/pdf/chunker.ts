@@ -16,18 +16,93 @@ import {
 } from "./page-format";
 import { estimateTokenCount, findSentenceBoundary } from "./token-estimator";
 import { buildChunkContextPrefix, buildEmbeddingText } from "./context-prefix";
-import { applyParentChildContext } from "./parent-context";
+
+export type ChunkType =
+  | "TITLE_ABSTRACT"
+  | "BODY"
+  | "METHODOLOGY"
+  | "FINDINGS"
+  | "FOOTNOTE"
+  | "ENDNOTES"
+  | "REFERENCES"
+  | "AUTHOR_BIO";
 
 export interface DocumentChunk {
   chunkIndex: number;
+  chunkType: ChunkType;
   content: string;
-  parentContent?: string;
   section: string | null;
   headerHierarchy: string[];
-  pageStart: number | null;
-  pageEnd: number | null;
-  printedPageNumber: string | null;
+  pageNumber: string | null;
   tokenCount: number;
+}
+
+/**
+ * Detects whether a text block is pure image noise or uninformative micro-content.
+ *
+ * @param text - The chunk text to inspect.
+ * @returns True when the content should be dropped from vector and RAG ingestion.
+ */
+export function isNoiseContent(text: string): boolean {
+  const trimmed = text.trim();
+  if (trimmed.length < 25) return true;
+  // If it only contains a markdown image tag like ![img-0.jpeg](img-0.jpeg)
+  if (/^!\[.*?\]\(.*?\)$/i.test(trimmed)) return true;
+  return false;
+}
+
+/**
+ * Classifies section heading and content into semantic ChunkType.
+ *
+ * @param sectionTitle - The active section heading.
+ * @param content - The chunk body content.
+ * @returns Inferred ChunkType enum value.
+ */
+export function inferChunkType(
+  sectionTitle: string | null,
+  content: string,
+): ChunkType {
+  // 1. Abstract/Özet detection (check section title or chunk content prefix)
+  if (
+    (sectionTitle && /abstract|özet|öz\b/i.test(sectionTitle)) ||
+    /(^|\n)\s*(abstract|öz|özet)\b/i.test(content.slice(0, 300))
+  ) {
+    return "TITLE_ABSTRACT";
+  }
+
+  if (!sectionTitle) {
+    return "BODY";
+  }
+
+  const s = sectionTitle.toLowerCase();
+  if (
+    /notes\s+on\s+contributor|about\s+the\s+author|orcid|author\s+bio|biography|disclosure\s+statement|disclosure|conflict\s+of\s+interest|acknowledgements|teşekkür/i.test(
+      s,
+    )
+  ) {
+    return "AUTHOR_BIO";
+  }
+  if (
+    /references|kaynakça|kaynaklar|bibliography|works\s+cited|literature\s+cited|quellen/i.test(
+      s,
+    )
+  ) {
+    return "REFERENCES";
+  }
+  if (/notes|endnotes|footnotes|dipnotlar|notlar/i.test(s)) {
+    return "ENDNOTES";
+  }
+  if (
+    /methodology|methods?|yöntem|metodoloji|metod|materials?\s+and\s+methods/i.test(
+      s,
+    )
+  ) {
+    return "METHODOLOGY";
+  }
+  if (/findings|results|bulgular|sonuçlar\s+ve\s+tartışma/i.test(s)) {
+    return "FINDINGS";
+  }
+  return "BODY";
 }
 
 // Re-export helper functions for backwards compatibility & direct use
@@ -36,7 +111,6 @@ export {
   formatPrintedPageNumber,
   buildChunkContextPrefix,
   buildEmbeddingText,
-  applyParentChildContext,
 };
 
 const TARGET_CHUNK_SIZE_CHARS = 1200;
@@ -140,7 +214,7 @@ export class ChunkBuilder {
     const section = this.currentSection;
     const hierarchy = this.currentHierarchy;
 
-    if (!content || content.length < 5) {
+    if (!content || content.length < 5 || isNoiseContent(content)) {
       this.clearBuffer();
       return;
     }
@@ -154,14 +228,13 @@ export class ChunkBuilder {
       if (mergedTokens <= SOFT_LIMIT_CHARS / 3 && prev.section === section) {
         prev.content = `${prev.content}\n\n${content}`;
         prev.tokenCount = mergedTokens;
-        prev.pageEnd = endPage;
         const mergedPrintedPages = [
           ...this.lastFlushedPrintedPages,
           ...this.bufferPrintedPages,
         ];
-        prev.printedPageNumber =
+        prev.pageNumber =
           formatPrintedPageRange(mergedPrintedPages) ??
-          formatPrintedPageNumber(prev.pageStart, endPage);
+          formatPrintedPageNumber(startPage, endPage);
         this.lastFlushedPrintedPages = mergedPrintedPages;
         this.clearBuffer();
         return;
@@ -188,21 +261,22 @@ export class ChunkBuilder {
     }
 
     const printedPages = this.bufferPrintedPages.slice();
-    const printedPageNumber =
+    const pageNumber =
       formatPrintedPageRange(printedPages) ??
       formatPrintedPageNumber(startPage, endPage);
 
     this.clearBuffer();
     this.lastFlushedPrintedPages = printedPages;
 
+    const chunkType = inferChunkType(section, content);
+
     this.chunks.push({
       chunkIndex: this.chunks.length,
+      chunkType,
       content,
       section,
       headerHierarchy: hierarchy,
-      pageStart: startPage,
-      pageEnd: endPage,
-      printedPageNumber,
+      pageNumber,
       tokenCount,
     });
   }
@@ -241,21 +315,24 @@ export class ChunkBuilder {
       remainder = remainder.slice(size).trim();
       first = false;
 
-      if (!part || part.length < 5) continue;
+      if (!part || part.length < 5 || isNoiseContent(part)) continue;
 
+      const chunkType = inferChunkType(this.currentSection, part);
+
+      const normalizedPrinted = normalizePrintedPage(printedPageNumber);
       this.chunks.push({
         chunkIndex: this.chunks.length,
+        chunkType,
         content: part,
         section: this.currentSection,
         headerHierarchy: this.currentHierarchy,
-        pageStart: pageNumber,
-        pageEnd: pageNumber,
-        printedPageNumber:
-          printedPageNumber ?? formatPrintedPageNumber(pageNumber, pageNumber),
+        pageNumber: normalizedPrinted
+          ? `s. ${normalizedPrinted}`
+          : formatPrintedPageNumber(pageNumber, pageNumber),
         tokenCount: estimateTokenCount(part),
       });
       this.lastFlushedPrintedPages = [
-        normalizePrintedPage(printedPageNumber) ?? String(pageNumber),
+        normalizedPrinted ?? String(pageNumber),
       ];
     }
   }
@@ -332,5 +409,17 @@ export async function buildChunksFromPageAnalysis(
 
   builder.flush();
 
-  return applyParentChildContext(builder.results);
+  // Filter out any remaining noise and drop REFERENCES (bibliography is preserved in sources.parsedReferences)
+  const rawChunks = builder.results;
+  const cleanChunks: DocumentChunk[] = [];
+  for (const c of rawChunks) {
+    if (!isNoiseContent(c.content) && c.chunkType !== "REFERENCES") {
+      cleanChunks.push({
+        ...c,
+        chunkIndex: cleanChunks.length,
+      });
+    }
+  }
+
+  return cleanChunks;
 }

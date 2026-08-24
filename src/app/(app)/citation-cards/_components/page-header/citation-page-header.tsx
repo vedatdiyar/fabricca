@@ -1,18 +1,19 @@
 "use client";
 
-import { Plus, Sparkles } from "lucide-react";
+import { Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
+
 interface CitationCardsPageHeaderProps {
-  isSynthesisOpen: boolean;
-  hasAnyCard: boolean;
-  onToggleSynthesis: () => void;
   onOpenAddDialog: () => void;
 }
 
+/**
+ * Clean Academic Page Header for Citation Cards & Thesis Workbench.
+ *
+ * @param props - Component props.
+ * @returns Header markup.
+ */
 export function CitationCardsPageHeader({
-  isSynthesisOpen,
-  hasAnyCard,
-  onToggleSynthesis,
   onOpenAddDialog,
 }: CitationCardsPageHeaderProps) {
   return (
@@ -22,31 +23,17 @@ export function CitationCardsPageHeader({
           Alıntı Fişleri & Tez Masası
         </h1>
         <p className="text-xs text-muted-foreground mt-0.5">
-          Tez konu kutularındaki okumaları tez iskeletinin (Outline) alt
-          başlıklarına bağlayan araştırma masası.
+          Tez konu kutularındaki okumaları tez iskeletinin alt başlıklarına
+          bağlayan araştırma ve analiz masası.
         </p>
       </div>
 
       <div className="flex items-center gap-2.5 shrink-0 self-start sm:self-auto">
-        {/* 1-Click AI Synthesis Action */}
-        <Button
-          variant={isSynthesisOpen ? "secondary" : "outline"}
-          onClick={onToggleSynthesis}
-          disabled={!hasAnyCard}
-          className={`border-primary/30 text-xs font-medium cursor-pointer transition-colors ${
-            isSynthesisOpen
-              ? "bg-primary/15 text-primary border-primary/40"
-              : "bg-primary/5 hover:bg-primary/10 text-primary"
-          }`}
-        >
-          <Sparkles className="size-3.5 text-primary" />
-          <span>
-            {isSynthesisOpen ? "Sentezi Gizle" : "Fikir & Argüman Sentezi"}
-          </span>
-        </Button>
-
         {/* Global Add Card Button */}
-        <Button onClick={onOpenAddDialog} className="shrink-0 cursor-pointer">
+        <Button
+          onClick={onOpenAddDialog}
+          className="h-8 text-xs font-medium shrink-0 cursor-pointer gap-1.5"
+        >
           <Plus className="size-3.5" />
           <span>Yeni Fiş</span>
         </Button>

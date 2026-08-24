@@ -22,5 +22,10 @@ export default async function AdvisorPage({ searchParams }: AdvisorPageProps) {
       ? Number(rawSession)
       : undefined;
 
-  return <AdvisorOfficeWorkspace initialSessionId={sessionId} />;
+  return (
+    <AdvisorOfficeWorkspace
+      key={sessionId ?? "new"}
+      initialSessionId={sessionId}
+    />
+  );
 }

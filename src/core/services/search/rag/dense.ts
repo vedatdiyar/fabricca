@@ -55,12 +55,9 @@ export async function searchDense(
         resourceId: chunks.sourceId,
         chunkIndex: chunks.chunkIndex,
         content: chunks.content,
-        parentContent: chunks.parentContent,
         section: chunks.section,
         headerHierarchy: chunks.headerHierarchy,
-        pageStart: chunks.pageStart,
-        pageEnd: chunks.pageEnd,
-        printedPageNumber: chunks.printedPageNumber,
+        pageNumber: chunks.pageNumber,
         title: sources.title,
         authors: sources.authors,
         publicationYear: sources.publicationYear,
@@ -70,7 +67,10 @@ export async function searchDense(
       .innerJoin(sources, eq(chunks.sourceId, sources.id))
       .innerJoin(boxes, eq(sources.boxId, boxes.id));
 
-    const denseConditions = [sql`${boxes.boxType} <> 'RELATED_THESES'`];
+    const denseConditions = [
+      sql`${boxes.boxType} <> 'RELATED_THESES'`,
+      sql`${chunks.chunkType} NOT IN ('AUTHOR_BIO', 'REFERENCES')`,
+    ];
     if (resourceIds && resourceIds.length > 0) {
       denseConditions.push(sql`${chunks.sourceId} IN ${resourceIds}`);
     }

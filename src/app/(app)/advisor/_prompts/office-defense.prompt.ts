@@ -10,7 +10,6 @@ export interface OfficeDefensePromptInput {
   outlineDescription?: string;
   juryCritiques?: JuryCritique[];
   auditSummary?: string;
-  studentNote?: string;
   userMessage?: string;
 }
 
@@ -30,7 +29,6 @@ export function buildOfficeDefensePromptPayload(
     outlineDescription,
     juryCritiques = [],
     auditSummary,
-    studentNote,
     userMessage,
   } = params;
 
@@ -73,9 +71,7 @@ ${outlineDescription ? `Açıklama: ${outlineDescription}` : ""}
 ### ÖĞRENCİNİN TASLAK PASAJI:
 ${draftText}
 
-${studentNote ? `### ÖĞRENCİNİN DANIŞMANA ÖZEL NOTU:\n"${studentNote}"\n` : ""}
 ${auditSummary ? `### KAYNAK & SAYFA DENETİMİ ÖZETİ:\n${auditSummary}\n` : ""}
-
 ### TESPİT EDİLEN JÜRİ ŞERHLERİ VE İTİRAZ NOKTALARI:
 ${juryCritiquesFormatted || "Belirgin bir jüri şerhi bulunmuyor."}`,
 

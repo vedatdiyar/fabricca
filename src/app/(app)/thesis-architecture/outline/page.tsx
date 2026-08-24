@@ -142,7 +142,6 @@ export default async function ThesisOutlinePage() {
       {/* Main Outline Editor View */}
       <OutlineEditorView
         outlinesList={userOutlines}
-        boxesList={userBoxes}
         sourcesList={Array.from(sourceMap.values())}
         annotationsList={annotationsWithSources}
         pinnedMap={pinnedMap}

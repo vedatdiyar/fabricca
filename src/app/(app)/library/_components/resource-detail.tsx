@@ -12,6 +12,7 @@ import { NoteForm } from "./resource-detail/note-form";
 import { NoteItem, getNoteTypeBadgeConfig } from "./resource-detail/note-item";
 import { DeleteConfirmDialog } from "./resource-detail/delete-confirm-dialog";
 import type {
+  LibraryOutlineItem,
   LibraryResourceItem,
   LibraryResourceNote,
   LibraryResourceCritique,
@@ -26,6 +27,7 @@ export interface ResourceDetailProps {
   resource: LibraryResourceItem;
   notes: LibraryResourceNote[];
   critique?: LibraryResourceCritique;
+  outlines?: LibraryOutlineItem[];
   onAddNote: (
     note: Omit<
       LibraryResourceNote,
@@ -60,6 +62,7 @@ export interface ResourceDetailProps {
  * @param root0.resource - Selected library resource.
  * @param root0.notes - Notes associated with the resource.
  * @param root0.critique - Saved critique / analysis.
+ * @param root0.outlines - Optional thesis outline sections.
  * @param root0.onAddNote - Callback to add a new note to the resource.
  * @param root0.onUpdateNote - Callback to update a note.
  * @param root0.onSaveCritique - Callback to auto-save critique fields.
@@ -76,6 +79,7 @@ export function ResourceDetail({
   resource,
   notes,
   critique,
+  outlines = [],
   onAddNote,
   onUpdateNote,
   onSaveCritique,
@@ -143,20 +147,26 @@ export function ResourceDetail({
         <div className="space-y-5">
           {/* Segmented Workspace Navigation Tabs */}
           <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border/40 pb-3">
-            <div className="flex items-center gap-1 bg-muted/60 p-1 rounded-md border border-border/50">
+            <div className="flex items-center gap-1.5 bg-muted/50 p-1 rounded-md border border-border">
               {/* Tab 1: 5 Boyutlu Eser Analizi (Öncelikli) */}
               <button
                 type="button"
                 onClick={() => setActiveWorkspaceTab("critique")}
-                className={`flex items-center gap-2 px-3 py-1.5 rounded text-xs font-medium transition-all ${
+                className={`flex items-center gap-2 px-3 py-1.5 rounded-md text-xs font-medium transition-all cursor-pointer ${
                   activeWorkspaceTab === "critique"
-                    ? "bg-card text-foreground font-semibold border border-border/60 shadow-xs"
-                    : "text-muted-foreground hover:text-foreground hover:bg-card/30"
+                    ? "bg-card text-foreground font-semibold border border-border shadow-xs"
+                    : "text-muted-foreground hover:text-foreground hover:bg-card/40"
                 }`}
               >
-                <Sparkles className="h-3.5 w-3.5 text-primary shrink-0" />
+                <Sparkles className="size-3.5 text-primary shrink-0" />
                 <span>5 Boyutlu Eser Analizi</span>
-                <span className="text-xs px-1.5 py-0.2 rounded font-mono bg-muted text-muted-foreground border border-border/40">
+                <span
+                  className={`text-xs px-1.5 py-0.5 rounded font-mono border ${
+                    activeWorkspaceTab === "critique"
+                      ? "bg-primary/10 text-primary border-primary/20 font-semibold"
+                      : "bg-muted text-muted-foreground border-border/50"
+                  }`}
+                >
                   {completedCritiqueCount}/5
                 </span>
               </button>
@@ -165,22 +175,28 @@ export function ResourceDetail({
               <button
                 type="button"
                 onClick={() => setActiveWorkspaceTab("notes")}
-                className={`flex items-center gap-2 px-3 py-1.5 rounded text-xs font-medium transition-all ${
+                className={`flex items-center gap-2 px-3 py-1.5 rounded-md text-xs font-medium transition-all cursor-pointer ${
                   activeWorkspaceTab === "notes"
-                    ? "bg-card text-foreground font-semibold border border-border/60 shadow-xs"
-                    : "text-muted-foreground hover:text-foreground hover:bg-card/30"
+                    ? "bg-card text-foreground font-semibold border border-border shadow-xs"
+                    : "text-muted-foreground hover:text-foreground hover:bg-card/40"
                 }`}
               >
-                <BookMarked className="h-3.5 w-3.5 text-primary shrink-0" />
+                <BookMarked className="size-3.5 text-primary shrink-0" />
                 <span>Alıntı Fişleri & Notlar</span>
-                <span className="text-xs px-1.5 py-0.2 rounded font-mono bg-muted text-muted-foreground border border-border/40">
+                <span
+                  className={`text-xs px-1.5 py-0.5 rounded font-mono border ${
+                    activeWorkspaceTab === "notes"
+                      ? "bg-primary/10 text-primary border-primary/20 font-semibold"
+                      : "bg-muted text-muted-foreground border-border/50"
+                  }`}
+                >
                   {notes.length}
                 </span>
               </button>
             </div>
 
             {critique?.aiEvaluation && (
-              <span className="inline-flex items-center text-xs font-mono px-2 py-1 rounded bg-primary/10 text-primary border border-primary/20 font-semibold">
+              <span className="inline-flex items-center text-xs font-mono px-2.5 py-1 rounded-md bg-primary/10 text-primary border border-primary/20 font-semibold">
                 Değerlendirme Skoru: {critique.aiEvaluation.overallScore}/100
               </span>
             )}
@@ -200,7 +216,11 @@ export function ResourceDetail({
           {/* WORKSPACE 2: QUOTATIONS & NOTES */}
           {activeWorkspaceTab === "notes" && (
             <div className="space-y-6">
-              <NoteForm resourceId={resource.id} onAddNote={onAddNote} />
+              <NoteForm
+                resourceId={resource.id}
+                outlines={outlines}
+                onAddNote={onAddNote}
+              />
 
               <div className="space-y-4 pt-1">
                 <div className="flex items-center justify-between border-b border-border/30 pb-2">
@@ -235,6 +255,7 @@ export function ResourceDetail({
                       <NoteItem
                         key={note.id}
                         note={note}
+                        outlines={outlines}
                         onDeleteNoteClick={(id) => setNoteToDeleteId(id)}
                         onUpdateNote={onUpdateNote}
                       />

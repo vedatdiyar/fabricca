@@ -8,7 +8,11 @@ import {
   toggleResourceReadStatusAction,
   deleteLibraryResourceAction,
 } from "../actions";
-import type { LibraryResourceItem, ThesisBoxType } from "../_lib/types";
+import type {
+  LibraryOutlineItem,
+  LibraryResourceItem,
+  ThesisBoxType,
+} from "../_lib/types";
 
 /**
  * Manages library resource list, selection state, CRUD operations, and data loading.
@@ -18,6 +22,7 @@ import type { LibraryResourceItem, ThesisBoxType } from "../_lib/types";
  */
 export function useLibraryResources(initialSelectedId: number | null) {
   const [resources, setResources] = useState<LibraryResourceItem[]>([]);
+  const [outlines, setOutlines] = useState<LibraryOutlineItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [selectedResourceId, setSelectedResourceId] = useState<number | null>(
     initialSelectedId,
@@ -54,16 +59,21 @@ export function useLibraryResources(initialSelectedId: number | null) {
         setIsLoading(true);
         const res = await getLibraryResourcesAction();
 
-        if (res.success && res.data && res.data.resources.length > 0) {
-          setResources(res.data.resources);
+        if (res.success && res.data) {
+          if (res.data.outlines) {
+            setOutlines(res.data.outlines);
+          }
+          if (res.data.resources.length > 0) {
+            setResources(res.data.resources);
 
-          const currentId = initialIdRef.current;
-          if (currentId) {
-            const targetResource = res.data.resources.find(
-              (r) => r.id === currentId,
-            );
-            if (targetResource) {
-              setSelectedResourceId(targetResource.id);
+            const currentId = initialIdRef.current;
+            if (currentId) {
+              const targetResource = res.data.resources.find(
+                (r) => r.id === currentId,
+              );
+              if (targetResource) {
+                setSelectedResourceId(targetResource.id);
+              }
             }
           }
         }
@@ -145,6 +155,7 @@ export function useLibraryResources(initialSelectedId: number | null) {
   return {
     resources,
     setResources,
+    outlines,
     isLoading,
     selectedResourceId,
     activeTab,

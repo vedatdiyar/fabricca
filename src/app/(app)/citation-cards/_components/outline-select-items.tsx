@@ -1,5 +1,5 @@
 import { Ban, Folder, CornerDownRight } from "lucide-react";
-import { SelectItem } from "@/components/ui/select";
+import { SelectItem, SelectLabel, SelectGroup } from "@/components/ui/select";
 import type { OutlineItem } from "../_lib/types";
 
 interface OutlineSelectItemsProps {
@@ -11,10 +11,13 @@ interface OutlineSelectItemsProps {
 
 /**
  * Renders hierarchical, professionally formatted SelectItem rows for Thesis Outline sections.
- * Displays main chapters and indented subsections with Lucide icons (no ascii pipes or emojis).
+ * Enforces the Leaf-Node rule:
+ * - Chapters WITH subsections act as non-selectable group labels (SelectLabel).
+ * - Chapters WITHOUT subsections act as selectable items.
+ * - Subsections are always selectable items.
  *
  * @param props - Component props.
- * @returns Array of SelectItem components.
+ * @returns Array of SelectItem / SelectGroup components.
  */
 export function OutlineSelectItems({
   outlines,
@@ -53,32 +56,48 @@ export function OutlineSelectItems({
           .filter((sub) => sub.parentId === chapter.id)
           .sort((a, b) => a.sortOrder - b.sortOrder);
 
+        const hasSubSections = chapterChildren.length > 0;
+
+        if (hasSubSections) {
+          return (
+            <SelectGroup key={chapter.id} className="space-y-0.5 my-1">
+              {/* Parent Chapter rendered as non-selectable Category/Group Label */}
+              <SelectLabel className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider px-2 py-1.5 flex items-center gap-1.5 select-none bg-muted/20 rounded-xs">
+                <Folder className="h-3 w-3 text-primary/70 shrink-0" />
+                <span className="truncate">{chapter.title}</span>
+              </SelectLabel>
+
+              {/* Subsections (Selectable) */}
+              {chapterChildren.map((sub) => (
+                <SelectItem
+                  key={sub.id}
+                  value={String(sub.id)}
+                  className="text-xs py-1.5 pl-6 text-foreground hover:bg-muted/50 rounded-sm cursor-pointer"
+                >
+                  <div className="flex items-center gap-2 min-w-0">
+                    <CornerDownRight className="h-3 w-3 text-muted-foreground/70 shrink-0" />
+                    <span className="truncate">{sub.title}</span>
+                  </div>
+                </SelectItem>
+              ))}
+            </SelectGroup>
+          );
+        }
+
+        {
+          /* Standalone Chapter without Subsections (Leaf Node: Directly Selectable) */
+        }
         return (
           <div key={chapter.id} className="space-y-0.5 my-1">
-            {/* Main Chapter Item */}
             <SelectItem
               value={String(chapter.id)}
-              className="text-xs py-2 font-semibold text-foreground bg-muted/30 rounded-sm"
+              className="text-xs py-2 font-medium text-foreground hover:bg-muted/50 rounded-sm cursor-pointer"
             >
               <div className="flex items-center gap-2 min-w-0">
                 <Folder className="h-3.5 w-3.5 text-primary shrink-0" />
                 <span className="truncate">{chapter.title}</span>
               </div>
             </SelectItem>
-
-            {/* Subsections (Indented) */}
-            {chapterChildren.map((sub) => (
-              <SelectItem
-                key={sub.id}
-                value={String(sub.id)}
-                className="text-xs py-1.5 pl-6 text-muted-foreground hover:text-foreground rounded-sm"
-              >
-                <div className="flex items-center gap-2 min-w-0">
-                  <CornerDownRight className="h-3 w-3 text-muted-foreground/60 shrink-0" />
-                  <span className="truncate">{sub.title}</span>
-                </div>
-              </SelectItem>
-            ))}
           </div>
         );
       })}

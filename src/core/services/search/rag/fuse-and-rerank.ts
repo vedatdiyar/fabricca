@@ -73,7 +73,7 @@ export async function fuseAndRerank(
     const prefix = buildChunkContextPrefix(
       candidate.headerHierarchy ?? [],
       candidate.section,
-      candidate.printedPageNumber,
+      candidate.pageNumber,
     );
     return `[Eser: ${candidate.title}]\n${prefix}${candidate.content}`;
   });

@@ -8,9 +8,7 @@ import {
   Sparkles,
   Swords,
   BookCheck,
-  ArrowRight,
 } from "lucide-react";
-import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
@@ -24,20 +22,18 @@ import type {
 
 interface OfficeMarginNotesProps {
   report: OfficeReviewReport;
-  hasStartedDefense: boolean;
   onStartDefense: (initialCritique?: JuryCritique) => void;
 }
 
 /**
- * Left Panel: Margin Notes & Audit (Hocanın Ön Okuması & Kenar Notları).
+ * Margin Notes & Audit (Hocanın Ön Okuması & Kenar Notları).
  * Displays:
- * 1. Strict Citation & Page Audit (Red Pen)
- * 2. Non-destructive Polish Diff (Yellow Pen)
- * 3. Jury Remarks & Socratic Critiques (Blue Pen)
+ * 1. Strict Citation & Page Audit (Sayfa Denetimi)
+ * 2. Non-destructive Polish Diff (Editoryal Diff)
+ * 3. Jury Remarks & Socratic Critiques (Jüri Şerhleri)
  */
 export function OfficeMarginNotes({
   report,
-  hasStartedDefense,
   onStartDefense,
 }: OfficeMarginNotesProps) {
   const [activeTab, setActiveTab] = useState<"audit" | "diff" | "jury">(
@@ -56,12 +52,14 @@ export function OfficeMarginNotes({
   };
 
   return (
-    <div className="flex flex-col h-full bg-card border-r border-border overflow-hidden">
+    <div className="flex h-full flex-col min-h-0 bg-card rounded-lg border border-border overflow-hidden">
       {/* Panel Header */}
-      <div className="p-4 border-b border-border bg-card/80 shrink-0">
-        <div className="flex items-center justify-between gap-2">
-          <div className="flex items-center gap-2">
-            <BookCheck className="h-4 w-4 text-primary" />
+      <div className="p-4 border-b border-border bg-card shrink-0">
+        <div className="flex items-center justify-between gap-3">
+          <div className="flex items-center gap-2.5">
+            <div className="p-1.5 rounded-md bg-primary/10 text-primary border border-primary/20 shrink-0">
+              <BookCheck className="size-4" />
+            </div>
             <h3 className="font-serif text-sm font-semibold tracking-tight text-foreground">
               Hocanın Ön Okuması & Kenar Notları
             </h3>
@@ -70,17 +68,17 @@ export function OfficeMarginNotes({
           {audit.hasCriticalIssues ? (
             <Badge
               variant="outline"
-              className="bg-destructive/10 text-destructive border-destructive/20 text-[10px]"
+              className="bg-destructive/10 text-destructive border-destructive/20 text-xs font-medium px-2.5 py-0.5 rounded-md"
             >
-              <AlertTriangle className="h-3 w-3 mr-1" />
+              <AlertTriangle className="size-3 mr-1" />
               Kritik Şerhler Var
             </Badge>
           ) : (
             <Badge
               variant="outline"
-              className="bg-primary/10 text-primary border-primary/20 text-[10px]"
+              className="bg-primary/10 text-primary border-primary/20 text-xs font-medium px-2.5 py-0.5 rounded-md"
             >
-              <CheckCircle2 className="h-3 w-3 mr-1" />
+              <CheckCircle2 className="size-3 mr-1" />
               Kaynaklar Doğrulandı
             </Badge>
           )}
@@ -90,17 +88,17 @@ export function OfficeMarginNotes({
         <Tabs
           value={activeTab}
           onValueChange={(v) => setActiveTab(v as "audit" | "diff" | "jury")}
-          className="mt-3 w-full"
+          className="mt-3.5 w-full"
         >
-          <TabsList className="grid grid-cols-3 w-full bg-muted/60 h-8 p-0.5">
+          <TabsList className="grid grid-cols-3 w-full bg-secondary/80 h-9 p-1 rounded-md border border-border/60">
             <TabsTrigger
               value="audit"
-              className="text-xs h-7 data-[state=active]:bg-background data-[state=active]:text-foreground cursor-pointer"
+              className="text-xs font-medium h-7 rounded-sm data-[state=active]:bg-card data-[state=active]:text-foreground data-[state=active]:shadow-xs transition-all cursor-pointer"
             >
-              <ShieldAlert className="h-3 w-3 mr-1 text-destructive" />
-              Sayfa Denetimi
+              <ShieldAlert className="size-3.5 mr-1.5 text-destructive" />
+              <span>Kaynak & Atıf Denetimi</span>
               {audit.findings.length > 0 && (
-                <span className="ml-1 px-1.5 py-0.2 bg-muted text-[10px] rounded-full">
+                <span className="ml-1.5 px-1.5 py-0.2 font-mono text-[10px] bg-secondary text-foreground rounded-full border border-border/60">
                   {audit.findings.length}
                 </span>
               )}
@@ -108,20 +106,20 @@ export function OfficeMarginNotes({
 
             <TabsTrigger
               value="diff"
-              className="text-xs h-7 data-[state=active]:bg-background data-[state=active]:text-foreground cursor-pointer"
+              className="text-xs font-medium h-7 rounded-sm data-[state=active]:bg-card data-[state=active]:text-foreground data-[state=active]:shadow-xs transition-all cursor-pointer"
             >
-              <Sparkles className="h-3 w-3 mr-1 text-primary" />
-              Editoryal Diff
+              <Sparkles className="size-3.5 mr-1.5 text-primary" />
+              <span>Akademik Üslup & Rötuş</span>
             </TabsTrigger>
 
             <TabsTrigger
               value="jury"
-              className="text-xs h-7 data-[state=active]:bg-background data-[state=active]:text-foreground cursor-pointer"
+              className="text-xs font-medium h-7 rounded-sm data-[state=active]:bg-card data-[state=active]:text-foreground data-[state=active]:shadow-xs transition-all cursor-pointer"
             >
-              <Swords className="h-3 w-3 mr-1 text-warning" />
-              Jüri Şerhleri
+              <Swords className="size-3.5 mr-1.5 text-warning" />
+              <span>Jüri Şerhleri & Savunma</span>
               {juryCritiques.length > 0 && (
-                <span className="ml-1 px-1.5 py-0.2 bg-muted text-[10px] rounded-full">
+                <span className="ml-1.5 px-1.5 py-0.2 font-mono text-[10px] bg-secondary text-foreground rounded-full border border-border/60">
                   {juryCritiques.length}
                 </span>
               )}
@@ -131,7 +129,7 @@ export function OfficeMarginNotes({
       </div>
 
       {/* Tab Contents Area */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-4">
+      <div className="flex-1 overflow-y-auto p-5 space-y-4">
         {activeTab === "audit" && <OfficeAuditTab audit={audit} />}
         {activeTab === "diff" && (
           <OfficeDiffTab
@@ -147,20 +145,6 @@ export function OfficeMarginNotes({
           />
         )}
       </div>
-
-      {/* Panel Footer: Start Live Defense CTA */}
-      {!hasStartedDefense && (
-        <div className="p-4 border-t border-border bg-card/90 shrink-0">
-          <Button
-            onClick={() => onStartDefense()}
-            className="w-full bg-primary text-primary-foreground hover:bg-primary/90 text-xs font-medium gap-2 shadow-xs cursor-pointer"
-          >
-            <Swords className="size-3.5" />
-            <span>Savunmaya Başla (Danışmanla Müzakere Et)</span>
-            <ArrowRight className="size-3.5 ml-auto" />
-          </Button>
-        </div>
-      )}
     </div>
   );
 }

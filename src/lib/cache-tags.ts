@@ -14,15 +14,23 @@ export type { OnboardingStep } from "./onboarding-cache";
  * Revalidates all onboarding layout routes.
  */
 export function revalidateOnboardingPaths(): void {
-  revalidatePath("/onboarding", "layout");
+  try {
+    revalidatePath("/onboarding", "layout");
+  } catch {
+    // Graceful fallback outside Next.js request context
+  }
 }
 
 /** Invalidates all onboarding cache tags so the next cached read fetches fresh data (full reset or onboarding finalisation). */
 export function invalidateOnboardingCache(): void {
-  updateTag(CACHE_TAGS.thesisMatrix);
-  updateTag(CACHE_TAGS.positioning);
-  updateTag(CACHE_TAGS.thesisBoxes);
-  updateTag(CACHE_TAGS.thesisOutline);
+  try {
+    updateTag(CACHE_TAGS.thesisMatrix);
+    updateTag(CACHE_TAGS.positioning);
+    updateTag(CACHE_TAGS.thesisBoxes);
+    updateTag(CACHE_TAGS.thesisOutline);
+  } catch {
+    // Graceful fallback outside Next.js request context
+  }
 }
 
 /**
@@ -31,9 +39,13 @@ export function invalidateOnboardingCache(): void {
  * @param fromStep - The step whose cache and downstream caches to invalidate.
  */
 export function invalidateOnboardingStepCache(fromStep: OnboardingStep): void {
-  const deps = STEP_CACHE_DEPENDENCIES[fromStep];
-  for (const tag of deps.nextJsTags) {
-    updateTag(tag);
+  try {
+    const deps = STEP_CACHE_DEPENDENCIES[fromStep];
+    for (const tag of deps.nextJsTags) {
+      updateTag(tag);
+    }
+  } catch {
+    // Graceful fallback outside Next.js request context
   }
   revalidateOnboardingPaths();
 }

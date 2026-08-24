@@ -16,8 +16,8 @@ interface UseCardMutationsOptions {
 }
 
 /**
- * Orchestrates card mutations (save, delete, box move) including the
- * outline-link follow-up sequencing and user-facing feedback.
+ * Orchestrates card mutations (save, delete, box move, outline assign)
+ * including data refresh and user-facing toast feedback.
  *
  * @param options - Data refresh and local removal callbacks
  * @returns Card mutation handlers
@@ -104,5 +104,25 @@ export function useCardMutations({
     }
   };
 
-  return { handleSaveCard, handleDeleteCard, handleMoveBox };
+  const handleAssignOutline = async (
+    cardId: number,
+    outlineId: number | null,
+  ) => {
+    const res = await updateCardOutlineLinkAction({
+      annotationId: cardId,
+      outlineId,
+    });
+    if (res.success) {
+      await refreshData();
+    } else {
+      throw new Error(res.error);
+    }
+  };
+
+  return {
+    handleSaveCard,
+    handleDeleteCard,
+    handleMoveBox,
+    handleAssignOutline,
+  };
 }

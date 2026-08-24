@@ -3,7 +3,6 @@
 import { useState } from "react";
 import { Sparkles, Loader2, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
 import { toast } from "sonner";
 import { createFlowId, Logger } from "@/lib/logger";
 import { autoMapCitationCardsAction } from "../actions";
@@ -62,14 +61,14 @@ export function AiMappingBanner({
   };
 
   return (
-    <Card className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 p-3 rounded-md border border-warning/20 bg-warning/10 text-foreground animate-in fade-in-50 duration-200">
+    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2.5 px-3.5 py-2 rounded-lg border border-amber-500/20 bg-amber-500/5 text-foreground animate-in fade-in-50 duration-200">
       <div className="flex items-center gap-2 text-xs">
-        <AlertCircle className="h-4 w-4 text-warning shrink-0" />
+        <AlertCircle className="h-3.5 w-3.5 text-amber-500 shrink-0" />
         <span>
-          <strong className="font-semibold text-warning">
-            {unassignedCount} alıntı fişiniz
+          <strong className="font-semibold text-amber-500">
+            {unassignedCount} alıntı fişi
           </strong>{" "}
-          henüz bir tez bölümüne atanmadı.
+          henüz bir tez bölümüne yerleştirilmedi.
         </span>
       </div>
 
@@ -77,20 +76,20 @@ export function AiMappingBanner({
         onClick={handleAutoMap}
         disabled={isMapping}
         size="sm"
-        className="gap-1.5 h-8 text-xs font-medium bg-warning text-warning-foreground hover:bg-warning/90 shrink-0 w-full sm:w-auto"
+        className="gap-1.5 h-7 px-2.5 text-xs font-medium bg-amber-500 text-black hover:bg-amber-400 shrink-0 w-full sm:w-auto cursor-pointer"
       >
         {isMapping ? (
           <>
-            <Loader2 className="h-3.5 w-3.5 animate-spin" />
-            <span>Bölümlere Dağıtılıyor...</span>
+            <Loader2 className="h-3 w-3 animate-spin" />
+            <span>Dağıtılıyor...</span>
           </>
         ) : (
           <>
-            <Sparkles className="h-3.5 w-3.5" />
-            <span>Yapay Zeka ile Bölümlere Dağıt</span>
+            <Sparkles className="h-3 w-3" />
+            <span>Yapay Zeka ile Dağıt</span>
           </>
         )}
       </Button>
-    </Card>
+    </div>
   );
 }

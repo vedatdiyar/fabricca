@@ -7,7 +7,10 @@ import { critiques, annotations, matrices } from "@/core/db/schema";
 import { getSession } from "@/lib/session";
 import { createFlowId, Logger } from "@/lib/logger";
 import { getOwnedSource } from "@/core/services/box/ownership";
-import { evaluateResourceNotesAndCritique } from "./_services/critique-evaluator";
+import {
+  evaluateResourceNotesAndCritique,
+  auditReportSchema,
+} from "./_services/critique-evaluator";
 import type {
   LibraryResourceNote,
   NoteType,
@@ -99,6 +102,10 @@ export async function saveResourceCritiqueAction(input: {
       data: { critiqueId: critique.id, resourceId: valid.resourceId },
     });
 
+    const parsedEvaluation = critique.aiEvaluation
+      ? auditReportSchema.safeParse(critique.aiEvaluation)
+      : { success: false as const, data: undefined };
+
     return {
       success: true,
       data: {
@@ -108,7 +115,14 @@ export async function saveResourceCritiqueAction(input: {
         methodology: critique.methodology ?? undefined,
         mainArgument: critique.mainArgument ?? undefined,
         literatureGap: critique.literatureGap ?? undefined,
-        aiEvaluation: critique.aiEvaluation ?? undefined,
+        aiEvaluation: parsedEvaluation.success
+          ? {
+              ...parsedEvaluation.data,
+              evaluatedAt: (
+                critique.evaluatedAt ?? critique.updatedAt
+              ).toISOString(),
+            }
+          : undefined,
         evaluatedAt: critique.evaluatedAt?.toISOString(),
         updatedAt: critique.updatedAt.toISOString(),
       },

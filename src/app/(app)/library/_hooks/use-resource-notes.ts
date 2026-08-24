@@ -50,6 +50,7 @@ export function useResourceNotes({
       noteType: NoteType;
       content: string;
       comment?: string;
+      outlineId?: number;
     }) => {
       if (!selectedResourceId) return;
 

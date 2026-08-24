@@ -255,7 +255,9 @@ Gerekli tüm API anahtarları `.env.local` dosyasında tanımlanır:
 | `R2_SECRET_ACCESS_KEY`   | R2 S3 secret key                            |
 | `R2_BUCKET_NAME`         | R2 bucket adı (varsayılan `fabricca`)       |
 | `R2_PUBLIC_DOMAIN`       | R2 public domain (zorunlu, varsayılan yok)  |
+| `SEED_USER1_USERNAME`    | Seed kullanıcı 1 kullanıcı adı              |
 | `SEED_USER1_PASSWORD`    | Seed kullanıcı 1 şifre                      |
+| `SEED_USER2_USERNAME`    | Seed kullanıcı 2 kullanıcı adı              |
 | `SEED_USER2_PASSWORD`    | Seed kullanıcı 2 şifre                      |
 
 ---

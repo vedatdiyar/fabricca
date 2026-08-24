@@ -107,9 +107,7 @@ interface VerifyNoteInput {
   };
   relevantChunks: Array<{
     content: string;
-    pageStart?: number | null;
-    pageEnd?: number | null;
-    printedPageNumber?: string | null;
+    pageNumber?: string | null;
   }>;
   logger?: Logger;
 }
@@ -163,7 +161,7 @@ export async function verifyResourceNote(
       ? relevantChunks
           .map(
             (c, i) =>
-              `[Parça ${i + 1} - Sayfa: ${c.printedPageNumber || c.pageStart || "Belirtilmemiş"}]:\n${c.content}`,
+              `[Parça ${i + 1} - Sayfa: ${c.pageNumber || "Belirtilmemiş"}]:\n${c.content}`,
           )
           .join("\n\n---\n\n")
       : "Bu kaynak için henüz PDF metin parçaları ayrıştırılmamış. Genel mantık, not türü ve şerh tutarlılığı üzerinden değerlendirme yap.";

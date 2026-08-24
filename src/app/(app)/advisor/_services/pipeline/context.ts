@@ -7,11 +7,8 @@ import type { RagSearchResultItem } from "@/core/services/search/rag-search";
  * @returns The page reference string ("Bilinmeyen Sayfa" when no page info exists).
  */
 export function formatPageReference(source: RagSearchResultItem): string {
-  if (source.printedPageNumber) return `${source.printedPageNumber}.`;
-  const pageSpan = source.pageStart;
-  const range = source.pageEnd;
-  if (pageSpan == null) return "Bilinmeyen Sayfa";
-  return pageSpan === range ? `s. ${pageSpan}.` : `ss. ${pageSpan}–${range}.`;
+  if (source.pageNumber) return `${source.pageNumber}.`;
+  return "Bilinmeyen Sayfa";
 }
 
 /**
@@ -23,7 +20,7 @@ export function formatPageReference(source: RagSearchResultItem): string {
  * @returns The Turkish range note string, or "" when the source is single-page.
  */
 function buildRangeNote(source: RagSearchResultItem): string {
-  const printed = source.printedPageNumber;
+  const printed = source.pageNumber;
   if (!printed) return "";
   const match = /(\d{1,4})\s*[-–]\s*(\d{1,4})/.exec(printed);
   if (!match) return "";

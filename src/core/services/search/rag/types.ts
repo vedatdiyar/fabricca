@@ -17,9 +17,7 @@ export interface RagSearchResultItem {
   resourceAuthors: string[];
   resourceYear: number | null;
   chunkIndex: number;
-  printedPageNumber: string | null;
-  pageStart: number | null;
-  pageEnd: number | null;
+  pageNumber: string | null;
   sectionTitle: string | null;
   content: string;
   parentContent: string;
@@ -47,12 +45,9 @@ export interface DenseCandidate {
   resourceId: number;
   chunkIndex: number;
   content: string;
-  parentContent: string | null;
   section: string | null;
   headerHierarchy: string[] | null;
-  pageStart: number | null;
-  pageEnd: number | null;
-  printedPageNumber: string | null;
+  pageNumber: string | null;
   title: string;
   authors: string[] | null;
   publicationYear: number | null;

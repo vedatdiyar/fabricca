@@ -9,6 +9,7 @@ import {
   pgEnum,
   boolean,
   index,
+  uniqueIndex,
   foreignKey,
   vector,
   customType,
@@ -49,10 +50,10 @@ export type {
   ResourceAuditReport,
 };
 
-/** Users table — email is unique, password is bcrypt-hashed, onboardingCompleted tracks onboarding state. */
+/** Users table — username is unique, password is bcrypt-hashed, onboardingCompleted tracks onboarding state. */
 export const users = pgTable("users", {
   id: serial().primaryKey(),
-  email: varchar({ length: 255 }).notNull().unique(),
+  username: varchar({ length: 255 }).notNull().unique(),
   password: varchar({ length: 255 }).notNull(),
   name: varchar({ length: 255 }).notNull(),
   onboardingCompleted: boolean().default(false).notNull(),
@@ -375,6 +376,17 @@ const tsvector = customType<{ data: string }>({
   },
 });
 
+export const chunkTypeEnum = pgEnum("chunk_type", [
+  "TITLE_ABSTRACT",
+  "BODY",
+  "METHODOLOGY",
+  "FINDINGS",
+  "FOOTNOTE",
+  "ENDNOTES",
+  "REFERENCES",
+  "AUTHOR_BIO",
+]);
+
 /** Chunks table — PDF text chunks with embeddings for RAG; search_vector drives the lexical branch. */
 export const chunks = pgTable(
   "chunks",
@@ -384,27 +396,27 @@ export const chunks = pgTable(
       .notNull()
       .references(() => sources.id, { onDelete: "cascade" }),
     chunkIndex: integer("chunk_index").notNull(),
+    chunkType: chunkTypeEnum("chunk_type").default("BODY").notNull(),
     content: text("content").notNull(),
-    parentContent: text("parent_content"),
     section: text("section"),
     headerHierarchy: text("header_hierarchy").array(),
-    pageStart: integer("page_start"),
-    pageEnd: integer("page_end"),
-    printedPageNumber: text("printed_page_number"),
+    pageNumber: text("page_number"),
     tokenCount: integer("token_count"),
     embedding: vector("embedding", { dimensions: 1024 }),
     searchVector: tsvector("search_vector").generatedAlwaysAs(
-      sql`to_tsvector('turkish', "content") || to_tsvector('english', "content")`,
+      sql`to_tsvector('turkish', coalesce("section", '') || ' ' || "content") || to_tsvector('english', coalesce("section", '') || ' ' || "content")`,
     ),
     createdAt: timestamp("created_at").defaultNow().notNull(),
   },
   (table) => [
     index("idx_chunks_source_id").on(table.sourceId),
+    index("idx_chunks_chunk_type").on(table.chunkType),
     index("idx_chunks_search_vector").using("gin", table.searchVector),
     index("idx_chunks_embedding_hnsw").using(
       "hnsw",
       table.embedding.op("vector_ip_ops"),
     ),
+    uniqueIndex("uq_chunks_source_index").on(table.sourceId, table.chunkIndex),
   ],
 );
 
@@ -574,8 +586,16 @@ export const sourcesRelations = relations(sources, ({ one, many }) => ({
     fields: [sources.id],
     references: [critiques.sourceId],
   }),
+  chunks: many(chunks),
   outlineSources: many(outlineSources),
   tasks: many(tasks),
+}));
+
+export const chunksRelations = relations(chunks, ({ one }) => ({
+  source: one(sources, {
+    fields: [chunks.sourceId],
+    references: [sources.id],
+  }),
 }));
 
 export const critiquesRelations = relations(critiques, ({ one }) => ({

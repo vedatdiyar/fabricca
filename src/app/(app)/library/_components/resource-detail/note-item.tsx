@@ -11,13 +11,19 @@ import {
   ChevronDown,
   ChevronUp,
   Sparkles,
+  FolderTree,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import type { LibraryResourceNote, NoteType } from "../../_lib/types";
+import type {
+  LibraryOutlineItem,
+  LibraryResourceNote,
+  NoteType,
+} from "../../_lib/types";
 
 interface NoteItemProps {
   note: LibraryResourceNote;
+  outlines?: LibraryOutlineItem[];
   onDeleteNoteClick: (noteId: number) => void;
   onUpdateNote?: (input: {
     noteId: number;
@@ -57,17 +63,24 @@ export function getNoteTypeBadgeConfig(noteType: NoteType) {
  *
  * @param root0 - Component props.
  * @param root0.note - Note item to display.
+ * @param root0.outlines - Optional thesis outline sections to resolve section name.
  * @param root0.onDeleteNoteClick - Callback triggered when the delete button is clicked.
  * @param root0.onUpdateNote - Optional callback to update note fields upon verification suggestions.
  * @returns The note item markup.
  */
 export function NoteItem({
   note,
+  outlines = [],
   onDeleteNoteClick,
   onUpdateNote,
 }: NoteItemProps) {
   const noteBadge = getNoteTypeBadgeConfig(note.noteType);
   const [isIssuesExpanded, setIsIssuesExpanded] = useState(false);
+
+  const linkedOutline =
+    note.outlineIds && note.outlineIds.length > 0
+      ? outlines.find((o) => note.outlineIds?.includes(o.id))
+      : undefined;
 
   const verification = note.verificationData;
   const hasIssues =
@@ -77,7 +90,7 @@ export function NoteItem({
   return (
     <div className="rounded-md border border-border bg-card/60 p-4 space-y-3 transition-all hover:border-border/80">
       <div className="flex items-center justify-between gap-2 border-b border-border/40 pb-2">
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
           <Badge
             variant="secondary"
             className="font-mono text-xs font-semibold bg-muted text-foreground border border-border/40"
@@ -90,6 +103,16 @@ export function NoteItem({
           >
             {noteBadge.label}
           </Badge>
+          {linkedOutline && (
+            <Badge
+              variant="outline"
+              className="text-[11px] font-medium border-primary/30 bg-primary/5 text-primary flex items-center gap-1 max-w-[200px] truncate"
+              title={linkedOutline.title}
+            >
+              <FolderTree className="h-3 w-3 shrink-0" />
+              <span className="truncate">{linkedOutline.title}</span>
+            </Badge>
+          )}
         </div>
 
         <div className="flex items-center gap-2.5">

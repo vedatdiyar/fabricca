@@ -26,14 +26,20 @@ export function isValidSectionHeader(title: string): boolean {
   // 1. Minimum length requirement: must be at least 3 characters
   if (trimmed.length < 3) return false;
 
-  // 2. Reject metadata, dates, city tags, or page number artifacts (e.g., "Antalya, 2014", "Sayfa 12", "s. 45")
+  // 2. Reject metadata, dates, city tags, journal titles, or page number artifacts
   if (
     /^(Antalya|Ankara|İstanbul|İzmir|Erzurum|Diyarbakır|Konya|Sivas|Trabzon|Adana)[,\s]+\d{4}$/i.test(
       trimmed,
     ) ||
     /^(Sayfa|s\.|ss\.|Page)\s*\d+$/i.test(trimmed) ||
     /^(Yüksek Lisans|Doktora)\s+Tezi$/i.test(trimmed) ||
-    /^(Ana Bilim Dalı|Enstitüsü|Fakültesi|Üniversitesi)$/i.test(trimmed)
+    /^(Ana Bilim Dalı|Enstitüsü|Fakültesi|Üniversitesi)$/i.test(trimmed) ||
+    /^(Journal of|International Journal of|Revista|Review of|Dergi|Dergisi)\b/i.test(
+      trimmed,
+    ) ||
+    /^(doi:\s*10\.|issn:\s*\d+|volume\s*\d+|vol\.\s*\d+|issue\s*\d+)/i.test(
+      trimmed,
+    )
   ) {
     return false;
   }
@@ -43,9 +49,9 @@ export function isValidSectionHeader(title: string): boolean {
     return true;
   }
 
-  // 4. Always accept standard major academic headings
+  // 4. Always accept standard major academic headings (Turkish & English, uppercase or title case)
   if (
-    /^(GİRİŞ|SONUÇ|KAYNAKÇA|KAYNAKLAR|REFERANSLAR|ATIFLAR|ÖZET|ABSTRACT|ÖNSÖZ|İÇİNDEKİLER|BÖLÜM\s+\d+|GİRİŞ VE AMAÇ|METODOLOJİ|BULGULAR|TARTIŞMA|REFERENCES|BIBLIOGRAPHY|INTRODUCTION|CONCLUSION)\b/i.test(
+    /^(GİRİŞ|SONUÇ|SONUÇLAR|KAYNAKÇA|KAYNAKLAR|REFERANSLAR|ATIFLAR|ÖZET|ÖZ|ABSTRACT|ÖNSÖZ|İÇİNDEKİLER|BÖLÜM\s+\d+|GİRİŞ VE AMAÇ|METODOLOJİ|YÖNTEM|METOD|BULGULAR|TARTIŞMA|REFERENCES|BIBLIOGRAPHY|WORKS\s+CITED|LITERATURE\s+CITED|INTRODUCTION|CONCLUSION|CONCLUSIONS|METHODOLOGY|METHODS|RESULTS|FINDINGS|DISCUSSION|NOTES|NOTLAR|ENDNOTES|FOOTNOTES|DİPNOTLAR|ACKNOWLEDGEMENTS|TEŞEKKÜR|DISCLOSURE|DISCLOSURE\s+STATEMENT|ORCID)\b/i.test(
       trimmed,
     )
   ) {

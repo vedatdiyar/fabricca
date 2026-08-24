@@ -14,8 +14,12 @@ import { rethrowAsDatabaseError } from "@/lib/errors/db-error";
  */
 export async function getCachedThesisMatrix(userId: number) {
   "use cache";
-  cacheTag(CACHE_TAGS.thesisMatrix);
-  cacheLife("minutes");
+  try {
+    cacheTag(CACHE_TAGS.thesisMatrix);
+    cacheLife("minutes");
+  } catch {
+    // Graceful fallback when executed outside Next.js request context
+  }
 
   try {
     const [matrix] = await db

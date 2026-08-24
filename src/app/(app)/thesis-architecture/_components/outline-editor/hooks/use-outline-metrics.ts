@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useCallback } from "react";
 import { Outline, Annotation, Source } from "@/core/db/schema";
 import {
   filterRootOutlinesByQuery,
@@ -38,6 +38,12 @@ interface UseOutlineMetricsResult {
   sourceCountMap: Record<number, number>;
   cardCountMap: Record<number, number>;
   filteredRootOutlines: Outline[];
+  isParentWithChildren: boolean;
+  groupedSubSectionAnnotations: {
+    outline: Outline;
+    annotations: (Annotation & { source?: Source })[];
+  }[];
+  selectedOutlineTotalCards: number;
 }
 
 /**
@@ -80,10 +86,13 @@ export function useOutlineMetrics({
     [outlinesList],
   );
 
-  const getSubOutlines = (parentId: number) =>
-    outlinesList
-      .filter((o) => o.parentId === parentId)
-      .sort((a, b) => a.sortOrder - b.sortOrder);
+  const getSubOutlines = useCallback(
+    (parentId: number) =>
+      outlinesList
+        .filter((o) => o.parentId === parentId)
+        .sort((a, b) => a.sortOrder - b.sortOrder),
+    [outlinesList],
+  );
 
   // sourceId lookup for pinned annotations
   const sourceIdByAnnotation = useMemo(() => {
@@ -92,10 +101,11 @@ export function useOutlineMetrics({
     return map;
   }, [annotationsList]);
 
-  // Distinct source count per outline (linked sources ∪ sources of pinned cards)
+  // Distinct source count per outline with roll-up for parent chapters
   const sourceCountMap = useMemo(() => {
-    const map: Record<number, number> = {};
+    const directSources: Record<number, Set<number>> = {};
     const outlineIds = new Set<number>([
+      ...outlinesList.map((o) => o.id),
       ...Object.keys(localLinkedSourcesMap).map(Number),
       ...Object.keys(localPinnedAnnotationsMap).map(Number),
     ]);
@@ -108,19 +118,72 @@ export function useOutlineMetrics({
         const srcId = sourceIdByAnnotation.get(annId);
         if (srcId) sources.add(srcId);
       }
-      map[odId] = sources.size;
+      directSources[odId] = sources;
     }
-    return map;
-  }, [localLinkedSourcesMap, localPinnedAnnotationsMap, sourceIdByAnnotation]);
 
-  // Citation card count per outline
-  const cardCountMap = useMemo(() => {
     const map: Record<number, number> = {};
-    for (const [key, ids] of Object.entries(localPinnedAnnotationsMap)) {
-      map[Number(key)] = ids.length;
+    for (const root of rootOutlines) {
+      const children = getSubOutlines(root.id);
+      const rootSet = new Set<number>(directSources[root.id] ?? []);
+      for (const child of children) {
+        const childSet = directSources[child.id] ?? new Set<number>();
+        for (const src of childSet) rootSet.add(src);
+      }
+      map[root.id] = rootSet.size;
     }
+
+    for (const sub of subOutlines) {
+      map[sub.id] = (directSources[sub.id] ?? new Set<number>()).size;
+    }
+
     return map;
-  }, [localPinnedAnnotationsMap]);
+  }, [
+    outlinesList,
+    rootOutlines,
+    subOutlines,
+    getSubOutlines,
+    localLinkedSourcesMap,
+    localPinnedAnnotationsMap,
+    sourceIdByAnnotation,
+  ]);
+
+  // Citation card count per outline with roll-up for parent chapters
+  const cardCountMap = useMemo(() => {
+    const directCounts: Record<number, number> = {};
+    for (const o of outlinesList) {
+      directCounts[o.id] = 0;
+    }
+    for (const [key, ids] of Object.entries(localPinnedAnnotationsMap)) {
+      directCounts[Number(key)] = ids.length;
+    }
+
+    const map: Record<number, number> = { ...directCounts };
+    for (const root of rootOutlines) {
+      const children = getSubOutlines(root.id);
+      const direct = directCounts[root.id] || 0;
+      if (children.length > 0) {
+        const childrenSum = children.reduce(
+          (sum, child) => sum + (directCounts[child.id] || 0),
+          0,
+        );
+        map[root.id] = direct + childrenSum;
+      } else {
+        map[root.id] = direct;
+      }
+    }
+
+    for (const sub of subOutlines) {
+      map[sub.id] = directCounts[sub.id] || 0;
+    }
+
+    return map;
+  }, [
+    outlinesList,
+    rootOutlines,
+    subOutlines,
+    getSubOutlines,
+    localPinnedAnnotationsMap,
+  ]);
 
   // Top metrics computation
   const metrics = useMemo(() => {
@@ -173,12 +236,44 @@ export function useOutlineMetrics({
     [selectedOutline, localPinnedAnnotationsMap],
   );
 
-  // Citation cards pinned to the selected outline section
+  // Citation cards pinned directly to the selected outline section
   const sectionAnnotations = useMemo(
     () =>
       annotationsList.filter((a) => sectionPinnedAnnotationIds.includes(a.id)),
     [annotationsList, sectionPinnedAnnotationIds],
   );
+
+  // Check if selected outline is a parent chapter with sub-sections
+  const isParentWithChildren = useMemo(() => {
+    if (!selectedOutline || selectedOutline.parentId) return false;
+    return getSubOutlines(selectedOutline.id).length > 0;
+  }, [selectedOutline, getSubOutlines]);
+
+  // Grouped sub-section annotations for panoramic overview
+  const groupedSubSectionAnnotations = useMemo(() => {
+    if (!selectedOutline || selectedOutline.parentId) return [];
+    const children = getSubOutlines(selectedOutline.id);
+    return children.map((child) => {
+      const pinnedIds = localPinnedAnnotationsMap[child.id] ?? [];
+      const annotations = annotationsList.filter((a) =>
+        pinnedIds.includes(a.id),
+      );
+      return {
+        outline: child,
+        annotations,
+      };
+    });
+  }, [
+    selectedOutline,
+    getSubOutlines,
+    localPinnedAnnotationsMap,
+    annotationsList,
+  ]);
+
+  const selectedOutlineTotalCards = useMemo(() => {
+    if (!selectedOutline) return 0;
+    return cardCountMap[selectedOutline.id] ?? 0;
+  }, [selectedOutline, cardCountMap]);
 
   // Sources directly linked to the selected outline section
   const sectionSources = useMemo(
@@ -212,5 +307,8 @@ export function useOutlineMetrics({
     sourceCountMap,
     cardCountMap,
     filteredRootOutlines,
+    isParentWithChildren,
+    groupedSubSectionAnnotations,
+    selectedOutlineTotalCards,
   };
 }

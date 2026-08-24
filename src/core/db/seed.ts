@@ -16,13 +16,10 @@ async function seed() {
 
   const user1Password = process.env.SEED_USER1_PASSWORD;
   const user2Password = process.env.SEED_USER2_PASSWORD;
-  // Email/name are also env-driven to avoid hardcoded PII; fallback to dummy format for local/dev
-  const user1Email =
-    process.env.SEED_USER1_EMAIL || "seed-user-1@fabricca.local";
-  const user2Email =
-    process.env.SEED_USER2_EMAIL || "seed-user-2@fabricca.local";
-  const user1Name = process.env.SEED_USER1_NAME || "Seed User 1";
-  const user2Name = process.env.SEED_USER2_NAME || "Seed User 2";
+  const user1Username = process.env.SEED_USER1_USERNAME || "vedatdiyar";
+  const user2Username = process.env.SEED_USER2_USERNAME || "tubaahncr";
+  const user1Name = process.env.SEED_USER1_NAME || "Vedat Diyar";
+  const user2Name = process.env.SEED_USER2_NAME || "Tuğba Ahıskalı";
 
   if (!user1Password || !user2Password) {
     throw new Error(
@@ -37,17 +34,17 @@ async function seed() {
     .insert(users)
     .values([
       {
-        email: user1Email,
+        username: user1Username,
         password: password1,
         name: user1Name,
       },
       {
-        email: user2Email,
+        username: user2Username,
         password: password2,
         name: user2Name,
       },
     ])
-    .onConflictDoNothing({ target: users.email });
+    .onConflictDoNothing({ target: users.username });
 
   console.log("✅ Seeding completed. Users inserted.");
 }

@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useCallback, useEffect, useRef, useState } from "react";
-import { BookMarked, Check, RotateCcw, Loader2, Sparkles } from "lucide-react";
+import { Check, RotateCcw, Loader2, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useCritiqueDraft } from "../../_hooks/use-critique-draft";
 import {
@@ -30,8 +30,8 @@ export interface CritiqueSectionProps {
 }
 
 /**
- * Article analysis (Eser Analizi) container orchestrating step-by-step focus mode,
- * debounced auto-save, and LLM audit evaluation.
+ * Article analysis (Eser Analizi) container orchestrating 5-dimension focused writing,
+ * live debounced auto-save, dimension progress metrics, and holistic LLM audit evaluation.
  *
  * @param props - Component props.
  * @param props.resourceId - ID of the target resource.
@@ -97,81 +97,99 @@ export function CritiqueSection({
     };
   }, []);
 
+  const handleTriggerEvaluate = () => {
+    if (onEvaluateCritique) {
+      onEvaluateCritique(resourceId);
+    }
+  };
+
   const auditReport = critique?.aiEvaluation;
+  const progressPercentage = Math.round((completedCount / 5) * 100);
 
   return (
-    <div className="space-y-6">
-      {/* Workspace 1 Card: Eser Analizi Editor */}
-      <div className="rounded-md border border-border bg-card/50 p-4 sm:p-5 space-y-4">
-        {/* Header Bar: Title, Progress Badge, Save Status, Evaluate Action */}
-        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border/40 pb-3">
+    <div className="space-y-5">
+      {/* Top Controls & Status Strip */}
+      <div className="flex flex-wrap items-center justify-between gap-3 p-3 rounded-md bg-card/60 border border-border">
+        {/* Left: Dimension Completion Tracker with Mini Progress Bar */}
+        <div className="flex items-center gap-3">
           <div className="flex items-center gap-2">
-            <BookMarked className="size-3.5 text-primary" />
-            <h3 className="font-serif text-sm font-semibold tracking-tight text-foreground">
-              Eser Analizi
-            </h3>
-            <span className="text-xs font-medium text-muted-foreground font-mono bg-muted/60 px-2 py-0.5 rounded border border-border/40">
-              {completedCount}/5 Tamamlandı
+            <span className="text-xs font-semibold text-foreground font-sans">
+              Analiz İlerlemesi
+            </span>
+            <span className="text-xs font-mono font-medium px-2 py-0.5 rounded-md bg-primary/10 text-primary border border-primary/20">
+              {completedCount} / 5 Boyut
             </span>
           </div>
 
-          <div className="flex flex-wrap items-center gap-2 sm:gap-3">
-            {saveStatus === "saving" && (
-              <span className="flex items-center gap-1 text-xs text-muted-foreground font-medium animate-pulse">
-                <Loader2 className="size-3.5 animate-spin text-primary" />
-                Kaydediliyor...
-              </span>
-            )}
-
-            {saveStatus === "saved" && (
-              <span className="flex items-center gap-1 text-xs text-primary font-medium">
-                <Check className="size-3.5 text-primary" /> Kaydedildi
-              </span>
-            )}
-
-            {saveStatus === "idle" && hasDraft && (
-              <div className="flex items-center gap-2">
-                <span className="flex items-center gap-1 text-xs text-muted-foreground">
-                  <Check className="h-3 w-3 text-primary" /> Taslak kaydedildi
-                </span>
-                <button
-                  type="button"
-                  onClick={handleResetDraft}
-                  className="flex items-center gap-1 text-xs text-muted-foreground hover:text-destructive transition-colors"
-                  title="Taslağı sıfırla"
-                >
-                  <RotateCcw className="h-3 w-3" />
-                  <span>Sıfırla</span>
-                </button>
-              </div>
-            )}
-
-            {onEvaluateCritique && (
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={() => onEvaluateCritique(resourceId)}
-                disabled={isEvaluating}
-                className="h-8 gap-1.5 text-xs font-medium border-primary/30 text-primary hover:bg-primary/10 hover:border-primary/50 transition-all"
-              >
-                <Sparkles
-                  className={`h-3.5 w-3.5 text-primary ${
-                    isEvaluating ? "animate-spin" : ""
-                  }`}
-                />
-                {isEvaluating ? "Değerlendiriliyor..." : "Eseri Değerlendir"}
-              </Button>
-            )}
+          <div className="hidden sm:flex items-center gap-1.5 w-24 h-2 bg-muted rounded-full overflow-hidden border border-border/50">
+            <div
+              className="h-full bg-primary transition-all duration-300 rounded-full"
+              style={{ width: `${progressPercentage}%` }}
+            />
           </div>
         </div>
 
-        {/* Focused Step-by-Step Editor */}
-        <CritiqueFocusEditor
-          values={values}
-          onFieldChange={handleFieldChange}
-        />
+        {/* Right: Auto-save status & Evaluate Action */}
+        <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+          {saveStatus === "saving" && (
+            <span className="flex items-center gap-1 text-xs text-muted-foreground font-medium animate-pulse">
+              <Loader2 className="size-3 animate-spin text-primary" />
+              Kaydediliyor...
+            </span>
+          )}
+
+          {saveStatus === "saved" && (
+            <span className="flex items-center gap-1 text-xs text-primary font-medium">
+              <Check className="size-3 text-primary" /> Kaydedildi
+            </span>
+          )}
+
+          {saveStatus === "idle" && hasDraft && (
+            <div className="flex items-center gap-2">
+              <span className="flex items-center gap-1 text-xs text-muted-foreground">
+                <Check className="h-3 w-3 text-primary" /> Taslak korundu
+              </span>
+              <button
+                type="button"
+                onClick={handleResetDraft}
+                className="flex items-center gap-1 text-xs text-muted-foreground hover:text-destructive transition-colors cursor-pointer"
+                title="Taslağı sıfırla"
+              >
+                <RotateCcw className="h-3 w-3" />
+                <span>Sıfırla</span>
+              </button>
+            </div>
+          )}
+
+          {onEvaluateCritique && (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={handleTriggerEvaluate}
+              disabled={isEvaluating}
+              className="h-8 gap-1.5 text-xs font-medium border-primary/30 text-primary hover:bg-primary/10 hover:border-primary/50 transition-all cursor-pointer shadow-xs"
+            >
+              <Sparkles
+                className={`h-3.5 w-3.5 text-primary ${
+                  isEvaluating ? "animate-spin" : ""
+                }`}
+              />
+              <span>
+                {isEvaluating ? "Değerlendiriliyor..." : "Analizi Değerlendir"}
+              </span>
+            </Button>
+          )}
+        </div>
       </div>
+
+      {/* Focused Step-by-Step 5-Dimension Editor */}
+      <CritiqueFocusEditor
+        values={values}
+        onFieldChange={handleFieldChange}
+        onTriggerEvaluate={handleTriggerEvaluate}
+        isEvaluating={isEvaluating}
+      />
 
       {/* Holistic AI Audit Report Panel */}
       {auditReport && <CritiqueAuditPanel auditReport={auditReport} />}

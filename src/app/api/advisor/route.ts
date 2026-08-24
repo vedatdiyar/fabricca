@@ -14,7 +14,6 @@ const officeReviewSchema = z.object({
     .string()
     .min(10, "Taslak metin en az 10 karakter olmalıdır.")
     .max(10000, "Taslak metin çok uzun (en fazla 10.000 karakter)."),
-  studentNote: z.string().max(1000).optional(),
 });
 
 const officeDefenseSchema = z.object({
@@ -70,12 +69,11 @@ export async function POST(request: Request) {
   const reviewParse = officeReviewSchema.safeParse(body);
   if (reviewParse.success) {
     try {
-      const { outlineId, draftText, studentNote } = reviewParse.data;
+      const { outlineId, draftText } = reviewParse.data;
       const result = await runOfficeReview({
         userId: session.userId,
         outlineId,
         draftText,
-        studentNote,
       });
 
       return NextResponse.json({

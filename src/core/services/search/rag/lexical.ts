@@ -10,12 +10,9 @@ export interface LexicalCandidate {
   resourceId: number;
   chunkIndex: number;
   content: string;
-  parentContent: string | null;
   section: string | null;
   headerHierarchy: string[] | null;
-  pageStart: number | null;
-  pageEnd: number | null;
-  printedPageNumber: string | null;
+  pageNumber: string | null;
   title: string;
   authors: string[] | null;
   publicationYear: number | null;
@@ -41,14 +38,15 @@ export async function searchLexical(
   const { resourceIds, topK = 30 } = options;
 
   const conditions = [
-    sql`${chunks.searchVector} @@ (to_tsquery('turkish', ${tsQuery}) OR to_tsquery('english', ${tsQuery}))`,
+    sql`${chunks.searchVector} @@ (to_tsquery('turkish', ${tsQuery}) || to_tsquery('english', ${tsQuery}))`,
     sql`${boxes.boxType} <> 'RELATED_THESES'`,
+    sql`${chunks.chunkType} NOT IN ('AUTHOR_BIO', 'REFERENCES')`,
   ];
   if (resourceIds && resourceIds.length > 0) {
     conditions.push(sql`${chunks.sourceId} IN ${resourceIds}`);
   }
 
-  const rankExpression = sql`ts_rank(${chunks.searchVector}, (to_tsquery('turkish', ${tsQuery}) OR to_tsquery('english', ${tsQuery})))`;
+  const rankExpression = sql`ts_rank_cd(${chunks.searchVector}, (to_tsquery('turkish', ${tsQuery}) || to_tsquery('english', ${tsQuery})))`;
 
   const rows = await db
     .select({
@@ -56,12 +54,9 @@ export async function searchLexical(
       resourceId: chunks.sourceId,
       chunkIndex: chunks.chunkIndex,
       content: chunks.content,
-      parentContent: chunks.parentContent,
       section: chunks.section,
       headerHierarchy: chunks.headerHierarchy,
-      pageStart: chunks.pageStart,
-      pageEnd: chunks.pageEnd,
-      printedPageNumber: chunks.printedPageNumber,
+      pageNumber: chunks.pageNumber,
       title: sources.title,
       authors: sources.authors,
       publicationYear: sources.publicationYear,

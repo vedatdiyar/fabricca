@@ -3,13 +3,13 @@
  *
  * @param headerHierarchy - The heading hierarchy array.
  * @param section - The section title.
- * @param printedPageNumber - The formatted page number string.
+ * @param pageNumber - The formatted page number string.
  * @returns The context prefix string to prepend to the content.
  */
 export function buildChunkContextPrefix(
   headerHierarchy: string[],
   section: string | null,
-  printedPageNumber: string | null,
+  pageNumber: string | null,
 ): string {
   const parts: string[] = [];
   if (headerHierarchy.length > 0) {
@@ -17,8 +17,8 @@ export function buildChunkContextPrefix(
   } else if (section) {
     parts.push(`[Bölüm: ${section}]`);
   }
-  if (printedPageNumber) {
-    parts.push(`[Sayfa: ${printedPageNumber}]`);
+  if (pageNumber) {
+    parts.push(`[Sayfa: ${pageNumber}]`);
   }
   return parts.length > 0 ? `${parts.join(" ")}\n` : "";
 }
@@ -29,19 +29,19 @@ export function buildChunkContextPrefix(
  * @param content - The raw chunk content.
  * @param headerHierarchy - The heading hierarchy array.
  * @param section - The section title.
- * @param printedPageNumber - The formatted page number string.
+ * @param pageNumber - The formatted page number string.
  * @returns The prefixed text for embedding.
  */
 export function buildEmbeddingText(
   content: string,
   headerHierarchy: string[],
   section: string | null,
-  printedPageNumber: string | null,
+  pageNumber: string | null,
 ): string {
   const prefix = buildChunkContextPrefix(
     headerHierarchy,
     section,
-    printedPageNumber,
+    pageNumber,
   );
   return `${prefix}${content}`;
 }

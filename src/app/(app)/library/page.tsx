@@ -42,6 +42,7 @@ function LibraryPageContent() {
   const {
     resources,
     setResources,
+    outlines,
     isLoading,
     selectedResourceId,
     activeTab,
@@ -171,6 +172,7 @@ function LibraryPageContent() {
               resource={selectedResource}
               notes={selectedResourceNotes}
               critique={selectedCritique}
+              outlines={outlines}
               onAddNote={handleAddNote}
               onUpdateNote={handleUpdateNote}
               onSaveCritique={handleSaveCritique}

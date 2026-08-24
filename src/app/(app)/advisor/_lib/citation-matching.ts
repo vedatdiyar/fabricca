@@ -106,25 +106,23 @@ function matchSourceForCitation(
       score += 20;
     }
 
-    if (citedPages.length > 0) {
-      const sStart = source.pageStart;
-      const sEnd = source.pageEnd;
+    if (citedPages.length > 0 && source.pageNumber) {
+      const citedStart = citedPages[0];
+      const citedEnd = citedPages[citedPages.length - 1];
 
-      if (sStart != null && sEnd != null) {
-        const citedStart = citedPages[0];
-        const citedEnd = citedPages[citedPages.length - 1];
+      const match = /(\d{1,5})(?:\s*[-–]\s*(\d{1,5}))?/.exec(
+        source.pageNumber,
+      );
+      if (match) {
+        const pStart = Number(match[1]);
+        const pEnd = match[2] ? Number(match[2]) : pStart;
 
-        if (citedStart === sStart && citedEnd === sEnd) {
+        if (citedStart === pStart && citedEnd === pEnd) {
           score += 100;
-        } else if (citedStart >= sStart && citedEnd <= sEnd) {
+        } else if (citedStart >= pStart && citedEnd <= pEnd) {
           score += 80;
-        } else if (citedStart <= sEnd && citedEnd >= sStart) {
+        } else if (citedStart <= pEnd && citedEnd >= pStart) {
           score += 50;
-        }
-      } else if (source.printedPageNumber) {
-        const printedStr = source.printedPageNumber;
-        if (citedPages.some((p) => printedStr.includes(String(p)))) {
-          score += 40;
         }
       }
     }

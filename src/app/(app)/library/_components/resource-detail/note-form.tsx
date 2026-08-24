@@ -1,20 +1,37 @@
 "use client";
 
-import React, { useEffect, useRef } from "react";
-import { Plus, MessageSquareQuote, Check, RotateCcw } from "lucide-react";
+import React, { useEffect, useRef, useState } from "react";
+import {
+  Plus,
+  MessageSquareQuote,
+  Check,
+  RotateCcw,
+  FolderTree,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import {
+  Select,
+  SelectContent,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { toast } from "sonner";
 import { formatPageNumber } from "@/lib/academic/utils";
 import { normalizePastedText } from "@/lib/text-utils";
-import { getNoteTypeBadgeConfig } from "./note-item";
+import { OutlineSelectItems } from "@/app/(app)/citation-cards/_components/outline-select-items";
 import { useNoteDraft } from "../../_hooks/use-note-draft";
-import type { LibraryResourceNote, NoteType } from "../../_lib/types";
+import type {
+  LibraryOutlineItem,
+  LibraryResourceNote,
+  NoteType,
+} from "../../_lib/types";
 
 interface NoteFormProps {
   resourceId: number;
+  outlines?: LibraryOutlineItem[];
   onAddNote: (
     note: Omit<
       LibraryResourceNote,
@@ -23,19 +40,27 @@ interface NoteFormProps {
       | "sentToCitationCards"
       | "verificationStatus"
       | "verificationData"
-    >,
+    > & {
+      outlineId?: number;
+    },
   ) => void;
 }
 
 /**
- * Form component for adding a new academic note or direct quote with page numbers and comments.
+ * Form component for adding a new academic note or direct quote with page numbers,
+ * optional thesis outline section assignment, and comments.
  *
  * @param root0 - Component props.
  * @param root0.resourceId - ID of the target resource.
+ * @param root0.outlines - Optional thesis outline sections.
  * @param root0.onAddNote - Callback to add a new note.
  * @returns The note form markup.
  */
-export function NoteForm({ resourceId, onAddNote }: NoteFormProps) {
+export function NoteForm({
+  resourceId,
+  outlines = [],
+  onAddNote,
+}: NoteFormProps) {
   const {
     content,
     setContent,
@@ -48,6 +73,8 @@ export function NoteForm({ resourceId, onAddNote }: NoteFormProps) {
     hasDraft,
     clearDraft,
   } = useNoteDraft(resourceId);
+
+  const [selectedOutlineId, setSelectedOutlineId] = useState<string>("NONE");
 
   const contentRef = useRef<HTMLTextAreaElement>(null);
   const commentRef = useRef<HTMLTextAreaElement>(null);
@@ -97,15 +124,20 @@ export function NoteForm({ resourceId, onAddNote }: NoteFormProps) {
       return;
     }
 
+    const targetOutlineId =
+      selectedOutlineId !== "NONE" ? Number(selectedOutlineId) : undefined;
+
     onAddNote({
       resourceId,
       pageNumber: formatPageNumber(pageNumber),
       noteType,
       content: content.trim(),
       comment: comment.trim() || undefined,
+      outlineId: targetOutlineId,
     });
 
     clearDraft();
+    setSelectedOutlineId("NONE");
   };
 
   const handleContentPaste = (e: React.ClipboardEvent<HTMLTextAreaElement>) => {
@@ -188,24 +220,55 @@ export function NoteForm({ resourceId, onAddNote }: NoteFormProps) {
           />
         </div>
 
-        <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 pt-1">
-          <div className="flex items-center gap-3">
-            <div className="w-36">
-              <Input
-                type="text"
-                placeholder="Örn: 15 veya 15-17"
-                value={pageNumber}
-                onChange={(e) => setPageNumber(e.target.value)}
-                className="text-xs bg-card/70 border-border/60"
-              />
-            </div>
+        {/* Outline (Tez Bölümü) Seçimi & Not Detayları */}
+        <div className="grid grid-cols-1 md:grid-cols-12 gap-3 pt-1">
+          {/* 1. Tez Bölümü (Outline Section) */}
+          <div className="md:col-span-5 space-y-1">
+            <Label className="text-xs font-medium text-muted-foreground flex items-center gap-1.5">
+              <FolderTree className="h-3.5 w-3.5 text-primary" />
+              <span>Tez Bölümü (Outline)</span>
+            </Label>
+            <Select
+              value={selectedOutlineId}
+              onValueChange={setSelectedOutlineId}
+            >
+              <SelectTrigger className="h-8 text-xs bg-card/70 border-border/60">
+                <SelectValue placeholder="Bölüm Seçin (Opsiyonel)" />
+              </SelectTrigger>
+              <SelectContent className="max-h-64">
+                <OutlineSelectItems
+                  outlines={outlines}
+                  includeNoneOption={true}
+                  noneLabel="Bölüme Bağlama (Boşta Kalsın)"
+                />
+              </SelectContent>
+            </Select>
+          </div>
 
-            <div className="flex items-center gap-1 bg-muted/60 p-1 rounded-md border border-border/50">
+          {/* 2. Sayfa Numarası */}
+          <div className="md:col-span-3 space-y-1">
+            <Label className="text-xs font-medium text-muted-foreground">
+              Sayfa No
+            </Label>
+            <Input
+              type="text"
+              placeholder="Örn: 15 veya 15-17"
+              value={pageNumber}
+              onChange={(e) => setPageNumber(e.target.value)}
+              className="h-8 text-xs bg-card/70 border-border/60"
+            />
+          </div>
+
+          {/* 3. Not Türü */}
+          <div className="md:col-span-4 space-y-1">
+            <Label className="text-xs font-medium text-muted-foreground">
+              Not Türü
+            </Label>
+            <div className="flex items-center gap-1 bg-muted/60 p-0.5 rounded-md border border-border/50 h-8">
               {(
                 ["DIRECT_QUOTE", "PARAPHRASE", "PERSONAL_NOTE"] as NoteType[]
               ).map((type) => {
                 const isActive = noteType === type;
-                const badgeInfo = getNoteTypeBadgeConfig(type);
                 return (
                   <button
                     type="button"
@@ -213,24 +276,30 @@ export function NoteForm({ resourceId, onAddNote }: NoteFormProps) {
                     onClick={() => setNoteType(type)}
                     className={
                       isActive
-                        ? "px-2.5 py-1 text-xs font-semibold rounded bg-card text-foreground border border-border/70 shadow-xs"
-                        : "px-2.5 py-1 text-xs text-muted-foreground hover:text-foreground"
+                        ? "flex-1 py-1 text-[11px] font-semibold rounded bg-card text-foreground border border-border/70 shadow-xs text-center truncate"
+                        : "flex-1 py-1 text-[11px] text-muted-foreground hover:text-foreground text-center truncate"
                     }
                   >
-                    {badgeInfo.label}
+                    {type === "DIRECT_QUOTE"
+                      ? "Doğrudan"
+                      : type === "PARAPHRASE"
+                        ? "Dolaylı"
+                        : "Kişisel"}
                   </button>
                 );
               })}
             </div>
           </div>
+        </div>
 
+        <div className="flex items-center justify-end pt-2">
           <Button
             type="submit"
             variant="default"
             size="sm"
             className="gap-2 font-medium"
           >
-            <Plus className="h-4 w-4" /> Notu Kaydet
+            <Plus className="h-4 w-4" /> Alıntı Fişini Kaydet
           </Button>
         </div>
       </form>

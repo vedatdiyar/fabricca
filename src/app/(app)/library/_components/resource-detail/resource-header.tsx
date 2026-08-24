@@ -4,8 +4,7 @@ import React from "react";
 import {
   ExternalLink,
   Pencil,
-  CheckCircle2,
-  Circle,
+  CircleCheck,
   Trash2,
   BookOpen,
   FileText,
@@ -186,19 +185,29 @@ export function ResourceHeader({
             </Button>
           )}
 
-          {/* 3. Okundu */}
+          {/* 3. Okundu Durumu */}
           <Button
             variant="ghost"
             size="sm"
             onClick={() => onToggleReadStatus(resource.id)}
-            title={resource.isRead ? "Okunacak Yap" : "Okundu Olarak İşaretle"}
-            className="h-7 w-7 p-0 text-muted-foreground hover:text-foreground hover:bg-muted/60 rounded"
-          >
-            {resource.isRead ? (
-              <CheckCircle2 className="h-3.5 w-3.5 text-primary" />
-            ) : (
-              <Circle className="h-3.5 w-3.5 text-muted-foreground/60" />
+            title={
+              resource.isRead
+                ? "Okundu (Okunmadı Olarak İşaretle)"
+                : "Okundu Olarak İşaretle"
+            }
+            className={cn(
+              "h-7 w-7 p-0 rounded transition-colors cursor-pointer",
+              resource.isRead
+                ? "bg-primary/10 text-primary hover:bg-primary/20 border border-primary/20"
+                : "text-muted-foreground hover:text-foreground hover:bg-muted/60",
             )}
+          >
+            <CircleCheck
+              className={cn(
+                "size-3.5",
+                resource.isRead ? "text-primary" : "text-muted-foreground",
+              )}
+            />
             <span className="sr-only">
               {resource.isRead ? "Okundu" : "Okundu Olarak İşaretle"}
             </span>

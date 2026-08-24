@@ -9,10 +9,10 @@ import {
   MessageSquare,
   Search,
   X,
-  FileText,
+  BookOpen,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
@@ -30,8 +30,9 @@ interface OfficeSessionSidebarProps {
 }
 
 /**
- * Past Office Sessions Card / Sidebar.
- * Displays previous draft reviews and allows rapid session switching.
+ * Past Office Sessions Sidebar.
+ * Matches the exact height of the right submission panel with a balanced, unified layout.
+ * Strictly complies with the 5-layer typography standards from UI_RULES.md.
  */
 export function OfficeSessionSidebar({
   sessions,
@@ -74,74 +75,77 @@ export function OfficeSessionSidebar({
   };
 
   return (
-    <Card className="w-full border-border bg-card shadow-xs flex flex-col overflow-hidden">
+    <Card className="flex h-full w-full flex-col min-h-0 space-y-4 rounded-lg p-5 bg-card border-border shadow-xs">
       {/* Header */}
-      <CardHeader className="p-4 pb-3 border-b border-border/40 space-y-3">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <Clock className="h-4 w-4 text-primary" />
-            <CardTitle className="font-serif text-sm font-semibold text-foreground">
-              Geçmiş Randevular
-            </CardTitle>
-            <Badge
-              variant="secondary"
-              className="text-[10px] px-1.5 py-0 bg-muted text-muted-foreground"
-            >
-              {sessions.length}
-            </Badge>
-          </div>
+      <div className="flex items-center justify-between pb-3.5 border-b border-border shrink-0">
+        <div className="flex items-center gap-2">
+          <Clock className="size-4 text-primary" />
+          <h2 className="font-serif text-base font-semibold tracking-tight text-foreground">
+            Geçmiş Randevular
+          </h2>
+        </div>
 
+        <div className="flex items-center gap-2">
           <Button
             size="sm"
             onClick={onNewSession}
-            className="h-7 text-xs px-2.5 bg-primary text-primary-foreground hover:bg-primary/90 gap-1 cursor-pointer"
+            className="h-7 text-xs px-2.5 bg-primary text-primary-foreground hover:bg-primary/90 gap-1 cursor-pointer rounded-md shadow-xs"
           >
-            <Plus className="h-3 w-3" />
+            <Plus className="size-3.5" />
             <span>Yeni Taslak</span>
           </Button>
+          <Badge
+            variant="outline"
+            className="text-xs font-medium text-muted-foreground border-border"
+          >
+            {sessions.length}
+          </Badge>
         </div>
+      </div>
 
-        {/* Search */}
-        {sessions.length > 3 && (
-          <div className="relative">
-            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
-            <Input
-              placeholder="Randevularda ara..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-8 pr-7 text-xs h-7 bg-background border-border"
-            />
-            {searchQuery && (
-              <button
-                type="button"
-                aria-label="Aramayı temizle"
-                onClick={() => setSearchQuery("")}
-                className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground cursor-pointer"
-              >
-                <X className="h-3 w-3" />
-              </button>
-            )}
-          </div>
+      {/* Search Input */}
+      <div className="relative w-full shrink-0">
+        <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 size-3.5 text-muted-foreground" />
+        <Input
+          placeholder="Randevularda ara..."
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          className="pl-8 pr-7 text-xs h-8 bg-background border-border rounded-md"
+        />
+        {searchQuery && (
+          <button
+            type="button"
+            aria-label="Aramayı temizle"
+            onClick={() => setSearchQuery("")}
+            className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground cursor-pointer"
+          >
+            <X className="size-3.5" />
+          </button>
         )}
-      </CardHeader>
+      </div>
 
-      {/* Sessions List */}
-      <CardContent className="p-2 flex-1 max-h-[500px] overflow-y-auto space-y-1.5">
+      {/* Sessions List / Centered Empty State */}
+      <div className="flex-1 min-h-0 flex flex-col overflow-y-auto space-y-2 pr-1">
         {filteredSessions.length === 0 ? (
-          <div className="p-6 text-center text-xs text-muted-foreground flex flex-col items-center gap-2">
-            <FileText className="h-6 w-6 text-muted-foreground/50" />
-            <span>
+          <div className="flex-1 flex flex-col items-center justify-center p-5 text-center text-muted-foreground rounded-lg border border-dashed border-border/60 bg-background/40">
+            <BookOpen className="size-8 opacity-30 text-muted-foreground mb-2" />
+            <h3 className="font-serif text-sm font-semibold text-foreground">
               {sessions.length === 0
-                ? "Henüz geçmiş taslak incelemeniz bulunmuyor."
-                : "Aramanızla eşleşen randevu bulunamadı."}
-            </span>
+                ? "Henüz Randevu Yok"
+                : "Arama Sonucu Bulunamadı"}
+            </h3>
+            <p className="text-xs text-muted-foreground mt-1.5 leading-relaxed max-w-[220px]">
+              {sessions.length === 0
+                ? "Word pasajınızı sağdaki masadan teslim ederek ilk danışman incelemenizi başlatın."
+                : "Farklı bir arama terimi deneyebilirsiniz."}
+            </p>
           </div>
         ) : (
           filteredSessions.map((s) => {
             const isActive = s.id === activeSessionId;
 
             return (
-              <div
+              <Card
                 key={s.id}
                 role="button"
                 tabIndex={0}
@@ -152,51 +156,53 @@ export function OfficeSessionSidebar({
                     onSelectSession(s.id);
                   }
                 }}
-                className={`p-3 rounded-lg border text-xs cursor-pointer transition-all flex flex-col gap-1.5 relative group ${
+                className={`group relative cursor-pointer transition-all border p-3 rounded-md shrink-0 ${
                   isActive
-                    ? "bg-primary/10 border-primary/30 text-foreground"
-                    : "bg-card hover:bg-muted/50 border-border text-muted-foreground hover:text-foreground"
+                    ? "bg-accent/20 border-primary/20"
+                    : "bg-background border-border hover:bg-accent/10 hover:border-primary/20"
                 }`}
               >
-                <div className="flex items-center justify-between gap-1">
-                  <div className="flex items-center gap-1.5 min-w-0">
-                    <Layers className="h-3.5 w-3.5 text-primary shrink-0" />
-                    <span className="font-medium text-foreground truncate">
-                      {s.outlineTitle || s.title}
-                    </span>
+                <CardContent className="p-0 space-y-1.5">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="flex items-center gap-1.5 min-w-0 flex-1">
+                      <Layers className="size-3.5 text-primary shrink-0" />
+                      <h3 className="font-serif text-sm font-semibold text-foreground truncate">
+                        {s.outlineTitle || s.title}
+                      </h3>
+                    </div>
+
+                    <button
+                      type="button"
+                      aria-label="İncelemeyi Sil"
+                      onClick={(e) => handleDelete(e, s.id)}
+                      className="opacity-0 group-hover:opacity-100 hover:text-destructive p-0.5 rounded transition-opacity cursor-pointer shrink-0 text-muted-foreground"
+                      title="İncelemeyi Sil"
+                    >
+                      <Trash2 className="size-3.5" />
+                    </button>
                   </div>
 
-                  <button
-                    type="button"
-                    aria-label="İncelemeyi Sil"
-                    onClick={(e) => handleDelete(e, s.id)}
-                    className="opacity-0 group-hover:opacity-100 hover:text-destructive p-1 rounded transition-opacity cursor-pointer shrink-0"
-                    title="İncelemeyi Sil"
-                  >
-                    <Trash2 className="h-3.5 w-3.5" />
-                  </button>
-                </div>
-
-                {s.draftText && (
-                  <p className="text-[11px] text-muted-foreground line-clamp-2 leading-relaxed">
-                    {s.draftText}
-                  </p>
-                )}
-
-                <div className="flex items-center justify-between pt-1 border-t border-border/40 text-[10px] text-muted-foreground">
-                  <span>{s.createdAt}</span>
-                  {s.messageCount > 1 && (
-                    <span className="flex items-center gap-1">
-                      <MessageSquare className="h-3 w-3" />
-                      {s.messageCount} mesaj
-                    </span>
+                  {s.draftText && (
+                    <p className="text-xs text-muted-foreground line-clamp-2 leading-relaxed font-sans">
+                      {s.draftText}
+                    </p>
                   )}
-                </div>
-              </div>
+
+                  <div className="flex items-center justify-between pt-1.5 border-t border-border/40 text-xs text-muted-foreground">
+                    <span>{s.createdAt}</span>
+                    {s.messageCount > 1 && (
+                      <span className="flex items-center gap-1">
+                        <MessageSquare className="size-3 text-primary" />
+                        <span>{s.messageCount} mesaj</span>
+                      </span>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
             );
           })
         )}
-      </CardContent>
+      </div>
     </Card>
   );
 }

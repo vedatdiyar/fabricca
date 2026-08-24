@@ -4,7 +4,7 @@ import { useState, startTransition } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { toast } from "sonner";
-import { Eye, EyeOff, Lock, Mail, ShieldAlert } from "lucide-react";
+import { Eye, EyeOff, Lock, User, ShieldAlert } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -19,13 +19,13 @@ import { Label } from "@/components/ui/label";
 import { loginAction, checkOnboardingStatus } from "./actions";
 
 /**
- * Login page with an email/password authentication form; redirects to /onboarding or /dashboard based on onboarding status.
+ * Login page with a username/password authentication form; redirects to /onboarding or /dashboard based on onboarding status.
  *
  * @returns The login page markup.
  */
 export default function LoginPage() {
   const router = useRouter();
-  const [email, setEmail] = useState("");
+  const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [isPending, setIsPending] = useState(false);
@@ -40,7 +40,7 @@ export default function LoginPage() {
     setIsPending(true);
 
     startTransition(async () => {
-      const result = await loginAction(email, password);
+      const result = await loginAction(username, password);
 
       if (result.error) {
         toast.error(result.error);
@@ -100,20 +100,20 @@ export default function LoginPage() {
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="space-y-2">
                 <Label
-                  htmlFor="email"
+                  htmlFor="username"
                   className="text-xs font-medium text-muted-foreground flex items-center gap-2"
                 >
-                  <Mail className="size-3.5" />
-                  E-posta
+                  <User className="size-3.5" />
+                  Kullanıcı Adı
                 </Label>
                 <Input
-                  id="email"
-                  type="email"
-                  placeholder="ornek@akademik.edu.tr"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
+                  id="username"
+                  type="text"
+                  placeholder="Kullanıcı adınızı girin"
+                  value={username}
+                  onChange={(e) => setUsername(e.target.value)}
                   required
-                  autoComplete="email"
+                  autoComplete="username"
                   className="bg-background/20 border-border/40 transition-all duration-200"
                 />
               </div>

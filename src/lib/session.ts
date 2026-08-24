@@ -166,7 +166,7 @@ export async function getProfile() {
   const [user] = await db
     .select({
       id: users.id,
-      email: users.email,
+      username: users.username,
       name: users.name,
       onboardingCompleted: users.onboardingCompleted,
       createdAt: users.createdAt,
@@ -180,7 +180,7 @@ export async function getProfile() {
 
   return {
     id: user.id,
-    email: user.email,
+    username: user.username,
     name: user.name,
     onboardingCompleted: user.onboardingCompleted,
     createdAt: user.createdAt,

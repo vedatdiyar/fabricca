@@ -10,7 +10,7 @@ import type {
   ResourceAuditReport,
 } from "../_lib/types";
 
-const auditReportSchema = z.object({
+export const auditReportSchema = z.object({
   overallScore: z.number().min(0).max(100),
   statusBadge: z.enum(["EXCELLENT", "SOLID", "NEEDS_ATTENTION"]),
   summary: z.string().min(1),

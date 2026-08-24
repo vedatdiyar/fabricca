@@ -4,6 +4,7 @@ import React, { useState, useEffect, useRef, useMemo } from "react";
 import {
   Search,
   BookOpen,
+  CircleCheck,
   CheckCircle2,
   Circle,
   Layers,
@@ -233,14 +234,14 @@ export function SidebarWorkList({
                       {item.isRead ? (
                         <span
                           title="Okundu"
-                          className="flex items-center text-success"
+                          className="flex items-center text-primary"
                         >
-                          <CheckCircle2 className="h-3.5 w-3.5" />
+                          <CircleCheck className="h-3.5 w-3.5" />
                         </span>
                       ) : (
                         <span
                           title="Okunacak"
-                          className="flex items-center text-warning"
+                          className="flex items-center text-muted-foreground/40"
                         >
                           <Circle className="h-3.5 w-3.5" />
                         </span>

@@ -15,7 +15,7 @@ import {
 import { createFlowId, Logger } from "@/lib/logger";
 
 const LoginSchema = z.object({
-  email: z.string().email("Geçerli bir e-posta adresi girin.").max(255),
+  username: z.string().min(1, "Kullanıcı adı gereklidir.").max(255),
   password: z.string().min(1, "Şifre gereklidir.").max(128, "Şifre çok uzun."),
 });
 
@@ -29,18 +29,18 @@ const LOGIN_WINDOW_MS = 15 * 60 * 1000;
 // Kept intentionally minimal for the 2-user private deployment.
 const attemptMap = new Map<string, { count: number; windowStart: number }>();
 
-/** Enforces a sliding-window brute-force rate limit for a single email address.
+/** Enforces a sliding-window brute-force rate limit for a single username.
  * Single-instance only — see note above for distributed deployments.
  *
- * @param email - The email address to check against the rate limit.
+ * @param username - The username to check against the rate limit.
  * @returns True when the request is allowed, false when the limit was reached.
  */
-function checkRateLimit(email: string): boolean {
+function checkRateLimit(username: string): boolean {
   const now = Date.now();
-  const record = attemptMap.get(email);
+  const record = attemptMap.get(username);
 
   if (!record || now - record.windowStart > LOGIN_WINDOW_MS) {
-    attemptMap.set(email, { count: 1, windowStart: now });
+    attemptMap.set(username, { count: 1, windowStart: now });
     return true;
   }
 
@@ -59,20 +59,20 @@ export type OnboardingStatusResult =
   | { success: false; error: string };
 
 /**
- * Validates email and password; on success creates the session cookie.
+ * Validates username and password; on success creates the session cookie.
  *
- * @param email - The user's email address.
+ * @param username - The user's username.
  * @param password - The user's plaintext password.
  * @returns The login result, either a success marker or a user-friendly error message.
  */
 export async function loginAction(
-  email: string,
+  username: string,
   password: string,
 ): Promise<LoginResult> {
   const flowId = createFlowId();
   const log = new Logger(flowId);
 
-  const parsed = LoginSchema.safeParse({ email, password });
+  const parsed = LoginSchema.safeParse({ username, password });
   if (!parsed.success) {
     const msg = parsed.error.issues[0]?.message ?? "Geçersiz giriş bilgileri.";
     log.info("login_failed", {
@@ -82,7 +82,7 @@ export async function loginAction(
     return { success: false, error: msg };
   }
 
-  if (!checkRateLimit(parsed.data.email)) {
+  if (!checkRateLimit(parsed.data.username)) {
     log.info("login_failed", {
       service: "auth",
       data: { reason: "rate_limit_exceeded" },
@@ -103,14 +103,14 @@ export async function loginAction(
         onboardingCompleted: users.onboardingCompleted,
       })
       .from(users)
-      .where(eq(users.email, parsed.data.email));
+      .where(eq(users.username, parsed.data.username));
 
     if (!user) {
       log.info("login_failed", {
         service: "auth",
         data: { reason: "user_not_found" },
       });
-      return { success: false, error: "E-posta veya şifre hatalı." };
+      return { success: false, error: "Kullanıcı adı veya şifre hatalı." };
     }
 
     const passwordMatch = await compare(parsed.data.password, user.password);
@@ -120,7 +120,7 @@ export async function loginAction(
         service: "auth",
         data: { reason: "password_mismatch" },
       });
-      return { success: false, error: "E-posta veya şifre hatalı." };
+      return { success: false, error: "Kullanıcı adı veya şifre hatalı." };
     }
 
     const cookieStore = await cookies();

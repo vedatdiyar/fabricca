@@ -2,8 +2,9 @@
 
 import { eq, and } from "drizzle-orm";
 import { z } from "zod";
+import { revalidatePath } from "next/cache";
 import { db } from "@/core/db";
-import { annotations, chunks } from "@/core/db/schema";
+import { annotations, chunks, outlineAnnotations } from "@/core/db/schema";
 import { getSession } from "@/lib/session";
 import { createFlowId, Logger } from "@/lib/logger";
 import { getOwnedSource } from "@/core/services/box/ownership";
@@ -28,6 +29,7 @@ const createResourceNoteSchema = z.object({
     .trim()
     .max(4000, "Yorum en fazla 4000 karakter olabilir.")
     .optional(),
+  outlineId: z.number().int().positive().optional(),
 });
 
 /** Validation schema for updating an existing note. */
@@ -49,6 +51,7 @@ const updateResourceNoteSchema = z.object({
  * @param input.noteType - The type of the note.
  * @param input.content - The note text.
  * @param input.comment - Optional personal meta-comment / annotation attached to the note.
+ * @param input.outlineId - Optional outline section ID to link this citation card to.
  * @returns The created note data with verification result on success, or an error message on failure.
  */
 export async function createResourceNoteAction(input: {
@@ -57,6 +60,7 @@ export async function createResourceNoteAction(input: {
   noteType: NoteType;
   content: string;
   comment?: string;
+  outlineId?: number;
 }) {
   const flowId = createFlowId();
   const log = new Logger(flowId);
@@ -100,14 +104,27 @@ export async function createResourceNoteAction(input: {
       })
       .returning();
 
-    // 2. Query source chunks to verify grounding & page consistency
+    // 2. If outlineId was provided, link note directly to the outline section
+    if (valid.outlineId) {
+      try {
+        await db.insert(outlineAnnotations).values({
+          outlineId: valid.outlineId,
+          annotationId: newNote.id,
+        });
+      } catch (linkErr) {
+        log.error("outline_annotation_link_failed", {
+          service: "library",
+          error: linkErr,
+        });
+      }
+    }
+
+    // 3. Query source chunks to verify grounding & page consistency
     const sourceChunks = await db.query.chunks.findMany({
       where: eq(chunks.sourceId, valid.resourceId),
       columns: {
         content: true,
-        pageStart: true,
-        pageEnd: true,
-        printedPageNumber: true,
+        pageNumber: true,
       },
       limit: 15,
     });
@@ -154,9 +171,14 @@ export async function createResourceNoteAction(input: {
       data: {
         noteId: newNote.id,
         resourceId: valid.resourceId,
+        outlineId: valid.outlineId,
         verificationStatus: status,
       },
     });
+
+    revalidatePath("/thesis-architecture");
+    revalidatePath("/citation-cards");
+    revalidatePath("/library");
 
     return {
       success: true,
@@ -167,6 +189,7 @@ export async function createResourceNoteAction(input: {
         noteType: newNote.noteType as NoteType,
         content: newNote.content,
         comment: newNote.comment ?? undefined,
+        outlineIds: valid.outlineId ? [valid.outlineId] : [],
         sentToCitationCards: newNote.sentToCitationCards,
         verificationStatus: status,
         verificationData: verificationResult ?? undefined,

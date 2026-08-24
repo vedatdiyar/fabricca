@@ -56,12 +56,36 @@ export function dedupeReferences(
 }
 
 /**
- * Locates the bibliography page range inside a parsed document, shared by both
+ * Heuristic check for pages containing dense numbered citations (e.g. 1. Author..., 20. Author...).
+ * Detects notes/references even if section headings are missing or omitted by OCR.
+ *
+ * @param text - The page markdown text to inspect.
+ * @returns True when the page has high citation/note density.
+ */
+export function isReferenceDensityPage(text: string): boolean {
+  if (!text || text.length < 100) return false;
+  // Match lines starting with numbers like "1. ", "20. ", "[1] ", "[20] " followed by capital letter
+  const numberedLines = text.match(
+    /(^|\n)\s*(\[\d{1,3}\]|\d{1,3}\.)\s+[A-ZÇĞİÖŞÜ]/g,
+  );
+  const numberedCount = numberedLines ? numberedLines.length : 0;
+
+  // Match academic publication markers
+  const pubMarkers = text.match(
+    /\b(pp\.\s*\d+|vol\.\s*\d+|doi:\s*10\.|University\s+Press|Publishers?|Weşanên|Journal\s+of|\(\s*(19\d{2}|20\d{2})\s*\)|op\.\s*cit|ibid\b)/gi,
+  );
+  const pubCount = pubMarkers ? pubMarkers.length : 0;
+
+  return numberedCount >= 3 && pubCount >= 2;
+}
+
+/**
+ * Locates the bibliography/endnote page range inside a parsed document, shared by both
  * the scanned (Mistral OCR) and born-digital (pdf-inspector) parsing paths.
  *
- * Search begins at 60% of the document: it first looks for an explicit
- * bibliography heading, falls back to a loose keyword match, and stops at the
- * next heading or a hard cap of 30 pages.
+ * Search begins at 50% of the document: it first looks for an explicit
+ * bibliography/notes heading, falls back to reference density heuristic, and stops at the
+ * next major body heading or a hard cap of 30 pages.
  *
  * @param pages - Parsed pages in reading order.
  * @param getMarkdown - Extracts the markdown text of one page.
@@ -72,13 +96,14 @@ export function findBibliographyPages<T>(
   getMarkdown: (page: T) => string,
 ): T[] {
   const bibHeadingRegex =
-    /(^|\n)(#+\s*|\b)(Kaynakça|Kaynaklar|Kaynak\s+Dizini|Yararlanılan\s+Kaynaklar|Başvurulan\s+Kaynaklar|Referanslar|Atıfta\s+Bulunulan\s+Kaynaklar|Kaynak\s+Listesi|References(\s+and\s+Notes)?|Reference\s+List|Bibliography|Works\s+Cited|Works\s+Consulted|Literature\s+Cited|Cited\s+Literature|Selected\s+(Bibliography|References)|Literaturverzeichnis|Literatur|Références|Bibliographie|Referencias|Bibliografía)\b/i;
+    /(^|\n)(#+\s*|\b)(Notes\s+and\s+References|References\s+and\s+Notes|Kaynakça\s+ve\s+Notlar|Notlar\s+ve\s+Kaynakça|Kaynakça|Kaynaklar|Kaynak\s+Dizini|Yararlanılan\s+Kaynaklar|Başvurulan\s+Kaynaklar|Referanslar|Atıfta\s+Bulunulan\s+Kaynaklar|Kaynak\s+Listesi|References|Reference\s+List|Bibliography|Works\s+Cited|Works\s+Consulted|Literature\s+Cited|Cited\s+Literature|Selected\s+(Bibliography|References)|Quellenverzeichnis|Quellen|Primary\s+Sources|Archival\s+Sources|Literaturverzeichnis|Literatur|Références|Bibliographie|Referencias|Bibliografía)\b/i;
 
   let bibStartPageIndex = -1;
-  const searchStart = Math.floor(pages.length * 0.6);
+  const searchStart = Math.floor(pages.length * 0.45);
 
   for (let i = searchStart; i < pages.length; i++) {
-    if (bibHeadingRegex.test(getMarkdown(pages[i]))) {
+    const text = getMarkdown(pages[i]);
+    if (bibHeadingRegex.test(text) || isReferenceDensityPage(text)) {
       bibStartPageIndex = i;
       break;
     }
@@ -86,9 +111,10 @@ export function findBibliographyPages<T>(
 
   if (bibStartPageIndex === -1) {
     for (let i = searchStart; i < pages.length; i++) {
+      const text = getMarkdown(pages[i]);
       if (
-        /(references|bibliography|kaynakça|kaynaklar|referanslar|works\s+cited)/i.test(
-          getMarkdown(pages[i]),
+        /(references|bibliography|kaynakça|kaynaklar|referanslar|works\s+cited|literature\s+cited)\b/i.test(
+          text,
         )
       ) {
         bibStartPageIndex = i;
@@ -100,7 +126,13 @@ export function findBibliographyPages<T>(
   let bibEndPageIndex = pages.length;
   if (bibStartPageIndex !== -1) {
     for (let i = bibStartPageIndex + 1; i < pages.length; i++) {
-      if (/(^|\n)#{1,4}\s+\S+/.test(getMarkdown(pages[i]))) {
+      const pageText = getMarkdown(pages[i]);
+      // Stop only at explicit major body section headings, not tail end matter like bio/disclosure
+      if (
+        /(^|\n)#{1,2}\s+(Conclusion|Discussion|Findings|Methodology|Sonuç|Tartışma|Bulgular)\b/i.test(
+          pageText,
+        )
+      ) {
         bibEndPageIndex = i;
         break;
       }

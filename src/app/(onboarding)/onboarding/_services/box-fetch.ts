@@ -59,8 +59,12 @@ function rowsToGeminiBoxes(
  */
 export async function getCachedBoxes(thesisMatrixId: number) {
   "use cache";
-  cacheTag(CACHE_TAGS.thesisBoxes);
-  cacheLife("minutes");
+  try {
+    cacheTag(CACHE_TAGS.thesisBoxes);
+    cacheLife("minutes");
+  } catch {
+    // Graceful fallback when executed outside Next.js request context
+  }
 
   try {
     return db

@@ -52,7 +52,7 @@ export async function processResourcePdfPipeline(options: ProcessPdfOptions) {
       c.content,
       c.headerHierarchy,
       c.section,
-      c.printedPageNumber,
+      c.pageNumber,
     ),
   );
 
@@ -115,14 +115,12 @@ export async function processResourcePdfPipeline(options: ProcessPdfOptions) {
           return {
             sourceId: resourceId,
             chunkIndex: c.chunkIndex,
+            chunkType: c.chunkType ?? "BODY",
             content: c.content,
-            parentContent: c.parentContent || c.content,
             section: c.section ?? null,
             headerHierarchy:
               c.headerHierarchy.length > 0 ? c.headerHierarchy : null,
-            pageStart: c.pageStart ?? null,
-            pageEnd: c.pageEnd ?? null,
-            printedPageNumber: c.printedPageNumber ?? null,
+            pageNumber: c.pageNumber ?? null,
             tokenCount: c.tokenCount ?? 0,
             embedding: quantizedEmbedding,
           };

@@ -1,13 +1,12 @@
 "use client";
 
-import { Outline, Box, Source, Annotation } from "@/core/db/schema";
+import { Outline, Source, Annotation } from "@/core/db/schema";
 import { Button } from "@/components/ui/button";
 import { Plus } from "lucide-react";
 import { TabActions } from "../tab-actions";
 import { useOutlineState } from "./hooks/use-outline-state";
 import { useOutlineMetrics } from "./hooks/use-outline-metrics";
 import { useOutlineSectionCrud } from "./hooks/use-outline-section-crud";
-import { useOutlineLinks } from "./hooks/use-outline-links";
 import { usePanelHeightSync } from "./hooks/use-panel-height-sync";
 import { OutlineMetricsStrip } from "./components/outline-metrics-strip";
 import {
@@ -20,12 +19,9 @@ import { SectionSourcesList } from "./components/section-workspace/section-sourc
 import { AddSectionModal } from "./components/modals/add-section-modal";
 import { EditSectionModal } from "./components/modals/edit-section-modal";
 import { DeleteSectionModal } from "./components/modals/delete-section-modal";
-import { ManageAnnotationLinksModal } from "./components/modals/manage-annotation-links-modal";
-import { ManageSourceLinksModal } from "./components/modals/manage-source-links-modal";
 
 interface OutlineEditorViewProps {
   outlinesList: Outline[];
-  boxesList: Box[];
   sourcesList?: Source[];
   annotationsList?: (Annotation & { source?: Source })[];
   pinnedMap: Record<number, number[]>;
@@ -38,7 +34,6 @@ interface OutlineEditorViewProps {
  *
  * @param root0 - Component props.
  * @param root0.outlinesList - All outline sections of the thesis.
- * @param root0.boxesList - All thesis topic boxes.
  * @param root0.sourcesList - All library sources of the thesis.
  * @param root0.annotationsList - Citation cards with their sources.
  * @param root0.pinnedMap - Server-side annotation to outline link map.
@@ -46,7 +41,6 @@ interface OutlineEditorViewProps {
  */
 export function OutlineEditorView({
   outlinesList,
-  boxesList,
   sourcesList = [],
   annotationsList = [],
   pinnedMap,
@@ -79,14 +73,6 @@ export function OutlineEditorView({
     rootOutlines: metrics.rootOutlines,
     selectedOutlineId: state.selectedOutlineId,
     setSelectedOutlineId: state.setSelectedOutlineId,
-  });
-
-  const links = useOutlineLinks({
-    selectedOutline: state.selectedOutline,
-    localPinnedAnnotationsMap: state.localPinnedAnnotationsMap,
-    applyAnnotationLinkOverride: state.applyAnnotationLinkOverride,
-    localLinkedSourcesMap: state.localLinkedSourcesMap,
-    applySourceLinkOverride: state.applySourceLinkOverride,
   });
 
   const isEmpty = outlinesList.length === 0;
@@ -141,22 +127,24 @@ export function OutlineEditorView({
                 {/* 1. Section Header & Focus Card */}
                 <SectionDetailCard
                   outline={state.selectedOutline}
-                  cardsCount={metrics.sectionPinnedAnnotationIds.length}
+                  cardsCount={metrics.selectedOutlineTotalCards}
                   sourcesCount={metrics.sectionSourceIds.length}
+                  isParentWithChildren={metrics.isParentWithChildren}
+                  subSectionsCount={metrics.groupedSubSectionAnnotations.length}
                   onAddSub={() => crud.openAddModal(state.selectedOutline!.id)}
                   onEdit={() => crud.openEditModal(state.selectedOutline!)}
                   onDelete={() => crud.promptDelete(state.selectedOutline!)}
                 />
 
-                {/* 2. Section Reading Workspace: Pinned Citation Cards + Linked Sources */}
+                {/* 2. Section Reading Workspace: Pinned Citation Cards */}
                 <SectionSourcesList
                   sectionAnnotations={metrics.sectionAnnotations}
-                  sectionSources={metrics.sectionSources}
-                  displayedSources={metrics.displayedSources}
-                  sourceSearchQuery={state.sourceSearchQuery}
-                  onSourceSearchChange={state.setSourceSearchQuery}
-                  onManageAnnotationLinks={links.openAnnotationLinkModal}
-                  onManageSourceLinks={links.openSourceLinkModal}
+                  isParentWithChildren={metrics.isParentWithChildren}
+                  groupedSubSectionAnnotations={
+                    metrics.groupedSubSectionAnnotations
+                  }
+                  totalSectionCardsCount={metrics.selectedOutlineTotalCards}
+                  onSelectSection={state.setSelectedOutlineId}
                 />
               </div>
             ) : (
@@ -194,28 +182,6 @@ export function OutlineEditorView({
         isDeleting={crud.isDeleting}
         onClose={crud.closeDeleteModal}
         onConfirm={crud.confirmDelete}
-      />
-
-      {/* Modal: Manage Annotation (Citation Card) Links */}
-      <ManageAnnotationLinksModal
-        open={links.isAnnotationLinkModalOpen}
-        outline={state.selectedOutline}
-        annotationsList={annotationsList}
-        boxesList={boxesList}
-        localPinnedAnnotationsMap={state.localPinnedAnnotationsMap}
-        onToggleAnnotationLink={links.toggleAnnotationLink}
-        onClose={links.closeAnnotationLinkModal}
-      />
-
-      {/* Modal: Manage Source Links */}
-      <ManageSourceLinksModal
-        open={links.isSourceLinkModalOpen}
-        outline={state.selectedOutline}
-        sourcesList={sourcesList}
-        boxesList={boxesList}
-        localLinkedSourcesMap={state.localLinkedSourcesMap}
-        onToggleSourceLink={links.toggleSourceLink}
-        onClose={links.closeSourceLinkModal}
       />
     </div>
   );

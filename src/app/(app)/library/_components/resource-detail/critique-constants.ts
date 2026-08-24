@@ -21,6 +21,7 @@ export interface CritiqueFieldConfig {
   shortLabel: string;
   question: string;
   hint: string;
+  placeholder: string;
 }
 
 export const CRITIQUE_FIELDS: readonly CritiqueFieldConfig[] = [
@@ -32,6 +33,8 @@ export const CRITIQUE_FIELDS: readonly CritiqueFieldConfig[] = [
     shortLabel: "Araştırma Sorusu",
     question: "Bu çalışma neyi çözmeye veya anlamaya çalışıyor?",
     hint: "Eserin temel problemini, yanıt aradığı ana soruyu ve inceleme gayesini yazınız.",
+    placeholder:
+      "Eserin yanıt aradığı temel problemi, araştırma sorusunu ve inceleme amacını buraya yazınız...",
   },
   {
     key: "theoreticalFramework",
@@ -41,6 +44,8 @@ export const CRITIQUE_FIELDS: readonly CritiqueFieldConfig[] = [
     shortLabel: "Teorik Çerçeve",
     question: "Hangi teoriye, kavramlara veya anahtar terimlere dayanıyor?",
     hint: "Yazarın başvurduğu kuramsal yaklaşımlar, temel kavramlar ve literatür referansları.",
+    placeholder:
+      "Yazarın dayandığı teorik yaklaşımları, kavram setlerini ve ana kuramsal referansları buraya özetleyiniz...",
   },
   {
     key: "methodology",
@@ -50,6 +55,8 @@ export const CRITIQUE_FIELDS: readonly CritiqueFieldConfig[] = [
     shortLabel: "Metodoloji",
     question: "Hangi yöntem, veri seti veya kaynaklar kullanılmış?",
     hint: "Araştırmanın veri toplama teknikleri, örneklem/arşiv seçimi ve analiz yöntemleri.",
+    placeholder:
+      "Kullanılan araştırma yöntemini, veri kaynaklarını, örneklemi ve analiz tekniklerini buraya yazınız...",
   },
   {
     key: "mainArgument",
@@ -59,6 +66,8 @@ export const CRITIQUE_FIELDS: readonly CritiqueFieldConfig[] = [
     shortLabel: "Temel Argüman",
     question: "Yazarın ulaştığı ana sonuç ve savunduğu temel tez nedir?",
     hint: "Metnin varoluş sebebi olan ana iddia, bulgular ve literatüre kattığı temel sav.",
+    placeholder:
+      "Yazarın ulaştığı ana sonucu, savunduğu temel iddiayı ve literatüre katkısını buraya özetleyiniz...",
   },
   {
     key: "literatureGap",
@@ -69,6 +78,8 @@ export const CRITIQUE_FIELDS: readonly CritiqueFieldConfig[] = [
     question:
       "Yazar nerede eksik kalmış veya gelecekte ne yapılması gerektiğini söylemiş?",
     hint: "Çalışmanın sınırları, cevaplayamadığı noktalar ve tezinizin doldurabileceği boşluklar.",
+    placeholder:
+      "Çalışmanın sınırlarını, cevapsız bıraktığı noktaları ve tezinizin doldurabileceği literatür boşluğunu buraya yazınız...",
   },
 ] as const;
 

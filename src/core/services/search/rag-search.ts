@@ -80,7 +80,7 @@ export async function performHybridRagSearch(
   });
 
   // Phase 4: Result Assembly & DTO Mapping
-  const finalResults = assembleRagResults({
+  const finalResults = await assembleRagResults({
     candidateMap,
     rankedPool,
     filtered,

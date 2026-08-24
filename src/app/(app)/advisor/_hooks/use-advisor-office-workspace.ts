@@ -57,24 +57,21 @@ export function useAdvisorOfficeWorkspace(initialSessionId?: number) {
 
   const [uiState, setUiState] = useState<{
     isSubmittingReview: boolean;
-    mobileWorkspaceTab: "margin-notes" | "defense-chat";
+    isDefenseModalOpen: boolean;
     mobileSubmissionTab: "form" | "history";
   }>({
     isSubmittingReview: false,
-    mobileWorkspaceTab: "margin-notes",
+    isDefenseModalOpen: false,
     mobileSubmissionTab: "form",
   });
 
   const loadSessionDetail = useCallback(
-    async (
-      sessionId: number,
-      outlineList: OutlineOption[] = initialData.outlines,
-    ) => {
+    async (sessionId: number, outlineList?: OutlineOption[]) => {
       try {
         const res = await getOfficeSessionDetailAction(sessionId);
         if (res.success && res.data) {
           const detail = res.data;
-          const outlineMatch = outlineList.find(
+          const outlineMatch = outlineList?.find(
             (o) => o.id === detail.outlineId,
           );
 
@@ -85,6 +82,17 @@ export function useAdvisorOfficeWorkspace(initialSessionId?: number) {
             activeOutlineTitle:
               detail.outlineTitle || outlineMatch?.title || "Tez Bölümü",
           });
+
+          if (typeof window !== "undefined") {
+            const currentUrl = new URL(window.location.href);
+            if (currentUrl.searchParams.get("session") !== String(detail.id)) {
+              window.history.pushState(
+                null,
+                "",
+                `/advisor?session=${detail.id}`,
+              );
+            }
+          }
 
           setUiState((prev) => ({ ...prev, mobileSubmissionTab: "form" }));
 
@@ -114,8 +122,34 @@ export function useAdvisorOfficeWorkspace(initialSessionId?: number) {
         toast.error("Oturum yüklenirken bir hata oluştu.");
       }
     },
-    [initialData.outlines],
+    [],
   );
+
+  const handleResetToNewSubmission = useCallback(() => {
+    setSessionDetail({
+      activeSessionId: null,
+      currentReport: null,
+      activeOutlineId: null,
+      activeOutlineTitle: "",
+    });
+    if (typeof window !== "undefined") {
+      const currentUrl = new URL(window.location.href);
+      if (currentUrl.searchParams.has("session")) {
+        window.history.pushState(null, "", "/advisor");
+      }
+    }
+    setDefenseState({
+      messages: [],
+      hasStarted: false,
+      isStreaming: false,
+      activeCritique: null,
+    });
+    setUiState({
+      isSubmittingReview: false,
+      isDefenseModalOpen: false,
+      mobileSubmissionTab: "form",
+    });
+  }, []);
 
   useEffect(() => {
     let isMounted = true;
@@ -132,7 +166,39 @@ export function useAdvisorOfficeWorkspace(initialSessionId?: number) {
           });
 
           if (initialSessionId) {
-            await loadSessionDetail(initialSessionId, res.outlines);
+            const detailRes =
+              await getOfficeSessionDetailAction(initialSessionId);
+            if (isMounted && detailRes.success && detailRes.data) {
+              const detail = detailRes.data;
+              const outlineMatch = res.outlines.find(
+                (o) => o.id === detail.outlineId,
+              );
+              setSessionDetail({
+                activeSessionId: detail.id,
+                currentReport: detail.reviewReport,
+                activeOutlineId: detail.outlineId,
+                activeOutlineTitle:
+                  detail.outlineTitle || outlineMatch?.title || "Tez Bölümü",
+              });
+              const chatMsgs: DefenseMessage[] = detail.messages
+                .filter(
+                  (m) =>
+                    m.role === "user" ||
+                    (m.role === "assistant" && !m.pipelineData),
+                )
+                .map((m) => ({
+                  id: m.id,
+                  role: m.role as "assistant" | "user",
+                  content: m.content,
+                  createdAt: m.createdAt,
+                }));
+              setDefenseState({
+                messages: chatMsgs,
+                hasStarted: chatMsgs.length > 0,
+                isStreaming: false,
+                activeCritique: null,
+              });
+            }
           }
         } else {
           toast.error(res.error || "Başlangıç verileri yüklenemedi.");
@@ -151,12 +217,28 @@ export function useAdvisorOfficeWorkspace(initialSessionId?: number) {
     return () => {
       isMounted = false;
     };
-  }, [initialSessionId, loadSessionDetail]);
+  }, [initialSessionId]);
+
+  // Listen to browser Back/Forward (popstate)
+  useEffect(() => {
+    const handlePopState = () => {
+      const urlParams = new URLSearchParams(window.location.search);
+      const sessionParam = urlParams.get("session");
+      if (sessionParam && /^\d+$/.test(sessionParam)) {
+        const sid = Number(sessionParam);
+        loadSessionDetail(sid, initialData.outlines);
+      } else {
+        handleResetToNewSubmission();
+      }
+    };
+
+    window.addEventListener("popstate", handlePopState);
+    return () => window.removeEventListener("popstate", handlePopState);
+  }, [initialData.outlines, loadSessionDetail, handleResetToNewSubmission]);
 
   const handleReviewSubmit = async (data: {
     outlineId: number;
     draftText: string;
-    studentNote?: string;
   }) => {
     setUiState((prev) => ({ ...prev, isSubmittingReview: true }));
     try {
@@ -167,7 +249,6 @@ export function useAdvisorOfficeWorkspace(initialSessionId?: number) {
           action: "REVIEW",
           outlineId: data.outlineId,
           draftText: data.draftText,
-          studentNote: data.studentNote,
         }),
       });
 
@@ -187,6 +268,14 @@ export function useAdvisorOfficeWorkspace(initialSessionId?: number) {
         activeOutlineTitle: outlineMatch?.title || "Tez Bölümü",
       });
 
+      if (typeof window !== "undefined") {
+        window.history.pushState(
+          null,
+          "",
+          `/advisor?session=${json.sessionId}`,
+        );
+      }
+
       setDefenseState({
         messages: [],
         hasStarted: false,
@@ -196,7 +285,7 @@ export function useAdvisorOfficeWorkspace(initialSessionId?: number) {
 
       setUiState((prev) => ({
         ...prev,
-        mobileWorkspaceTab: "margin-notes",
+        isDefenseModalOpen: false,
       }));
 
       const initialRes = await getOfficeInitialDataAction();
@@ -291,7 +380,10 @@ export function useAdvisorOfficeWorkspace(initialSessionId?: number) {
 
             try {
               const parsed = JSON.parse(dataStr);
-              if (parsed.type === "chunk" && parsed.text) {
+              if (
+                (parsed.type === "delta" || parsed.type === "chunk") &&
+                parsed.text
+              ) {
                 accumulatedText += parsed.text;
                 setDefenseState((prev) => ({
                   ...prev,
@@ -335,33 +427,13 @@ export function useAdvisorOfficeWorkspace(initialSessionId?: number) {
       hasStarted: true,
       activeCritique: critique || prev.activeCritique,
     }));
-    setUiState((prev) => ({ ...prev, mobileWorkspaceTab: "defense-chat" }));
+    setUiState((prev) => ({ ...prev, isDefenseModalOpen: true }));
 
     const userPrompt = critique
       ? `Hocam, "${critique.title}" eleştirisine dair şu noktayı açıklamak ve savunmak istiyorum: ${critique.suggestedDefensePoint || critique.critique}`
       : undefined;
 
     await handleSendDefenseMessage(userPrompt);
-  };
-
-  const handleResetToNewSubmission = () => {
-    setSessionDetail({
-      activeSessionId: null,
-      currentReport: null,
-      activeOutlineId: null,
-      activeOutlineTitle: "",
-    });
-    setDefenseState({
-      messages: [],
-      hasStarted: false,
-      isStreaming: false,
-      activeCritique: null,
-    });
-    setUiState({
-      isSubmittingReview: false,
-      mobileWorkspaceTab: "margin-notes",
-      mobileSubmissionTab: "form",
-    });
   };
 
   return {
