@@ -3,6 +3,7 @@ import { getAi } from "@/core/services/ai";
 import { dispatchGeminiCall } from "@/core/services/ai/gemini-scheduler";
 import { FLASH_LITE_35, GEMINI_SEED } from "@/lib/constants";
 import { ADVISOR_TOOL_DECLARATIONS } from "@/app/(app)/advisor/_tools";
+import type { ChatToolCall } from "@/app/(app)/advisor/_lib/types";
 import type { AdvisorStreamWriter } from "./stream";
 import {
   extractTextFromChunk,
@@ -23,6 +24,11 @@ export interface AdvisorToolLoopParams {
   userId: number;
 }
 
+export interface AdvisorToolLoopResult {
+  text: string;
+  toolCalls: ChatToolCall[];
+}
+
 /**
  * Runs the multi-turn Gemini agent loop, streaming text deltas and routing
  * function calls into either read-tool execution or pending mutation confirmations.
@@ -32,15 +38,16 @@ export interface AdvisorToolLoopParams {
  *
  * @param writer - The SSE writer for deltas and tool call events.
  * @param params - The system instruction, mutable contents, and user id.
- * @returns The full accumulated assistant text.
+ * @returns The full accumulated assistant text and list of triggered tool calls.
  */
 export async function runAdvisorToolLoop(
   writer: AdvisorStreamWriter,
   params: AdvisorToolLoopParams,
-): Promise<string> {
+): Promise<AdvisorToolLoopResult> {
   const { systemInstruction, contents, userId } = params;
 
   let fullText = "";
+  const toolCalls: ChatToolCall[] = [];
   let maxTurns = 5;
   let continueLoop = true;
 
@@ -99,18 +106,32 @@ export async function runAdvisorToolLoop(
       const funcCalls = extractFunctionCalls(chunk as never);
       if (funcCalls.length > 0) {
         for (const call of funcCalls) {
-          const shouldContinue = await routeFunctionCall(
+          const routeResult = await routeFunctionCall(
             call,
             userId,
             contents,
             turnModelParts,
             writer,
           );
-          if (shouldContinue) continueLoop = true;
+          if (routeResult.toolCall) {
+            toolCalls.push(routeResult.toolCall);
+          }
+          if (routeResult.shouldContinue) {
+            continueLoop = true;
+          }
         }
       }
     }
   }
 
-  return fullText;
+  // If the model produced a tool call without introductory text, provide an intuitive prompt text
+  if (!fullText.trim() && toolCalls.length > 0) {
+    const defaultText =
+      "Talebiniz doğrultusunda veritabanı işlemi hazırlandı. Aşağıdaki karttan inceleyip onaylayabilirsiniz:";
+    fullText = defaultText;
+    writer.delta(defaultText);
+  }
+
+  return { text: fullText, toolCalls };
 }
+

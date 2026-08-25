@@ -3,7 +3,6 @@
 import {
   getOfficeInitialDataAction as _getOfficeInitialDataAction,
   getOfficeSessionDetailAction as _getOfficeSessionDetailAction,
-  saveDefenseNoteAction as _saveDefenseNoteAction,
   createRevisionTaskAction as _createRevisionTaskAction,
   deleteOfficeSessionAction as _deleteOfficeSessionAction,
 } from "./office-actions";
@@ -26,12 +25,6 @@ export async function getOfficeSessionDetailAction(
   return _getOfficeSessionDetailAction(...args);
 }
 
-export async function saveDefenseNoteAction(
-  ...args: Parameters<typeof _saveDefenseNoteAction>
-): Promise<Awaited<ReturnType<typeof _saveDefenseNoteAction>>> {
-  return _saveDefenseNoteAction(...args);
-}
-
 export async function createRevisionTaskAction(
   ...args: Parameters<typeof _createRevisionTaskAction>
 ): Promise<Awaited<ReturnType<typeof _createRevisionTaskAction>>> {
@@ -43,3 +36,4 @@ export async function deleteOfficeSessionAction(
 ): Promise<Awaited<ReturnType<typeof _deleteOfficeSessionAction>>> {
   return _deleteOfficeSessionAction(...args);
 }
+

@@ -97,6 +97,23 @@ export async function classifyAdvisorIntent(
       },
     );
 
+    const isDirectActionMutation =
+      /\b(güncelle\w*|değiştir\w*|ekle\w*|sil\w*|oluştur\w*|kaydet\w*)\b/i.test(
+        query,
+      ) &&
+      /\b(matris\w*|çerçeve\w*|kuram\w*|problem\w*|yöntem\w*|metodoloji\w*|kutu\w*|görev\w*|bölüm\w*|kaynak\w*|not\w*)\b/i.test(
+        query,
+      );
+
+    if (isDirectActionMutation) {
+      return {
+        ...res,
+        persona: "TEZ_ASSISTANT",
+        isActionQuery: true,
+        mode: "DIRECT",
+      };
+    }
+
     return res;
   } catch (error) {
     new Logger(createFlowId()).warn("Advisor intent classification fallback:", {

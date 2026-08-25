@@ -2,6 +2,9 @@
 
 @plugin "tailwindcss-animate";
 
+/* Streamdown utility classes for streaming markdown rendering */
+@source "../../node_modules/streamdown/dist";
+
 @theme {
   --color-background: var(--background);
   --color-foreground: var(--foreground);

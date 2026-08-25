@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from "react";
 import { toast } from "sonner";
-import type { Message } from "@/core/db/schema";
+import type { Message, ChatToolCall } from "@/core/db/schema";
 import type { RagSearchResultItem } from "@/core/services/search/rag-search";
 import {
   getChatSessions,
@@ -10,8 +10,16 @@ import {
   deleteChatSession,
   type ChatSessionListItem,
 } from "../session-actions";
-import { getChatMessages } from "../message-actions";
+import {
+  getChatMessages,
+  updateChatMessageToolCalls,
+} from "../message-actions";
+import {
+  executeAdvisorToolAction,
+  undoAdvisorToolAction,
+} from "../tool-actions";
 import { generateChatTitleAction } from "../title-actions";
+import { createStreamFlusher } from "../_lib/stream-flusher";
 
 interface UseAssistantWorkspaceOptions {
   initialSessionId?: number;
@@ -19,7 +27,7 @@ interface UseAssistantWorkspaceOptions {
 
 /**
  * State hook managing the Thesis Assistant workspace, session list,
- * chat message history, real-time SSE streaming, and RAG citation inspection.
+ * chat message history, real-time SSE streaming, tool confirmations, and RAG citation inspection.
  *
  * @param options - Configuration options including initial session ID.
  * @returns State properties and handler actions for the workspace.
@@ -40,6 +48,7 @@ export function useAssistantWorkspace({
   const [streamingText, setStreamingText] = useState("");
   const [streamingSources, setStreamingSources] = useState<RagSearchResultItem[]>([]);
   const [streamingPersona, setStreamingPersona] = useState<string | undefined>(undefined);
+  const [streamingToolCalls, setStreamingToolCalls] = useState<ChatToolCall[]>([]);
 
   // Citation modal states
   const [activeCitation, setActiveCitation] = useState<RagSearchResultItem | null>(null);
@@ -118,6 +127,7 @@ export function useAssistantWorkspace({
       setStreamingText("");
       setStreamingSources([]);
       setStreamingPersona(undefined);
+      setStreamingToolCalls([]);
       window.history.replaceState(null, "", `/advisor/chat?session=${sessionId}`);
       await loadMessages(sessionId);
     },
@@ -136,6 +146,7 @@ export function useAssistantWorkspace({
     setStreamingText("");
     setStreamingSources([]);
     setStreamingPersona(undefined);
+    setStreamingToolCalls([]);
     window.history.replaceState(null, "", "/advisor/chat");
   }, [isGenerating]);
 
@@ -199,6 +210,7 @@ export function useAssistantWorkspace({
       setStreamingText("");
       setStreamingSources([]);
       setStreamingPersona(undefined);
+      setStreamingToolCalls([]);
 
       const controller = new AbortController();
       abortControllerRef.current = controller;
@@ -232,44 +244,65 @@ export function useAssistantWorkspace({
 
         const reader = response.body.getReader();
         const decoder = new TextDecoder();
+        const flusher = createStreamFlusher();
         let buffer = "";
         let finalResponseText = "";
         let finalSources: RagSearchResultItem[] = [];
         let finalPersona = "SOCRATIC_ADVISOR";
+        let finalToolCalls: ChatToolCall[] = [];
 
-        while (true) {
-          const { done, value } = await reader.read();
-          if (done) break;
+        try {
+          while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
 
-          buffer += decoder.decode(value, { stream: true });
-          const lines = buffer.split("\n\n");
-          buffer = lines.pop() ?? "";
+            buffer += decoder.decode(value, { stream: true });
+            const lines = buffer.split("\n\n");
+            buffer = lines.pop() ?? "";
 
-          for (const block of lines) {
-            const trimmedBlock = block.trim();
-            if (!trimmedBlock.startsWith("data:")) continue;
+            for (const block of lines) {
+              const trimmedBlock = block.trim();
+              if (!trimmedBlock.startsWith("data:")) continue;
 
-            const jsonStr = trimmedBlock.replace(/^data:\s*/, "");
-            try {
-              const eventData = JSON.parse(jsonStr);
+              const jsonStr = trimmedBlock.replace(/^data:\s*/, "");
+              if (jsonStr === "[DONE]") continue;
+              try {
+                const eventData = JSON.parse(jsonStr);
 
-              if (eventData.type === "persona_assigned" && eventData.persona) {
-                setStreamingPersona(eventData.persona);
-                finalPersona = eventData.persona;
-              } else if (eventData.type === "delta" && eventData.text) {
-                finalResponseText += eventData.text;
-                setStreamingText(finalResponseText);
-              } else if (eventData.type === "done") {
-                if (eventData.text) finalResponseText = eventData.text;
-                if (eventData.sources) finalSources = eventData.sources;
-                if (eventData.persona) finalPersona = eventData.persona;
-              } else if (eventData.type === "error") {
-                toast.error(eventData.error || "Akış hatası oluştu.");
+                if (eventData.type === "persona_assigned" && eventData.persona) {
+                  setStreamingPersona(eventData.persona);
+                  finalPersona = eventData.persona;
+                } else if (eventData.type === "delta" && eventData.text) {
+                  finalResponseText += eventData.text;
+                  flusher.schedule(() => setStreamingText(finalResponseText));
+                } else if (eventData.type === "tool_call_request") {
+                  const incomingToolCall: ChatToolCall = {
+                    toolCallId: eventData.toolCallId,
+                    name: eventData.name,
+                    args: eventData.args,
+                    explanation: eventData.explanation,
+                    status: eventData.status || "pending",
+                    previousState: eventData.previousState,
+                  };
+                  finalToolCalls = [...finalToolCalls, incomingToolCall];
+                  setStreamingToolCalls(finalToolCalls);
+                } else if (eventData.type === "done") {
+                  if (eventData.text) finalResponseText = eventData.text;
+                  if (eventData.sources) finalSources = eventData.sources;
+                  if (eventData.persona) finalPersona = eventData.persona;
+                  if (eventData.toolCalls) finalToolCalls = eventData.toolCalls;
+                } else if (eventData.type === "error") {
+                  toast.error(eventData.error || "Akış hatası oluştu.");
+                }
+              } catch {
+                // Ignore partial JSON parse errors in SSE chunks
               }
-            } catch {
-              // Ignore partial JSON parse errors in SSE chunks
             }
           }
+
+          flusher.flushNow();
+        } finally {
+          flusher.cancel();
         }
 
         // Add assistant message to local state
@@ -280,7 +313,7 @@ export function useAssistantWorkspace({
           content: finalResponseText,
           persona: finalPersona,
           sources: finalSources,
-          toolCalls: null,
+          toolCalls: finalToolCalls.length > 0 ? finalToolCalls : null,
           pipelineData: null,
           createdAt: new Date(),
         };
@@ -307,10 +340,114 @@ export function useAssistantWorkspace({
         setIsGenerating(false);
         setStreamingText("");
         setStreamingSources([]);
+        setStreamingToolCalls([]);
         abortControllerRef.current = null;
       }
     },
     [activeSessionId, isGenerating, messages, refreshSessions],
+  );
+
+  /**
+   * Approves and executes a pending mutation tool call.
+   */
+  const handleApproveTool = useCallback(
+    async (messageId: number, toolCall: ChatToolCall) => {
+      const res = await executeAdvisorToolAction({
+        toolName: toolCall.name,
+        args: toolCall.args,
+      });
+
+      if (!res.success) {
+        toast.error(res.error || "İşlem uygulanamadı.");
+        return;
+      }
+
+      toast.success(res.message || "İşlem başarıyla uygulandı.");
+
+      // Update message state locally and in database
+      setMessages((prev) =>
+        prev.map((msg) => {
+          if (msg.id !== messageId || !msg.toolCalls) return msg;
+          const updatedToolCalls = msg.toolCalls.map((tc) =>
+            tc.toolCallId === toolCall.toolCallId
+              ? {
+                  ...tc,
+                  status: "approved" as const,
+                  executionResult: res.data,
+                  previousState: res.previousState || tc.previousState,
+                }
+              : tc,
+          );
+          // Persist updated tool calls to DB
+          updateChatMessageToolCalls(msg.id, updatedToolCalls).catch(
+            console.error,
+          );
+          return { ...msg, toolCalls: updatedToolCalls };
+        }),
+      );
+    },
+    [],
+  );
+
+  /**
+   * Rejects a pending mutation tool call.
+   */
+  const handleRejectTool = useCallback(
+    async (messageId: number, toolCall: ChatToolCall) => {
+      setMessages((prev) =>
+        prev.map((msg) => {
+          if (msg.id !== messageId || !msg.toolCalls) return msg;
+          const updatedToolCalls = msg.toolCalls.map((tc) =>
+            tc.toolCallId === toolCall.toolCallId
+              ? { ...tc, status: "rejected" as const }
+              : tc,
+          );
+          updateChatMessageToolCalls(msg.id, updatedToolCalls).catch(
+            console.error,
+          );
+          return { ...msg, toolCalls: updatedToolCalls };
+        }),
+      );
+      toast.info("İşlem talebi reddedildi.");
+    },
+    [],
+  );
+
+  /**
+   * Reverts (undoes) an approved mutation tool call.
+   */
+  const handleUndoTool = useCallback(
+    async (messageId: number, toolCall: ChatToolCall) => {
+      const res = await undoAdvisorToolAction({
+        toolName: toolCall.name,
+        args: toolCall.args,
+        executionResult: toolCall.executionResult,
+        previousState: toolCall.previousState,
+      });
+
+      if (!res.success) {
+        toast.error(res.error || "İşlem geri alınamadı.");
+        return;
+      }
+
+      toast.success(res.message || "İşlem geri alındı.");
+
+      setMessages((prev) =>
+        prev.map((msg) => {
+          if (msg.id !== messageId || !msg.toolCalls) return msg;
+          const updatedToolCalls = msg.toolCalls.map((tc) =>
+            tc.toolCallId === toolCall.toolCallId
+              ? { ...tc, status: "undone" as const }
+              : tc,
+          );
+          updateChatMessageToolCalls(msg.id, updatedToolCalls).catch(
+            console.error,
+          );
+          return { ...msg, toolCalls: updatedToolCalls };
+        }),
+      );
+    },
+    [],
   );
 
   const handleOpenCitation = useCallback((source: RagSearchResultItem) => {
@@ -332,12 +469,16 @@ export function useAssistantWorkspace({
     streamingText,
     streamingSources,
     streamingPersona,
+    streamingToolCalls,
     activeCitation,
     isCitationOpen,
     handleSelectSession,
     handleNewSession,
     handleDeleteSession,
     handleSendMessage,
+    handleApproveTool,
+    handleRejectTool,
+    handleUndoTool,
     handleOpenCitation,
     handleCloseCitation,
   };

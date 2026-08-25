@@ -4,9 +4,43 @@ import { useCallback, type MouseEvent } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import rehypeRaw from "rehype-raw";
+import { Streamdown } from "streamdown";
 import type { Components } from "react-markdown";
 import type { RagSearchResultItem } from "@/core/services/search/rag-search";
 import { CITATION_ATTR, formatContent } from "../_lib/citation-matching";
+
+const REMARK_PLUGINS = [remarkGfm];
+const REHYPE_PLUGINS = [rehypeRaw];
+
+/**
+ * Streaming-optimized markdown renderer backed by Streamdown: completed
+ * blocks are memoized internally and only the trailing block re-parses as
+ * tokens arrive. Incomplete markdown (half-open bold, fences) is handled
+ * gracefully. The app ships a single dark theme, so both Shiki variants
+ * use a dark theme.
+ *
+ * @param root0 - Component props.
+ * @param root0.content - Growing markdown string.
+ * @param root0.components - Optional custom markdown component map.
+ * @returns Streaming markdown rendering.
+ */
+export function StreamingMarkdown({
+  content,
+  components,
+}: {
+  content: string;
+  components?: Components;
+}) {
+  return (
+    <Streamdown
+      mode="streaming"
+      shikiTheme={["github-dark", "github-dark"]}
+      components={components}
+    >
+      {content}
+    </Streamdown>
+  );
+}
 
 const components: Components = {
   h1: ({ children, ...props }) => (
@@ -154,6 +188,8 @@ interface MarkdownRendererProps {
   content: string;
   sources?: RagSearchResultItem[];
   onCitationClick?: (sourceIndex: number) => void;
+  /** When true, renders via memoized blocks and skips citation matching. */
+  streaming?: boolean;
 }
 
 /**
@@ -163,12 +199,14 @@ interface MarkdownRendererProps {
  * @param root0.content - Markdown string to render.
  * @param root0.sources - RAG source items for citation matching.
  * @param root0.onCitationClick - Callback when a citation badge is clicked.
+ * @param root0.streaming - Whether the content is still streaming in.
  * @returns The rendered markdown output.
  */
 export function MarkdownRenderer({
   content,
   sources = [],
   onCitationClick,
+  streaming = false,
 }: MarkdownRendererProps) {
   const handleClick = useCallback(
     (e: MouseEvent<HTMLDivElement>) => {
@@ -202,13 +240,17 @@ export function MarkdownRenderer({
 
   return (
     <div role="presentation" onClick={handleClick} onKeyDown={handleKeyDown}>
-      <ReactMarkdown
-        remarkPlugins={[remarkGfm]}
-        rehypePlugins={[rehypeRaw]}
-        components={components}
-      >
-        {formatContent(content, sources)}
-      </ReactMarkdown>
+      {streaming ? (
+        <StreamingMarkdown content={content} components={components} />
+      ) : (
+        <ReactMarkdown
+          remarkPlugins={REMARK_PLUGINS}
+          rehypePlugins={REHYPE_PLUGINS}
+          components={components}
+        >
+          {formatContent(content, sources)}
+        </ReactMarkdown>
+      )}
     </div>
   );
 }

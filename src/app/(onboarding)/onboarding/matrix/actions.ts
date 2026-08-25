@@ -11,7 +11,8 @@ import {
   outlines,
 } from "@/core/db/schema";
 import { getSession, SESSION_ERROR_MSG } from "@/lib/session";
-import { createFlowId, Logger } from "@/lib/logger";
+import { PipelineRun } from "@/lib/pipeline-logger";
+import { MATRIX_SUBMIT_PIPELINE } from "@/lib/pipeline-definitions";
 import {
   invalidateOnboardingCache,
   invalidateOnboardingStepCache,
@@ -32,15 +33,16 @@ const thesisMatrixSchema = z.object({
  * data (positioning report, thesis outline, and thesis boxes) that may now be stale.
  *
  * @param data - The thesis matrix data from the onboarding form
+ * @param flowId - Optional shared flow identifier of the matrix-submit pipeline run.
  * @returns Success confirmation or an error message
  */
 export async function saveThesisMatrixAction(
   data: unknown,
+  flowId?: string,
 ): Promise<{ success: true } | { error: string }> {
-  const flowId = createFlowId();
-  const log = new Logger(flowId);
-
-  log.info("matrix_save_start");
+  const run = flowId
+    ? PipelineRun.resume(MATRIX_SUBMIT_PIPELINE, flowId)
+    : PipelineRun.create(MATRIX_SUBMIT_PIPELINE);
 
   const parsed = thesisMatrixSchema.safeParse(data);
   if (!parsed.success) {
@@ -59,62 +61,59 @@ export async function saveThesisMatrixAction(
       return { error: SESSION_ERROR_MSG };
     }
 
-    await db.transaction(async (tx) => {
-      const [matrixRow] = await tx
-        .insert(matrices)
-        .values({
-          userId: session.userId,
-          subjectProblem: validated.subjectProblem,
-          theoreticalFramework: validated.theoreticalFramework,
-          primaryMaterial: validated.primaryMaterial,
-          methodology: validated.methodology,
-          updatedAt: sql`now()`,
-        })
-        .onConflictDoUpdate({
-          target: matrices.userId,
-          set: {
+    await run.execute("save", async () => {
+      await db.transaction(async (tx) => {
+        const [matrixRow] = await tx
+          .insert(matrices)
+          .values({
+            userId: session.userId,
             subjectProblem: validated.subjectProblem,
             theoreticalFramework: validated.theoreticalFramework,
             primaryMaterial: validated.primaryMaterial,
             methodology: validated.methodology,
             updatedAt: sql`now()`,
-          },
-        })
-        .returning({ id: matrices.id });
+          })
+          .onConflictDoUpdate({
+            target: matrices.userId,
+            set: {
+              subjectProblem: validated.subjectProblem,
+              theoreticalFramework: validated.theoreticalFramework,
+              primaryMaterial: validated.primaryMaterial,
+              methodology: validated.methodology,
+              updatedAt: sql`now()`,
+            },
+          })
+          .returning({ id: matrices.id });
 
-      if (matrixRow) {
-        await tx
-          .delete(positioning)
-          .where(eq(positioning.matrixId, matrixRow.id));
+        if (matrixRow) {
+          await tx
+            .delete(positioning)
+            .where(eq(positioning.matrixId, matrixRow.id));
 
-        await tx
-          .delete(sources)
-          .where(
-            inArray(
-              sources.boxId,
-              tx
-                .select({ id: boxes.id })
-                .from(boxes)
-                .where(eq(boxes.matrixId, matrixRow.id)),
-            ),
-          );
+          await tx
+            .delete(sources)
+            .where(
+              inArray(
+                sources.boxId,
+                tx
+                  .select({ id: boxes.id })
+                  .from(boxes)
+                  .where(eq(boxes.matrixId, matrixRow.id)),
+              ),
+            );
 
-        await tx.delete(outlines).where(eq(outlines.matrixId, matrixRow.id));
+          await tx.delete(outlines).where(eq(outlines.matrixId, matrixRow.id));
 
-        await tx.delete(boxes).where(eq(boxes.matrixId, matrixRow.id));
-      }
+          await tx.delete(boxes).where(eq(boxes.matrixId, matrixRow.id));
+        }
+      });
     });
 
     invalidateOnboardingCache();
     invalidateOnboardingStepCache("matrix");
 
-    log.info("matrix_save_success");
-
     return { success: true };
-  } catch (error) {
-    log.error("matrix_save_failed", {
-      error,
-    });
+  } catch {
     return { error: "Tez matrisi veritabanına kaydedilemedi." };
   }
 }

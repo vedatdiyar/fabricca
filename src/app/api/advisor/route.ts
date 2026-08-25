@@ -39,6 +39,15 @@ const assistantChatSchema = z.object({
     .optional(),
 });
 
+/** Shared headers for advisor SSE streaming responses. */
+const sseHeaders = {
+  "Content-Type": "text/event-stream",
+  "Cache-Control": "no-cache",
+  Connection: "keep-alive",
+  // Prevent proxy buffering so deltas reach the client immediately.
+  "X-Accel-Buffering": "no",
+} as const;
+
 /**
  * Handles POST requests for the Advisor module:
  * 1. `action: "REVIEW"` -> Runs the 3-part structured draft audit (Red/Yellow/Blue pen) and persists the office session.
@@ -116,11 +125,7 @@ export async function POST(request: Request) {
     });
 
     return new Response(readable, {
-      headers: {
-        "Content-Type": "text/event-stream",
-        "Cache-Control": "no-cache",
-        Connection: "keep-alive",
-      },
+      headers: sseHeaders,
     });
   }
 
@@ -139,11 +144,7 @@ export async function POST(request: Request) {
     });
 
     return new Response(readable, {
-      headers: {
-        "Content-Type": "text/event-stream",
-        "Cache-Control": "no-cache",
-        Connection: "keep-alive",
-      },
+      headers: sseHeaders,
     });
   }
 

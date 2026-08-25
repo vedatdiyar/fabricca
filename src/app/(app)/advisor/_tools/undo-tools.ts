@@ -5,11 +5,15 @@ import {
   sources,
   annotations,
   tasks,
+  outlines,
+  outlineAnnotations,
+  outlineSources,
   type Box,
   type Source,
   type Annotation,
   type Task,
   type Matrix,
+  type Outline,
 } from "@/core/db/schema";
 import { eq, and } from "drizzle-orm";
 
@@ -68,8 +72,22 @@ export async function undoMutationTool(
         .set(updateData)
         .where(eq(matrices.id, userMatrix.id));
 
-      return { success: true, message: "Tez matrisi değişikliği geri alındı." };
+      // Clean up cascaded created boxes if present
+      const execData = executionResult as { cascade?: { createdBoxes?: { id: number }[] } } | undefined;
+      if (execData?.cascade?.createdBoxes && Array.isArray(execData.cascade.createdBoxes)) {
+        for (const b of execData.cascade.createdBoxes) {
+          if (b.id) {
+            await db.delete(boxes).where(eq(boxes.id, b.id));
+          }
+        }
+      }
+
+      return {
+        success: true,
+        message: "Tez matrisi ve kademeli oluşturulan araştırma kutuları geri alındı.",
+      };
     }
+
     case "createBox": {
       const createdBox = executionResult as Box | undefined;
       const boxId = createdBox?.id ?? (args.boxId as number | undefined);
@@ -216,6 +234,116 @@ export async function undoMutationTool(
         message: "Görev durumu değişikliği geri alındı.",
       };
     }
+    case "createOutlineSection": {
+      const createdOutline = executionResult as Outline | undefined;
+      const outlineId =
+        createdOutline?.id ?? (args.outlineId as number | undefined);
+      if (!outlineId) {
+        return {
+          success: false,
+          error: "Silinecek bölüm kimliği bulunamadı.",
+        };
+      }
+      await db.delete(outlines).where(eq(outlines.id, outlineId));
+      return {
+        success: true,
+        message: "Oluşturulan bölüm planı geri alındı (silindi).",
+      };
+    }
+    case "updateOutlineSection": {
+      const outlineId = args.outlineId as number;
+      if (!previousState) {
+        return { success: false, error: "Önceki bölüm verisi bulunamadı." };
+      }
+      const updateData: Partial<Outline> = { updatedAt: new Date() };
+      if (typeof previousState.title === "string") {
+        updateData.title = previousState.title;
+      }
+      if (
+        typeof previousState.description === "string" ||
+        previousState.description === null
+      ) {
+        updateData.description = previousState.description as string | null;
+      }
+
+      await db
+        .update(outlines)
+        .set(updateData)
+        .where(eq(outlines.id, outlineId));
+
+      return {
+        success: true,
+        message: "Bölüm güncellemesi geri alındı.",
+      };
+    }
+    case "pinAnnotationToOutline": {
+      const outlineId = args.outlineId as number;
+      const annotationId = args.annotationId as number;
+      if (!outlineId || !annotationId) {
+        return { success: false, error: "Geçersiz bölüm veya alıntı kimliği." };
+      }
+      await db
+        .delete(outlineAnnotations)
+        .where(
+          and(
+            eq(outlineAnnotations.outlineId, outlineId),
+            eq(outlineAnnotations.annotationId, annotationId),
+          ),
+        );
+      return {
+        success: true,
+        message: "Alıntı iğnelemesi geri alındı.",
+      };
+    }
+    case "unpinAnnotationFromOutline": {
+      const outlineId = args.outlineId as number;
+      const annotationId = args.annotationId as number;
+      if (!outlineId || !annotationId) {
+        return { success: false, error: "Geçersiz bölüm veya alıntı kimliği." };
+      }
+      await db.insert(outlineAnnotations).values({
+        outlineId,
+        annotationId,
+      });
+      return {
+        success: true,
+        message: "Alıntı iğnelemesi geri yüklendi.",
+      };
+    }
+    case "linkSourceToOutline": {
+      const outlineId = args.outlineId as number;
+      const sourceId = args.sourceId as number;
+      if (!outlineId || !sourceId) {
+        return { success: false, error: "Geçersiz bölüm veya kaynak kimliği." };
+      }
+      await db
+        .delete(outlineSources)
+        .where(
+          and(
+            eq(outlineSources.outlineId, outlineId),
+            eq(outlineSources.sourceId, sourceId),
+          ),
+        );
+      return {
+        success: true,
+        message: "Kaynak bağlantısı geri alındı.",
+      };
+    }
+    case "unlinkSourceFromOutline": {
+      const outlineId = args.outlineId as number;
+      const sourceId = args.sourceId as number;
+      if (!outlineId || !sourceId) {
+        return { success: false, error: "Geçersiz bölüm veya kaynak kimliği." };
+      }
+      await db.insert(outlineSources).values({
+        outlineId,
+        sourceId,
+      });
+      return {
+        success: true,
+        message: "Kaynak bağlantısı geri yüklendi.",
+      };
+    }
     default:
       return {
         success: false,
@@ -223,3 +351,4 @@ export async function undoMutationTool(
       };
   }
 }
+

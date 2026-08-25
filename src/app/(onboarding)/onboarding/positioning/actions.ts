@@ -5,7 +5,8 @@ import { db } from "@/core/db";
 import { positioning, matrices } from "@/core/db/schema";
 import type { Positioning } from "@/core/db/schema";
 import { getSession, SESSION_ERROR_MSG } from "@/lib/session";
-import { Logger } from "@/lib/logger";
+import { PipelineRun } from "@/lib/pipeline-logger";
+import { MATRIX_SUBMIT_PIPELINE } from "@/lib/pipeline-definitions";
 import type { ThesisMatrix } from "@/lib/types";
 import { positioningMatrixSchema } from "./_services/validation";
 import { searchAndSiftTheses, type SiftedThesis } from "./_services/sifting";
@@ -28,7 +29,7 @@ export async function runPositioningSearchAction(
   matrixInput: ThesisMatrix,
   flowId: string,
 ): Promise<{ success: true; theses: SiftedThesis[] } | { error: string }> {
-  const log = new Logger(flowId);
+  const run = PipelineRun.resume(MATRIX_SUBMIT_PIPELINE, flowId);
   const positioningInput: Record<string, string> = {
     subjectProblem: matrixInput.subjectProblem ?? "",
     theoreticalFramework: matrixInput.theoreticalFramework ?? "",
@@ -50,13 +51,12 @@ export async function runPositioningSearchAction(
     const session = await getSession();
     if (!session) return { error: SESSION_ERROR_MSG };
 
-    const theses = await searchAndSiftTheses(validated, log);
+    const theses = await run.execute("search", () =>
+      searchAndSiftTheses(validated, run.logger),
+    );
 
     return { success: true, theses };
-  } catch (error) {
-    log.error("positioning_search_failed", {
-      error,
-    });
+  } catch {
     return {
       error:
         "Akademik arama sorguları üretilirken veya literatür taranırken bir hata oluştu. Lütfen tekrar deneyin.",
@@ -80,7 +80,7 @@ export async function runPositioningJuryAction(
 ): Promise<
   { success: true; juryResult: JuryAnalysisResult } | { error: string }
 > {
-  const log = new Logger(flowId);
+  const run = PipelineRun.resume(MATRIX_SUBMIT_PIPELINE, flowId);
   const positioningInput: Record<string, string> = {
     subjectProblem: matrixInput.subjectProblem ?? "",
     theoreticalFramework: matrixInput.theoreticalFramework ?? "",
@@ -102,33 +102,24 @@ export async function runPositioningJuryAction(
     const session = await getSession();
     if (!session) return { error: SESSION_ERROR_MSG };
 
-    // 2. Kademe: Paralel derin tez değerlendirmesi
-    const evaluatedTheses = await evaluateThesesInParallel(
-      validated,
-      theses,
-      log,
-    );
+    const juryResult = await run.execute("jury_review", async () => {
+      // 2. Kademe: Paralel derin tez değerlendirmesi
+      const evaluatedTheses = await evaluateThesesInParallel(
+        validated,
+        theses,
+        run.logger,
+      );
 
-    const relevantTheses = evaluatedTheses.filter(
-      (ev) => ev.evaluation.isRelevant,
-    );
+      const relevantTheses = evaluatedTheses.filter(
+        (ev) => ev.evaluation.isRelevant,
+      );
 
-    log.info("positioning_jury_analysis_start");
-
-    // 3. Kademe: FLASH_LITE_35 Jüri sentezi
-    const juryResult = await analyzePositioningJury(
-      validated,
-      relevantTheses,
-      log,
-    );
-
-    log.info("positioning_jury_analysis_success");
+      // 3. Kademe: FLASH_LITE_35 Jüri sentezi
+      return analyzePositioningJury(validated, relevantTheses, run.logger);
+    });
 
     return { success: true, juryResult };
-  } catch (error) {
-    log.error("positioning_jury_failed", {
-      error,
-    });
+  } catch {
     return {
       error:
         "Akademik jüri analizi sentezlenirken bir hata oluştu. Lütfen tekrar deneyin.",
@@ -149,7 +140,7 @@ export async function persistPositioningReportAction(
   juryResult: JuryAnalysisResult,
   flowId: string,
 ): Promise<{ success: true } | { error: string }> {
-  const log = new Logger(flowId);
+  const run = PipelineRun.resume(MATRIX_SUBMIT_PIPELINE, flowId);
   try {
     const session = await getSession();
     if (!session) return { error: SESSION_ERROR_MSG };
@@ -165,65 +156,52 @@ export async function persistPositioningReportAction(
       return { error: "Form doğrulaması başarısız." };
     }
 
-    // Sanitization for titles and authors
-    if (juryResult.recommendedTheses.length > 0) {
-      const itemsToSanitize = juryResult.recommendedTheses.map((t) => ({
-        title: t.title || "",
-        author: t.author || "",
-      }));
-      const sanitized = await sanitizeAcademicDataBulk(itemsToSanitize, log);
-      juryResult.recommendedTheses = juryResult.recommendedTheses.map(
-        (t, idx) => ({
-          ...t,
-          title: sanitized[idx]?.title || t.title,
-          author: sanitized[idx]?.author || t.author,
-        }),
+    await run.execute("persist", async () => {
+      // Sanitization for titles and authors
+      if (juryResult.recommendedTheses.length > 0) {
+        const itemsToSanitize = juryResult.recommendedTheses.map((t) => ({
+          title: t.title || "",
+          author: t.author || "",
+        }));
+        const sanitized = await sanitizeAcademicDataBulk(
+          itemsToSanitize,
+          run.logger,
+        );
+        juryResult.recommendedTheses = juryResult.recommendedTheses.map(
+          (t, idx) => ({
+            ...t,
+            title: sanitized[idx]?.title || t.title,
+            author: sanitized[idx]?.author || t.author,
+          }),
+        );
+      }
+
+      const [matrix] = await db
+        .select({ id: matrices.id })
+        .from(matrices)
+        .where(eq(matrices.userId, session.userId));
+
+      if (!matrix) {
+        throw new Error("Tez matrisi bulunamadı.");
+      }
+
+      await savePositioningReportTransaction(
+        session.userId,
+        matrix.id,
+        juryResult,
       );
-    }
+    });
 
-    const [matrix] = await db
-      .select({ id: matrices.id })
-      .from(matrices)
-      .where(eq(matrices.userId, session.userId));
-
-    if (!matrix) {
-      return { error: "Tez matrisi bulunamadı." };
-    }
-
-    log.info("positioning_db_transaction_start");
-    await savePositioningReportTransaction(
-      session.userId,
-      matrix.id,
-      juryResult,
-    );
-    log.info("positioning_db_transaction_success");
+    run.finish();
 
     return { success: true };
-  } catch (error) {
-    log.error("positioning_persist_failed", {
-      error,
-    });
+  } catch {
+    run.finish();
     return {
       error:
         "Konumlandırma raporu kaydedilirken bir hata oluştu. Lütfen tekrar deneyin.",
     };
   }
-}
-
-/**
- * Toplam pipeline süresini kaydeder.
- *
- * @param flowId - Akış kimliği.
- * @param durationMs - Milisaniye cinsinden toplam süre.
- */
-export async function logPositioningPipelineSuccessAction(
-  flowId: string,
-  durationMs: number,
-): Promise<void> {
-  const log = new Logger(flowId);
-  log.total("positioning_pipeline", Math.round(durationMs), {
-    service: "positioning",
-  });
 }
 
 /**

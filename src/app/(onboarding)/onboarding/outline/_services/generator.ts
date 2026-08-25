@@ -8,7 +8,9 @@ import { invalidateOnboardingStepCache } from "@/lib/cache-tags";
 import { generateGeminiStructuredContent } from "@/core/services/ai";
 import { FLASH_LITE_35, GEMINI_SEED } from "@/lib/constants";
 import { ThinkingLevel } from "@google/genai";
-import { createFlowId, Logger } from "@/lib/logger";
+import { Logger } from "@/lib/logger";
+import { PipelineRun } from "@/lib/pipeline-logger";
+import { OUTLINE_GENERATION_PIPELINE } from "@/lib/pipeline-definitions";
 import {
   outlineGenerationSchema,
   outlineGenerationJsonSchema,
@@ -20,14 +22,17 @@ import { buildOutlineGenerationPromptPayload } from "../_prompts/outline-generat
 /**
  * Generates the thesis outline via Gemini without persisting it.
  *
+ * @param flowId - Optional shared flow identifier of the outline generation pipeline run.
  * @returns The generated outline or an error message.
  */
-export async function generateOutlineAction(): Promise<
+export async function generateOutlineAction(
+  flowId?: string,
+): Promise<
   { success: true; outline: OutlineGenerationResponse } | { error: string }
 > {
-  const flowId = createFlowId();
-  const log = new Logger(flowId);
-  const startTime = performance.now();
+  const run = flowId
+    ? PipelineRun.resume(OUTLINE_GENERATION_PIPELINE, flowId)
+    : PipelineRun.create(OUTLINE_GENERATION_PIPELINE);
 
   try {
     const session = await getSession();
@@ -40,24 +45,20 @@ export async function generateOutlineAction(): Promise<
 
     if (!matrix) return { error: "Thesis matrix not found." };
 
-    log.info("outline_generation_start", {
-      service: "outline",
-    });
+    const outline = await run.execute("generate", async () => {
+      const payload = buildOutlineGenerationPromptPayload({
+        subjectProblem: matrix.subjectProblem,
+        theoreticalFramework: matrix.theoreticalFramework,
+        primaryMaterial: matrix.primaryMaterial,
+        methodology: matrix.methodology,
+      });
 
-    const payload = buildOutlineGenerationPromptPayload({
-      subjectProblem: matrix.subjectProblem,
-      theoreticalFramework: matrix.theoreticalFramework,
-      primaryMaterial: matrix.primaryMaterial,
-      methodology: matrix.methodology,
-    });
-
-    const result =
-      await generateGeminiStructuredContent<OutlineGenerationResponse>(
+      return generateGeminiStructuredContent<OutlineGenerationResponse>(
         FLASH_LITE_35,
         payload.systemInstruction,
         payload.userPrompt,
         outlineGenerationJsonSchema,
-        log,
+        run.logger,
         {
           thinkingConfig: { thinkingLevel: ThinkingLevel.LOW },
           zodSchema: outlineGenerationSchema,
@@ -67,18 +68,10 @@ export async function generateOutlineAction(): Promise<
           quiet: true,
         },
       );
-
-    log.info("outline_generation_success", {
-      service: "outline",
-      durationMs: Math.round(performance.now() - startTime),
     });
 
-    return { success: true, outline: result };
-  } catch (err) {
-    log.error("outline_generation_failed", {
-      service: "outline",
-      error: err instanceof Error ? err : new Error(String(err)),
-    });
+    return { success: true, outline };
+  } catch {
     return {
       error: "Tez planı oluşturulurken beklenmeyen bir hata oluştu.",
     };
@@ -86,16 +79,19 @@ export async function generateOutlineAction(): Promise<
 }
 
 /**
- * Persists a generated thesis outline to the database.
+ * Persists a generated thesis outline to the database and closes the pipeline run.
  *
  * @param outline - The generated outline data from Gemini.
+ * @param flowId - Optional shared flow identifier of the outline generation pipeline run.
  * @returns A success flag or an error message.
  */
 export async function persistOutlineAction(
   outline: OutlineGenerationResponse,
+  flowId?: string,
 ): Promise<{ success: true } | { error: string }> {
-  const flowId = createFlowId();
-  const log = new Logger(flowId);
+  const run = flowId
+    ? PipelineRun.resume(OUTLINE_GENERATION_PIPELINE, flowId)
+    : PipelineRun.create(OUTLINE_GENERATION_PIPELINE);
 
   try {
     const session = await getSession();
@@ -108,16 +104,17 @@ export async function persistOutlineAction(
 
     if (!matrix) return { error: "Thesis matrix not found." };
 
-    await persistOutlines(session.userId, matrix.id, outline);
+    await run.execute("persist", async () => {
+      await persistOutlines(session.userId, matrix.id, outline, run.logger);
 
-    invalidateOnboardingStepCache("outline");
+      invalidateOnboardingStepCache("outline");
+    });
+
+    run.finish();
 
     return { success: true };
-  } catch (err) {
-    log.error("outline_persist_failed", {
-      service: "outline",
-      error: err instanceof Error ? err : new Error(String(err)),
-    });
+  } catch {
+    run.finish();
     return {
       error:
         "Tez planı veritabanına kaydedilirken beklenmeyen bir hata oluştu.",
@@ -131,15 +128,14 @@ export async function persistOutlineAction(
  * @param userId - The current user id.
  * @param matrixId - The thesis matrix id.
  * @param outline - The generated outline data from Gemini.
+ * @param log - The parent pipeline logger instance.
  */
 async function persistOutlines(
   userId: number,
   matrixId: number,
   outline: OutlineGenerationResponse,
+  log: Logger,
 ): Promise<void> {
-  const flowId = createFlowId();
-  const log = new Logger(flowId);
-
   await db.transaction(async (tx) => {
     // Delete existing outlines for this matrix (cascade deletes outline_annotations / outline_sources)
     await tx.delete(outlines).where(eq(outlines.matrixId, matrixId));

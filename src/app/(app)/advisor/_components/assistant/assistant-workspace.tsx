@@ -35,12 +35,16 @@ export function AssistantWorkspace({
     streamingText,
     streamingSources,
     streamingPersona,
+    streamingToolCalls,
     activeCitation,
     isCitationOpen,
     handleSelectSession,
     handleNewSession,
     handleDeleteSession,
     handleSendMessage,
+    handleApproveTool,
+    handleRejectTool,
+    handleUndoTool,
     handleOpenCitation,
     handleCloseCitation,
   } = useAssistantWorkspace({ initialSessionId });
@@ -141,8 +145,13 @@ export function AssistantWorkspace({
             streamingText={streamingText}
             streamingSources={streamingSources}
             streamingPersona={streamingPersona}
+            streamingToolCalls={streamingToolCalls}
             onCitationClick={handleOpenCitation}
+            onApproveTool={handleApproveTool}
+            onRejectTool={handleRejectTool}
+            onUndoTool={handleUndoTool}
           />
+
 
           {/* Prompt Input Bar */}
           <AssistantInput

@@ -2,29 +2,43 @@
 
 import { useState } from "react";
 import { Copy, Check, Sparkles, User, BookOpen, Bot, ChevronDown } from "lucide-react";
-import type { Message } from "@/core/db/schema";
+import type { Message, ChatToolCall } from "@/core/db/schema";
 import type { RagSearchResultItem } from "@/core/services/search/rag-search";
 import { MarkdownRenderer } from "../markdown-renderer";
+import { ToolActionCard } from "../chat/tool-action-card";
 
 interface AssistantMessageItemProps {
-  message: Pick<Message, "id" | "role" | "content" | "persona" | "sources" | "createdAt"> & {
+  message: Pick<
+    Message,
+    "id" | "role" | "content" | "persona" | "sources" | "toolCalls" | "createdAt"
+  > & {
     sources?: RagSearchResultItem[] | null;
+    toolCalls?: ChatToolCall[] | null;
   };
   onCitationClick?: (source: RagSearchResultItem) => void;
+  onApproveTool?: (messageId: number, toolCall: ChatToolCall) => Promise<void>;
+  onRejectTool?: (messageId: number, toolCall: ChatToolCall) => Promise<void>;
+  onUndoTool?: (messageId: number, toolCall: ChatToolCall) => Promise<void>;
 }
 
 /**
  * Individual chat bubble rendering user and assistant messages with markdown support,
- * persona tags, and clickable citations.
+ * persona tags, mutation tool action cards, and clickable citations.
  *
  * @param props - Component props.
  * @param props.message - The message data object.
  * @param props.onCitationClick - Callback when a cited literature source is clicked.
+ * @param props.onApproveTool - Callback when a mutation tool is approved.
+ * @param props.onRejectTool - Callback when a mutation tool is rejected.
+ * @param props.onUndoTool - Callback when an approved mutation tool is undone.
  * @returns The rendered message item markup.
  */
 export function AssistantMessageItem({
   message,
   onCitationClick,
+  onApproveTool,
+  onRejectTool,
+  onUndoTool,
 }: AssistantMessageItemProps) {
   const [copied, setCopied] = useState(false);
   const [isSourcesExpanded, setIsSourcesExpanded] = useState(false);
@@ -49,12 +63,40 @@ export function AssistantMessageItem({
     ? (message.sources as RagSearchResultItem[])
     : [];
 
+  const toolCalls: ChatToolCall[] = Array.isArray(message.toolCalls)
+    ? (message.toolCalls as ChatToolCall[])
+    : [];
+
   if (isUser) {
     return (
       <div className="flex justify-end w-full">
-        <div className="flex items-start gap-2.5 max-w-[85%] sm:max-w-[75%]">
-          <div className="rounded-lg border border-primary/20 bg-primary/10 p-3 text-xs leading-relaxed text-foreground whitespace-pre-wrap">
-            {message.content}
+        <div className="group flex items-start gap-2.5 max-w-[85%] sm:max-w-[75%]">
+          <div className="min-w-0 flex flex-col items-end gap-0.5">
+            <div className="rounded-lg border border-primary/20 bg-primary/10 p-3 text-xs leading-relaxed text-foreground whitespace-pre-wrap break-words">
+              {message.content}
+            </div>
+            <button
+              type="button"
+              onClick={handleCopy}
+              title="Metni Kopyala"
+              className={`flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-medium transition-all cursor-pointer ${
+                copied
+                  ? "opacity-100 text-foreground"
+                  : "opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              {copied ? (
+                <>
+                  <Check className="size-3 text-primary" />
+                  <span>Kopyalandı</span>
+                </>
+              ) : (
+                <>
+                  <Copy className="size-3" />
+                  <span>Kopyala</span>
+                </>
+              )}
+            </button>
           </div>
           <div className="p-1.5 rounded-full bg-secondary text-secondary-foreground border border-border shrink-0 mt-0.5">
             <User className="size-3.5" />
@@ -80,38 +122,69 @@ export function AssistantMessageItem({
             </span>
           </div>
 
-          <button
-            type="button"
-            onClick={handleCopy}
-            title="Metni Kopyala"
-            className="flex items-center gap-1 px-2 py-1 rounded-md text-[11px] font-medium text-muted-foreground hover:text-foreground hover:bg-muted/30 transition-colors cursor-pointer"
-          >
-            {copied ? (
-              <>
-                <Check className="size-3 text-primary" />
-                <span>Kopyalandı</span>
-              </>
-            ) : (
-              <>
-                <Copy className="size-3" />
-                <span>Kopyala</span>
-              </>
-            )}
-          </button>
+          {message.content && (
+            <button
+              type="button"
+              onClick={handleCopy}
+              title="Metni Kopyala"
+              className="flex items-center gap-1 px-2 py-1 rounded-md text-[11px] font-medium text-muted-foreground hover:text-foreground hover:bg-muted/30 transition-colors cursor-pointer"
+            >
+              {copied ? (
+                <>
+                  <Check className="size-3 text-primary" />
+                  <span>Kopyalandı</span>
+                </>
+              ) : (
+                <>
+                  <Copy className="size-3" />
+                  <span>Kopyala</span>
+                </>
+              )}
+            </button>
+          )}
         </div>
 
         {/* Content Body */}
-        <div className="text-xs leading-relaxed text-card-foreground">
-          <MarkdownRenderer
-            content={message.content}
-            sources={sourceItems}
-            onCitationClick={(idx) => {
-              if (sourceItems[idx] && onCitationClick) {
-                onCitationClick(sourceItems[idx]);
-              }
-            }}
-          />
-        </div>
+        {message.content && (
+          <div className="text-xs leading-relaxed text-card-foreground">
+            <MarkdownRenderer
+              content={message.content}
+              sources={sourceItems}
+              onCitationClick={(idx) => {
+                if (sourceItems[idx] && onCitationClick) {
+                  onCitationClick(sourceItems[idx]);
+                }
+              }}
+            />
+          </div>
+        )}
+
+        {/* Interactive Mutation Tool Cards */}
+        {toolCalls.length > 0 && (
+          <div className="pt-2 space-y-2">
+            {toolCalls.map((tc) => (
+              <ToolActionCard
+                key={tc.toolCallId}
+                toolCall={tc}
+                onApprove={
+                  onApproveTool
+                    ? (tool) => onApproveTool(message.id, tool)
+                    : undefined
+                }
+                onReject={
+                  onRejectTool
+                    ? (tool) => onRejectTool(message.id, tool)
+                    : undefined
+                }
+                onUndo={
+                  onUndoTool
+                    ? (tool) => onUndoTool(message.id, tool)
+                    : undefined
+                }
+              />
+            ))}
+          </div>
+        )}
 
         {/* Cited Sources Strip */}
         {sourceItems.length > 0 && (
@@ -162,3 +235,4 @@ export function AssistantMessageItem({
     </div>
   );
 }
+

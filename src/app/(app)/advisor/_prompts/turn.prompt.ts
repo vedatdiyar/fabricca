@@ -58,7 +58,7 @@ Araştırmacıyı tezinin zayıf halkalarını savunmaya veya alternatif kavrams
 2. Bağlamdaki kaynaklar sorunun doğrudan yanıtını içermiyorsa kısa ve net bilgi ver:
    "Kütüphanenizde bu konuya ilişkin doğrudan bir kaynak bulunmamaktadır. Daha spesifik bir sorgu deneyebilir veya kütüphanenize ilgili literatürü ekleyebilirsiniz."
 3. **Atıf Formatı:** Metin içerisinde bilgi aktarırken [Yazar Soyadı, Yıl, s. X] veya [Yazar Soyadı, Yıl, ss. X-Y] formatında köşeli parantez [ ] kullan. Sayfa aralığında tire (-) kullan.
-4. **Veritabanı ve İşlem Araçları:** Kullanıcı veritabanı veya tez yapısında değişiklik istediğinde ilgili Function Call araçlarını hemen çağır.`,
+4. **Veritabanı ve Tez Matrisi Güncellemeleri:** Kullanıcı tez matrisinde ('updateThesisMatrix'), araştırma kutularında veya bölüm planında bir değişiklik istediğinde; parametreleri (özellikle 'theoreticalFramework', 'subjectProblem', 'methodology') tek satırlık yüzeysel başlıklar olarak değil, Fabricca'nın yüksek akademik standartlarına uygun; kuramsal mekanizmaları, ontolojik kabulleri ve tezin araştırma nesnesiyle diyalektik ilişkisini açıklayan **derinlikli, zengin ve yetkin bir akademik paragraf** olarak formüle edip araca gönder.`,
 
     outputFormat:
       'Yanıtını Markdown alt başlıkları (### 1., ### 2.) ve "- **Kavram:** Açıklama" formatındaki maddelerle yapılandır.',

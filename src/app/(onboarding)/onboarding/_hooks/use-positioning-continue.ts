@@ -6,12 +6,16 @@ import { toast } from "sonner";
 import { useQueryClient } from "@tanstack/react-query";
 import { useLoadingOverlay } from "@/core/providers/loading-overlay-provider";
 import { BOX_GENERATION_STEPS } from "@/app/(onboarding)/onboarding/_services/loading-steps";
+import {
+  BOX_GENERATION_PIPELINE,
+  stageIndexOf,
+} from "@/lib/pipeline-definitions";
+import { createFlowId } from "@/lib/logger";
 import { getStepTanStackKeys } from "@/lib/onboarding-cache";
 import { clearDownstreamDbAction } from "../actions";
 import {
   generateAndMapBoxesAction,
   persistBoxesAction,
-  logBoxesPipelineSuccessAction,
 } from "../boxes/actions";
 import { useLoadingOverlaySteps } from "./use-loading-overlay-steps";
 
@@ -40,7 +44,7 @@ export function usePositioningContinue() {
       steps,
     );
 
-    const pipelineStart = performance.now();
+    const flowId = createFlowId();
 
     try {
       const clearResult = await clearDownstreamDbAction("positioning");
@@ -50,23 +54,27 @@ export function usePositioningContinue() {
         return;
       }
 
-      const genResult = await generateAndMapBoxesAction();
+      const genResult = await generateAndMapBoxesAction(flowId);
       if ("error" in genResult) {
         hideLoading();
         toast.error(genResult.error);
         return;
       }
-      await completeStep(0, steps);
+      await completeStep(
+        stageIndexOf(BOX_GENERATION_PIPELINE, "generate"),
+        steps,
+      );
 
-      const persistResult = await persistBoxesAction(genResult.boxes);
+      const persistResult = await persistBoxesAction(genResult.boxes, flowId);
       if ("error" in persistResult) {
         hideLoading();
         toast.error(persistResult.error);
         return;
       }
-      await completeStep(1, steps);
-
-      await logBoxesPipelineSuccessAction(performance.now() - pipelineStart);
+      await completeStep(
+        stageIndexOf(BOX_GENERATION_PIPELINE, "persist"),
+        steps,
+      );
 
       const boxesTqKeys = getStepTanStackKeys("boxes");
       for (const key of boxesTqKeys)

@@ -18,15 +18,16 @@ import { fetchThesisMatrix } from "@/app/(onboarding)/onboarding/_services/fetch
  * Phase 2: generates English semantic queries for every sub-box in a single Gemini call.
  *
  * @param structure - The raw box structure generated in phase 1.
+ * @param flowId - Optional shared flow identifier of the parent pipeline run.
  * @returns The semantic queries keyed by sub-box title, or an error message.
  */
 export async function generateSemanticQueriesAction(
   structure: RawBoxStructureResponse,
+  flowId?: string,
 ): Promise<
   { success: true; queries: Map<string, string> } | { error: string }
 > {
-  const flowId = createFlowId();
-  const log = new Logger(flowId);
+  const log = new Logger(flowId ?? createFlowId());
   const startTime = performance.now();
 
   try {

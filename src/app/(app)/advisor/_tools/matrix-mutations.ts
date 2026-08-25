@@ -2,6 +2,7 @@ import { db } from "@/core/db";
 import { matrices, type Matrix } from "@/core/db/schema";
 import { eq } from "drizzle-orm";
 import type { MutationToolHandler, MutationToolResult } from "./mutation-types";
+import { runMatrixRealignmentCascade } from "../_services/realignment/matrix-realignment-orchestrator";
 
 /**
  * Captures the current thesis matrix fields for the undo preview.
@@ -27,11 +28,11 @@ async function getMatrixPreviousState(
 }
 
 /**
- * Updates one or more thesis matrix fields.
+ * Updates one or more thesis matrix fields and triggers the Cascading Realignment Pipeline.
  *
  * @param args - The proposed mutation arguments.
  * @param userId - Authenticated user ID.
- * @returns The update result with the captured previous state.
+ * @returns The update result with the captured previous state and cascade details.
  */
 async function executeMatrixUpdate(
   args: Record<string, unknown>,
@@ -52,23 +53,47 @@ async function executeMatrixUpdate(
   };
 
   const updateData: Partial<Matrix> = {};
-  if (typeof args.subjectProblem === "string")
+  const changedFields: string[] = [];
+
+  if (typeof args.subjectProblem === "string") {
     updateData.subjectProblem = args.subjectProblem;
-  if (typeof args.theoreticalFramework === "string")
+    changedFields.push(`Konu/Problem: "${args.subjectProblem}"`);
+  }
+  if (typeof args.theoreticalFramework === "string") {
     updateData.theoreticalFramework = args.theoreticalFramework;
-  if (typeof args.primaryMaterial === "string")
+    changedFields.push(`Kuramsal Çerçeve: "${args.theoreticalFramework}"`);
+  }
+  if (typeof args.primaryMaterial === "string") {
     updateData.primaryMaterial = args.primaryMaterial;
-  if (typeof args.methodology === "string")
+    changedFields.push(`Birincil Materyal: "${args.primaryMaterial}"`);
+  }
+  if (typeof args.methodology === "string") {
     updateData.methodology = args.methodology;
+    changedFields.push(`Yöntem/Metodoloji: "${args.methodology}"`);
+  }
 
   await db
     .update(matrices)
     .set({ ...updateData, updatedAt: new Date() })
     .where(eq(matrices.id, userMatrix.id));
 
+  // Run the Cascading Realignment & Literature Pipeline
+  const cascadeRes = await runMatrixRealignmentCascade(
+    userId,
+    changedFields.join("; "),
+  );
+
+  const finalMessage = cascadeRes.success
+    ? `Tez matrisi güncellendi. Kademeli etki analizi tamamlandı: ${cascadeRes.createdBoxes.length} yeni araştırma kutusu, ${cascadeRes.addedSources.length} yeni kaynak ve ${cascadeRes.createdTasks.length} çalışma görevi oluşturuldu.`
+    : "Tez matrisi başarıyla güncellendi.";
+
   return {
     success: true,
-    message: "Tez matrisi başarıyla güncellendi.",
+    message: finalMessage,
+    data: {
+      matrixId: userMatrix.id,
+      cascade: cascadeRes,
+    },
     previousState,
   };
 }
@@ -80,3 +105,4 @@ export const matrixMutations: Record<string, MutationToolHandler> = {
     getPreviousState: getMatrixPreviousState,
   },
 };
+

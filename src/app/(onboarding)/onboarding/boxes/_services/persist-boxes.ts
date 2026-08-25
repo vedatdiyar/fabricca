@@ -3,7 +3,8 @@
 import { z } from "zod";
 import { db } from "@/core/db";
 import { getSession, SESSION_ERROR_MSG } from "@/lib/session";
-import { createFlowId, Logger } from "@/lib/logger";
+import { PipelineRun } from "@/lib/pipeline-logger";
+import { BOX_GENERATION_PIPELINE } from "@/lib/pipeline-definitions";
 import { updateTag } from "next/cache";
 import { CACHE_TAGS, revalidateOnboardingPaths } from "@/lib/cache-tags";
 import { type OnboardingActionResult } from "@/lib/types";
@@ -46,13 +47,17 @@ const confirmBoxesSchema = z.array(confirmBoxSchema);
  * Persists the boxes to the database in a single transaction and invalidates caches.
  *
  * @param boxes - The boxes payload to validate and persist.
+ * @param flowId - Optional shared flow identifier of the box generation pipeline run.
  * @returns An onboarding action result with a success flag or an error message.
  */
 export async function persistBoxesAction(
   boxes: unknown,
+  flowId?: string,
 ): Promise<OnboardingActionResult> {
-  const flowId = createFlowId();
-  const log = new Logger(flowId);
+  const run = flowId
+    ? PipelineRun.resume(BOX_GENERATION_PIPELINE, flowId)
+    : PipelineRun.create(BOX_GENERATION_PIPELINE);
+  const log = run.logger;
   const startTime = performance.now();
 
   try {
@@ -61,11 +66,6 @@ export async function persistBoxesAction(
 
     const matrix = await fetchThesisMatrix();
     if (!matrix) return { error: "Tez matrisi bulunamadı." };
-
-    log.info("boxes_persist_start", {
-      service: "boxes",
-      filePath: "src/features/boxes/persist-boxes.ts",
-    });
 
     const parsed = confirmBoxesSchema.safeParse(boxes);
     if (!parsed.success) {
@@ -79,11 +79,13 @@ export async function persistBoxesAction(
     const validBoxes = parsed.data;
     const thesisMatrixId = matrix.id;
 
-    await db.transaction(async (tx) => {
-      await insertBoxesTransaction(tx as never, validBoxes, thesisMatrixId);
-    });
+    await run.execute("persist", async () => {
+      await db.transaction(async (tx) => {
+        await insertBoxesTransaction(tx, validBoxes, thesisMatrixId);
+      });
 
-    await persistRelatedTheses(session.userId);
+      await persistRelatedTheses(session.userId);
+    });
 
     try {
       revalidateOnboardingPaths();
@@ -95,17 +97,11 @@ export async function persistBoxesAction(
       });
     }
 
-    log.info("boxes_persist_success", {
-      service: "boxes",
-      durationMs: Math.round(performance.now() - startTime),
-    });
+    run.finish({ durationMs: Math.round(performance.now() - startTime) });
 
     return { success: true };
-  } catch (err) {
-    log.error("boxes_persist_failed", {
-      service: "boxes",
-      error: err instanceof Error ? err : new Error(String(err)),
-    });
+  } catch {
+    run.finish();
     return { error: "Konu kutuları veritabanına kaydedilemedi." };
   }
 }

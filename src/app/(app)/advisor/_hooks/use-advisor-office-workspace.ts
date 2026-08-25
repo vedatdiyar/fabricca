@@ -13,6 +13,7 @@ import type {
   JuryCritique,
 } from "../_services/pipeline/types";
 import type { DefenseMessage } from "../_components/office-defense-chat";
+import { createStreamFlusher } from "../_lib/stream-flusher";
 
 /**
  * Manages Danışmanın Çalışma Odası workspace state, data loading, review submission and live defense streaming.
@@ -347,6 +348,8 @@ export function useAdvisorOfficeWorkspace(initialSessionId?: number) {
       messages: [...prev.messages, streamingMsgItem],
     }));
 
+    const flusher = createStreamFlusher();
+
     try {
       const response = await fetch("/api/advisor", {
         method: "POST",
@@ -365,26 +368,32 @@ export function useAdvisorOfficeWorkspace(initialSessionId?: number) {
       const reader = response.body.getReader();
       const decoder = new TextDecoder();
       let accumulatedText = "";
+      let buffer = "";
 
       while (true) {
         const { value, done } = await reader.read();
         if (done) break;
 
-        const rawChunk = decoder.decode(value, { stream: true });
-        const lines = rawChunk.split("\n");
+        // Buffered SSE framing per spec: frames are separated by a blank
+        // line and may span multiple network chunks; keep the remainder.
+        buffer += decoder.decode(value, { stream: true });
+        const frames = buffer.split("\n\n");
+        buffer = frames.pop() ?? "";
 
-        for (const line of lines) {
-          if (line.startsWith("data: ")) {
-            const dataStr = line.replace("data: ", "").trim();
-            if (!dataStr) continue;
+        for (const frame of frames) {
+          const trimmedFrame = frame.trim();
+          if (!trimmedFrame.startsWith("data:")) continue;
+          const dataStr = trimmedFrame.replace(/^data:\s*/, "");
+          if (!dataStr || dataStr === "[DONE]") continue;
 
-            try {
-              const parsed = JSON.parse(dataStr);
-              if (
-                (parsed.type === "delta" || parsed.type === "chunk") &&
-                parsed.text
-              ) {
-                accumulatedText += parsed.text;
+          try {
+            const parsed = JSON.parse(dataStr);
+            if (
+              (parsed.type === "delta" || parsed.type === "chunk") &&
+              parsed.text
+            ) {
+              accumulatedText += parsed.text;
+              flusher.schedule(() => {
                 setDefenseState((prev) => ({
                   ...prev,
                   messages: prev.messages.map((m) =>
@@ -393,13 +402,34 @@ export function useAdvisorOfficeWorkspace(initialSessionId?: number) {
                       : m,
                   ),
                 }));
-              }
-            } catch {
-              // Ignore non-json lines
+              });
             }
+          } catch {
+            // Ignore non-json frames
           }
         }
       }
+
+      // Flush any final unterminated frame left in the remainder buffer.
+      const tail = buffer.trim();
+      if (tail.startsWith("data:")) {
+        const dataStr = tail.replace(/^data:\s*/, "");
+        if (dataStr && dataStr !== "[DONE]") {
+          try {
+            const parsed = JSON.parse(dataStr);
+            if (
+              (parsed.type === "delta" || parsed.type === "chunk") &&
+              parsed.text
+            ) {
+              accumulatedText += parsed.text;
+            }
+          } catch {
+            // Ignore non-json tail frame
+          }
+        }
+      }
+
+      flusher.flushNow();
 
       setDefenseState((prev) => ({
         ...prev,
@@ -416,6 +446,7 @@ export function useAdvisorOfficeWorkspace(initialSessionId?: number) {
         messages: prev.messages.filter((m) => m.id !== tempAdvisorId),
       }));
     } finally {
+      flusher.cancel();
       setDefenseState((prev) => ({ ...prev, isStreaming: false }));
     }
   };

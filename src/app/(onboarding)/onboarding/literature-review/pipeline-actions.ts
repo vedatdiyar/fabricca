@@ -4,7 +4,8 @@ import {
   revalidateOnboardingPaths,
   invalidateOnboardingCache,
 } from "@/lib/cache-tags";
-import { Logger, createFlowId } from "@/lib/logger";
+import { PipelineRun } from "@/lib/pipeline-logger";
+import { LITERATURE_PIPELINE } from "@/lib/pipeline-definitions";
 import { getSession, SESSION_ERROR_MSG } from "@/lib/session";
 import type { LiteraturePoolEntry } from "@/lib/types";
 import type { SubBoxInput } from "@/app/(onboarding)/onboarding/literature-review/_services/literature-review-papers";
@@ -27,7 +28,7 @@ import { resetLiteratureCancelledAction } from "./cancel-actions";
 export async function processAllBoxesAction(
   boxes: SubBoxInput[],
 ): Promise<{ data?: LiteraturePoolEntry[]; error?: string }> {
-  const logger = new Logger(createFlowId());
+  const run = PipelineRun.create(LITERATURE_PIPELINE);
 
   try {
     const session = await getSession();
@@ -42,25 +43,27 @@ export async function processAllBoxesAction(
     if (!matrix) return { error: "Tez matrisi bulunamadı." };
     if (isLiteratureCancelled(userId)) return { error: "cancelled" };
 
-    const { poolEntries } = await orchestrateBatchProcess(
-      boxes,
-      logger,
-      matrix.subjectProblem,
-      () => isLiteratureCancelled(userId),
-      async (thesisBoxId, articles) => {
-        await persistSubBoxEntry(thesisBoxId, articles);
-      },
+    const { poolEntries } = await run.execute("scan", () =>
+      orchestrateBatchProcess(
+        boxes,
+        run.logger,
+        matrix.subjectProblem,
+        () => isLiteratureCancelled(userId),
+        async (thesisBoxId, articles) => {
+          await persistSubBoxEntry(thesisBoxId, articles);
+        },
+      ),
     );
 
     if (isLiteratureCancelled(userId)) return { error: "cancelled" };
 
+    run.finish();
+
     return { data: poolEntries };
   } catch (err) {
+    run.finish();
     const message =
       err instanceof Error ? err.message : "Beklenmeyen bir hata oluştu.";
-    logger.error("literature_batch_process_failed", {
-      error: err,
-    });
     return { error: message };
   }
 }
@@ -74,7 +77,7 @@ export async function processAllBoxesAction(
 export async function runLiteraturePipelineAction(
   boxes: SubBoxInput[],
 ): Promise<{ data?: LiteraturePoolEntry[]; error?: string }> {
-  const logger = new Logger(createFlowId());
+  const run = PipelineRun.create(LITERATURE_PIPELINE);
   const pipelineStart = performance.now();
 
   try {
@@ -89,45 +92,43 @@ export async function runLiteraturePipelineAction(
     const { matrix } = await loadThesisMatrixAndBoxes(userId);
     const subjectProblem = matrix?.subjectProblem ?? "";
 
-    const { poolEntries } = await orchestrateBatchProcess(
-      boxes,
-      logger,
-      subjectProblem,
-      () => isLiteratureCancelled(userId),
-      async (thesisBoxId, articles) => {
-        await persistSubBoxEntry(thesisBoxId, articles);
-      },
+    const { poolEntries } = await run.execute("scan", () =>
+      orchestrateBatchProcess(
+        boxes,
+        run.logger,
+        subjectProblem,
+        () => isLiteratureCancelled(userId),
+        async (thesisBoxId, articles) => {
+          await persistSubBoxEntry(thesisBoxId, articles);
+        },
+      ),
     );
 
     if (isLiteratureCancelled(userId)) return { error: "cancelled" };
 
-    logger.info("literature_pool_persist_start");
-    await persistLiteraturePool(poolEntries);
-    logger.info("literature_pool_persist_success");
+    await run.execute("persist", () => persistLiteraturePool(poolEntries));
 
     await persistRelatedTheses(userId);
 
     try {
       revalidateOnboardingPaths();
     } catch (err) {
-      logger.warn("literature_pipeline_revalidate_failed", {
+      run.logger.warn("literature_pipeline_revalidate_failed", {
         service: "literature",
         error: err,
       });
     }
     invalidateOnboardingCache();
 
-    logger.info("literature_pipeline_success", {
-      data: { durationMs: Math.round(performance.now() - pipelineStart) },
+    run.finish({
+      durationMs: Math.round(performance.now() - pipelineStart),
     });
 
     return { data: poolEntries };
   } catch (err) {
+    run.finish();
     const message =
       err instanceof Error ? err.message : "Beklenmeyen bir hata oluştu.";
-    logger.error("literature_pipeline_failed", {
-      error: err,
-    });
     return { error: message };
   }
 }

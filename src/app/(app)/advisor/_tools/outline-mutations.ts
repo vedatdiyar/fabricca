@@ -284,6 +284,30 @@ async function executeUnlinkSourceFromOutline(
   };
 }
 
+/**
+ * Captures the current outline section state before an update for undo/preview.
+ *
+ * @param args - The proposed mutation arguments.
+ * @param userId - Authenticated user ID.
+ * @returns The existing outline field values, or undefined.
+ */
+async function getOutlinePreviousState(
+  args: Record<string, unknown>,
+  userId: number,
+): Promise<Record<string, unknown> | undefined> {
+  const outlineId = toNumericId(args.outlineId);
+  if (!outlineId) return undefined;
+  if (!(await isOutlineOwnedByUser(outlineId, userId))) return undefined;
+  const existing = await db.query.outlines.findFirst({
+    where: eq(outlines.id, outlineId),
+  });
+  if (!existing) return undefined;
+  return {
+    title: existing.title,
+    description: existing.description,
+  };
+}
+
 /** Mutation handlers for the outline tools. */
 export const outlineMutations: Record<string, MutationToolHandler> = {
   createOutlineSection: {
@@ -292,7 +316,7 @@ export const outlineMutations: Record<string, MutationToolHandler> = {
   },
   updateOutlineSection: {
     execute: executeUpdateOutlineSection,
-    getPreviousState: async () => undefined,
+    getPreviousState: getOutlinePreviousState,
   },
   pinAnnotationToOutline: {
     execute: executePinAnnotationToOutline,
@@ -311,3 +335,4 @@ export const outlineMutations: Record<string, MutationToolHandler> = {
     getPreviousState: async () => undefined,
   },
 };
+

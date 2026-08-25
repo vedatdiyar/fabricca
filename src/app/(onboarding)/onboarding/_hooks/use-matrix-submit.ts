@@ -6,6 +6,10 @@ import { toast } from "sonner";
 import { useQueryClient } from "@tanstack/react-query";
 import { useLoadingOverlay } from "@/core/providers/loading-overlay-provider";
 import { MATRIX_SUBMIT_STEPS } from "@/app/(onboarding)/onboarding/_services/loading-steps";
+import {
+  MATRIX_SUBMIT_PIPELINE,
+  stageIndexOf,
+} from "@/lib/pipeline-definitions";
 import type { ThesisMatrix } from "@/lib/types";
 import { clearDownstreamDbAction } from "../actions";
 import { saveThesisMatrixAction } from "../matrix/actions";
@@ -13,7 +17,6 @@ import {
   runPositioningSearchAction,
   runPositioningJuryAction,
   persistPositioningReportAction,
-  logPositioningPipelineSuccessAction,
 } from "../positioning/actions";
 import { createFlowId } from "@/lib/logger";
 import { useLoadingOverlaySteps } from "./use-loading-overlay-steps";
@@ -50,7 +53,7 @@ export function useMatrixSubmit() {
       );
 
       try {
-        const pipelineStart = performance.now();
+        const flowId = createFlowId();
         const clearResult = await clearDownstreamDbAction("matrix");
         if ("error" in clearResult) {
           hideLoading();
@@ -58,16 +61,15 @@ export function useMatrixSubmit() {
           return { success: false, error: clearResult.error };
         }
 
-        const saveResult = await saveThesisMatrixAction(matrixInput);
+        const saveResult = await saveThesisMatrixAction(matrixInput, flowId);
         if ("error" in saveResult) {
           hideLoading();
           toast.error(saveResult.error);
           return { success: false, error: saveResult.error };
         }
 
-        await completeStep(0, steps);
+        await completeStep(stageIndexOf(MATRIX_SUBMIT_PIPELINE, "save"), steps);
 
-        const flowId = createFlowId();
         const searchResult = await runPositioningSearchAction(
           matrixInput,
           flowId,
@@ -78,7 +80,10 @@ export function useMatrixSubmit() {
           return { success: false, error: searchResult.error };
         }
 
-        await completeStep(1, steps);
+        await completeStep(
+          stageIndexOf(MATRIX_SUBMIT_PIPELINE, "search"),
+          steps,
+        );
 
         const juryResult = await runPositioningJuryAction(
           matrixInput,
@@ -91,7 +96,10 @@ export function useMatrixSubmit() {
           return { success: false, error: juryResult.error };
         }
 
-        await completeStep(2, steps);
+        await completeStep(
+          stageIndexOf(MATRIX_SUBMIT_PIPELINE, "jury_review"),
+          steps,
+        );
 
         const persistResult = await persistPositioningReportAction(
           matrixInput,
@@ -104,11 +112,9 @@ export function useMatrixSubmit() {
           return { success: false, error: persistResult.error };
         }
 
-        await completeStep(3, steps);
-
-        await logPositioningPipelineSuccessAction(
-          flowId,
-          performance.now() - pipelineStart,
+        await completeStep(
+          stageIndexOf(MATRIX_SUBMIT_PIPELINE, "persist"),
+          steps,
         );
 
         queryClient.invalidateQueries({ queryKey: ["onboarding-steps"] });

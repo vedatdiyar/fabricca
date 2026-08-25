@@ -6,6 +6,8 @@ import { db } from "@/core/db";
 import { matrices, outlines } from "@/core/db/schema";
 import { getSession, SESSION_ERROR_MSG } from "@/lib/session";
 import { createFlowId, Logger } from "@/lib/logger";
+import { PipelineRun } from "@/lib/pipeline-logger";
+import { OUTLINE_GENERATION_PIPELINE } from "@/lib/pipeline-definitions";
 import { invalidateOnboardingStepCache } from "@/lib/cache-tags";
 import { generateOutlineAction } from "@/app/(onboarding)/onboarding/outline/_services/generator";
 
@@ -145,7 +147,7 @@ export async function regenerateAndPersistOutlineAction(): Promise<
     const session = await getSession();
     if (!session) return { error: SESSION_ERROR_MSG };
 
-    const genResult = await generateOutlineAction();
+    const genResult = await generateOutlineAction(flowId);
     if ("error" in genResult) {
       return { error: genResult.error };
     }
@@ -172,6 +174,8 @@ export async function regenerateAndPersistOutlineAction(): Promise<
     log.info("regenerate_and_persist_outline_success", {
       service: "outline",
     });
+
+    PipelineRun.resume(OUTLINE_GENERATION_PIPELINE, flowId).finish();
 
     return {
       success: true,

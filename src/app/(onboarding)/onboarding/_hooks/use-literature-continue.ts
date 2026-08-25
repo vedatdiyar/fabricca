@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import { useQueryClient } from "@tanstack/react-query";
 import { useLoadingOverlay } from "@/core/providers/loading-overlay-provider";
 import { LITERATURE_PIPELINE_STEPS } from "@/app/(onboarding)/onboarding/_services/loading-steps";
+import { LITERATURE_PIPELINE, stageIndexOf } from "@/lib/pipeline-definitions";
 import type { LiteraturePoolEntry } from "@/lib/types";
 import { getStepTanStackKeys } from "@/lib/onboarding-cache";
 import { clearDownstreamDbAction } from "../actions";
@@ -70,14 +71,17 @@ export function useLiteratureContinue() {
         }
 
         if (checkResult.exists) {
-          await completeStep(0, steps);
-          await completeStep(1, steps);
-          await completeStep(2, steps);
+          await completeStep(stageIndexOf(LITERATURE_PIPELINE, "check"), steps);
+          await completeStep(stageIndexOf(LITERATURE_PIPELINE, "scan"), steps);
+          await completeStep(
+            stageIndexOf(LITERATURE_PIPELINE, "persist"),
+            steps,
+          );
           hideLoading();
           return { data: checkResult.data! };
         }
 
-        await completeStep(0, steps);
+        await completeStep(stageIndexOf(LITERATURE_PIPELINE, "check"), steps);
 
         const pipelineResult = await runLiteraturePipelineAction(subBoxInputs);
         if (isCancelled) return { error: "cancelled" };
@@ -86,9 +90,9 @@ export function useLiteratureContinue() {
           return { error: pipelineResult.error };
         }
 
-        await completeStep(1, steps);
+        await completeStep(stageIndexOf(LITERATURE_PIPELINE, "scan"), steps);
 
-        await completeStep(2, steps);
+        await completeStep(stageIndexOf(LITERATURE_PIPELINE, "persist"), steps);
         hideLoading();
 
         return { data: pipelineResult.data! };

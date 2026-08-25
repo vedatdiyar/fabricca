@@ -10,21 +10,15 @@ import {
   MessageSquare,
   Copy,
   Check,
-  BookmarkPlus,
   CheckSquare,
 } from "lucide-react";
-import ReactMarkdown from "react-markdown";
-import remarkGfm from "remark-gfm";
 import type { Components } from "react-markdown";
+import { StreamingMarkdown } from "./markdown-renderer";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
-import {
-  saveDefenseNoteAction,
-  createRevisionTaskAction,
-} from "../office-actions";
-import { SaveNoteDialog } from "./office/save-note-dialog";
+import { createRevisionTaskAction } from "../office-actions";
 import { CreateTaskDialog } from "./office/create-task-dialog";
 import type {
   JuryCritique,
@@ -105,13 +99,7 @@ export function OfficeDefenseChat({
   const [copiedId, setCopiedId] = useState<string | number | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
-
-  // Dialog States
-  const [noteState, setNoteState] = useState({
-    isOpen: false,
-    content: "",
-    isSaving: false,
-  });
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
 
   const [taskState, setTaskState] = useState({
     isOpen: false,
@@ -120,9 +108,16 @@ export function OfficeDefenseChat({
     isSaving: false,
   });
 
-  // Auto-scroll to bottom of chat
+  // Auto-scroll only while the user is already at (or near) the bottom;
+  // use instant scrolling during streaming to avoid animation restart jank.
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    const container = scrollContainerRef.current;
+    if (!container) return;
+    const distance = container.scrollHeight - container.scrollTop - container.clientHeight;
+    if (distance > 160) return;
+    messagesEndRef.current?.scrollIntoView({
+      behavior: isStreaming ? "auto" : "smooth",
+    });
   }, [messages, isStreaming]);
 
   // Adjust textarea height on change or reset
@@ -145,74 +140,31 @@ export function OfficeDefenseChat({
     }
   };
 
-  const handleOpenNoteDialog = (specificText?: string) => {
-    let contentToUse = specificText;
-    if (!contentToUse) {
-      const lastAdvisorMsg = [...messages]
-        .reverse()
-        .find((m) => m.role === "assistant" && m.content);
-      contentToUse = lastAdvisorMsg?.content;
-    }
-
-    const defaultContent = contentToUse?.trim()
-      ? `Danışman Müzakere Kararı (${outlineTitle || "Tez Bölümü"}):\n${contentToUse.trim()}`
-      : report?.diff?.polished
-        ? `Taslak İnceleme Notu (${outlineTitle || "Tez Bölümü"}):\n${report.diff.polished}\n\nÖnemli Şerh:\n${
-            report.juryCritiques?.[0]?.critique || ""
-          }`
-        : `Müzakere Notu (${outlineTitle || "Tez Bölümü"})`;
-
-    setNoteState({
-      isOpen: true,
-      content: defaultContent,
-      isSaving: false,
-    });
-  };
-
-  const handleSaveNote = async () => {
-    if (!noteState.content.trim()) return;
-    setNoteState((prev) => ({ ...prev, isSaving: true }));
-    try {
-      const res = await saveDefenseNoteAction({
-        outlineId: outlineId || 0,
-        noteContent: noteState.content.trim(),
-      });
-      if (res.success) {
-        toast.success(
-          "Savunma notu Alıntı Fişleri ve Bölüme başarıyla kaydedildi.",
-        );
-        setNoteState((prev) => ({ ...prev, isOpen: false }));
-      } else {
-        toast.error(res.error || "Not kaydedilemedi.");
-      }
-    } catch {
-      toast.error("Not kaydedilirken bir hata oluştu.");
-    } finally {
-      setNoteState((prev) => ({ ...prev, isSaving: false }));
-    }
-  };
-
   const handleOpenTaskDialog = (specificText?: string) => {
-    const primaryCritique = activeCritique || report?.juryCritiques?.[0];
-    let contentToUse = specificText;
-    if (!contentToUse) {
+    let titleToUse = `Revizyon: ${(outlineTitle || "Tez Bölümü").slice(0, 40)}`;
+    let descToUse = "";
+
+    if (specificText && specificText.trim()) {
+      descToUse = specificText.trim();
+      if (activeCritique) {
+        titleToUse = `Revizyon: ${activeCritique.title.slice(0, 40)}`;
+      }
+    } else if (activeCritique) {
+      titleToUse = `Revizyon: ${activeCritique.title.slice(0, 40)}`;
+      descToUse = `Jüri Şerhi: ${activeCritique.title}\n${activeCritique.critique}\n\nÖnerilen Çözüm: ${activeCritique.suggestedDefensePoint}`;
+    } else {
       const lastAdvisorMsg = [...messages]
         .reverse()
         .find((m) => m.role === "assistant" && m.content);
-      contentToUse = lastAdvisorMsg?.content;
+      descToUse =
+        lastAdvisorMsg?.content?.trim() ||
+        "Taslak metindeki editoryal ve metodolojik düzeltmeleri Word'e uygula.";
     }
-
-    const textTrimmed = contentToUse?.trim();
-    const defaultDesc = primaryCritique
-      ? `Jüri Şerhi: ${primaryCritique.title}\n${primaryCritique.critique}\n\nÖnerilen Çözüm: ${primaryCritique.suggestedDefensePoint}${
-          textTrimmed ? `\n\nDanışman Kararı: ${textTrimmed}` : ""
-        }`
-      : textTrimmed || "Taslak metindeki editoryal ve sayfa düzeltmelerini Word'e uygula.";
 
     setTaskState({
       isOpen: true,
-      title: `Revizyon: ${(outlineTitle || "Tez Bölümü").slice(0, 40)}`,
-      description: defaultDesc,
+      title: titleToUse,
+      description: descToUse,
       isSaving: false,
     });
   };
@@ -292,7 +244,7 @@ export function OfficeDefenseChat({
       )}
 
       {/* Messages Area */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-4">
+      <div ref={scrollContainerRef} className="flex-1 overflow-y-auto p-4 space-y-4">
         {!hasStartedDefense ? (
           <div className="h-full flex flex-col items-center justify-center p-6 text-center max-w-sm mx-auto">
             <div className="size-10 rounded-md bg-primary/10 text-primary mb-3 border border-primary/20 flex items-center justify-center">
@@ -348,47 +300,11 @@ export function OfficeDefenseChat({
                       <span className="font-serif text-xs font-semibold text-foreground">
                         {isAdvisor ? "Danışman Profesör" : "Siz (Tez Yazarı)"}
                       </span>
-                      <div className="flex items-center gap-1.5">
-                        {msg.createdAt && (
-                          <span className="font-mono text-xs text-muted-foreground mr-0.5">
-                            {msg.createdAt}
-                          </span>
-                        )}
-                        <div className="opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity flex items-center gap-0.5 bg-background/90 backdrop-blur-sm border border-border/40 rounded-md p-0.5">
-                          {isAdvisor && (
-                            <>
-                              <button
-                                type="button"
-                                onClick={() => handleOpenNoteDialog(msg.content)}
-                                className="p-1 rounded hover:bg-muted text-muted-foreground hover:text-foreground cursor-pointer transition-colors"
-                                title="Bu kararı Alıntı Fişi / Bölüm Notu olarak kaydet"
-                              >
-                                <BookmarkPlus className="size-3 text-primary" />
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => handleOpenTaskDialog(msg.content)}
-                                className="p-1 rounded hover:bg-muted text-muted-foreground hover:text-foreground cursor-pointer transition-colors"
-                                title="Bu tespiti Word'de düzeltmek için Kanban görevi aç"
-                              >
-                                <CheckSquare className="size-3 text-primary" />
-                              </button>
-                            </>
-                          )}
-                          <button
-                            type="button"
-                            onClick={() => handleCopy(msg.id, msg.content)}
-                            className="p-1 rounded hover:bg-muted text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
-                            title="Metni Kopyala"
-                          >
-                            {isCopied ? (
-                              <Check className="size-3 text-primary" />
-                            ) : (
-                              <Copy className="size-3" />
-                            )}
-                          </button>
-                        </div>
-                      </div>
+                      {msg.createdAt && (
+                        <span className="font-mono text-xs text-muted-foreground">
+                          {msg.createdAt}
+                        </span>
+                      )}
                     </div>
 
                     <div className="text-sm">
@@ -402,12 +318,10 @@ export function OfficeDefenseChat({
                             </div>
                           ) : (
                             <>
-                              <ReactMarkdown
-                                remarkPlugins={[remarkGfm]}
+                              <StreamingMarkdown
+                                content={msg.content}
                                 components={chatMarkdownComponents}
-                              >
-                                {msg.content}
-                              </ReactMarkdown>
+                              />
                               {msg.isStreaming && (
                                 <span className="inline-block w-1.5 h-3.5 bg-primary ml-1 animate-pulse align-middle" />
                               )}
@@ -420,6 +334,72 @@ export function OfficeDefenseChat({
                         </div>
                       )}
                     </div>
+
+                    {/* Action Bar for Advisor Messages */}
+                    {isAdvisor && msg.content && !msg.isStreaming && (
+                      <div className="mt-3 pt-2.5 border-t border-border/50 flex flex-wrap items-center justify-between gap-2">
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleOpenTaskDialog(msg.content)}
+                          className="h-7 text-xs px-2.5 rounded-md bg-secondary/40 hover:bg-secondary border-border text-foreground font-medium gap-1.5 cursor-pointer transition-colors"
+                          title="Bu düzeltmeyi Word'e uygulamak için Kanban panosuna görev aç"
+                        >
+                          <CheckSquare className="size-3.5 text-primary" />
+                          <span>Kanban Görevi Oluştur</span>
+                        </Button>
+
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleCopy(msg.id, msg.content)}
+                          className="h-7 text-xs px-2 rounded-md text-muted-foreground hover:text-foreground cursor-pointer transition-colors gap-1"
+                          title="Metni Kopyala"
+                        >
+                          {isCopied ? (
+                            <>
+                              <Check className="size-3 text-primary" />
+                              <span className="text-primary text-xs font-medium">
+                                Kopyalandı
+                              </span>
+                            </>
+                          ) : (
+                            <>
+                              <Copy className="size-3" />
+                              <span className="text-xs">Kopyala</span>
+                            </>
+                          )}
+                        </Button>
+                      </div>
+                    )}
+
+                    {/* Action Bar for User Messages */}
+                    {!isAdvisor && msg.content && (
+                      <div className="mt-2 pt-1.5 border-t border-primary/20 flex items-center justify-end">
+                        <button
+                          type="button"
+                          onClick={() => handleCopy(msg.id, msg.content)}
+                          className="text-xs text-muted-foreground hover:text-foreground flex items-center gap-1 cursor-pointer transition-colors"
+                          title="Metni Kopyala"
+                        >
+                          {isCopied ? (
+                            <>
+                              <Check className="size-3 text-primary" />
+                              <span className="text-primary font-medium">
+                                Kopyalandı
+                              </span>
+                            </>
+                          ) : (
+                            <>
+                              <Copy className="size-3" />
+                              <span>Kopyala</span>
+                            </>
+                          )}
+                        </button>
+                      </div>
+                    )}
                   </div>
 
                   {!isAdvisor && (
@@ -450,7 +430,7 @@ export function OfficeDefenseChat({
               onKeyDown={handleKeyDown}
               disabled={isStreaming}
               placeholder="Savunma argümanınızı veya cevabınızı yazın..."
-              className="min-h-[44px] max-h-[140px] text-xs p-2.5 bg-background border border-border resize-none leading-relaxed flex-1 rounded-md text-foreground placeholder:text-muted-foreground"
+              className="min-h-[44px] max-h-[140px] text-sm p-2.5 bg-background border border-border resize-none leading-relaxed flex-1 rounded-md text-foreground placeholder:text-muted-foreground"
               rows={1}
             />
 
@@ -470,21 +450,6 @@ export function OfficeDefenseChat({
           </div>
         </div>
       )}
-
-      {/* Save Note Dialog */}
-      <SaveNoteDialog
-        open={noteState.isOpen}
-        onOpenChange={(open) =>
-          setNoteState((prev) => ({ ...prev, isOpen: open }))
-        }
-        outlineTitle={outlineTitle || "Tez Bölümü"}
-        noteContent={noteState.content}
-        onChangeNoteContent={(content) =>
-          setNoteState((prev) => ({ ...prev, content }))
-        }
-        onSave={handleSaveNote}
-        isSaving={noteState.isSaving}
-      />
 
       {/* Create Task Dialog */}
       <CreateTaskDialog
@@ -506,4 +471,5 @@ export function OfficeDefenseChat({
     </div>
   );
 }
+
 

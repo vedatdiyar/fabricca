@@ -1,3 +1,11 @@
+import {
+  BOX_GENERATION_PIPELINE,
+  LITERATURE_PIPELINE,
+  MATRIX_SUBMIT_PIPELINE,
+  OUTLINE_GENERATION_PIPELINE,
+  toLoadingSteps,
+} from "@/lib/pipeline-definitions";
+
 export interface LoadingStep {
   text: string;
   status: "idle" | "active" | "completed";
@@ -15,34 +23,17 @@ export function isNavigationStepText(text: string): boolean {
   return text.includes("yönlendiriliyor");
 }
 
-export const MATRIX_SUBMIT_STEPS: LoadingStep[] = [
-  { text: "Çalışma matrisi kaydediliyor...", status: "active" },
-  {
-    text: "Tezler bulunuyor…",
-    status: "idle",
-  },
-  { text: "Literatür inceleniyor…", status: "idle" },
-  { text: "Rapor kaydediliyor...", status: "idle" },
-];
+export const MATRIX_SUBMIT_STEPS: LoadingStep[] = toLoadingSteps(
+  MATRIX_SUBMIT_PIPELINE,
+);
 
-export const BOX_GENERATION_STEPS: LoadingStep[] = [
-  {
-    text: "Altyapısal kutular ve tarama sorguları oluşturuluyor…",
-    status: "active",
-  },
-  { text: "Kutular Kaydediliyor...", status: "idle" },
-];
+export const BOX_GENERATION_STEPS: LoadingStep[] = toLoadingSteps(
+  BOX_GENERATION_PIPELINE,
+);
 
-export const LITERATURE_PIPELINE_STEPS: LoadingStep[] = [
-  { text: "Mevcut literatür havuzu kontrol ediliyor...", status: "active" },
-  { text: "Akademik kaynaklar taranıyor...", status: "idle" },
-  { text: "Literatür havuzu kaydediliyor...", status: "idle" },
-];
+export const LITERATURE_PIPELINE_STEPS: LoadingStep[] =
+  toLoadingSteps(LITERATURE_PIPELINE);
 
-export const OUTLINE_GENERATION_STEPS: LoadingStep[] = [
-  {
-    text: "Tez planı yapay zeka tarafından oluşturuluyor…",
-    status: "active",
-  },
-  { text: "Plan veritabanına kaydediliyor...", status: "idle" },
-];
+export const OUTLINE_GENERATION_STEPS: LoadingStep[] = toLoadingSteps(
+  OUTLINE_GENERATION_PIPELINE,
+);

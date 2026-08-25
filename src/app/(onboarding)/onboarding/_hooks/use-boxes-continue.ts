@@ -6,6 +6,11 @@ import { toast } from "sonner";
 import { useQueryClient } from "@tanstack/react-query";
 import { useLoadingOverlay } from "@/core/providers/loading-overlay-provider";
 import { OUTLINE_GENERATION_STEPS } from "@/app/(onboarding)/onboarding/_services/loading-steps";
+import {
+  OUTLINE_GENERATION_PIPELINE,
+  stageIndexOf,
+} from "@/lib/pipeline-definitions";
+import { createFlowId } from "@/lib/logger";
 import { getStepTanStackKeys } from "@/lib/onboarding-cache";
 import { clearDownstreamDbAction } from "../actions";
 import {
@@ -46,6 +51,8 @@ export function useBoxesContinue() {
     );
 
     try {
+      const flowId = createFlowId();
+
       const clearResult = await clearDownstreamDbAction("boxes");
       if ("error" in clearResult) {
         hideLoading();
@@ -57,23 +64,32 @@ export function useBoxesContinue() {
       for (const key of boxesTqKeys)
         queryClient.invalidateQueries({ queryKey: key });
 
-      const genResult = await generateOutlineAction();
+      const genResult = await generateOutlineAction(flowId);
       if ("error" in genResult) {
         hideLoading();
         toast.error(genResult.error);
         return { success: false, error: genResult.error };
       }
 
-      await completeStep(0, steps);
+      await completeStep(
+        stageIndexOf(OUTLINE_GENERATION_PIPELINE, "generate"),
+        steps,
+      );
 
-      const persistResult = await persistOutlineAction(genResult.outline);
+      const persistResult = await persistOutlineAction(
+        genResult.outline,
+        flowId,
+      );
       if ("error" in persistResult) {
         hideLoading();
         toast.error(persistResult.error);
         return { success: false, error: persistResult.error };
       }
 
-      await completeStep(1, steps);
+      await completeStep(
+        stageIndexOf(OUTLINE_GENERATION_PIPELINE, "persist"),
+        steps,
+      );
 
       queryClient.invalidateQueries({ queryKey: ["onboarding-steps"] });
 

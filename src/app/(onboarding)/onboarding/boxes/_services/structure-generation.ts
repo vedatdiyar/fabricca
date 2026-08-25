@@ -16,13 +16,15 @@ import { fetchThesisMatrix } from "@/app/(onboarding)/onboarding/_services/fetch
 /**
  * Phase 1: generates the 4-quadrant Turkish box structure only (no semantic queries).
  *
+ * @param flowId - Optional shared flow identifier of the parent pipeline run.
  * @returns The generated box structure or an error message.
  */
-export async function runBoxStructureAction(): Promise<
+export async function runBoxStructureAction(
+  flowId?: string,
+): Promise<
   { success: true; structure: RawBoxStructureResponse } | { error: string }
 > {
-  const flowId = createFlowId();
-  const log = new Logger(flowId);
+  const log = new Logger(flowId ?? createFlowId());
   const startTime = performance.now();
 
   try {

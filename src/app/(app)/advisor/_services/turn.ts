@@ -95,7 +95,7 @@ export async function runTurn(
   const payload = buildAdvisorTurnPromptPayload(persona, userMessageText);
   const contents = buildTurnChatContents(payload.userPrompt, params.history);
 
-  const fullText = await runAdvisorToolLoop(writer, {
+  const { text: fullText, toolCalls } = await runAdvisorToolLoop(writer, {
     systemInstruction: payload.systemInstruction,
     contents,
     userId: params.userId,
@@ -110,6 +110,7 @@ export async function runTurn(
       persona,
       content: sanitizedText,
       sources,
+      toolCalls: toolCalls.length > 0 ? toolCalls : null,
     });
     await db
       .update(sessions)
@@ -121,6 +122,8 @@ export async function runTurn(
     text: sanitizedText,
     sources,
     persona,
+    toolCalls: toolCalls.length > 0 ? toolCalls : undefined,
   });
   writer.done();
 }
+
