@@ -60,13 +60,14 @@ export async function prepareTurnContext(
  */
 export function buildTurnChatContents(
   userPrompt: string,
-  history?: Array<{ role: "user" | "model"; content: string }>,
+  history?: Array<{ role: "user" | "model" | "assistant"; content: string }>,
 ): Array<Record<string, unknown>> {
   const contents: Array<Record<string, unknown>> = [];
 
   if (history && history.length > 0) {
     for (const msg of history.slice(-6)) {
-      contents.push({ role: msg.role, parts: [{ text: msg.content }] });
+      const geminiRole = msg.role === "assistant" ? "model" : msg.role;
+      contents.push({ role: geminiRole, parts: [{ text: msg.content }] });
     }
   }
 

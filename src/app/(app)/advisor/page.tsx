@@ -1,31 +1,39 @@
-import { AdvisorOfficeWorkspace } from "./_components/advisor-office-workspace";
+import { Suspense } from "react";
+import { redirect } from "next/navigation";
+import AdvisorLoading from "./loading";
 
 interface AdvisorPageProps {
   searchParams: Promise<{ session?: string }>;
 }
 
+async function AdvisorRedirectContent({
+  searchParams,
+}: {
+  searchParams: Promise<{ session?: string }>;
+}): Promise<null> {
+  const params = await searchParams;
+  if (params.session) {
+    redirect(
+      `/advisor/draft-review?session=${encodeURIComponent(params.session)}`,
+    );
+  }
+  redirect("/advisor/draft-review");
+  return null;
+}
+
 /**
- * Advisor page — "Danışmanın Çalışma Odası" (Office Hours & Taslak Denetim Masası).
- * Transforms the advisor into a dedicated academic office where students submit Word drafts,
- * receive 3-part margin notes (citation audit, non-destructive diff, jury critiques),
- * and negotiate/defend their arguments live with the Socratic advisor.
+ * Advisor root page — redirects to the default "Taslak İnceleme" workspace.
  *
  * @param root0 - Page props.
- * @param root0.searchParams - Route query parameters holding the active session id.
- * @returns The Advisor Office workspace layout and client component.
+ * @param root0.searchParams - Route query parameters.
+ * @returns Nothing, redirects immediately.
  */
-export default async function AdvisorPage({ searchParams }: AdvisorPageProps) {
-  const params = await searchParams;
-  const rawSession = params.session;
-  const sessionId =
-    rawSession !== undefined && /^\d+$/.test(rawSession)
-      ? Number(rawSession)
-      : undefined;
-
+export default function AdvisorPage({ searchParams }: AdvisorPageProps) {
   return (
-    <AdvisorOfficeWorkspace
-      key={sessionId ?? "new"}
-      initialSessionId={sessionId}
-    />
+    <Suspense fallback={<AdvisorLoading />}>
+      <AdvisorRedirectContent searchParams={searchParams} />
+    </Suspense>
   );
 }
+
+

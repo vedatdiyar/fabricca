@@ -16,6 +16,8 @@ import {
   LogOut,
   ChevronDown,
   BookMarked,
+  FileCheck,
+  Bot,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
@@ -45,6 +47,19 @@ export const LITERATURE_ITEMS = [
   { href: "/citation-cards", label: "Alıntı Fişleri", icon: Quote },
 ] as const;
 
+export const ADVISOR_ITEMS = [
+  {
+    href: "/advisor/draft-review",
+    label: "Taslak İnceleme",
+    icon: FileCheck,
+  },
+  {
+    href: "/advisor/chat",
+    label: "Tez Asistanı",
+    icon: Bot,
+  },
+] as const;
+
 /**
  * Horizontal navigation links rendered on desktop (md and up).
  * Uses dropdown menus for grouped items to keep the pill nav clean.
@@ -59,6 +74,7 @@ export function HeaderNav() {
     pathname === "/library" ||
     pathname === "/literature-matrix" ||
     pathname === "/citation-cards";
+  const isAdvisorActive = pathname.startsWith("/advisor");
 
   return (
     <nav className="hidden items-center gap-1 rounded-full border border-border/50 bg-card/70 p-1 shadow-xs backdrop-blur-sm md:flex">
@@ -144,19 +160,39 @@ export function HeaderNav() {
         </DropdownMenuContent>
       </DropdownMenu>
 
-      {/* 4. Danışman Odası */}
-      <Link
-        href="/advisor"
-        className={cn(
-          "flex h-8 items-center gap-1.5 rounded-full px-3 text-xs font-medium transition-all duration-150 select-none",
-          pathname === "/advisor"
-            ? "bg-accent text-accent-foreground font-semibold border border-primary/25 shadow-xs"
-            : "text-muted-foreground hover:text-foreground hover:bg-accent/30",
-        )}
-      >
-        <Briefcase className="h-3.5 w-3.5 shrink-0" />
-        <span>Danışman Odası</span>
-      </Link>
+      {/* 4. Danışman Odası (Dropdown) */}
+      <DropdownMenu>
+        <DropdownMenuTrigger
+          className={cn(
+            "flex h-8 items-center gap-1.5 rounded-full px-3 text-xs font-medium transition-all duration-150 select-none cursor-pointer",
+            isAdvisorActive
+              ? "bg-accent text-accent-foreground font-semibold border border-primary/25 shadow-xs"
+              : "text-muted-foreground hover:text-foreground hover:bg-accent/30",
+          )}
+        >
+          <Briefcase className="h-3.5 w-3.5 shrink-0" />
+          <span>Danışman Odası</span>
+          <ChevronDown className="h-3 w-3 shrink-0 opacity-60" />
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="start" className="w-48 p-1">
+          {ADVISOR_ITEMS.map((item) => (
+            <DropdownMenuItem key={item.href} className="p-0">
+              <Link
+                href={item.href}
+                className={cn(
+                  "flex w-full items-center gap-2 px-2.5 py-2 text-xs rounded-sm select-none",
+                  pathname === item.href
+                    ? "bg-accent font-semibold text-accent-foreground"
+                    : "text-popover-foreground hover:bg-accent/50",
+                )}
+              >
+                <item.icon className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+                <span>{item.label}</span>
+              </Link>
+            </DropdownMenuItem>
+          ))}
+        </DropdownMenuContent>
+      </DropdownMenu>
     </nav>
   );
 }
@@ -183,6 +219,7 @@ export function BottomNav({
     pathname === "/library" ||
     pathname === "/literature-matrix" ||
     pathname === "/citation-cards";
+  const isAdvisorActive = pathname.startsWith("/advisor");
 
   return (
     <nav className="fixed bottom-0 left-0 right-0 z-50 border-t border-border bg-background md:hidden">
@@ -267,19 +304,38 @@ export function BottomNav({
           </DropdownMenuContent>
         </DropdownMenu>
 
-        {/* 4. Danışman */}
-        <Link
-          href="/advisor"
-          className={cn(
-            "bottom-nav-item",
-            pathname === "/advisor"
-              ? "text-primary"
-              : "text-muted-foreground hover:text-foreground",
-          )}
-        >
-          <Briefcase className="h-5 w-5" />
-          <span>Danışman</span>
-        </Link>
+        {/* 4. Danışman (Dropdown) */}
+        <DropdownMenu>
+          <DropdownMenuTrigger
+            className={cn(
+              "bottom-nav-item cursor-pointer",
+              isAdvisorActive
+                ? "text-primary font-semibold"
+                : "text-muted-foreground hover:text-foreground",
+            )}
+          >
+            <Briefcase className="h-5 w-5" />
+            <span>Danışman</span>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="center" className="w-48 p-1 mb-2">
+            {ADVISOR_ITEMS.map((item) => (
+              <DropdownMenuItem key={item.href} className="p-0">
+                <Link
+                  href={item.href}
+                  className={cn(
+                    "flex w-full items-center gap-2 px-2.5 py-2 text-xs rounded-sm select-none",
+                    pathname === item.href
+                      ? "bg-accent font-semibold text-accent-foreground"
+                      : "text-popover-foreground hover:bg-accent/50",
+                  )}
+                >
+                  <item.icon className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+                  <span>{item.label}</span>
+                </Link>
+              </DropdownMenuItem>
+            ))}
+          </DropdownMenuContent>
+        </DropdownMenu>
 
         {/* Action Buttons */}
         <button

@@ -9,17 +9,6 @@ import { Card } from "@/components/ui/card";
 export default function LiteratureMatrixLoading() {
   return (
     <div className="w-full space-y-6">
-      {/* Header Skeleton */}
-      <div className="flex flex-col justify-between gap-4 border-b border-border pb-6 sm:flex-row sm:items-center">
-        <div className="space-y-2">
-          <Skeleton className="h-8 w-64" />
-          <Skeleton className="h-4 w-96 max-w-full bg-border/20" />
-        </div>
-        <div className="flex gap-2">
-          <Skeleton className="h-9 w-28 rounded-md" />
-        </div>
-      </div>
-
       {/* Stats Cards Skeleton */}
       <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
         {Array.from({ length: 4 }).map((_, index) => (

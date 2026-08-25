@@ -10,6 +10,7 @@ import {
   Sparkles,
   Bookmark,
   Layers,
+  Plus,
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -37,6 +38,7 @@ interface CitationFilterBarProps {
     key: K,
     value: CitationCardFilters[K],
   ) => void;
+  onOpenAddDialog?: () => void;
 }
 
 /**
@@ -52,6 +54,7 @@ export function CitationFilterBar({
   viewMode,
   onViewModeChange,
   onFilterChange,
+  onOpenAddDialog,
 }: CitationFilterBarProps) {
   const noteTypeTabs = [
     {
@@ -191,6 +194,18 @@ export function CitationFilterBar({
             <List className="size-3.5" />
           </Button>
         </div>
+
+        {/* Global Add Card Button */}
+        {onOpenAddDialog && (
+          <Button
+            size="sm"
+            onClick={onOpenAddDialog}
+            className="h-8 text-xs font-medium shrink-0 cursor-pointer gap-1.5 ml-0.5"
+          >
+            <Plus className="size-3.5" />
+            <span>Yeni Fiş</span>
+          </Button>
+        )}
       </div>
     </div>
   );

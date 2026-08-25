@@ -1,3 +1,6 @@
+import { eq } from "drizzle-orm";
+import { db } from "@/core/db";
+import { sessions, messages } from "@/core/db/schema";
 import { buildAdvisorTurnPromptPayload } from "../_prompts/turn.prompt";
 import { sanitizeModelStreamText } from "@/lib/text-sanitizer";
 import { classifyAdvisorIntent } from "./classifier";
@@ -10,7 +13,8 @@ import { runAdvisorToolLoop } from "./tool-loop";
 export interface AdvisorTurnParams {
   userId: number;
   query: string;
-  history?: Array<{ role: "user" | "model"; content: string }>;
+  history?: Array<{ role: "user" | "model" | "assistant"; content: string }>;
+  sessionId?: number;
 }
 
 /**
@@ -19,7 +23,7 @@ export interface AdvisorTurnParams {
  * `done` event emission.
  *
  * @param writer - The SSE writer to emit events into.
- * @param params - The turn inputs including user id, query, and chat history.
+ * @param params - The turn inputs including user id, query, optional session id, and chat history.
  */
 export async function runTurn(
   writer: AdvisorStreamWriter,
@@ -30,6 +34,15 @@ export async function runTurn(
     params.history,
   );
   const persona = classification.persona;
+
+  // Persist user prompt if sessionId is provided
+  if (params.sessionId) {
+    await db.insert(messages).values({
+      sessionId: params.sessionId,
+      role: "user",
+      content: params.query,
+    });
+  }
 
   // Heavy Flow is triggered by a fresh draft paragraph as classified by the intent classifier.
   const isPipelineTurn = classification.mode === "PIPELINE";
@@ -44,9 +57,25 @@ export async function runTurn(
     });
 
     const responsePersona = !pipeline.audit ? "SOCRATIC_ADVISOR" : persona;
+    const sanitizedText = sanitizeModelStreamText(text);
+
+    if (params.sessionId) {
+      await db.insert(messages).values({
+        sessionId: params.sessionId,
+        role: "assistant",
+        persona: responsePersona,
+        content: sanitizedText,
+        sources,
+        pipelineData: pipeline,
+      });
+      await db
+        .update(sessions)
+        .set({ updatedAt: new Date() })
+        .where(eq(sessions.id, params.sessionId));
+    }
 
     writer.send("done", {
-      text: sanitizeModelStreamText(text),
+      text: sanitizedText,
       sources,
       persona: responsePersona,
       pipeline,
@@ -72,8 +101,24 @@ export async function runTurn(
     userId: params.userId,
   });
 
+  const sanitizedText = sanitizeModelStreamText(fullText);
+
+  if (params.sessionId) {
+    await db.insert(messages).values({
+      sessionId: params.sessionId,
+      role: "assistant",
+      persona,
+      content: sanitizedText,
+      sources,
+    });
+    await db
+      .update(sessions)
+      .set({ updatedAt: new Date() })
+      .where(eq(sessions.id, params.sessionId));
+  }
+
   writer.send("done", {
-    text: sanitizeModelStreamText(fullText),
+    text: sanitizedText,
     sources,
     persona,
   });

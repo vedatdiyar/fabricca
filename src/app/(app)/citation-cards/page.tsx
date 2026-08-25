@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { CitationCardsPageHeader } from "./_components/page-header/citation-page-header";
 import { CitationCardsSectionHeading } from "./_components/page-header/citation-section-heading";
 import { CitationCardsSkeleton } from "./_components/citation-cards-skeleton";
 import { useCitationCardsFilter } from "./_hooks/use-citation-cards-filter";
@@ -108,11 +107,6 @@ export default function CitationCardsPage() {
 
   return (
     <div className="w-full space-y-5 pb-12">
-      {/* Page Header */}
-      <CitationCardsPageHeader
-        onOpenAddDialog={handleOpenAddDialog}
-      />
-
       {/* Main Page Content */}
       {!hasAnyCard ? (
         <CitationCardsEmptyState
@@ -177,6 +171,7 @@ export default function CitationCardsPage() {
               viewMode={viewMode}
               onViewModeChange={setViewMode}
               onFilterChange={setFilter}
+              onOpenAddDialog={handleOpenAddDialog}
             />
 
             {/* Cards Content (Grid or List View) */}

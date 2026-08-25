@@ -1,7 +1,5 @@
 "use client";
 
-import { BookOpen, ArrowLeft } from "lucide-react";
-import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { OfficeReviewPhase } from "./office/office-review-phase";
 import { OfficeSubmissionPhase } from "./office/office-submission-phase";
@@ -36,14 +34,10 @@ export function AdvisorOfficeWorkspace({
 
   if (initialData.isLoading) {
     return (
-      <div className="w-full space-y-6">
-        <div className="flex items-center justify-between pb-4 border-b border-border">
-          <Skeleton className="h-8 w-64 rounded-md" />
-          <Skeleton className="h-8 w-32 rounded-md" />
-        </div>
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-          <Skeleton className="lg:col-span-4 h-96 rounded-xl" />
-          <Skeleton className="lg:col-span-8 h-96 rounded-xl" />
+      <div className="w-full">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 lg:h-[calc(100dvh-9.5rem)] lg:min-h-[460px]">
+          <Skeleton className="lg:col-span-4 h-full rounded-lg" />
+          <Skeleton className="lg:col-span-8 h-full rounded-lg" />
         </div>
       </div>
     );
@@ -54,35 +48,7 @@ export function AdvisorOfficeWorkspace({
     sessionDetail.currentReport !== null;
 
   return (
-    <div className="w-full space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-border pb-4">
-        <div>
-          <div className="flex items-center gap-2.5">
-            <div className="p-1.5 rounded-md bg-primary/10 text-primary border border-primary/20">
-              <BookOpen className="size-3.5" />
-            </div>
-            <h1 className="font-serif text-xl font-semibold tracking-tight text-foreground">
-              Danışmanın Çalışma Odası
-            </h1>
-          </div>
-          <p className="text-sm text-muted-foreground mt-1 leading-normal">
-            Word taslak pasajlarınızı teslim edin, sayfa denetimi ve editoryal
-            rötuşları inceleyin, danışmanla canlı müzakere edin.
-          </p>
-        </div>
-
-        {isReviewActive && (
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={handleResetToNewSubmission}
-            className="gap-1.5 border-border bg-background hover:bg-muted text-foreground shrink-0 cursor-pointer self-start sm:self-auto"
-          >
-            <ArrowLeft className="size-3.5" />
-            <span>Yeni Taslak Teslimi</span>
-          </Button>
-        )}
-      </div>
+    <div className="w-full">
 
       {isReviewActive && sessionDetail.currentReport ? (
         <OfficeReviewPhase

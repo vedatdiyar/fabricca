@@ -1,6 +1,6 @@
 "use server";
 
-import { eq, desc, asc, inArray, count } from "drizzle-orm";
+import { eq, desc, asc, inArray, count, and, isNotNull } from "drizzle-orm";
 import { db } from "@/core/db";
 import { sessions, messages, outlines, matrices } from "@/core/db/schema";
 import { getSession } from "@/lib/session";
@@ -60,7 +60,12 @@ export async function getOfficeInitialDataAction(): Promise<{
         createdAt: sessions.createdAt,
       })
       .from(sessions)
-      .where(eq(sessions.userId, session.userId))
+      .where(
+        and(
+          eq(sessions.userId, session.userId),
+          isNotNull(sessions.draftText),
+        ),
+      )
       .orderBy(desc(sessions.updatedAt));
 
     const outlineMap = new Map(userOutlines.map((o) => [o.id, o.title]));

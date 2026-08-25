@@ -10,14 +10,6 @@ import { Skeleton } from "@/components/ui/skeleton";
 export function CitationCardsSkeleton() {
   return (
     <div className="flex w-full flex-col gap-6">
-      {/* Header Skeleton */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-border pb-4">
-        <div className="space-y-1.5">
-          <Skeleton className="h-7 w-48" />
-          <Skeleton className="h-4 w-96 bg-border/40" />
-        </div>
-      </div>
-
       {/* Main Layout Skeleton */}
       <div className="flex flex-col lg:flex-row items-start gap-6">
         {/* Left Sidebar Skeleton */}

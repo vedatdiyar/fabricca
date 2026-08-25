@@ -1,6 +1,6 @@
 "use server";
 
-import { and, eq, desc } from "drizzle-orm";
+import { and, eq, desc, isNull, inArray, count } from "drizzle-orm";
 import { db } from "@/core/db";
 import { sessions, messages } from "@/core/db/schema";
 import { getSession } from "@/lib/session";
@@ -34,22 +34,33 @@ export async function getChatSessions(): Promise<ChatSessionsResult> {
         createdAt: sessions.createdAt,
       })
       .from(sessions)
-      .where(eq(sessions.userId, session.userId))
+      .where(
+        and(eq(sessions.userId, session.userId), isNull(sessions.draftText)),
+      )
       .orderBy(desc(sessions.updatedAt));
 
-    const result: ChatSessionListItem[] = [];
-    for (const row of rows) {
-      const msgs = await db
-        .select({ count: messages.id })
+    const countMap = new Map<number, number>();
+    if (rows.length > 0) {
+      const counts = await db
+        .select({ sessionId: messages.sessionId, value: count(messages.id) })
         .from(messages)
-        .where(eq(messages.sessionId, row.id));
-      result.push({
-        id: row.id,
-        title: row.title,
-        createdAt: row.createdAt.toLocaleDateString("tr-TR"),
-        messageCount: msgs.length,
-      });
+        .where(
+          inArray(
+            messages.sessionId,
+            rows.map((r) => r.id),
+          ),
+        )
+        .groupBy(messages.sessionId);
+      for (const c of counts) countMap.set(c.sessionId, Number(c.value));
     }
+
+    const result: ChatSessionListItem[] = rows.map((row) => ({
+      id: row.id,
+      title: row.title,
+      createdAt: row.createdAt.toLocaleDateString("tr-TR"),
+      messageCount: countMap.get(row.id) ?? 0,
+    }));
+
     return { success: true, data: result };
   } catch (err) {
     return handleActionError(err);

@@ -10,14 +10,6 @@ import { Skeleton } from "@/components/ui/skeleton";
 export function DashboardSkeleton() {
   return (
     <div className="w-full space-y-8">
-      {/* Page Header Skeleton */}
-      <div className="flex w-full flex-col sm:flex-row justify-between items-start sm:items-center gap-4 pb-6 border-b border-border">
-        <div className="space-y-2">
-          <Skeleton className="h-7 w-72" />
-          <Skeleton className="h-4 w-96 max-w-full bg-border/20" />
-        </div>
-      </div>
-
       {/* 4 Metric Cards Skeleton */}
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
         {Array.from({ length: 4 }).map((_, index) => (

@@ -89,7 +89,7 @@ export function useAdvisorOfficeWorkspace(initialSessionId?: number) {
               window.history.pushState(
                 null,
                 "",
-                `/advisor?session=${detail.id}`,
+                `/advisor/draft-review?session=${detail.id}`,
               );
             }
           }
@@ -135,7 +135,7 @@ export function useAdvisorOfficeWorkspace(initialSessionId?: number) {
     if (typeof window !== "undefined") {
       const currentUrl = new URL(window.location.href);
       if (currentUrl.searchParams.has("session")) {
-        window.history.pushState(null, "", "/advisor");
+        window.history.pushState(null, "", "/advisor/draft-review");
       }
     }
     setDefenseState({
@@ -272,7 +272,7 @@ export function useAdvisorOfficeWorkspace(initialSessionId?: number) {
         window.history.pushState(
           null,
           "",
-          `/advisor?session=${json.sessionId}`,
+          `/advisor/draft-review?session=${json.sessionId}`,
         );
       }
 

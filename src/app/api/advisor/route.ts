@@ -22,15 +22,17 @@ const officeDefenseSchema = z.object({
   userMessage: z.string().max(2000).optional(),
 });
 
-const legacyTurnSchema = z.object({
+const assistantChatSchema = z.object({
+  action: z.literal("CHAT").optional(),
+  sessionId: z.number().int().positive().optional(),
   query: z
     .string()
-    .min(2, "Sorgu en az 2 karakter olmalıdır.")
-    .max(1000, "Sorgu çok uzun."),
+    .min(1, "Sorgu en az 1 karakter olmalıdır.")
+    .max(4000, "Sorgu çok uzun."),
   history: z
     .array(
       z.object({
-        role: z.enum(["user", "model"]),
+        role: z.enum(["user", "model", "assistant"]),
         content: z.string(),
       }),
     )
@@ -41,7 +43,7 @@ const legacyTurnSchema = z.object({
  * Handles POST requests for the Advisor module:
  * 1. `action: "REVIEW"` -> Runs the 3-part structured draft audit (Red/Yellow/Blue pen) and persists the office session.
  * 2. `action: "DEFENSE"` -> Streams live Socratic Professor negotiation via SSE.
- * 3. Fallback `query` -> Legacy single-turn / tool loop query.
+ * 3. `action: "CHAT"` or fallback `query` -> Streams freeform Thesis Assistant turn with RAG, tools, and DB persistence.
  *
  * @param request - Incoming HTTP request.
  * @returns JSON or SSE streaming response.
@@ -122,13 +124,18 @@ export async function POST(request: Request) {
     });
   }
 
-  // 3. Fallback Turn (Legacy Chat)
-  const legacyParse = legacyTurnSchema.safeParse(body);
-  if (legacyParse.success) {
-    const { query, history } = legacyParse.data;
+  // 3. Assistant Freeform Chat Action (Thesis Assistant)
+  const chatParse = assistantChatSchema.safeParse(body);
+  if (chatParse.success) {
+    const { query, history, sessionId } = chatParse.data;
 
     const readable = createSseStream(async ({ writer }) => {
-      await runTurn(writer, { userId: session.userId, query, history });
+      await runTurn(writer, {
+        userId: session.userId,
+        query,
+        history,
+        sessionId,
+      });
     });
 
     return new Response(readable, {

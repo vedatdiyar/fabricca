@@ -43,9 +43,9 @@ export function OfficeSubmissionPhase({
   };
 
   return (
-    <div className="w-full space-y-4 sm:space-y-6">
+    <div className="w-full flex flex-col lg:h-[calc(100dvh-9.5rem)] lg:min-h-[460px] space-y-4">
       {/* Mobile Switcher (Visible only below lg) */}
-      <div className="flex items-center justify-between lg:hidden pb-1">
+      <div className="flex items-center justify-between lg:hidden pb-1 shrink-0">
         <div className="flex items-center rounded-md border border-border bg-card p-1 text-xs w-full">
           <button
             type="button"
@@ -72,8 +72,8 @@ export function OfficeSubmissionPhase({
         </div>
       </div>
 
-      {/* Desktop Master-Detail Grid (Strictly equal heights via items-stretch) */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 w-full items-stretch">
+      {/* Desktop Master-Detail Grid (Strictly equal heights via items-stretch and flex-1) */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 w-full flex-1 min-h-0 items-stretch">
         {/* Left Column: Sessions Sidebar */}
         <div
           className={`lg:col-span-4 flex flex-col min-h-0 h-full ${

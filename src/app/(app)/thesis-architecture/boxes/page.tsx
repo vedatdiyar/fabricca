@@ -19,18 +19,6 @@ export default async function ThesisBoxesPage() {
   if (!userMatrix) {
     return (
       <div className="w-full space-y-6">
-        <div className="flex w-full flex-col sm:flex-row justify-between items-start sm:items-center gap-4 pb-6 border-b border-border">
-          <div>
-            <h1 className="font-serif text-xl font-semibold tracking-tight text-foreground">
-              Konu Kutuları ve Araştırma Temaları
-            </h1>
-            <p className="font-sans text-sm text-muted-foreground mt-1">
-              Tezinizin araştırma eksenlerini gruplandıran tematik bilgi ve
-              kaynak havuzları.
-            </p>
-          </div>
-        </div>
-
         <Card className="flex flex-col items-center justify-center rounded-md border border-dashed border-border/40 p-8 text-center bg-card">
           <p className="font-serif text-sm font-semibold tracking-tight text-foreground">
             Tez matrisi henüz oluşturulmadı
@@ -57,19 +45,6 @@ export default async function ThesisBoxesPage() {
 
   return (
     <div className="w-full space-y-6">
-      {/* Page Header */}
-      <div className="flex w-full flex-col sm:flex-row justify-between items-start sm:items-center gap-4 pb-6 border-b border-border">
-        <div>
-          <h1 className="font-serif text-xl font-semibold tracking-tight text-foreground">
-            Konu Kutuları ve Araştırma Temaları
-          </h1>
-          <p className="font-sans text-sm text-muted-foreground mt-1">
-            Tezinizin araştırma eksenlerini gruplandıran tematik bilgi, kavram
-            ve literatür havuzları.
-          </p>
-        </div>
-      </div>
-
       {/* Main Box Manager View */}
       <BoxManagerView boxesList={userBoxes} />
     </div>

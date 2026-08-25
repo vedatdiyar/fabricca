@@ -9,14 +9,6 @@ import { Card } from "@/components/ui/card";
 export default function ThesisBoxesLoading() {
   return (
     <div className="w-full space-y-6">
-      {/* Header Skeleton */}
-      <div className="flex flex-col justify-between gap-4 border-b border-border pb-6 sm:flex-row sm:items-center">
-        <div className="space-y-2">
-          <Skeleton className="h-7 w-72" />
-          <Skeleton className="h-4 w-[480px] max-w-full bg-border/20" />
-        </div>
-      </div>
-
       {/* Top Bar Skeleton */}
       <div className="flex items-center justify-between p-3 rounded-lg border border-border/60 bg-card/60">
         <div className="flex items-center gap-2">

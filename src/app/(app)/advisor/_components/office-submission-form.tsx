@@ -113,7 +113,7 @@ export function OfficeSubmissionForm({
   return (
     <Card className="flex h-full w-full flex-col min-h-0 space-y-4 rounded-lg p-5 bg-card border-border shadow-xs">
       {/* Header */}
-      <CardHeader className="p-0 pb-3.5 border-b border-border space-y-0">
+      <CardHeader className="p-0 pb-3.5 border-b border-border space-y-0 shrink-0">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div className="flex items-center gap-2.5">
             <div className="p-2 rounded-md bg-primary/10 border border-primary/20 text-primary shrink-0">
@@ -150,14 +150,14 @@ export function OfficeSubmissionForm({
       </CardHeader>
 
       {/* Form Content */}
-      <CardContent className="p-0 flex-1 flex flex-col justify-between">
+      <CardContent className="p-0 flex-1 min-h-0 flex flex-col">
         <form
           onSubmit={handleSubmit}
-          className="space-y-4 flex-1 flex flex-col justify-between"
+          className="space-y-4 flex-1 min-h-0 flex flex-col justify-between"
         >
-          <div className="space-y-4">
+          <div className="space-y-4 flex-1 min-h-0 flex flex-col">
             {/* Hierarchical Outline Selector */}
-            <div className="flex flex-col gap-1.5">
+            <div className="flex flex-col gap-1.5 shrink-0">
               <div className="flex items-center justify-between">
                 <Label
                   htmlFor="outline-selector"
@@ -245,8 +245,8 @@ export function OfficeSubmissionForm({
             </div>
 
             {/* Draft Input */}
-            <div className="flex flex-col gap-1.5">
-              <div className="flex items-center justify-between">
+            <div className="flex flex-col gap-1.5 flex-1 min-h-0">
+              <div className="flex items-center justify-between shrink-0">
                 <Label
                   htmlFor="draft-text"
                   className="text-xs font-medium text-foreground"
@@ -276,14 +276,14 @@ export function OfficeSubmissionForm({
                 value={draftText}
                 onChange={(e) => setDraftText(e.target.value)}
                 disabled={isSubmitting}
-                className="min-h-[260px] text-sm p-3.5 bg-background border-border rounded-md resize-y leading-relaxed focus:border-primary/40 focus:ring-1 focus:ring-primary/20 font-sans"
+                className="flex-1 min-h-[160px] text-sm p-3.5 bg-background border-border rounded-md resize-none leading-relaxed focus:border-primary/40 focus:ring-1 focus:ring-primary/20 font-sans"
                 required
               />
             </div>
           </div>
 
           {/* Action Footer */}
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-3.5 border-t border-border mt-1">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-3.5 border-t border-border shrink-0">
             <div className="text-xs text-muted-foreground flex items-center gap-1.5">
               <Sparkles className="size-3.5 text-primary shrink-0" />
               <span>

@@ -87,19 +87,6 @@ export function DashboardContent({
 
   return (
     <div className="w-full space-y-8">
-      {/* Page Header */}
-      <div className="flex w-full flex-col sm:flex-row justify-between items-start sm:items-center gap-4 pb-6 border-b border-border">
-        <div>
-          <h1 className="font-serif text-xl font-semibold tracking-tight text-foreground">
-            Genel Özet ve Araştırma Paneli
-          </h1>
-          <p className="font-sans text-sm text-muted-foreground mt-1">
-            Tez odak alanlarınız, dinamik okuma listeleriniz ve anlık akademik
-            çalışma akışınız.
-          </p>
-        </div>
-      </div>
-
       {/* Overview Metric Cards */}
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
         {/* Metric 1: Konu Kutuları */}
