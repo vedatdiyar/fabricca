@@ -61,7 +61,7 @@ export function CitationSectionGroup({
   // 1. GALLERY / FLAT GRID VIEW (Default & Cleanest)
   if (groupBy === "NONE") {
     return (
-      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3.5">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
         {cards.map((card) => (
           <CitationCard
             key={card.id}
@@ -86,7 +86,7 @@ export function CitationSectionGroup({
 
     if (activeBoxes.length === 0) {
       return (
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3.5">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
           {cards.map((card) => (
             <CitationCard
               key={card.id}
@@ -152,7 +152,7 @@ export function CitationSectionGroup({
 
               {/* Cards Grid */}
               {!isCollapsed && (
-                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3.5 pl-2 sm:pl-3 border-l-2 border-border/40">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5 pl-2 sm:pl-3 border-l-2 border-border/40">
                   {boxCards.map((card) => (
                     <CitationCard
                       key={card.id}
@@ -219,7 +219,7 @@ export function CitationSectionGroup({
           </div>
 
           {!isUnassignedCollapsed && (
-            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3.5 pl-2 sm:pl-3 border-l-2 border-warning/20">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5 pl-2 sm:pl-3 border-l-2 border-warning/20">
               {unassignedCards.map((card) => (
                 <CitationCard
                   key={card.id}
@@ -291,7 +291,7 @@ export function CitationSectionGroup({
 
             {/* Cards Grid */}
             {!isCollapsed && (
-              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3.5 pl-2 sm:pl-3 border-l-2 border-border/40">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5 pl-2 sm:pl-3 border-l-2 border-border/40">
                 {sectionCards.map((card) => (
                   <CitationCard
                     key={card.id}

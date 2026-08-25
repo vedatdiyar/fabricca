@@ -183,7 +183,7 @@ export default function CitationCardsPage() {
                   hasFilters={isFiltering}
                 />
               ) : viewMode === "grid" ? (
-                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3.5">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
                   {filteredCards.map((card) => (
                     <CitationCard
                       key={card.id}
