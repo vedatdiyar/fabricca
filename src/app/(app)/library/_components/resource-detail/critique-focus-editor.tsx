@@ -7,7 +7,6 @@ import {
   Check,
   HelpCircle,
   Sparkles,
-  CornerDownLeft,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -179,14 +178,7 @@ export function CritiqueFocusEditor({
             rows={7}
             className="textarea-academic min-h-[180px] text-sm leading-relaxed p-3.5 bg-background border-border rounded-md resize-none font-sans focus:border-primary/40 focus:ring-1 focus:ring-primary/20 placeholder:text-muted-foreground/50"
           />
-          <div className="flex items-center justify-between text-xs text-muted-foreground/80 px-1 pt-0.5">
-            <span className="hidden sm:inline-flex items-center gap-1 text-muted-foreground text-xs">
-              <CornerDownLeft className="size-3 text-muted-foreground" />
-              <kbd className="font-mono text-xs bg-muted px-1 py-0.5 rounded border border-border/50 text-foreground">
-                ⌘ / Ctrl + Enter
-              </kbd>{" "}
-              ile sonraki boyuta geçebilirsiniz
-            </span>
+          <div className="flex items-center justify-end text-xs text-muted-foreground/80 px-1 pt-0.5">
             <span className="text-xs font-mono ml-auto">
               {values[currentField.key].length} karakter
             </span>

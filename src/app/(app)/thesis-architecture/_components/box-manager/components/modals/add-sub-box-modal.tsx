@@ -204,7 +204,7 @@ export function AddSubBoxModal({
                   value={inputValue}
                   onChange={(e) => setInputValue(e.target.value)}
                   onKeyDown={handleInputKeyDown}
-                  placeholder="Yeni kavram ekle (Enter ile ekleyin)..."
+                  placeholder="Yeni kavram ekle..."
                   className="pl-8 h-8 text-xs font-sans bg-background border-border rounded-md"
                 />
               </div>

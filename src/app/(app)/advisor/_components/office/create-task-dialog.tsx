@@ -43,12 +43,12 @@ export function CreateTaskDialog({
 }: CreateTaskDialogProps) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md bg-card border-border">
+      <DialogContent className="sm:max-w-md bg-card border border-border rounded-lg p-5">
         <DialogHeader>
           <DialogTitle className="font-serif text-base font-semibold tracking-tight text-foreground">
             Revizyon Görevi Oluştur
           </DialogTitle>
-          <DialogDescription className="text-xs text-muted-foreground">
+          <DialogDescription className="text-xs font-medium text-muted-foreground">
             Kanban panonuza yeni bir yüksek öncelikli revizyon görevi ekler.
           </DialogDescription>
         </DialogHeader>
@@ -65,7 +65,8 @@ export function CreateTaskDialog({
               id="task-title"
               value={taskTitle}
               onChange={(e) => onChangeTaskTitle(e.target.value)}
-              className="text-xs bg-background border-border"
+              placeholder="Örn: 2. Bölüm Kavramsal Revizyonu"
+              className="h-8 text-xs px-2.5 bg-background border border-border rounded-md text-foreground placeholder:text-muted-foreground"
             />
           </div>
 
@@ -80,7 +81,8 @@ export function CreateTaskDialog({
               id="task-desc"
               value={taskDescription}
               onChange={(e) => onChangeTaskDescription(e.target.value)}
-              className="min-h-[100px] text-xs p-2.5 bg-background border-border leading-relaxed"
+              placeholder="Görev detaylarını ve danışman şerhini yazın..."
+              className="min-h-[100px] text-xs p-2.5 bg-background border border-border resize-none leading-relaxed rounded-md text-foreground placeholder:text-muted-foreground"
             />
           </div>
         </div>
@@ -89,18 +91,16 @@ export function CreateTaskDialog({
           <Button
             type="button"
             variant="outline"
-            size="sm"
             onClick={() => onOpenChange(false)}
-            className="text-xs"
+            className="h-8 text-xs px-3 rounded-md border-border bg-background hover:bg-muted text-foreground cursor-pointer"
           >
             Vazgeç
           </Button>
           <Button
             type="button"
-            size="sm"
             onClick={onSave}
             disabled={isSaving || !taskTitle.trim()}
-            className="bg-primary text-primary-foreground text-xs gap-1.5"
+            className="h-8 text-xs px-3 rounded-md bg-primary text-primary-foreground hover:bg-primary/90 font-medium gap-1.5 cursor-pointer"
           >
             {isSaving ? (
               <Loader2 className="size-3.5 animate-spin" />

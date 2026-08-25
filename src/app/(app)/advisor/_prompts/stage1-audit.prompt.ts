@@ -31,7 +31,8 @@ export function buildStage1AuditPromptPayload(
 2. Bağlamda doğrulanamayan bir iddia olduğunda bunu CRITICAL veya WARNING bulgu olarak işaretle.
 3. Kaynak, yıl veya sayfa numarası yanlışsa doğru değeri bulgu mesajında belirt.
 4. **Sayfa Aralığı Doğrulama:** "ss. 119-151" gibi bir sayfa aralığı taşıyan kaynak, o aralıktaki tüm sayfaları kapsar. Aralık içi sayfaları geçerli kabul et; yalnızca aralık dışı referansları raporla.
-5. **Hitap Kuralı:** Kullanıcıya doğrudan "Sen" veya "Siz" şeklinde muhatap ol ("Taslağında belirttiğin...", "Metninde geçen...").`,
+5. **Hitap Kuralı:** Kullanıcıya doğrudan "Sen" veya "Siz" şeklinde muhatap ol ("Taslağında belirttiğin...", "Metninde geçen...").
+6. **Dahili İndeks ve Chunk Numarası Yasağı:** Sistem tarafından arka planda sağlanan kaynak parçası numaralarını veya dahili indeksleri (ör. 'Kaynak #1', 'Parça #2', '[Chunk 1]') KESİNLİKLE raporda kullanıcıya gösterme veya metne dahil etme. Kaynak referansı verirken yalnızca eserin yazarını, yayın yılını ve ilgili sayfa/sayfa aralığını kullan (Örn: 'Akkaya (2020, ss. 3-4)' veya 'Ahmet Hamdi Akkaya\\'nın 2020 tarihli çalışmasında...').`,
 
     workflowSteps: `1. Taslaktaki her [Yazar, Yıl, s. X] / [Yazar, Yıl, ss. X-Y] alıntısını ayrıştır.
 2. Alıntılanan yazar/çalışmanın bağlamda mevcudiyetini kontrol et.

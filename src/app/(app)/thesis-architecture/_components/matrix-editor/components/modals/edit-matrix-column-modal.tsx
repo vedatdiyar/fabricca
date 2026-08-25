@@ -110,8 +110,7 @@ export function EditMatrixColumnModal({
             className="textarea-academic flex-1 w-full rounded-md border border-primary/40 bg-background/60 p-4 font-sans text-sm leading-relaxed text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary focus-visible:border-primary resize-none"
             placeholder={card.placeholder}
           />
-          <div className="flex items-center justify-between text-xs text-muted-foreground px-1">
-            <span>⌘ + Enter ile hızlı kaydet</span>
+          <div className="flex items-center justify-end text-xs text-muted-foreground px-1">
             <span>
               {countWords(value)} kelime • {value.length} karakter
             </span>

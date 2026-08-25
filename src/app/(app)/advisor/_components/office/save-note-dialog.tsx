@@ -40,14 +40,15 @@ export function SaveNoteDialog({
 }: SaveNoteDialogProps) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md bg-card border-border">
+      <DialogContent className="sm:max-w-md bg-card border border-border rounded-lg p-5">
         <DialogHeader>
           <DialogTitle className="font-serif text-base font-semibold tracking-tight text-foreground">
             Savunma Notunu Bölüme Kaydet
           </DialogTitle>
-          <DialogDescription className="text-xs text-muted-foreground">
-            Bu not, Alıntı Fişleri (Citation Cards) modülüne ve{" "}
-            <strong>{outlineTitle}</strong> bölümüne iliştirilecektir.
+          <DialogDescription className="text-xs font-medium text-muted-foreground">
+            Bu not, Alıntı Fişleri modülüne ve{" "}
+            <strong className="text-foreground">{outlineTitle}</strong> bölümüne
+            iliştirilecektir.
           </DialogDescription>
         </DialogHeader>
 
@@ -62,7 +63,8 @@ export function SaveNoteDialog({
             id="note-content"
             value={noteContent}
             onChange={(e) => onChangeNoteContent(e.target.value)}
-            className="min-h-[140px] text-xs p-3 bg-background border-border leading-relaxed"
+            placeholder="Savunma notunuzu yazın..."
+            className="min-h-[140px] text-xs p-2.5 bg-background border border-border resize-none leading-relaxed rounded-md text-foreground placeholder:text-muted-foreground"
           />
         </div>
 
@@ -70,18 +72,16 @@ export function SaveNoteDialog({
           <Button
             type="button"
             variant="outline"
-            size="sm"
             onClick={() => onOpenChange(false)}
-            className="text-xs"
+            className="h-8 text-xs px-3 rounded-md border-border bg-background hover:bg-muted text-foreground cursor-pointer"
           >
             Vazgeç
           </Button>
           <Button
             type="button"
-            size="sm"
             onClick={onSave}
             disabled={isSaving || !noteContent.trim()}
-            className="bg-primary text-primary-foreground text-xs gap-1.5"
+            className="h-8 text-xs px-3 rounded-md bg-primary text-primary-foreground hover:bg-primary/90 font-medium gap-1.5 cursor-pointer"
           >
             {isSaving ? (
               <Loader2 className="size-3.5 animate-spin" />

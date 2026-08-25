@@ -113,10 +113,7 @@ export function EditSectionModal({
               rows={5}
               className="textarea-academic w-full text-xs"
             />
-            <span className="text-[11px] text-muted-foreground block pt-0.5">
-              ⌘ + Enter ile hızlı kaydet
-            </span>
-          </div>
+           </div>
         </div>
 
         <DialogFooter className="gap-2">

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Copy, Check, Sparkles, User, BookOpen, Bot } from "lucide-react";
+import { Copy, Check, Sparkles, User, BookOpen, Bot, ChevronDown } from "lucide-react";
 import type { Message } from "@/core/db/schema";
 import type { RagSearchResultItem } from "@/core/services/search/rag-search";
 import { MarkdownRenderer } from "../markdown-renderer";
@@ -27,6 +27,7 @@ export function AssistantMessageItem({
   onCitationClick,
 }: AssistantMessageItemProps) {
   const [copied, setCopied] = useState(false);
+  const [isSourcesExpanded, setIsSourcesExpanded] = useState(false);
   const isUser = message.role === "user";
 
   const handleCopy = async () => {
@@ -115,32 +116,46 @@ export function AssistantMessageItem({
         {/* Cited Sources Strip */}
         {sourceItems.length > 0 && (
           <div className="pt-2 border-t border-border/40 space-y-1.5">
-            <div className="flex items-center gap-1.5 text-[11px] font-medium text-muted-foreground">
-              <BookOpen className="size-3 text-primary" />
-              <span>İlgili Kütüphane Kaynakları ({sourceItems.length})</span>
-            </div>
-            <div className="flex flex-wrap gap-1.5">
-              {sourceItems.map((source, index) => (
-                <button
-                  key={`${source.resourceId}-${source.chunkIndex}-${index}`}
-                  type="button"
-                  onClick={() => onCitationClick && onCitationClick(source)}
-                  className="flex items-center gap-1.5 px-2 py-1 rounded-md border border-border bg-background hover:bg-muted/40 hover:border-primary/30 transition-colors text-[11px] text-foreground text-left cursor-pointer max-w-full truncate"
-                >
-                  <span className="font-mono text-primary font-semibold text-[10px]">
-                    [{index + 1}]
-                  </span>
-                  <span className="truncate max-w-[200px] sm:max-w-[280px]">
-                    {source.resourceTitle}
-                  </span>
-                  {source.pageNumber && (
-                    <span className="font-mono text-muted-foreground text-[10px]">
-                      s. {source.pageNumber}
+            <button
+              type="button"
+              onClick={() => setIsSourcesExpanded((prev) => !prev)}
+              className="flex items-center justify-between w-full text-left py-1 text-[11px] font-medium text-muted-foreground hover:text-foreground transition-colors cursor-pointer group/sources select-none"
+              aria-expanded={isSourcesExpanded}
+            >
+              <div className="flex items-center gap-1.5">
+                <BookOpen className="size-3 text-primary" />
+                <span>İlgili Kütüphane Kaynakları ({sourceItems.length})</span>
+              </div>
+              <ChevronDown
+                className={`size-3 text-muted-foreground transition-transform duration-200 ${
+                  isSourcesExpanded ? "rotate-180 text-foreground" : ""
+                }`}
+              />
+            </button>
+            {isSourcesExpanded && (
+              <div className="flex flex-wrap gap-1.5 pt-0.5">
+                {sourceItems.map((source, index) => (
+                  <button
+                    key={`${source.resourceId}-${source.chunkIndex}-${index}`}
+                    type="button"
+                    onClick={() => onCitationClick && onCitationClick(source)}
+                    className="flex items-center gap-1.5 px-2 py-1 rounded-md border border-border bg-background hover:bg-muted/40 hover:border-primary/30 transition-colors text-[11px] text-foreground text-left cursor-pointer max-w-full truncate"
+                  >
+                    <span className="font-mono text-primary font-semibold text-[10px]">
+                      [{index + 1}]
                     </span>
-                  )}
-                </button>
-              ))}
-            </div>
+                    <span className="truncate max-w-[200px] sm:max-w-[280px]">
+                      {source.resourceTitle}
+                    </span>
+                    {source.pageNumber && (
+                      <span className="font-mono text-muted-foreground text-[10px]">
+                        s. {source.pageNumber}
+                      </span>
+                    )}
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
         )}
       </div>
