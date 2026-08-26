@@ -13,8 +13,8 @@ import { generateGeminiStructuredContent } from "@/core/services/ai";
 import { FLASH_LITE_35, GEMINI_SEED } from "@/lib/constants";
 import { ThinkingLevel } from "@google/genai";
 import { createFlowId, Logger } from "@/lib/logger";
-import { searchOpenAlex } from "@/app/(onboarding)/onboarding/literature-review/_services/openalex/client";
-import { rerankWithCohere } from "@/core/services/ai/cohere";
+import { orchestrateBatchProcess } from "@/app/(onboarding)/onboarding/literature-review/_services/batch-orchestrator";
+import type { SubBoxInput } from "@/app/(onboarding)/onboarding/literature-review/_services/literature-review-papers";
 import {
   matrixRealignmentSchema,
   matrixRealignmentJsonSchema,
@@ -30,14 +30,6 @@ export interface CascadeRealignmentResult {
   addedSources: { id: number; title: string; authors?: string[] }[];
   createdTasks: { id: number; title: string }[];
   summaryMessage: string;
-}
-
-
-/**
- * Normalizes title for deduplication.
- */
-function normalizeTitle(title: string): string {
-  return title.toLowerCase().replace(/[^a-z0-9]/g, "").trim();
 }
 
 /**
@@ -190,9 +182,13 @@ export async function runMatrixRealignmentCascade(
     }
   }
 
-  // 4. Create new sub-boxes & run literature discovery
-  for (const newSub of output.newSubBoxes) {
+  // 4. Create new sub-boxes in database
+  const createdSubBoxes: {
+    insertedBox: { id: number; title: string; semanticQuery: string | null };
+    newSub: MatrixRealignmentOutput["newSubBoxes"][number];
+  }[] = [];
 
+  for (const newSub of output.newSubBoxes) {
     const [insertedBox] = await db
       .insert(boxes)
       .values({
@@ -215,59 +211,58 @@ export async function runMatrixRealignmentCascade(
       semanticQuery: insertedBox.semanticQuery ?? newSub.semanticQuery,
     });
 
-    // 5. Query OpenAlex for canonical literature
+    createdSubBoxes.push({ insertedBox, newSub });
+  }
+
+  // 5. Run standard Onboarding Literature Pipeline (Search -> Gemini Jury -> Fuzzy Dedup -> Sanitization)
+  if (createdSubBoxes.length > 0) {
     try {
-      const rawPapers = await searchOpenAlex(newSub.semanticQuery, 20);
+      const batchBoxes: SubBoxInput[] = createdSubBoxes.map(({ insertedBox, newSub }) => ({
+        id: parentId ?? insertedBox.id,
+        title: newSub.title,
+        description: newSub.description,
+        boxType: newSub.parentBoxType,
+        subBoxes: [
+          {
+            title: newSub.title,
+            description: newSub.description,
+            thesisBoxId: insertedBox.id,
+            semanticQuery: newSub.semanticQuery,
+          },
+        ],
+      }));
 
-      if (rawPapers && rawPapers.length > 0) {
-        // Rerank with Cohere or take top papers
-        let selectedPapers = rawPapers;
-        const thesisContextQuery = `${userMatrix.subjectProblem ?? ""} ${userMatrix.theoreticalFramework ?? ""} ${newSub.title} ${newSub.description}`;
+      const thesisMatrixSubject = [
+        userMatrix.subjectProblem,
+        userMatrix.theoreticalFramework,
+        userMatrix.methodology,
+      ]
+        .filter(Boolean)
+        .join(" ")
+        .trim();
 
-        if (process.env.COHERE_API_KEY && rawPapers.length > 3) {
-          try {
-            const documents = rawPapers.map(
-              (p) => `${p.title}. Yazar: ${(p.authors ?? []).join(", ")}. Özet: ${p.abstract ?? ""}`,
-            );
-            const rerankRes = await rerankWithCohere({
-              query: thesisContextQuery.substring(0, 4000),
-              documents,
-            });
-            selectedPapers = rerankRes.map((r) => rawPapers[r.index]);
-          } catch {
-            // keep rawPapers order if rerank fails
-          }
-        }
+      const batchResult = await orchestrateBatchProcess(
+        batchBoxes,
+        log,
+        thesisMatrixSubject,
+      );
 
-        // Limit to standard 3-4 top articles per new sub-box
-        const targetArticles = selectedPapers.slice(0, 3);
+      for (const poolEntry of batchResult.poolEntries) {
+        const boxId = poolEntry.thesisBoxId;
+        const matchingSub = createdSubBoxes.find((b) => b.insertedBox.id === boxId);
+        const subBoxTitle = matchingSub?.newSub.title ?? poolEntry.subBoxTitle;
 
-        for (const art of targetArticles) {
-          if (!art.title || art.title.trim().length < 5) continue;
-
-          // Check if already in this box
-          const normArtTitle = normalizeTitle(art.title);
-          const boxExistingSources = await db
-            .select({ title: sources.title })
-            .from(sources)
-            .where(eq(sources.boxId, insertedBox.id));
-
-          const alreadyExists = boxExistingSources.some(
-            (s) => normalizeTitle(s.title) === normArtTitle,
-          );
-          if (alreadyExists) continue;
-
-
+        for (const art of poolEntry.articles) {
           const [insertedSource] = await db
             .insert(sources)
             .values({
-              boxId: insertedBox.id,
+              boxId,
               title: art.title,
               authors: art.authors ?? [],
               publisher: art.publisher ?? null,
-              publicationYear: art.year ?? null,
+              publicationYear: art.publicationYear ?? null,
               doi: art.doi ?? null,
-              openalexId: art.openAlexId ?? null,
+              openalexId: art.openalexId ?? null,
               isRead: false,
               createdAt: new Date(),
               updatedAt: new Date(),
@@ -285,11 +280,13 @@ export async function runMatrixRealignmentCascade(
             .insert(tasks)
             .values({
               userId,
-              boxId: insertedBox.id,
+              boxId,
               sourceId: insertedSource.id,
               taskType: "MANUAL",
               title: `${art.title.substring(0, 60)}... makalesini incele`,
-              description: `Yeni kuramsal/metodolojik odak ("${newSub.title}") doğrultusunda kütüphaneye eklenen yayını inceleyin ve tez argümanınızla ilişkilendirin.`,
+              description: art.comparisonNote
+                ? `${art.comparisonNote} ("${subBoxTitle}" odağı)`
+                : `Yeni kuramsal/metodolojik odak ("${subBoxTitle}") doğrultusunda kütüphaneye eklenen yayını inceleyin ve tez argümanınızla ilişkilendirin.`,
               priority: "HIGH",
               status: "TODO",
               createdAt: new Date(),
@@ -304,7 +301,7 @@ export async function runMatrixRealignmentCascade(
         }
       }
     } catch (litErr) {
-      log.error("matrix_realignment_literature_failed", {
+      log.error("matrix_realignment_literature_pipeline_failed", {
         service: "boxes",
         error: litErr instanceof Error ? litErr : new Error(String(litErr)),
       });

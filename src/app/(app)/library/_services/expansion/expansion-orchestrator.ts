@@ -2,6 +2,7 @@ import { db } from "@/core/db";
 import { boxes, sources } from "@/core/db/schema";
 import { eq, inArray } from "drizzle-orm";
 import { Logger, createFlowId } from "@/lib/logger";
+import { sanitizeTargetedArticles } from "@/core/services/academic";
 import type { ExpansionResult } from "./types";
 import { executeBackwardExpansion } from "./backward-expansion";
 import { executeForwardExpansion } from "./forward-expansion";
@@ -107,6 +108,31 @@ export async function runLiteratureExpansion(
       error: "No candidates found for expansion",
     });
     throw new Error("Literatür genişletme için uygun yeni kaynak bulunamadı.");
+  }
+
+  // Sanitize titles & authors with Gemini Flash
+  try {
+    const sanitizeInput = allSelectedCandidates.map((c) => ({
+      title: c.title,
+      author: c.authors.join(", "),
+    }));
+    const sanitized = await sanitizeTargetedArticles(sanitizeInput, logger);
+    for (let i = 0; i < allSelectedCandidates.length; i++) {
+      const item = allSelectedCandidates[i];
+      const clean = sanitized[i];
+      if (clean) {
+        item.title = clean.title.trim();
+        item.authors = clean.author
+          .split(", ")
+          .map((a) => a.trim())
+          .filter(Boolean);
+      }
+    }
+  } catch (err) {
+    logger.error("literature_expansion_sanitization_failed", {
+      service: "literature",
+      error: err instanceof Error ? err.message : String(err),
+    });
   }
 
   logger.info("literature_db_write_start", {
