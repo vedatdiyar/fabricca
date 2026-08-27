@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { useMatrixSubmit } from "../../_hooks/use-matrix-submit";
 import {
   updateMatrixFieldDirectAction,
+  syncMatrixFromChatHistoryAction,
 } from "../actions";
 import { AdvisorChat, type ChatMessage } from "./advisor-chat";
 import { MatrixModalView } from "./matrix-modal-view";
@@ -62,8 +63,26 @@ export function MatrixOnboardingContainer({
   const [streamingText, setStreamingText] = useState("");
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isSyncing, setIsSyncing] = useState(false);
 
   const readiness = evaluateMatrixReadiness(matrix);
+
+  const handleSyncFromChat = useCallback(async () => {
+    setIsSyncing(true);
+    try {
+      const res = await syncMatrixFromChatHistoryAction(messages, matrix);
+      if ("error" in res) {
+        toast.error(res.error);
+      } else {
+        setMatrix(res.matrix);
+        toast.success("Sohbet geçmişi taranarak matris güncellendi.");
+      }
+    } catch {
+      toast.error("Sohbetten aktarım sırasında bir hata oluştu.");
+    } finally {
+      setIsSyncing(false);
+    }
+  }, [messages, matrix]);
 
   // Snapshot map: messageId -> matrix state at that point (after that message was committed)
   // Used for Gemini/ChatGPT-like rewind: reverting truncates both chat and matrix to that snapshot
@@ -145,7 +164,6 @@ export function MatrixOnboardingContainer({
         const decoder = new TextDecoder();
         let buffer = "";
         let finalReplyText = "";
-        let finalMatrixUpdate: { field: MatrixFieldKey; value: string; explanation?: string } | undefined;
         let finalUpdatedMatrix: Partial<ThesisMatrix> | undefined;
         let modelMessageId = `model-${Date.now()}`;
 
@@ -179,9 +197,6 @@ export function MatrixOnboardingContainer({
                 if (eventData.replyText) {
                   finalReplyText = eventData.replyText;
                 }
-                if (eventData.matrixUpdate) {
-                  finalMatrixUpdate = eventData.matrixUpdate;
-                }
                 if (eventData.updatedMatrix) {
                   finalUpdatedMatrix = eventData.updatedMatrix;
                 }
@@ -211,7 +226,7 @@ export function MatrixOnboardingContainer({
           matrixSnapshotRef.current.set(modelMessageId, { ...snapshotMatrix });
         }
 
-        if (finalMatrixUpdate && finalUpdatedMatrix) {
+        if (finalUpdatedMatrix) {
           setMatrix(finalUpdatedMatrix);
         }
       } catch (err) {
@@ -498,6 +513,8 @@ export function MatrixOnboardingContainer({
             completedCount={readiness.completedCount}
             isFullyReady={readiness.isFullyReady}
             isSubmitting={isSubmitting}
+            isSyncing={isSyncing}
+            onSyncFromChat={handleSyncFromChat}
             onConfirm={handleSubmitMatrix}
           />
         </div>

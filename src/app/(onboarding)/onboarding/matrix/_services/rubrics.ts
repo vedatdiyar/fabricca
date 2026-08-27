@@ -82,14 +82,20 @@ export function evaluateMatrixReadiness(matrix: Partial<ThesisMatrix>): {
 
   const fields: MatrixFieldStatus[] = keys.map((key) => {
     const val = matrix[key]?.trim() ?? "";
-    const isCompleted = val.length >= 20;
-    const isDiscussing = val.length > 0 && !isCompleted;
+    const clean = val.toLowerCase();
+    const isPlaceholder =
+      clean.includes("[bekliyor") ||
+      clean.includes("[eksik") ||
+      clean.includes("boş bırakıl") ||
+      clean.includes("henüz mühürlen");
+    const isCompleted = val.length >= 35 && !isPlaceholder;
+    const isDiscussing = val.length > 0 && !isCompleted && !isPlaceholder;
 
     return {
       key,
       label: MATRIX_RUBRICS[key].label,
       status: isCompleted ? "completed" : isDiscussing ? "discussing" : "pending",
-      value: val,
+      value: isPlaceholder ? "" : val,
     };
   });
 

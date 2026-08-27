@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect, memo } from "react";
+import { useState, useRef, useEffect, useLayoutEffect, memo } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { Send, Loader2, GraduationCap, Copy, Check, Pencil, X } from "lucide-react";
@@ -57,7 +57,7 @@ export const AdvisorChat = memo(function AdvisorChat({
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const editTextareaRef = useRef<HTMLTextAreaElement>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
-  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const isInitialMountRef = useRef(true);
 
   const handleCopy = async (id: string, text: string) => {
     if (!text) return;
@@ -70,27 +70,48 @@ export const AdvisorChat = memo(function AdvisorChat({
     }
   };
 
-  // Best-practice auto-scroll (MUI/DeltaKit/Shadcn MessageScroller pattern):
-  // - User sends a message: always scroll to bottom (MUI: "always active, regardless of configuration")
-  // - Assistant streaming/new messages: scroll only while user is near bottom (150px buffer)
-  // - Streaming uses instant scroll to avoid animation restart jank (DeltaKit)
+  // ChatGPT pattern: container-only scroll (never window), overflow-anchor handles streaming.
+  // - Initial mount: silently align to bottom (latest messages visible) without touching window.
+  // - User sent: always scroll to bottom (smooth)
+  // - Assistant streaming/done: scroll only while user is near bottom (150px buffer), streaming uses "auto" to avoid jank.
   const prevMessagesLengthRef = useRef(messages.length);
+
+  // Initial mount: align chat container to bottom instantly — fixes "latest messages more relevant" without page jump.
+  useLayoutEffect(() => {
+    const container = scrollContainerRef.current;
+    if (!container) return;
+    // rAF ensures layout is painted before measuring scrollHeight
+    requestAnimationFrame(() => {
+      container.scrollTop = container.scrollHeight;
+    });
+  }, []);
+
   useEffect(() => {
     const container = scrollContainerRef.current;
     if (!container) return;
+
+    // Skip the very first effect invocation (mount) — already handled by useLayoutEffect above.
+    // Prevents double-scroll and ensures window.scrollY stays 0 on page open.
+    if (isInitialMountRef.current) {
+      isInitialMountRef.current = false;
+      prevMessagesLengthRef.current = messages.length;
+      return;
+    }
 
     const lastMessage = messages[messages.length - 1];
     const isUserSent = messages.length > prevMessagesLengthRef.current && lastMessage?.role === "user";
     prevMessagesLengthRef.current = messages.length;
 
     const distance = container.scrollHeight - container.scrollTop - container.clientHeight;
-    // Always follow when user just sent a message, otherwise respect buffer
+    // Always follow when user just sent a message, otherwise respect buffer (pause auto-scroll if user scrolled up)
     if (!isUserSent && distance > 150) return;
 
-    messagesEndRef.current?.scrollIntoView({
+    // Container-only scroll — does NOT affect window (unlike scrollIntoView which would shift the page).
+    container.scrollTo({
+      top: container.scrollHeight,
       behavior: streamingText ? "auto" : "smooth",
     });
-  }, [messages, isLoading, streamingText, statusMessage, editingId]);
+  }, [messages, streamingText]);
 
   useEffect(() => {
     if (textareaRef.current) {
@@ -107,7 +128,7 @@ export const AdvisorChat = memo(function AdvisorChat({
       editTextareaRef.current.style.height = "auto";
       const scrollHeight = editTextareaRef.current.scrollHeight;
       editTextareaRef.current.style.height = `${Math.min(Math.max(scrollHeight, 100), 320)}px`;
-      editTextareaRef.current.focus();
+      editTextareaRef.current.focus({ preventScroll: true });
     }
   }, [editingId, editDraft]);
 
@@ -174,7 +195,11 @@ export const AdvisorChat = memo(function AdvisorChat({
       </div>
 
       {/* Internal Scrollable Message History */}
-      <div ref={scrollContainerRef} className="flex-1 overflow-y-auto p-4 space-y-4 min-h-0">
+      <div
+        ref={scrollContainerRef}
+        className="flex-1 overflow-y-auto p-4 space-y-4 min-h-0"
+        style={{ overflowAnchor: "auto" }}
+      >
         {messages.map((msg) => {
           const isModel = msg.role === "model";
           const isEditing = editingId === msg.id;
@@ -430,7 +455,8 @@ export const AdvisorChat = memo(function AdvisorChat({
           </div>
         )}
 
-        <div ref={messagesEndRef} />
+        {/* bottom sentinel — no JS scroll target, kept for layout stability */}
+        <div aria-hidden="true" className="h-0" />
       </div>
 
       {/* Sticky Bottom Input Area */}

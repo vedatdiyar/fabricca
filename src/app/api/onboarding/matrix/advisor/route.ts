@@ -78,11 +78,6 @@ export async function POST(request: Request) {
         currentMatrix: sanitizedMatrix,
       });
 
-      const updatedMatrix = { ...sanitizedMatrix };
-      if (result.matrixUpdate) {
-        updatedMatrix[result.matrixUpdate.field] = result.matrixUpdate.value;
-      }
-
       const modelMessage: MatrixAdvisorMessage = {
         id: `model-${Date.now()}`,
         role: "model",
@@ -94,25 +89,34 @@ export async function POST(request: Request) {
         modelMessage,
       ];
 
+      // Auto-harvest missing fields from chat history (regex + LLM synthesis)
+      const { harvestMatrixFromChat } = await import(
+        "@/app/(onboarding)/onboarding/matrix/_services/matrix-chat-sync"
+      );
+      const finalMatrix = await harvestMatrixFromChat(
+        updatedMessages,
+        sanitizedMatrix,
+      );
+
       // Progressive Save of matrix and advisorMessages into Neon DB
       await db
         .insert(matrices)
         .values({
           userId: session.userId,
-          subjectProblem: updatedMatrix.subjectProblem ?? "",
-          theoreticalFramework: updatedMatrix.theoreticalFramework ?? "",
-          primaryMaterial: updatedMatrix.primaryMaterial ?? "",
-          methodology: updatedMatrix.methodology ?? "",
+          subjectProblem: finalMatrix.subjectProblem ?? "",
+          theoreticalFramework: finalMatrix.theoreticalFramework ?? "",
+          primaryMaterial: finalMatrix.primaryMaterial ?? "",
+          methodology: finalMatrix.methodology ?? "",
           advisorMessages: updatedMessages,
           updatedAt: sql`now()`,
         })
         .onConflictDoUpdate({
           target: matrices.userId,
           set: {
-            subjectProblem: updatedMatrix.subjectProblem ?? "",
-            theoreticalFramework: updatedMatrix.theoreticalFramework ?? "",
-            primaryMaterial: updatedMatrix.primaryMaterial ?? "",
-            methodology: updatedMatrix.methodology ?? "",
+            subjectProblem: finalMatrix.subjectProblem ?? "",
+            theoreticalFramework: finalMatrix.theoreticalFramework ?? "",
+            primaryMaterial: finalMatrix.primaryMaterial ?? "",
+            methodology: finalMatrix.methodology ?? "",
             advisorMessages: updatedMessages,
             updatedAt: sql`now()`,
           },
@@ -123,8 +127,7 @@ export async function POST(request: Request) {
       writer.send("done", {
         messageId: modelMessage.id,
         replyText: result.replyText,
-        matrixUpdate: result.matrixUpdate,
-        updatedMatrix,
+        updatedMatrix: finalMatrix,
       });
       writer.done();
     } catch (err) {

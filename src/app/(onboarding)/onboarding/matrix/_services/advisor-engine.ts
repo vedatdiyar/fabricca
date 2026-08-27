@@ -15,7 +15,6 @@ import {
   queryEmpiricalContext,
 } from "./advisor-tools";
 import { buildAdvisorSystemPrompt } from "./advisor-prompt";
-import type { MatrixFieldKey } from "./rubrics";
 
 /** Message turn structure for advisor dialogue. */
 export interface AdvisorMessage {
@@ -23,61 +22,22 @@ export interface AdvisorMessage {
   content: string;
 }
 
-/** Potential structured update for one of the matrix quadrants. */
-export interface MatrixFieldUpdate {
-  field: MatrixFieldKey;
-  value: string;
-  explanation?: string;
-}
-
 /** Response payload from an advisor turn. */
 export interface AdvisorTurnResponse {
   replyText: string;
-  matrixUpdate?: MatrixFieldUpdate;
 }
 
 const ONBOARDING_TOOL_DECLARATIONS: FunctionDeclaration[] = [
   {
-    name: "crystallizeMatrixQuadrant",
-    description:
-      "Müzakere sonucunda araştırmacıyla üzerinde uzlaşılan veya yeterli akademik olgunluğa ulaşan bir matris kadranını (Araştırma Problemi, Kuramsal Çerçeve, Veri Kaynağı, Metodoloji) sisteme kaydeder ve mühürler. Kadran olgunlaştığında bu aracı çağırın.",
-    parametersJsonSchema: {
-      type: "object",
-      properties: {
-        field: {
-          type: "string",
-          enum: [
-            "subjectProblem",
-            "theoreticalFramework",
-            "primaryMaterial",
-            "methodology",
-          ],
-          description: "Mühürlenecek matris kadranının teknik anahtarı.",
-        },
-        value: {
-          type: "string",
-          description:
-            "Matrise işlenecek, değişkenleri ve bağlamı net tanımlanmış yüksek akademik Türkçe kristalize metin.",
-        },
-        explanation: {
-          type: "string",
-          description:
-            "Bu kadranın neden olgunlaştığına dair 1 cümlelik metodolojik gerekçe.",
-        },
-      },
-      required: ["field", "value"],
-    },
-  },
-  {
     name: "lookupPrecedentTheses",
     description:
-      "Silently consults the institutional archive of 366,000+ defended master's and doctoral theses to review practical methodology implementations, sample sizes, and data collection bottlenecks.",
+      "Türkiye'deki 366.000+ onaylı yüksek lisans ve doktora tez arşivini (YÖK/Qdrant) tarar. Araştırmacının fikrinin daha önce nasıl çalışıldığını, hangi yöntem ve örneklemlerin kullanıldığını ve literatürdeki boşlukları denetlemek için kullanılır.",
     parametersJsonSchema: {
       type: "object",
       properties: {
         query: {
           type: "string",
-          description: "Academic query describing research topic or methodology.",
+          description: "Akademik arama sorgusu veya araştırma konusu.",
         },
       },
       required: ["query"],
@@ -86,13 +46,13 @@ const ONBOARDING_TOOL_DECLARATIONS: FunctionDeclaration[] = [
   {
     name: "lookupScholarlyLiterature",
     description:
-      "Silently consults international scholarly literature (250M+ papers) to verify theoretical debates, key academic poles, and pioneer works.",
+      "Uluslararası akademik literatürü (OpenAlex - 250M+ makale) tarar. Temel kuramsal tartışmaları, öncü yazarları ve uluslararası literatürdeki akademik boşlukları doğrulamak için kullanılır.",
     parametersJsonSchema: {
       type: "object",
       properties: {
         query: {
           type: "string",
-          description: "Scholarly search query for theoretical papers.",
+          description: "Kuramsal veya tematik arama sorgusu.",
         },
       },
       required: ["query"],
@@ -101,13 +61,13 @@ const ONBOARDING_TOOL_DECLARATIONS: FunctionDeclaration[] = [
   {
     name: "lookupEmpiricalContext",
     description:
-      "Silently consults current local field reports, DergiPark publications, and sector data for empirical realities and emerging developments.",
+      "Güncel saha verilerini, DergiPark makalelerini, raporları ve sektörel verileri tarar (Exa.ai). Veri kaynaklarının güncelliğini ve saha gerçekliğini test etmek için kullanılır.",
     parametersJsonSchema: {
       type: "object",
       properties: {
         query: {
           type: "string",
-          description: "Empirical query for local context and field data.",
+          description: "Saha, veri kaynağı veya güncel rapor sorgusu.",
         },
       },
       required: ["query"],
@@ -117,7 +77,7 @@ const ONBOARDING_TOOL_DECLARATIONS: FunctionDeclaration[] = [
 
 /**
  * Executes a single conversational turn with the Socratic Academic Advisor (synchronous/non-streaming).
- * Uses FLASH_LITE_35, ThinkingLevel.LOW and parallel tool execution with Promise.all.
+ * Uses FLASH_LITE_35, ThinkingLevel.MEDIUM and parallel tool execution with Promise.all.
  */
 export async function runAdvisorTurn(
   history: AdvisorMessage[],
@@ -141,7 +101,6 @@ export async function runAdvisorTurn(
 
   let loopLimit = 3;
   let finalReply = "";
-  let capturedMatrixUpdate: MatrixFieldUpdate | undefined;
 
   while (loopLimit > 0) {
     loopLimit--;
@@ -204,37 +163,7 @@ export async function runAdvisorTurn(
         const query = typeof args.query === "string" ? args.query : "";
 
         let toolResult: unknown = {};
-        if (name === "crystallizeMatrixQuadrant") {
-          const field = String(args.field ?? "") as MatrixFieldKey;
-          const value = String(args.value ?? "");
-          const explanation =
-            typeof args.explanation === "string" ? args.explanation : undefined;
-
-          if (
-            [
-              "subjectProblem",
-              "theoreticalFramework",
-              "primaryMaterial",
-              "methodology",
-            ].includes(field) &&
-            value.trim()
-          ) {
-            capturedMatrixUpdate = {
-              field,
-              value: value.trim(),
-              explanation,
-            };
-            toolResult = {
-              status: "success",
-              message: `Kadran '${field}' başarıyla matrise mühürlendi.`,
-            };
-          } else {
-            toolResult = {
-              status: "error",
-              message: "Geçersiz kadran veya boş metin.",
-            };
-          }
-        } else if (name === "lookupPrecedentTheses") {
+        if (name === "lookupPrecedentTheses") {
           toolResult = await queryPrecedentTheses(query);
         } else if (name === "lookupScholarlyLiterature") {
           toolResult = await queryScholarlyLiterature(query);
@@ -261,7 +190,6 @@ export async function runAdvisorTurn(
 
   return {
     replyText: finalReply.trim(),
-    matrixUpdate: capturedMatrixUpdate,
   };
 }
 
@@ -274,7 +202,7 @@ type GeminiContentStream = Awaited<
 
 /**
  * Executes a streaming conversational turn with the Socratic Academic Advisor.
- * Emits SSE deltas and executes tools (including native matrix crystallization) in parallel.
+ * Emits SSE deltas and executes silent research tools in parallel.
  */
 export async function runAdvisorTurnStream(
   writer: AdvisorStreamWriter,
@@ -303,7 +231,6 @@ export async function runAdvisorTurnStream(
 
   let loopLimit = 3;
   let fullAccumulatedText = "";
-  let capturedMatrixUpdate: MatrixFieldUpdate | undefined;
 
   while (loopLimit > 0) {
     loopLimit--;
@@ -347,32 +274,17 @@ export async function runAdvisorTurnStream(
       break;
     }
 
-    const isCrystallizing = functionCalls.some(
-      (fc) => fc.name === "crystallizeMatrixQuadrant",
-    );
-    const isSearching = functionCalls.some(
-      (fc) => fc.name !== "crystallizeMatrixQuadrant",
-    );
-
-    if (isCrystallizing) {
-      writer.send("status", {
-        message: "Danışman matris kadranını mühürlüyor...",
-      });
-    } else if (isSearching) {
-      writer.send("status", {
-        message: "Danışman literatürü ve emsal tez arşivini inceliyor...",
-      });
-    }
+    writer.send("status", {
+      message: "Danışman literatürü ve emsal tez arşivini inceliyor...",
+    });
 
     // Astryx-like ChatToolCalls: emit running events for visible research tools
-    const visibleCalls = functionCalls
-      .filter((fc) => fc.name !== "crystallizeMatrixQuadrant")
-      .map((fc, idx) => ({
-        id: fc.id ?? `tool-${Date.now()}-${idx}`,
-        name: fc.name ?? "unknown",
-        query: (fc.args as Record<string, unknown> | undefined)?.query ?? "",
-        original: fc,
-      }));
+    const visibleCalls = functionCalls.map((fc, idx) => ({
+      id: fc.id ?? `tool-${Date.now()}-${idx}`,
+      name: fc.name ?? "unknown",
+      query: (fc.args as Record<string, unknown> | undefined)?.query ?? "",
+      original: fc,
+    }));
     for (const vc of visibleCalls) {
       writer.send("tool_call", {
         id: vc.id,
@@ -380,7 +292,6 @@ export async function runAdvisorTurnStream(
         query: typeof vc.query === "string" ? vc.query : "",
         status: "running",
       });
-      // Ensure original fc has stable id for strict matching
       if (!vc.original.id) vc.original.id = vc.id;
     }
 
@@ -389,7 +300,7 @@ export async function runAdvisorTurnStream(
       parts: turnModelParts,
     });
 
-    // Execute requested tools in parallel via Promise.all (strict 3.5+ id+name matching)
+    // Execute requested research tools in parallel via Promise.all (strict 3.5+ id+name matching)
     const toolResponses = await Promise.all(
       functionCalls.map(async (fc) => {
         const name = fc.name ?? "";
@@ -398,37 +309,7 @@ export async function runAdvisorTurnStream(
         const query = typeof args.query === "string" ? args.query : "";
 
         let toolResult: unknown = {};
-        if (name === "crystallizeMatrixQuadrant") {
-          const field = String(args.field ?? "") as MatrixFieldKey;
-          const value = String(args.value ?? "");
-          const explanation =
-            typeof args.explanation === "string" ? args.explanation : undefined;
-
-          if (
-            [
-              "subjectProblem",
-              "theoreticalFramework",
-              "primaryMaterial",
-              "methodology",
-            ].includes(field) &&
-            value.trim()
-          ) {
-            capturedMatrixUpdate = {
-              field,
-              value: value.trim(),
-              explanation,
-            };
-            toolResult = {
-              status: "success",
-              message: `Kadran '${field}' başarıyla matrise mühürlendi.`,
-            };
-          } else {
-            toolResult = {
-              status: "error",
-              message: "Geçersiz kadran veya boş metin.",
-            };
-          }
-        } else if (name === "lookupPrecedentTheses") {
+        if (name === "lookupPrecedentTheses") {
           toolResult = await queryPrecedentTheses(query);
         } else if (name === "lookupScholarlyLiterature") {
           toolResult = await queryScholarlyLiterature(query);
@@ -437,7 +318,7 @@ export async function runAdvisorTurnStream(
         }
 
         // Emit done event for visible tools with result summary
-        if (name !== "crystallizeMatrixQuadrant" && id) {
+        if (id) {
           const count = Array.isArray(toolResult) ? toolResult.length : 0;
           const titles = Array.isArray(toolResult)
             ? (toolResult as Array<Record<string, unknown>>)
@@ -473,6 +354,5 @@ export async function runAdvisorTurnStream(
 
   return {
     replyText: fullAccumulatedText.trim(),
-    matrixUpdate: capturedMatrixUpdate,
   };
 }

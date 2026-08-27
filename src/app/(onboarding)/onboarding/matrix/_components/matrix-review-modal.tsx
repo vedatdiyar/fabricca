@@ -2,7 +2,7 @@
 
 import { memo } from "react";
 import type { LucideIcon } from "lucide-react";
-import { Target, Compass, Database, BookOpen, CheckCircle2, Clock, Sparkles, ArrowRight, Loader2 } from "lucide-react";
+import { Target, Compass, Database, BookOpen, CheckCircle2, Clock, Sparkles, ArrowRight, Loader2, RefreshCw } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -36,6 +36,8 @@ interface MatrixReviewModalProps {
   completedCount: number;
   isFullyReady: boolean;
   isSubmitting: boolean;
+  isSyncing?: boolean;
+  onSyncFromChat?: () => void | Promise<void>;
   onConfirm: () => void | Promise<void>;
 }
 
@@ -46,6 +48,8 @@ export const MatrixReviewModal = memo(function MatrixReviewModal({
   completedCount,
   isFullyReady,
   isSubmitting,
+  isSyncing = false,
+  onSyncFromChat,
   onConfirm,
 }: MatrixReviewModalProps) {
   return (
@@ -118,9 +122,35 @@ export const MatrixReviewModal = memo(function MatrixReviewModal({
         </div>
 
         <div className="p-4 border-t border-border bg-card shrink-0 flex items-center justify-between gap-3">
-          <Button type="button" variant="ghost" size="sm" onClick={() => onOpenChange(false)} className="h-9 text-xs px-3 rounded-md">
-            Kapat
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={() => onOpenChange(false)}
+              className="h-9 text-xs px-3 rounded-md"
+            >
+              Kapat
+            </Button>
+            {completedCount < 4 && onSyncFromChat && (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                disabled={isSyncing || isSubmitting}
+                onClick={onSyncFromChat}
+                className="h-9 text-xs px-3 rounded-md border-primary/30 text-primary hover:bg-primary/10 inline-flex items-center gap-1.5 cursor-pointer"
+                title="Sohbet geçmişini tarayarak uzlaşılan eksik kadranları otomatik matrise aktarır"
+              >
+                {isSyncing ? (
+                  <Loader2 className="size-3.5 animate-spin" />
+                ) : (
+                  <RefreshCw className="size-3.5" />
+                )}
+                Sohbetten Otomatik Doldur
+              </Button>
+            )}
+          </div>
           <Button
             type="button"
             onClick={onConfirm}

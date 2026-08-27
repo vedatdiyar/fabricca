@@ -131,7 +131,6 @@ export async function sendAdvisorMessageAction(
   | {
       success: true;
       replyText: string;
-      matrixUpdate?: { field: string; value: string; explanation?: string };
       updatedMatrix: Partial<ThesisMatrix>;
     }
   | { error: string }
@@ -145,8 +144,6 @@ export async function sendAdvisorMessageAction(
     const { runAdvisorTurn } = await import("./_services/advisor-engine");
     const result = await runAdvisorTurn(history, currentMatrix);
 
-    const updatedMatrix = { ...currentMatrix };
-
     const modelMessage = {
       id: `model-${Date.now()}`,
       role: "model" as const,
@@ -157,30 +154,28 @@ export async function sendAdvisorMessageAction(
       modelMessage,
     ];
 
-    if (result.matrixUpdate) {
-      const { field, value } = result.matrixUpdate;
-      updatedMatrix[field] = value;
-    }
+    const { harvestMatrixFromChat } = await import("./_services/matrix-chat-sync");
+    const finalMatrix = await harvestMatrixFromChat(updatedMessages, currentMatrix);
 
     // Progressive Save immediately to database
     await db
       .insert(matrices)
       .values({
         userId: session.userId,
-        subjectProblem: updatedMatrix.subjectProblem ?? "",
-        theoreticalFramework: updatedMatrix.theoreticalFramework ?? "",
-        primaryMaterial: updatedMatrix.primaryMaterial ?? "",
-        methodology: updatedMatrix.methodology ?? "",
+        subjectProblem: finalMatrix.subjectProblem ?? "",
+        theoreticalFramework: finalMatrix.theoreticalFramework ?? "",
+        primaryMaterial: finalMatrix.primaryMaterial ?? "",
+        methodology: finalMatrix.methodology ?? "",
         advisorMessages: updatedMessages,
         updatedAt: sql`now()`,
       })
       .onConflictDoUpdate({
         target: matrices.userId,
         set: {
-          subjectProblem: updatedMatrix.subjectProblem ?? "",
-          theoreticalFramework: updatedMatrix.theoreticalFramework ?? "",
-          primaryMaterial: updatedMatrix.primaryMaterial ?? "",
-          methodology: updatedMatrix.methodology ?? "",
+          subjectProblem: finalMatrix.subjectProblem ?? "",
+          theoreticalFramework: finalMatrix.theoreticalFramework ?? "",
+          primaryMaterial: finalMatrix.primaryMaterial ?? "",
+          methodology: finalMatrix.methodology ?? "",
           advisorMessages: updatedMessages,
           updatedAt: sql`now()`,
         },
@@ -191,8 +186,7 @@ export async function sendAdvisorMessageAction(
     return {
       success: true,
       replyText: result.replyText,
-      matrixUpdate: result.matrixUpdate,
-      updatedMatrix,
+      updatedMatrix: finalMatrix,
     };
   } catch (err) {
     return {
@@ -244,3 +238,88 @@ export async function updateMatrixFieldDirectAction(
     return { error: "Alan güncellenemedi." };
   }
 }
+
+/**
+ * Harvests all matrix quadrants from the user's entire advisor chat history
+ * using multi-stage regex + LLM extraction, and saves into Neon PostgreSQL.
+ */
+export async function syncMatrixFromChatHistoryAction(
+  clientMessages?: Array<{ role: "user" | "model"; content: string }>,
+  currentMatrix?: Partial<ThesisMatrix>,
+): Promise<
+  | {
+      success: true;
+      matrix: Partial<ThesisMatrix>;
+    }
+  | { error: string }
+> {
+  try {
+    const session = await getSession();
+    if (!session) {
+      return { error: SESSION_ERROR_MSG };
+    }
+
+    const [existingRow] = await db
+      .select()
+      .from(matrices)
+      .where(eq(matrices.userId, session.userId))
+      .limit(1);
+
+    const messagesToParse =
+      clientMessages && clientMessages.length > 0
+        ? clientMessages
+        : (existingRow?.advisorMessages ?? []);
+
+    const baseMatrix: Partial<ThesisMatrix> = {
+      subjectProblem:
+        currentMatrix?.subjectProblem ?? existingRow?.subjectProblem ?? "",
+      theoreticalFramework:
+        currentMatrix?.theoreticalFramework ??
+        existingRow?.theoreticalFramework ??
+        "",
+      primaryMaterial:
+        currentMatrix?.primaryMaterial ?? existingRow?.primaryMaterial ?? "",
+      methodology:
+        currentMatrix?.methodology ?? existingRow?.methodology ?? "",
+    };
+
+    const { harvestMatrixFromChat } = await import("./_services/matrix-chat-sync");
+    const harvested = await harvestMatrixFromChat(messagesToParse, baseMatrix);
+
+    await db
+      .insert(matrices)
+      .values({
+        userId: session.userId,
+        subjectProblem: harvested.subjectProblem ?? "",
+        theoreticalFramework: harvested.theoreticalFramework ?? "",
+        primaryMaterial: harvested.primaryMaterial ?? "",
+        methodology: harvested.methodology ?? "",
+        updatedAt: sql`now()`,
+      })
+      .onConflictDoUpdate({
+        target: matrices.userId,
+        set: {
+          subjectProblem: harvested.subjectProblem ?? "",
+          theoreticalFramework: harvested.theoreticalFramework ?? "",
+          primaryMaterial: harvested.primaryMaterial ?? "",
+          methodology: harvested.methodology ?? "",
+          updatedAt: sql`now()`,
+        },
+      });
+
+    invalidateOnboardingStepCache("matrix");
+
+    return {
+      success: true,
+      matrix: harvested,
+    };
+  } catch (err) {
+    return {
+      error:
+        err instanceof Error
+          ? err.message
+          : "Sohbet geçmişinden matris derlenirken bir hata oluştu.",
+    };
+  }
+}
+
