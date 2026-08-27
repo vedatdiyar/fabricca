@@ -109,6 +109,7 @@ export async function executeForwardExpansion(
 
   logger?.info("forward_expansion_start", {
     service: "literature",
+    hidden: true,
     data: {
       boxId,
       targetCount,
@@ -204,6 +205,7 @@ export async function executeForwardExpansion(
   if (jointCandidateList.length === 0) {
     logger?.info("forward_expansion_success", {
       service: "literature",
+      hidden: true,
       blank: "none",
       data: { boxId, poolSize: 0, selectedCount: 0, reason: "empty_pool" },
     });
@@ -272,6 +274,7 @@ export async function executeForwardExpansion(
 
   logger?.info("forward_expansion_success", {
     service: "literature",
+    hidden: true,
     blank: "none",
     data: {
       boxId,

@@ -198,7 +198,10 @@ export const MatrixReviewModal = memo(function MatrixReviewModal({
           </div>
           <Button
             type="button"
-            onClick={onConfirm}
+            onClick={() => {
+              onOpenChange(false);
+              onConfirm();
+            }}
             disabled={!isFullyReady || isSubmitting}
             className="h-9 text-sm px-5 rounded-md bg-primary text-primary-foreground hover:bg-primary/90 font-medium shadow-sm disabled:opacity-50 disabled:pointer-events-none cursor-pointer inline-flex items-center gap-2"
           >

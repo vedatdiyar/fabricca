@@ -45,6 +45,7 @@ export async function evaluateThesesInParallel(
     service: "gemini",
     filePath:
       "src/app/(onboarding)/onboarding/positioning/_services/per-thesis-evaluation.ts",
+    hidden: true,
     data: { candidateCount: theses.length, chunkSize: BATCH_CHUNK_SIZE },
   });
 
@@ -117,6 +118,7 @@ export async function evaluateThesesInParallel(
     filePath:
       "src/app/(onboarding)/onboarding/positioning/_services/per-thesis-evaluation.ts",
     durationMs: performance.now() - evalStart,
+    hidden: true,
     data: {
       totalCandidates: theses.length,
       evaluatedCount: evaluatedTheses.length,

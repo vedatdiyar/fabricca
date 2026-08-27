@@ -37,6 +37,7 @@ export async function generateSemanticQueriesAction(
     log.info("semantic_query_generation_start", {
       service: "boxes",
       filePath: "src/features/boxes/semantic-queries.ts",
+      hidden: true,
     });
 
     const dbMatrix = await fetchThesisMatrix();
@@ -110,6 +111,7 @@ export async function generateSemanticQueriesAction(
     log.info("semantic_query_generation_success", {
       service: "boxes",
       durationMs: Math.round(performance.now() - startTime),
+      hidden: true,
       data: { queryCount: queries.size },
     });
 

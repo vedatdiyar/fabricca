@@ -135,16 +135,18 @@ const SubBoxSection = memo(function SubBoxSection({
           >
             <div className="space-y-2">
               <div className="flex items-center justify-between gap-2">
-                <span className="inline-flex items-center font-mono text-xs font-semibold px-2 py-0.5 rounded bg-primary/10 border border-primary/20 text-primary">
-                  {parentIndex}.{sbIdx + 1}
-                </span>
-                <span className="font-sans text-xs font-medium text-muted-foreground">
+                <div className="flex items-center gap-2 min-w-0">
+                  <span className="inline-flex items-center font-mono text-xs font-semibold px-2 py-0.5 rounded bg-primary/10 border border-primary/20 text-primary shrink-0">
+                    {parentIndex}.{sbIdx + 1}
+                  </span>
+                  <h4 className="font-serif text-sm font-semibold text-foreground tracking-tight leading-snug">
+                    {subBox.title}
+                  </h4>
+                </div>
+                <span className="font-sans text-xs font-medium text-muted-foreground shrink-0">
                   Alt Odak
                 </span>
               </div>
-              <h4 className="font-serif text-sm font-semibold text-foreground tracking-tight leading-snug">
-                {subBox.title}
-              </h4>
               {subBox.description && (
                 <p className="font-sans text-xs text-muted-foreground leading-relaxed">
                   {subBox.description}

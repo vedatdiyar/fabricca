@@ -44,12 +44,12 @@ export function buildBoxStructurePromptPayload(
 - **Tek Teorik Çerçeve (N=1):** Tek bir teorik model varsa tek alt kutu (N=1) kullanılır.
 
 ### KADRAN 3: METHODOLOGY (Yöntem)
-- **Tek Metodolojik Hat / Bütünleşik Yöntem (N=1):** Yöntemler aynı şemsiyeyi tamamlıyorsa TEK BİR ALT KUTU (N=1) olmalıdır.
-- **Karma / Ayrık Metodolojik Kulvarlar (N>=2):** Karma yöntem varsa AYRI BİR ALT KUTU olarak bölünmelidir.
+- **Ayrık Metodolojik Gelenekler ve Katmanlar (KESİNLİKLE N>=2):** Matriste birden fazla analitik yaklaşım, yöntem veya operasyonel analiz katmanı belirtilmişse (örneğin: Eleştirel Söylem Analizi ile Kolektif Eylem Çerçeveleme/Kodlama Matrisi; Söylem Analizi ile Mülakat Deseni; Nitel İçerik Analizi ile Ekonometrik Modelleme vb.) bu yaklaşımlar sentezlenmiş olsa dahi KESİNLİKLE tek bir alt kutuda birleştirilemez; her biri müstakil bir ALT KUTU (N>=2) olarak ayrıştırılmalıdır. Bir alt kutu söylemsel/dilsel analiz boyutunu (CDA vb.), diğeri tematik/eylemsel kodlama matrisi boyutunu (Snow & Benford çerçeveleme şablonu vb.) temsil etmelidir.
+- **Tek ve Yalın Metodolojik Hat (N=1):** Matriste yalnızca tek bir analiz yöntemi ve tek bir operasyonel teknik yer alıyorsa tek alt kutu (N=1) kullanılır.
 
 ### KADRAN 4: PRIMARY_MATERIAL (Birincil Kaynak)
-- **Bütünleşik Veri Seti (N=1):** Tüm kaynaklar aynı arşivden geliyorsa TEK BİR ALT KUTU (N=1) yeterlidir.
-- **Ayrık Kaynak Türleri ve Koleksiyonlar (N>=2):** Farklı arşivler veya belge grupları belirtilmişse her biri müstakil ALT KUTU olmalıdır.
+- **Ayrık Kaynak Türleri ve Koleksiyonlar (KESİNLİKLE N>=2):** Matriste birden fazla arşiv, kurum, yayın organı veya farklı belge türü belirtilmişse (örneğin: hem örgüt/yayın organı arşivleri [Serxwebûn vb.] hem yasal parti programları ve meclis tutanakları gibi) KESİNLİKLE tek bir alt kutuda eritilemez; her kaynak grubu müstakil birer ALT KUTU (N>=2) olarak ayrıştırılmalıdır.
+- **Bütünleşik Veri Seti (N=1):** Tüm kaynaklar yalnızca tek bir kurumdan veya tek bir arşiv fonundan geliyorsa tek alt kutu (N=1) kullanılır.
 
 ## Biçimsel ve Dil Standartları
 - **Dinamik Başlıklar:** Başlıklar doğrudan matristeki spesifik kavram, aktör ve olgulara odaklanmalıdır.
@@ -109,12 +109,17 @@ KADRAN 4: PRIMARY_MATERIAL
   },
   "methodology": {
     "title": "Nitel Söylem ve İçerik Analizi",
-    "description": "Metinlerin söylem-tarihsel yöntem ve kategori temelli kodlama ile çözümlenmesi.",
+    "description": "Söylem-tarihsel yaklaşım ve tematik kodlama çerçevesinin analitik sentezi.",
     "subBoxes": [
       {
-        "title": "Söylem-Tarihsel Yaklaşım ve Kodlama Şeması",
-        "description": "Siyasi metinlerin tarihsel bağlamında çözümlenmesi ve talep tipolojisi için sistematik kodlama.",
-        "concepts": ["Söylem-Tarihsel Yaklaşım", "Nitel İçerik Analizi", "Kodlama Şeması", "Talep Tipolojisi"]
+        "title": "Söylem-Tarihsel Yaklaşım (DHA)",
+        "description": "Siyasi metinlerin tarihsel bağlamında retorik ve söylemsel stratejilerle çözümlenmesi.",
+        "concepts": ["Söylem-Tarihsel Yaklaşım", "Söylemsel Stratejiler", "Tarihsel Bağlamsallaştırma"]
+      },
+      {
+        "title": "Nitel Kodlama Şeması ve Matris Analizi",
+        "description": "Metinler arası tematik kategorilerin ve talep tipolojilerinin sistematik kodlanması.",
+        "concepts": ["Nitel İçerik Analizi", "Kodlama Şeması", "Talep Tipolojisi", "Matris Analizi"]
       }
     ]
   },
@@ -123,9 +128,14 @@ KADRAN 4: PRIMARY_MATERIAL
     "description": "1990'lı yıllara ait resmî parti yayınları, bildirgeler ve meclis zabıtları.",
     "subBoxes": [
       {
-        "title": "Yasal Parti Belgeleri ve Meclis Tutanakları",
-        "description": "HEP, DEP, HADEP kongre kararları, programları, seçim bildirgeleri ve TBMM zabıtları külliyatı.",
-        "concepts": ["Parti Programları", "Seçim Bildirgeleri", "TBMM Tutanakları", "Dönem Süreli Yayınları"]
+        "title": "Yasal Parti Belgeleri ve Bildirgeler",
+        "description": "HEP, DEP ve HADEP kongre kararları, parti programları ve seçim bildirgeleri koleksiyonu.",
+        "concepts": ["Parti Programları", "Seçim Bildirgeleri", "Kongre Kararları", "Siyasal Metinler"]
+      },
+      {
+        "title": "TBMM Tutanakları ve Meclis Zabıtları",
+        "description": "1990'lar boyunca partili milletvekillerinin genel kurul ve komisyon tutanakları külliyatı.",
+        "concepts": ["TBMM Tutanakları", "Meclis Zabıtları", "Grup Konuşmaları", "Parlamento Arşivi"]
       }
     ]
   }

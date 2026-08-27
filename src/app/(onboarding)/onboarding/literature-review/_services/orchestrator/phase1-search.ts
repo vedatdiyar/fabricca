@@ -17,7 +17,7 @@ export async function executePhase1Search(
   logger: Logger,
   checkCancelled?: () => boolean,
 ): Promise<SubBoxResult[]> {
-  logger.info("literature_openalex_search_start");
+  logger.info("literature_openalex_search_start", { hidden: true });
 
   const phase1Results = await Promise.allSettled(
     activeJobs.map(async ({ box, subBox }): Promise<SubBoxResult> => {
@@ -61,7 +61,7 @@ export async function executePhase1Search(
     }
   }
 
-  logger.info("literature_openalex_search_success");
+  logger.info("literature_openalex_search_success", { hidden: true });
 
   return fulfilledResults;
 }

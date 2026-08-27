@@ -36,6 +36,7 @@ export async function executeBackwardExpansion(
 ): Promise<BackwardExpansionResult> {
   logger?.info("backward_expansion_start", {
     service: "literature",
+    hidden: true,
     data: {
       boxId,
       seedCount: activeSeedIds.length,
@@ -84,6 +85,7 @@ export async function executeBackwardExpansion(
   if (coCitationMap.size === 0) {
     logger?.info("backward_expansion_success", {
       service: "literature",
+      hidden: true,
       blank: "none",
       data: {
         boxId,
@@ -151,6 +153,7 @@ export async function executeBackwardExpansion(
 
   logger?.info("backward_expansion_success", {
     service: "literature",
+    hidden: true,
     blank: "none",
     data: {
       boxId,

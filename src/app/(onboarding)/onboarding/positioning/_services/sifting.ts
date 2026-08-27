@@ -56,6 +56,7 @@ export async function searchAndSiftTheses(
     service: "gemini",
     filePath:
       "src/app/(onboarding)/onboarding/positioning/_services/sifting.ts",
+    hidden: true,
   });
 
   const distilledQuery = await generatePositioningQuery(matrixInput, logger);
@@ -75,6 +76,7 @@ export async function searchAndSiftTheses(
     filePath:
       "src/app/(onboarding)/onboarding/positioning/_services/sifting.ts",
     durationMs: performance.now() - queryGenStart,
+    hidden: true,
     data: {
       query1,
       query2,
@@ -89,6 +91,7 @@ export async function searchAndSiftTheses(
     service: "thesis-search",
     filePath:
       "src/app/(onboarding)/onboarding/positioning/_services/sifting.ts",
+    hidden: true,
     data: { queries: [query1, query2, query3], singleQueryLimit },
   });
 
@@ -120,6 +123,7 @@ export async function searchAndSiftTheses(
       filePath:
         "src/app/(onboarding)/onboarding/positioning/_services/sifting.ts",
       durationMs: performance.now() - searchStart,
+      hidden: true,
       data: { candidateCount: 0 },
     });
     return [];
@@ -130,6 +134,7 @@ export async function searchAndSiftTheses(
     filePath:
       "src/app/(onboarding)/onboarding/positioning/_services/sifting.ts",
     durationMs: performance.now() - searchStart,
+    hidden: true,
     data: { candidateCount: filteredCandidates.length },
   });
 
@@ -143,6 +148,7 @@ export async function searchAndSiftTheses(
     service: "cohere",
     filePath:
       "src/app/(onboarding)/onboarding/positioning/_services/sifting.ts",
+    hidden: true,
     data: {
       model: COHERE_RERANK_MODEL,
       candidateCount: filteredCandidates.length,
@@ -180,6 +186,7 @@ export async function searchAndSiftTheses(
     filePath:
       "src/app/(onboarding)/onboarding/positioning/_services/sifting.ts",
     durationMs: performance.now() - rerankStart,
+    hidden: true,
     data: {
       candidateCount: filteredCandidates.length,
       confidentCount: confidentTheses.length,

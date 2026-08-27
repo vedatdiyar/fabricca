@@ -60,6 +60,7 @@ export async function sanitizeAcademicDataBulk(
   logger?.info("literature_sanitization_start", {
     service: "literature",
     filePath: "src/services/academic/sanitizer.ts",
+    hidden: true,
     data: { itemCount: items.length },
   });
 
@@ -102,6 +103,7 @@ export async function sanitizeAcademicDataBulk(
       service: "literature",
       filePath: "src/services/academic/sanitizer.ts",
       durationMs: Math.round(performance.now() - startTime),
+      hidden: true,
       data: { itemCount: items.length },
     });
 

@@ -33,7 +33,7 @@ export async function executePhase2Jury(
   poolByBox: Map<number, PoolItem[]>;
   juryEvaluations: JuryEvalResult[];
 }> {
-  logger.info("literature_batch_jury_start");
+  logger.info("literature_batch_jury_start", { hidden: true });
 
   const juryInputs: JuryInputItem[] = [];
   const poolByBox = new Map<number, PoolItem[]>();
@@ -97,6 +97,7 @@ export async function executePhase2Jury(
       juryEvaluations = juryResults.flat();
 
       logger.info("literature_batch_jury_success", {
+        hidden: true,
         data: { evaluationCount: juryEvaluations.length },
       });
     } catch (err) {

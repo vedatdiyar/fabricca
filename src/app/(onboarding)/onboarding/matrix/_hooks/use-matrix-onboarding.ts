@@ -356,6 +356,7 @@ export function useMatrixOnboarding(initialMatrix?: Matrix | null) {
       return;
     }
 
+    dispatch({ type: "SET_IS_REVIEW_OPEN", payload: false });
     dispatch({ type: "SET_IS_SUBMITTING", payload: true });
     try {
       await submitMatrix(state.matrix as ThesisMatrix);

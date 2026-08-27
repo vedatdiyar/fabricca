@@ -89,7 +89,7 @@ export async function orchestrateBatchProcess(
   );
 
   // Final Persistence Phase
-  logger.info("literature_db_write_start");
+  logger.info("literature_db_write_start", { hidden: true });
 
   for (const item of subBoxResultsToPersist) {
     if (checkCancelled?.()) break;
@@ -112,7 +112,7 @@ export async function orchestrateBatchProcess(
     }
   }
 
-  logger.info("literature_db_write_success");
+  logger.info("literature_db_write_success", { hidden: true });
 
   return { poolEntries, archivalBoxTitles };
 }
