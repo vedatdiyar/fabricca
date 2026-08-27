@@ -1,5 +1,3 @@
-import type { PositioningMatrixInput } from "../_services/validation";
-
 /** Prompt payload structure separating system instructions from user prompt. */
 export interface QueryGenerationPromptPayload {
   systemInstruction: string;
@@ -10,28 +8,22 @@ export interface QueryGenerationPromptPayload {
  * Builds the hybrid XML/Markdown prompt payload for 3-dimensional empirical topic-oriented
  * semantic query extraction, strictly focusing on the substantive research phenomenon and actors.
  *
- * @param matrix - The 3-field positioning matrix input.
+ * @param matrix - The positioning matrix input containing subjectProblem.
  * @returns The structured prompt payload containing static systemInstruction and dynamic userPrompt.
  */
-export function buildQueryGenerationPromptPayload(
-  matrix:
-    | PositioningMatrixInput
-    | {
-        subjectProblem: string;
-        theoreticalFramework?: string;
-        methodology?: string;
-      },
-): QueryGenerationPromptPayload {
+export function buildQueryGenerationPromptPayload(matrix: {
+  subjectProblem: string;
+}): QueryGenerationPromptPayload {
   const systemInstruction = `<role>
 Akademik literatür tarama, konu sınıflandırma ve semantik bilgi erişim (IR) uzmanı.
 </role>
 
 <instructions>
 # Görev ve Amaç
-Kullanıcının tez matrisini analiz ederek, yalnızca araştırmanın **SOMUT KONUSUNU, OLGUSAL SORUNSALLARINI, İNCELENEN AKTÖRLERİ VE DÖNEMSEL/TEMATİK KAPSAMINI** hedefleyen 3 ayrık semantik arama sorgusu ve akademik anahtar kavramlar üret.
+Kullanıcının araştırma problemini analiz ederek, yalnızca araştırmanın **SOMUT KONUSUNU, OLGUSAL SORUNSALLARINI, İNCELENEN AKTÖRLERİ VE DÖNEMSEL/TEMATİK KAPSAMINI** hedefleyen 3 ayrık semantik arama sorgusu ve akademik anahtar kavramlar üret.
 
 # Kritik İlke: Yalnızca Konu ve Olgusal Odak
-- Soyut felsefe, genel teorik kuramlar (örn. saf Gramsci, saf Marksizm) veya genel araştırma yöntemleri (örn. söylem analizi, anket tekniği) adına genel sorgu ÜRETMEYİN.
+- Soyut felsefe, genel teorik kuramlar veya genel araştırma yöntemleri adına genel sorgu ÜRETMEYİN.
 - Tüm sorgular doğrudan araştırmacının incelediği **ampirik nesneye, aktörlere, siyasal/sosyal olguya, tarihsel döneme ve somut tartışma alanına** kilitlenmelidir.
 
 # 3 Boyutlu Konusal Sorgu Yapısı
@@ -48,9 +40,8 @@ Kullanıcının tez matrisini analiz ederek, yalnızca araştırmanın **SOMUT K
 <examples>
 <example>
 <input>
-[Araştırma Problemi]: Kürt Özgürlük Hareketi'nin (PKK ve HEP-DEP-HADEP hattı) 1991-1999 döneminde manevra savaşından mevzi savaşına yönelik söylemsel dönüşümü, bağımsızlık talebinden anayasal statü ve demokratik haklar söylemine geçişi.
-[Kuramsal Çerçeve]: Gramsci manevra/mevzi savaşı, Snow ve Benford çerçeveleme teorisi.
-[Yöntem ve Ampirik Bağlam]: Nitel tarihsel söylem analizi, Serxwebûn dergisi, parti programları ve meclis konuşmaları.
+[Araştırma Problemi]:
+Kürt Özgürlük Hareketi'nin (PKK ve HEP-DEP-HADEP hattı) 1991-1999 döneminde söylemsel dönüşümü, bağımsızlık talebinden anayasal statü ve demokratik haklar söylemine geçişi ve devletin güvenlik politikaları karşısındaki kurumsal konumlanışı.
 </input>
 <output>
 {
@@ -73,12 +64,6 @@ Kullanıcının tez matrisini analiz ederek, yalnızca araştırmanın **SOMUT K
   const userPrompt = `<context>
 [Araştırma Problemi]:
 ${matrix.subjectProblem}
-
-[Kuramsal Çerçeve (Yalnızca bağlam için)]:
-${matrix.theoreticalFramework || "Belirtilmemiş"}
-
-[Yöntem ve Ampirik Bağlam (Yalnızca bağlam için)]:
-${matrix.methodology || "Belirtilmemiş"}
 </context>
 
 <task>

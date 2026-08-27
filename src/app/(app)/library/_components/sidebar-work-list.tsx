@@ -5,7 +5,6 @@ import {
   Search,
   BookOpen,
   CircleCheck,
-  CheckCircle2,
   Circle,
   Layers,
   Plus,

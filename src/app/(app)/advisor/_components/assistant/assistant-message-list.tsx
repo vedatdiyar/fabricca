@@ -59,7 +59,8 @@ export function AssistantMessageList({
   useEffect(() => {
     const container = scrollContainerRef.current;
     if (!container) return;
-    const distance = container.scrollHeight - container.scrollTop - container.clientHeight;
+    const distance =
+      container.scrollHeight - container.scrollTop - container.clientHeight;
     if (distance > 160) return;
     bottomRef.current?.scrollIntoView({
       behavior: streamingText ? "auto" : "smooth",
@@ -99,7 +100,8 @@ export function AssistantMessageList({
             <div className="flex items-center gap-2 border-b border-border/40 pb-2">
               <span className="px-2 py-0.5 rounded-md bg-secondary text-secondary-foreground text-xs font-medium border border-border flex items-center gap-1">
                 <Sparkles className="size-3 text-primary animate-pulse" />
-                {streamingPersona === "SOCRATIC_ADVISOR" || streamingPersona === "advisor"
+                {streamingPersona === "SOCRATIC_ADVISOR" ||
+                streamingPersona === "advisor"
                   ? "Akademik Tez Danışmanı"
                   : "Tez Asistanı"}
               </span>
@@ -146,4 +148,3 @@ export function AssistantMessageList({
     </div>
   );
 }
-

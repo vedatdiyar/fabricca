@@ -73,8 +73,12 @@ export async function undoMutationTool(
         .where(eq(matrices.id, userMatrix.id));
 
       // Clean up cascaded created boxes if present
-      const execData = executionResult as { cascade?: { createdBoxes?: { id: number }[] } } | undefined;
-      if (execData?.cascade?.createdBoxes && Array.isArray(execData.cascade.createdBoxes)) {
+      const execData = executionResult as
+        { cascade?: { createdBoxes?: { id: number }[] } } | undefined;
+      if (
+        execData?.cascade?.createdBoxes &&
+        Array.isArray(execData.cascade.createdBoxes)
+      ) {
         for (const b of execData.cascade.createdBoxes) {
           if (b.id) {
             await db.delete(boxes).where(eq(boxes.id, b.id));
@@ -84,7 +88,8 @@ export async function undoMutationTool(
 
       return {
         success: true,
-        message: "Tez matrisi ve kademeli oluşturulan araştırma kutuları geri alındı.",
+        message:
+          "Tez matrisi ve kademeli oluşturulan araştırma kutuları geri alındı.",
       };
     }
 
@@ -351,4 +356,3 @@ export async function undoMutationTool(
       };
   }
 }
-

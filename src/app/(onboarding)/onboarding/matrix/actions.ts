@@ -19,7 +19,6 @@ import {
 } from "@/lib/cache-tags";
 import type { ThesisMatrix } from "@/lib/types";
 
-
 const MIN_LENGTH = 3;
 const MAX_LENGTH = 4000;
 
@@ -121,88 +120,14 @@ export async function saveThesisMatrixAction(
 }
 
 /**
- * Executes a Socratic Advisor turn, returning the advisor's message and any crystallized field updates.
- * If a field update is detected, it is immediately persisted via Progressive Save.
- */
-export async function sendAdvisorMessageAction(
-  history: Array<{ role: "user" | "model"; content: string }>,
-  currentMatrix: Partial<ThesisMatrix>,
-): Promise<
-  | {
-      success: true;
-      replyText: string;
-      updatedMatrix: Partial<ThesisMatrix>;
-    }
-  | { error: string }
-> {
-  try {
-    const session = await getSession();
-    if (!session) {
-      return { error: SESSION_ERROR_MSG };
-    }
-
-    const { runAdvisorTurn } = await import("./_services/advisor-engine");
-    const result = await runAdvisorTurn(history, currentMatrix);
-
-    const modelMessage = {
-      id: `model-${Date.now()}`,
-      role: "model" as const,
-      content: result.replyText,
-    };
-    const updatedMessages = [
-      ...history.map((h, idx) => ({ id: `msg-${idx}`, role: h.role, content: h.content })),
-      modelMessage,
-    ];
-
-    const { harvestMatrixFromChat } = await import("./_services/matrix-chat-sync");
-    const finalMatrix = await harvestMatrixFromChat(updatedMessages, currentMatrix);
-
-    // Progressive Save immediately to database
-    await db
-      .insert(matrices)
-      .values({
-        userId: session.userId,
-        subjectProblem: finalMatrix.subjectProblem ?? "",
-        theoreticalFramework: finalMatrix.theoreticalFramework ?? "",
-        primaryMaterial: finalMatrix.primaryMaterial ?? "",
-        methodology: finalMatrix.methodology ?? "",
-        advisorMessages: updatedMessages,
-        updatedAt: sql`now()`,
-      })
-      .onConflictDoUpdate({
-        target: matrices.userId,
-        set: {
-          subjectProblem: finalMatrix.subjectProblem ?? "",
-          theoreticalFramework: finalMatrix.theoreticalFramework ?? "",
-          primaryMaterial: finalMatrix.primaryMaterial ?? "",
-          methodology: finalMatrix.methodology ?? "",
-          advisorMessages: updatedMessages,
-          updatedAt: sql`now()`,
-        },
-      });
-
-    invalidateOnboardingStepCache("matrix");
-
-    return {
-      success: true,
-      replyText: result.replyText,
-      updatedMatrix: finalMatrix,
-    };
-  } catch (err) {
-    return {
-      error:
-        err instanceof Error
-          ? err.message
-          : "Danışman yanıt verirken bir hata oluştu.",
-    };
-  }
-}
-
-/**
  * Directly updates a single field in the user's thesis matrix draft.
  */
 export async function updateMatrixFieldDirectAction(
-  field: "subjectProblem" | "theoreticalFramework" | "primaryMaterial" | "methodology",
+  field:
+    | "subjectProblem"
+    | "theoreticalFramework"
+    | "primaryMaterial"
+    | "methodology",
   value: string,
   currentMatrix: Partial<ThesisMatrix>,
 ): Promise<{ success: true } | { error: string }> {
@@ -279,11 +204,11 @@ export async function syncMatrixFromChatHistoryAction(
         "",
       primaryMaterial:
         currentMatrix?.primaryMaterial ?? existingRow?.primaryMaterial ?? "",
-      methodology:
-        currentMatrix?.methodology ?? existingRow?.methodology ?? "",
+      methodology: currentMatrix?.methodology ?? existingRow?.methodology ?? "",
     };
 
-    const { harvestMatrixFromChat } = await import("./_services/matrix-chat-sync");
+    const { harvestMatrixFromChat } =
+      await import("./_services/matrix-chat-sync");
     const harvested = await harvestMatrixFromChat(messagesToParse, baseMatrix);
 
     await db
@@ -322,4 +247,3 @@ export async function syncMatrixFromChatHistoryAction(
     };
   }
 }
-

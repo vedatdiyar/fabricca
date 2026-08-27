@@ -30,26 +30,38 @@ const revertSchema = z.object({
 export async function POST(request: Request) {
   const session = await getSession();
   if (!session) {
-    return NextResponse.json({ error: "Oturum süreniz dolmuş." }, { status: 401 });
+    return NextResponse.json(
+      { error: "Oturum süreniz dolmuş." },
+      { status: 401 },
+    );
   }
 
   let body: unknown;
   try {
     body = await request.json();
   } catch {
-    return NextResponse.json({ error: "Geçersiz istek formatı." }, { status: 400 });
+    return NextResponse.json(
+      { error: "Geçersiz istek formatı." },
+      { status: 400 },
+    );
   }
 
   const parsed = revertSchema.safeParse(body);
   if (!parsed.success) {
-    return NextResponse.json({ error: "Eksik veya geçersiz parametreler." }, { status: 400 });
+    return NextResponse.json(
+      { error: "Eksik veya geçersiz parametreler." },
+      { status: 400 },
+    );
   }
 
   const { messages, matrix } = parsed.data;
 
   // Ensure welcome message is always present
   if (messages.length === 0) {
-    return NextResponse.json({ error: "En az bir mesaj gerekli." }, { status: 400 });
+    return NextResponse.json(
+      { error: "En az bir mesaj gerekli." },
+      { status: 400 },
+    );
   }
 
   const sanitizedMatrix = {

@@ -53,7 +53,6 @@ export function AssistantWorkspace({
 
   return (
     <div className="w-full flex flex-col lg:h-[calc(100dvh-9.5rem)] lg:min-h-[460px] space-y-4">
-
       {/* Mobile Master-Detail Tab Switcher (Visible only below lg) */}
       <div className="flex items-center justify-between lg:hidden pb-1 shrink-0">
         <div className="flex items-center rounded-md border border-border bg-card p-1 text-xs w-full">
@@ -151,7 +150,6 @@ export function AssistantWorkspace({
             onRejectTool={handleRejectTool}
             onUndoTool={handleUndoTool}
           />
-
 
           {/* Prompt Input Bar */}
           <AssistantInput

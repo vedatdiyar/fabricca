@@ -71,7 +71,8 @@ export async function runMatrixRealignmentCascade(
       deletedBoxes: [],
       addedSources: [],
       createdTasks: [],
-      summaryMessage: "Tez matrisi bulunamadığı için kademeli uyarlama yapılamadı.",
+      summaryMessage:
+        "Tez matrisi bulunamadığı için kademeli uyarlama yapılamadı.",
     };
   }
 
@@ -121,11 +122,13 @@ export async function runMatrixRealignmentCascade(
       deletedBoxes: [],
       addedSources: [],
       createdTasks: [],
-      summaryMessage: "Matris güncellendi ancak kademeli etki analizi oluşturulamadı.",
+      summaryMessage:
+        "Matris güncellendi ancak kademeli etki analizi oluşturulamadı.",
     };
   }
 
-  const createdBoxes: { id: number; title: string; semanticQuery: string }[] = [];
+  const createdBoxes: { id: number; title: string; semanticQuery: string }[] =
+    [];
   const addedSources: { id: number; title: string; authors?: string[] }[] = [];
   const createdTasks: { id: number; title: string }[] = [];
 
@@ -136,7 +139,11 @@ export async function runMatrixRealignmentCascade(
 
   let parentId: number | null = rootPillar?.id ?? null;
 
-  if (rootPillar && output.updatedPillarTitle && output.updatedPillarTitle.trim().length > 3) {
+  if (
+    rootPillar &&
+    output.updatedPillarTitle &&
+    output.updatedPillarTitle.trim().length > 3
+  ) {
     await db
       .update(boxes)
       .set({ title: output.updatedPillarTitle.trim(), updatedAt: new Date() })
@@ -177,7 +184,10 @@ export async function runMatrixRealignmentCascade(
       );
       if (matchingObsBox) {
         await db.delete(boxes).where(eq(boxes.id, obsId));
-        deletedBoxes.push({ id: matchingObsBox.id, title: matchingObsBox.title });
+        deletedBoxes.push({
+          id: matchingObsBox.id,
+          title: matchingObsBox.title,
+        });
       }
     }
   }
@@ -203,7 +213,11 @@ export async function runMatrixRealignmentCascade(
         createdAt: new Date(),
         updatedAt: new Date(),
       })
-      .returning({ id: boxes.id, title: boxes.title, semanticQuery: boxes.semanticQuery });
+      .returning({
+        id: boxes.id,
+        title: boxes.title,
+        semanticQuery: boxes.semanticQuery,
+      });
 
     createdBoxes.push({
       id: insertedBox.id,
@@ -217,20 +231,22 @@ export async function runMatrixRealignmentCascade(
   // 5. Run standard Onboarding Literature Pipeline (Search -> Gemini Jury -> Fuzzy Dedup -> Sanitization)
   if (createdSubBoxes.length > 0) {
     try {
-      const batchBoxes: SubBoxInput[] = createdSubBoxes.map(({ insertedBox, newSub }) => ({
-        id: parentId ?? insertedBox.id,
-        title: newSub.title,
-        description: newSub.description,
-        boxType: newSub.parentBoxType,
-        subBoxes: [
-          {
-            title: newSub.title,
-            description: newSub.description,
-            thesisBoxId: insertedBox.id,
-            semanticQuery: newSub.semanticQuery,
-          },
-        ],
-      }));
+      const batchBoxes: SubBoxInput[] = createdSubBoxes.map(
+        ({ insertedBox, newSub }) => ({
+          id: parentId ?? insertedBox.id,
+          title: newSub.title,
+          description: newSub.description,
+          boxType: newSub.parentBoxType,
+          subBoxes: [
+            {
+              title: newSub.title,
+              description: newSub.description,
+              thesisBoxId: insertedBox.id,
+              semanticQuery: newSub.semanticQuery,
+            },
+          ],
+        }),
+      );
 
       const thesisMatrixSubject = [
         userMatrix.subjectProblem,
@@ -249,7 +265,9 @@ export async function runMatrixRealignmentCascade(
 
       for (const poolEntry of batchResult.poolEntries) {
         const boxId = poolEntry.thesisBoxId;
-        const matchingSub = createdSubBoxes.find((b) => b.insertedBox.id === boxId);
+        const matchingSub = createdSubBoxes.find(
+          (b) => b.insertedBox.id === boxId,
+        );
         const subBoxTitle = matchingSub?.newSub.title ?? poolEntry.subBoxTitle;
 
         for (const art of poolEntry.articles) {
@@ -267,7 +285,11 @@ export async function runMatrixRealignmentCascade(
               createdAt: new Date(),
               updatedAt: new Date(),
             })
-            .returning({ id: sources.id, title: sources.title, authors: sources.authors });
+            .returning({
+              id: sources.id,
+              title: sources.title,
+              authors: sources.authors,
+            });
 
           addedSources.push({
             id: insertedSource.id,
@@ -318,15 +340,20 @@ export async function runMatrixRealignmentCascade(
     },
   });
 
-  const summaryMessage = `Tez matrisi güncellendi.\n\n` +
+  const summaryMessage =
+    `Tez matrisi güncellendi.\n\n` +
     `**Kademeli Etki Analizi:**\n${output.analysisSummary}\n\n` +
     (deletedBoxes.length > 0
       ? `**Temizlenen Eski Araştırma Kutuları (${deletedBoxes.length}):**\n` +
-        deletedBoxes.map((b) => `- ~~${b.title}~~ (İlişkili eski kaynaklar temizlendi)`).join("\n") +
+        deletedBoxes
+          .map((b) => `- ~~${b.title}~~ (İlişkili eski kaynaklar temizlendi)`)
+          .join("\n") +
         `\n\n`
       : "") +
     `**Oluşturulan Yeni Araştırma Kutuları (${createdBoxes.length}):**\n` +
-    createdBoxes.map((b) => `- **${b.title}** (Semantik Sorgu: \`${b.semanticQuery}\`)`).join("\n") +
+    createdBoxes
+      .map((b) => `- **${b.title}** (Semantik Sorgu: \`${b.semanticQuery}\`)`)
+      .join("\n") +
     `\n\n**Kütüphaneye Eklenen Yeni Kaynaklar (${addedSources.length}):**\n` +
     (addedSources.length > 0
       ? addedSources.map((s) => `- ${s.title}`).join("\n")
@@ -344,4 +371,3 @@ export async function runMatrixRealignmentCascade(
     summaryMessage,
   };
 }
-

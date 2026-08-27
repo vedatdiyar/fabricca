@@ -1,59 +1,19 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import {
-  Send,
-  Loader2,
-  Swords,
-  User,
-  GraduationCap,
-  MessageSquare,
-  Copy,
-  Check,
-  CheckSquare,
-} from "lucide-react";
-import type { Components } from "react-markdown";
-import { StreamingMarkdown } from "./markdown-renderer";
+import { Send, Loader2, MessageSquare } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 import { createRevisionTaskAction } from "../office-actions";
 import { CreateTaskDialog } from "./office/create-task-dialog";
+import { OfficeDefenseEmptyState } from "./office/office-defense-empty-state";
+import { OfficeDefenseMessageItem } from "./office/office-defense-message-item";
 import type {
   JuryCritique,
   OfficeReviewReport,
 } from "../_services/pipeline/types";
-
-const chatMarkdownComponents: Components = {
-  p: ({ children }) => (
-    <p className="mb-2.5 last:mb-0 leading-relaxed text-sm text-foreground font-sans">
-      {children}
-    </p>
-  ),
-  blockquote: ({ children }) => (
-    <blockquote className="border-l-2 border-primary/40 bg-primary/10 pl-3.5 py-1.5 my-2.5 rounded-r-md text-sm text-foreground italic font-serif">
-      {children}
-    </blockquote>
-  ),
-  strong: ({ children }) => (
-    <strong className="font-semibold text-foreground">{children}</strong>
-  ),
-  em: ({ children }) => <em className="italic text-foreground">{children}</em>,
-  ul: ({ children }) => (
-    <ul className="list-disc list-outside pl-5 space-y-1 my-2 text-sm text-foreground">
-      {children}
-    </ul>
-  ),
-  ol: ({ children }) => (
-    <ol className="list-decimal list-outside pl-5 space-y-1 my-2 text-sm text-foreground">
-      {children}
-    </ol>
-  ),
-  li: ({ children }) => (
-    <li className="leading-relaxed [&>p]:inline [&>p]:mb-0">{children}</li>
-  ),
-};
 
 export interface DefenseMessage {
   id: string | number;
@@ -89,7 +49,6 @@ export function OfficeDefenseChat({
   isStreaming,
   hasStartedDefense,
   activeCritique,
-  report,
   className,
   hideHeader = false,
   onSendMessage,
@@ -113,7 +72,8 @@ export function OfficeDefenseChat({
   useEffect(() => {
     const container = scrollContainerRef.current;
     if (!container) return;
-    const distance = container.scrollHeight - container.scrollTop - container.clientHeight;
+    const distance =
+      container.scrollHeight - container.scrollTop - container.clientHeight;
     if (distance > 160) return;
     messagesEndRef.current?.scrollIntoView({
       behavior: isStreaming ? "auto" : "smooth",
@@ -244,173 +204,26 @@ export function OfficeDefenseChat({
       )}
 
       {/* Messages Area */}
-      <div ref={scrollContainerRef} className="flex-1 overflow-y-auto p-4 space-y-4">
+      <div
+        ref={scrollContainerRef}
+        className="flex-1 overflow-y-auto p-4 space-y-4"
+      >
         {!hasStartedDefense ? (
-          <div className="h-full flex flex-col items-center justify-center p-6 text-center max-w-sm mx-auto">
-            <div className="size-10 rounded-md bg-primary/10 text-primary mb-3 border border-primary/20 flex items-center justify-center">
-              <Swords className="size-5" />
-            </div>
-            <h4 className="font-serif text-sm font-semibold tracking-tight text-foreground mb-1">
-              Danışmanın Kapısını Çalın
-            </h4>
-            <p className="text-xs text-muted-foreground leading-relaxed mb-4">
-              Sol paneldeki kenar notlarını ve jüri şerhlerini inceledikten
-              sonra savunma oturumunu başlatın. Danışmanınız en kritik itiraz
-              noktasını masaya getirecektir.
-            </p>
-            <Button
-              onClick={() => onStartDefense(activeCritique || undefined)}
-              className="h-8 text-xs px-3 rounded-md bg-primary text-primary-foreground hover:bg-primary/90 font-medium gap-1.5 cursor-pointer"
-            >
-              <Swords className="size-3.5" />
-              <span>Savunmaya Başla (Müzakereyi Aç)</span>
-            </Button>
-          </div>
+          <OfficeDefenseEmptyState
+            activeCritique={activeCritique}
+            onStartDefense={onStartDefense}
+          />
         ) : (
           <div className="space-y-4">
-            {messages.map((msg) => {
-              const isAdvisor = msg.role === "assistant";
-              const isCopied = copiedId === msg.id;
-
-              return (
-                <div
-                  key={msg.id}
-                  className={`flex gap-3 ${
-                    isAdvisor ? "justify-start" : "justify-end"
-                  }`}
-                >
-                  {isAdvisor && (
-                    <div className="size-8 rounded-md bg-primary/10 border border-primary/20 flex items-center justify-center text-primary shrink-0 mt-0.5">
-                      <GraduationCap className="size-4" />
-                    </div>
-                  )}
-
-                  <div
-                    className={`group relative flex flex-col max-w-[88%] sm:max-w-[82%] rounded-lg p-4 text-sm leading-relaxed ${
-                      isAdvisor
-                        ? "bg-card border border-border text-foreground shadow-sm"
-                        : "bg-primary/10 border border-primary/20 text-foreground"
-                    }`}
-                  >
-                    <div
-                      className={`flex items-center justify-between gap-3 mb-2 pb-1.5 border-b ${
-                        isAdvisor ? "border-border/40" : "border-primary/20"
-                      }`}
-                    >
-                      <span className="font-serif text-xs font-semibold text-foreground">
-                        {isAdvisor ? "Danışman Profesör" : "Siz (Tez Yazarı)"}
-                      </span>
-                      {msg.createdAt && (
-                        <span className="font-mono text-xs text-muted-foreground">
-                          {msg.createdAt}
-                        </span>
-                      )}
-                    </div>
-
-                    <div className="text-sm">
-                      {isAdvisor ? (
-                        <div className="prose-sm max-w-none">
-                          {!msg.content && msg.isStreaming ? (
-                            <div className="flex items-center gap-1.5 py-1.5 px-0.5 text-muted-foreground">
-                              <span className="size-2 rounded-full bg-primary animate-bounce [animation-delay:-0.3s]" />
-                              <span className="size-2 rounded-full bg-primary animate-bounce [animation-delay:-0.15s]" />
-                              <span className="size-2 rounded-full bg-primary animate-bounce" />
-                            </div>
-                          ) : (
-                            <>
-                              <StreamingMarkdown
-                                content={msg.content}
-                                components={chatMarkdownComponents}
-                              />
-                              {msg.isStreaming && (
-                                <span className="inline-block w-1.5 h-3.5 bg-primary ml-1 animate-pulse align-middle" />
-                              )}
-                            </>
-                          )}
-                        </div>
-                      ) : (
-                        <div className="whitespace-pre-wrap font-sans text-sm">
-                          {msg.content}
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Action Bar for Advisor Messages */}
-                    {isAdvisor && msg.content && !msg.isStreaming && (
-                      <div className="mt-3 pt-2.5 border-t border-border/50 flex flex-wrap items-center justify-between gap-2">
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="sm"
-                          onClick={() => handleOpenTaskDialog(msg.content)}
-                          className="h-7 text-xs px-2.5 rounded-md bg-secondary/40 hover:bg-secondary border-border text-foreground font-medium gap-1.5 cursor-pointer transition-colors"
-                          title="Bu düzeltmeyi Word'e uygulamak için Kanban panosuna görev aç"
-                        >
-                          <CheckSquare className="size-3.5 text-primary" />
-                          <span>Kanban Görevi Oluştur</span>
-                        </Button>
-
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleCopy(msg.id, msg.content)}
-                          className="h-7 text-xs px-2 rounded-md text-muted-foreground hover:text-foreground cursor-pointer transition-colors gap-1"
-                          title="Metni Kopyala"
-                        >
-                          {isCopied ? (
-                            <>
-                              <Check className="size-3 text-primary" />
-                              <span className="text-primary text-xs font-medium">
-                                Kopyalandı
-                              </span>
-                            </>
-                          ) : (
-                            <>
-                              <Copy className="size-3" />
-                              <span className="text-xs">Kopyala</span>
-                            </>
-                          )}
-                        </Button>
-                      </div>
-                    )}
-
-                    {/* Action Bar for User Messages */}
-                    {!isAdvisor && msg.content && (
-                      <div className="mt-2 pt-1.5 border-t border-primary/20 flex items-center justify-end">
-                        <button
-                          type="button"
-                          onClick={() => handleCopy(msg.id, msg.content)}
-                          className="text-xs text-muted-foreground hover:text-foreground flex items-center gap-1 cursor-pointer transition-colors"
-                          title="Metni Kopyala"
-                        >
-                          {isCopied ? (
-                            <>
-                              <Check className="size-3 text-primary" />
-                              <span className="text-primary font-medium">
-                                Kopyalandı
-                              </span>
-                            </>
-                          ) : (
-                            <>
-                              <Copy className="size-3" />
-                              <span>Kopyala</span>
-                            </>
-                          )}
-                        </button>
-                      </div>
-                    )}
-                  </div>
-
-                  {!isAdvisor && (
-                    <div className="size-8 rounded-md bg-secondary border border-border flex items-center justify-center text-secondary-foreground shrink-0 mt-0.5">
-                      <User className="size-4" />
-                    </div>
-                  )}
-                </div>
-              );
-            })}
-
+            {messages.map((msg) => (
+              <OfficeDefenseMessageItem
+                key={msg.id}
+                msg={msg}
+                isCopied={copiedId === msg.id}
+                onCopy={handleCopy}
+                onOpenTaskDialog={handleOpenTaskDialog}
+              />
+            ))}
             <div ref={messagesEndRef} />
           </div>
         )}
@@ -471,5 +284,3 @@ export function OfficeDefenseChat({
     </div>
   );
 }
-
-

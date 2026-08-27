@@ -110,9 +110,7 @@ function matchSourceForCitation(
       const citedStart = citedPages[0];
       const citedEnd = citedPages[citedPages.length - 1];
 
-      const match = /(\d{1,5})(?:\s*[-–]\s*(\d{1,5}))?/.exec(
-        source.pageNumber,
-      );
+      const match = /(\d{1,5})(?:\s*[-–]\s*(\d{1,5}))?/.exec(source.pageNumber);
       if (match) {
         const pStart = Number(match[1]);
         const pEnd = match[2] ? Number(match[2]) : pStart;

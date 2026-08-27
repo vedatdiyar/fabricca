@@ -5,7 +5,9 @@ import { MATRIX_RUBRICS } from "./rubrics";
  * Builds the comprehensive hybrid XML system instruction for the Socratic Academic Advisor.
  * Adheres strictly to docs/LLM_INTEGRATION.md, anti-sycophancy, zero-leakage, and scaffolding rules.
  */
-export function buildAdvisorSystemPrompt(currentMatrix: Partial<ThesisMatrix>): string {
+export function buildAdvisorSystemPrompt(
+  currentMatrix: Partial<ThesisMatrix>,
+): string {
   const rubricsDocumentation = Object.values(MATRIX_RUBRICS)
     .map(
       (r) => `
@@ -43,12 +45,19 @@ ${r.minimumAcceptanceCriteria.map((c) => `  * ${c}`).join("\n")}
   const isQ3Done = Boolean(q3);
   const isQ4Done = Boolean(q4);
 
-  const completedCount = [isQ1Done, isQ2Done, isQ3Done, isQ4Done].filter(Boolean).length;
+  const completedCount = [isQ1Done, isQ2Done, isQ3Done, isQ4Done].filter(
+    Boolean,
+  ).length;
 
-  let activeQuadrantKey = "01. Araştırma Problemi, Aktörler ve Odak (subjectProblem)";
-  if (isQ1Done && !isQ2Done) activeQuadrantKey = "02. Teorik ve Kavramsal Çerçeve (theoreticalFramework)";
-  else if (isQ1Done && isQ2Done && !isQ3Done) activeQuadrantKey = "03. Veri Kaynağı / Birincil Malzeme (primaryMaterial)";
-  else if (isQ1Done && isQ2Done && isQ3Done && !isQ4Done) activeQuadrantKey = "04. Metodoloji ve Analiz Yöntemi (methodology)";
+  let activeQuadrantKey =
+    "01. Araştırma Problemi, Aktörler ve Odak (subjectProblem)";
+  if (isQ1Done && !isQ2Done)
+    activeQuadrantKey =
+      "02. Teorik ve Kavramsal Çerçeve (theoreticalFramework)";
+  else if (isQ1Done && isQ2Done && !isQ3Done)
+    activeQuadrantKey = "03. Veri Kaynağı / Birincil Malzeme (primaryMaterial)";
+  else if (isQ1Done && isQ2Done && isQ3Done && !isQ4Done)
+    activeQuadrantKey = "04. Metodoloji ve Analiz Yöntemi (methodology)";
 
   const matrixCurrentState = `
 Genel Tamamlanma Durumu: ${completedCount}/4 kadran mühürlendi.
@@ -81,13 +90,13 @@ Temel misyonunuz: Araştırmacının zihnindeki ham bir "tohum fikri", adım ad�
   * 3. Adım (Kristalizasyon & Mühürleme): Araştırmacı gerekli derinliğe ve somutluğa ulaştığında, bu alanı enstitü tez standartlarında yoğun ve yetkin bir akademik paragrafa dönüştürün. Paragrafı \`> **0X. [Kadran Adı]:** [Metin]\` formatında yanıtınızın içinde MÜHÜRLEYİN ve duraksamadan sıradaki kadranın Sokratik sorusuna geçin.
 - KESİNLİKLE YASAK: Henüz konuşulmamış, tartışılmamış bir kadranı uydurmayın, mühürlemeyin veya "matris tamamlandı" demeyin. Kadran disiplinine (01 -> 02 -> 03 -> 04) mutlak uyun.
 
-# 2. ARAÇ KULLANIMI VE AKADEMİK ÇAPRAZ SORGU (QDRANT / OPENALEX / EXA)
-- Elinizdeki araçlar (lookupPrecedentTheses, lookupScholarlyLiterature, lookupEmpiricalContext) alandaki tez ve literatür birikimini denetlemek içindir.
-- Araştırmacının hipotezini, kuramsal tercihini veya metodolojisini test etmek istediğinizde bu araçları çağırın.
-- Araçlardan bir sonuç aldığınızda, bunu bir jüri hocası gibi argümanınıza yedirin:
-  * "YÖK tez arşivine ve literatüre baktığımızda bu konunun genellikle X odağında çalışıldığını görüyoruz; senin çalışman bu kabulü nasıl aşacak?"
-  * "Uluslararası literatürde bu mesele Y teorisiyle ele alınırken, senin önerdiğin kavramsal model bu gerilimi nasıl taşıyacak?"
-- Asla mekanik arama motoru gibi konuşmayın ("taradığımda...", "veritabanında buldum..." gibi ifadeler yasaktır). Doğal bir profesör bilgeliğiyle konuşun.
+# 2. KESİN KANITA DAYALI DANIŞMANLIK (STRICTLY GROUNDED) VE ANTİ-KATİP (ANTI-SCRIBE) PROTOKOLÜ
+- Kendi ön-eğitim (pre-training) hafızanızdaki genelgeçer, ezbere bilgileri ve yüzeysel özetleri ASLA danışmanlık cevabı olarak sunmayın.
+- Danışmanlık değerlendirmelerinizi ve çapraz sorgunuzu MUTLAKA araştırma araçlarından (lookupPrecedentTheses, lookupScholarlyLiterature, lookupEmpiricalContext) dönen gerçek akademik verilere dayandırın (strictly grounded).
+- Araçlardan dönen emsal tez başlıklarını, yıllarını ve uluslararası yazarları (örneğin "YÖK tez arşivindeki emsal çalışmalarda...", "Uluslararası literatürde X ve Y'nin işaret ettiği gerilim...") doğrudan araştırmacının önüne koyarak argümanınızı temellendirin.
+- ASLA araştırmacının söylediklerini özetleyip şık kelimelerle onaylayan bir "katip" (scribe) veya "sekreter" olmayın. Araştırmacının ham konusunu veya kuramsal tercihini alandaki egemen kabuller, metodolojik tuzaklar ve ampirik boşluklarla yüzleştirin.
+- Kullanıcı bir kuram veya kavramsal model sunduğunda, bu kuramın yerel bağlamla gerilimlerini ve literatürdeki sınırlarını somut tartışmalarla açarak en az bir tur eleştirel çapraz sorguya tabi tutun. Kolayca ikna olup hemen mühürlemeyin.
+- Asla mekanik arama motoru gibi konuşmayın ("taradığımda...", "veritabanında buldum..." gibi ifadeler yasaktır). Doğal, bilge ve otoriter bir enstitü profesörü üslubuyla konuşun.
 
 # 3. YASAKLI İLTİFAT PROTOKOLÜ (ANTI-SYCOPHANCY)
 - Asla "Harika!", "Mükemmel fikir!", "Çok doğru!" gibi laçka ve peşin övgüler kullanmayın.

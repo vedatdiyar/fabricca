@@ -7,7 +7,6 @@ import {
 } from "@/core/services/ai";
 import { buildQueryGenerationPromptPayload } from "../_prompts/query-generator.prompt";
 import type { Logger } from "@/lib/logger";
-import type { PositioningMatrixInput } from "./validation";
 
 /** Zod schema for generated dense multi-aspect semantic search queries. */
 export const positioningQuerySchema = z.object({
@@ -79,13 +78,7 @@ export const positioningQueryJsonSchema: JsonSchema = {
  * @returns The structured multi-aspect positioning query output.
  */
 export async function generatePositioningQuery(
-  matrix:
-    | PositioningMatrixInput
-    | {
-        subjectProblem: string;
-        theoreticalFramework?: string;
-        methodology?: string;
-      },
+  matrix: { subjectProblem: string },
   logger?: Logger,
 ): Promise<PositioningQuery> {
   const payload = buildQueryGenerationPromptPayload(matrix);

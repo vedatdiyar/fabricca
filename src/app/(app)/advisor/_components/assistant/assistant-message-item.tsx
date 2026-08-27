@@ -1,7 +1,15 @@
 "use client";
 
 import { useState } from "react";
-import { Copy, Check, Sparkles, User, BookOpen, Bot, ChevronDown } from "lucide-react";
+import {
+  Copy,
+  Check,
+  Sparkles,
+  User,
+  BookOpen,
+  Bot,
+  ChevronDown,
+} from "lucide-react";
 import type { Message, ChatToolCall } from "@/core/db/schema";
 import type { RagSearchResultItem } from "@/core/services/search/rag-search";
 import { MarkdownRenderer } from "../markdown-renderer";
@@ -10,7 +18,13 @@ import { ToolActionCard } from "../chat/tool-action-card";
 interface AssistantMessageItemProps {
   message: Pick<
     Message,
-    "id" | "role" | "content" | "persona" | "sources" | "toolCalls" | "createdAt"
+    | "id"
+    | "role"
+    | "content"
+    | "persona"
+    | "sources"
+    | "toolCalls"
+    | "createdAt"
   > & {
     sources?: RagSearchResultItem[] | null;
     toolCalls?: ChatToolCall[] | null;
@@ -235,4 +249,3 @@ export function AssistantMessageItem({
     </div>
   );
 }
-

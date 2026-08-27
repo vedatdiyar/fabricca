@@ -48,12 +48,7 @@ export async function processResourcePdfPipeline(options: ProcessPdfOptions) {
 
   // Embed with context prefix — [Bölüm: ...] [Sayfa: ...] + raw content
   const embeddingTexts = chunks.map((c) =>
-    buildEmbeddingText(
-      c.content,
-      c.headerHierarchy,
-      c.section,
-      c.pageNumber,
-    ),
+    buildEmbeddingText(c.content, c.headerHierarchy, c.section, c.pageNumber),
   );
 
   log.info("pdf_r2_and_embed_parallel_start", {

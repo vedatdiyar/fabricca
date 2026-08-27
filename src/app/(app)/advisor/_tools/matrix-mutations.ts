@@ -105,4 +105,3 @@ export const matrixMutations: Record<string, MutationToolHandler> = {
     getPreviousState: getMatrixPreviousState,
   },
 };
-

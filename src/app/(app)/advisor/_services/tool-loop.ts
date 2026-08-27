@@ -134,4 +134,3 @@ export async function runAdvisorToolLoop(
 
   return { text: fullText, toolCalls };
 }
-

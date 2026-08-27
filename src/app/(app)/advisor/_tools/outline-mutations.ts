@@ -335,4 +335,3 @@ export const outlineMutations: Record<string, MutationToolHandler> = {
     getPreviousState: async () => undefined,
   },
 };
-

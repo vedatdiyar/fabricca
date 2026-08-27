@@ -44,7 +44,7 @@ Aday tez doğrudan kullanıcının araştırdığı **SOMUT AMBİRİK NESNEYİ, 
    - **FOUNDATIONAL_WORK (Öncül Konu Çalışması):** Konunun tarihsel kökenlerini veya ana gelişim hattını kuran temel konu tezi.
    - **METHODOLOGICAL_BENCHMARK (Paralel Olgusal Analiz):** Aynı ampirik konuyu benzer bir veri setiyle inceleyen doğrudan konusal referans.
    - **ALTERNATIVE_PERSPECTIVE (Karşıt / Farklı Olgusal Yaklaşım):** Aynı konuyu farklı bir siyasal ya da olgusal açıklamayla yorumlayan tartışma kaynağı.
-4. **contributionAreas (Katkı / Odak Alanları):** Tezin temas ettiği 1-2 adet somut konu etiketi (örn: "Yasal Kürt Partileri", "1990'lar Söylemsel Dönüşüm").
+4. **contributionAreas (Katkı / Odak Alanları):** Tezin temas ettiği 1-2 adet somut konu etiketi (örn: "Siyasal Partiler", "Söylemsel Dönüşüm", "Kurumsal Reform").
 5. **literaturePosition (Literatürdeki Yeri):** Tezin neyi araştırdığını ve konuya ne kattığını özetleyen 1 net cümle.
 6. **strategicUtility (Stratejik Kullanım Notu):** Araştırmacının kendi tezinde bu konusal çalışmayı nasıl konumlandıracağına dair 1-2 cümlelik rehber not.
 

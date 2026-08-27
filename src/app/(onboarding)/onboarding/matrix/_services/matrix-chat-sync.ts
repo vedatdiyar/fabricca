@@ -30,7 +30,8 @@ export function extractMatrixFromChatRegex(
     const content = msg.content;
 
     // Pattern 1: `> **[Label]:** [Content]` or `> **[Label]**: [Content]`
-    const blockquoteRegex = />\s*\*\*([^*]+)\*\*:?\s*([\s\S]+?)(?=\n\n|\n>|\n#|$)/g;
+    const blockquoteRegex =
+      />\s*\*\*([^*]+)\*\*:?\s*([\s\S]+?)(?=\n\n|\n>|\n#|$)/g;
     let match: RegExpExecArray | null;
 
     while ((match = blockquoteRegex.exec(content)) !== null) {
@@ -99,7 +100,9 @@ export async function extractMatrixFromChatLlm(
   }
 
   const conversationText = messages
-    .map((m) => `${m.role === "user" ? "Araştırmacı" : "Danışman"}: ${m.content}`)
+    .map(
+      (m) => `${m.role === "user" ? "Araştırmacı" : "Danışman"}: ${m.content}`,
+    )
     .join("\n\n---\n\n");
 
   const prompt = `<role>
@@ -129,29 +132,39 @@ ${conversationText}
 Çıktıyı JSON formatında verin. Konuşulmamış kadranlar için mutlaka boş string ("") döndürün.`;
 
   try {
-    const response = await dispatchGeminiCall({
-      model: FLASH_LITE_35,
-      task: async ({ model, apiKey }) => {
-        const ai = getAi(apiKey);
-        return ai.models.generateContent({
-          model,
-          contents: [{ role: "user", parts: [{ text: prompt }] }],
-          config: {
-            seed: GEMINI_SEED,
-            responseMimeType: "application/json",
-            responseSchema: {
-              type: "object",
-              properties: {
-                subjectProblem: { type: "string" },
-                theoreticalFramework: { type: "string" },
-                primaryMaterial: { type: "string" },
-                methodology: { type: "string" },
+    const timeoutPromise = new Promise<never>((_, reject) =>
+      setTimeout(
+        () => reject(new Error("LLM matrix extraction timed out (10s)")),
+        10_000,
+      ),
+    );
+
+    const response = await Promise.race([
+      dispatchGeminiCall({
+        model: FLASH_LITE_35,
+        task: async ({ model, apiKey }) => {
+          const ai = getAi(apiKey);
+          return ai.models.generateContent({
+            model,
+            contents: [{ role: "user", parts: [{ text: prompt }] }],
+            config: {
+              seed: GEMINI_SEED,
+              responseMimeType: "application/json",
+              responseSchema: {
+                type: "object",
+                properties: {
+                  subjectProblem: { type: "string" },
+                  theoreticalFramework: { type: "string" },
+                  primaryMaterial: { type: "string" },
+                  methodology: { type: "string" },
+                },
               },
             },
-          },
-        });
-      },
-    });
+          });
+        },
+      }),
+      timeoutPromise,
+    ]);
 
     const jsonText = response.candidates?.[0]?.content?.parts?.[0]?.text;
     if (!jsonText) return currentMatrix;
@@ -205,31 +218,50 @@ ${conversationText}
 
 /**
  * Unified multi-stage harvester:
- * 1. Runs deterministic fast regex parsing.
- * 2. If any quadrant remains unsealed (< 20 chars), invokes LLM synthesis from conversation.
+ * 1. Runs deterministic fast regex parsing (0ms).
+ * 2. If all 4 quadrants already captured, returns immediately.
+ * 3. Falls back to bounded (10s) LLM synthesis only on manual sync with dialogue history.
  */
 export async function harvestMatrixFromChat(
   messages: ChatMessageLike[],
   currentMatrix: Partial<ThesisMatrix> = {},
 ): Promise<Partial<ThesisMatrix>> {
-  // Step 1: Deterministic regex parsing
+  // Step 1: Deterministic regex parsing (0ms)
   let merged = extractMatrixFromChatRegex(messages, currentMatrix);
 
-  // Check if any quadrant is still missing
-  const isQ1Done = Boolean(merged.subjectProblem && merged.subjectProblem.length >= 20);
-  const isQ2Done = Boolean(merged.theoreticalFramework && merged.theoreticalFramework.length >= 20);
-  const isQ3Done = Boolean(merged.primaryMaterial && merged.primaryMaterial.length >= 20);
-  const isQ4Done = Boolean(merged.methodology && merged.methodology.length >= 20);
+  // Check if all 4 quadrants are completed
+  const isQ1Done = Boolean(
+    merged.subjectProblem && merged.subjectProblem.length >= 20,
+  );
+  const isQ2Done = Boolean(
+    merged.theoreticalFramework && merged.theoreticalFramework.length >= 20,
+  );
+  const isQ3Done = Boolean(
+    merged.primaryMaterial && merged.primaryMaterial.length >= 20,
+  );
+  const isQ4Done = Boolean(
+    merged.methodology && merged.methodology.length >= 20,
+  );
 
-  const completedCount = [isQ1Done, isQ2Done, isQ3Done, isQ4Done].filter(Boolean).length;
+  const completedCount = [isQ1Done, isQ2Done, isQ3Done, isQ4Done].filter(
+    Boolean,
+  ).length;
 
-  // Step 2: If incomplete and messages exist, run fast LLM synthesis
-  if (completedCount < 4 && messages.length >= 2) {
+  // Step 2: If regex already extracted all 4 quadrants, return immediately
+  if (completedCount === 4) {
+    return merged;
+  }
+
+  // Step 3: Fast bounded LLM fallback only on manual sync with dialogue history
+  if (messages.length >= 2) {
     const llmExtracted = await extractMatrixFromChatLlm(messages, merged);
     merged = {
-      subjectProblem: llmExtracted.subjectProblem || merged.subjectProblem || "",
-      theoreticalFramework: llmExtracted.theoreticalFramework || merged.theoreticalFramework || "",
-      primaryMaterial: llmExtracted.primaryMaterial || merged.primaryMaterial || "",
+      subjectProblem:
+        llmExtracted.subjectProblem || merged.subjectProblem || "",
+      theoreticalFramework:
+        llmExtracted.theoreticalFramework || merged.theoreticalFramework || "",
+      primaryMaterial:
+        llmExtracted.primaryMaterial || merged.primaryMaterial || "",
       methodology: llmExtracted.methodology || merged.methodology || "",
     };
   }

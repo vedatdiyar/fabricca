@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useReducer, useEffect, useCallback, useRef } from "react";
 import { toast } from "sonner";
 import type { Message, ChatToolCall } from "@/core/db/schema";
 import type { RagSearchResultItem } from "@/core/services/search/rag-search";
@@ -8,18 +8,17 @@ import {
   getChatSessions,
   createChatSession,
   deleteChatSession,
-  type ChatSessionListItem,
 } from "../session-actions";
-import {
-  getChatMessages,
-  updateChatMessageToolCalls,
-} from "../message-actions";
-import {
-  executeAdvisorToolAction,
-  undoAdvisorToolAction,
-} from "../tool-actions";
+import { getChatMessages } from "../message-actions";
 import { generateChatTitleAction } from "../title-actions";
-import { createStreamFlusher } from "../_lib/stream-flusher";
+import { assistantWorkspaceReducer } from "./assistant-workspace-reducer";
+import { consumeAssistantChatStream } from "../_lib/assistant-chat-stream";
+import {
+  approveToolMutation,
+  rejectToolMutation,
+  undoToolMutation,
+  updateChatMessageToolCalls,
+} from "../_lib/assistant-tool-helpers";
 
 interface UseAssistantWorkspaceOptions {
   initialSessionId?: number;
@@ -35,24 +34,35 @@ interface UseAssistantWorkspaceOptions {
 export function useAssistantWorkspace({
   initialSessionId,
 }: UseAssistantWorkspaceOptions = {}) {
-  const [sessions, setSessions] = useState<ChatSessionListItem[]>([]);
-  const [activeSessionId, setActiveSessionId] = useState<number | null>(
-    initialSessionId ?? null,
-  );
-  const [messages, setMessages] = useState<Message[]>([]);
-  const [isLoadingSessions, setIsLoadingSessions] = useState(true);
-  const [isLoadingMessages, setIsLoadingMessages] = useState(false);
-  const [isGenerating, setIsGenerating] = useState(false);
+  const [state, dispatch] = useReducer(assistantWorkspaceReducer, {
+    sessions: [],
+    activeSessionId: initialSessionId ?? null,
+    messages: [],
+    isLoadingSessions: true,
+    isLoadingMessages: false,
+    isGenerating: false,
+    streamingText: "",
+    streamingSources: [],
+    streamingPersona: undefined,
+    streamingToolCalls: [],
+    activeCitation: null,
+    isCitationOpen: false,
+  });
 
-  // Live streaming states
-  const [streamingText, setStreamingText] = useState("");
-  const [streamingSources, setStreamingSources] = useState<RagSearchResultItem[]>([]);
-  const [streamingPersona, setStreamingPersona] = useState<string | undefined>(undefined);
-  const [streamingToolCalls, setStreamingToolCalls] = useState<ChatToolCall[]>([]);
-
-  // Citation modal states
-  const [activeCitation, setActiveCitation] = useState<RagSearchResultItem | null>(null);
-  const [isCitationOpen, setIsCitationOpen] = useState(false);
+  const {
+    sessions,
+    activeSessionId,
+    messages,
+    isLoadingSessions,
+    isLoadingMessages,
+    isGenerating,
+    streamingText,
+    streamingSources,
+    streamingPersona,
+    streamingToolCalls,
+    activeCitation,
+    isCitationOpen,
+  } = state;
 
   const abortControllerRef = useRef<AbortController | null>(null);
 
@@ -62,7 +72,7 @@ export function useAssistantWorkspace({
   const refreshSessions = useCallback(async () => {
     const res = await getChatSessions();
     if (res.success) {
-      setSessions(res.data);
+      dispatch({ type: "SET_SESSIONS", payload: res.data });
     } else {
       toast.error(res.error || "Oturumlar yüklenemedi.");
     }
@@ -72,20 +82,18 @@ export function useAssistantWorkspace({
    * Loads messages for a specific session ID.
    */
   const loadMessages = useCallback(async (sessionId: number) => {
-    setIsLoadingMessages(true);
+    dispatch({ type: "LOAD_MESSAGES_START" });
     try {
       const res = await getChatMessages(sessionId);
       if (res.success && res.messages) {
-        setMessages(res.messages);
+        dispatch({ type: "LOAD_MESSAGES_SUCCESS", payload: res.messages });
       } else {
         toast.error(res.error || "Mesajlar yüklenemedi.");
-        setMessages([]);
+        dispatch({ type: "LOAD_MESSAGES_FAILED" });
       }
     } catch {
       toast.error("Mesajlar alınırken bir hata oluştu.");
-      setMessages([]);
-    } finally {
-      setIsLoadingMessages(false);
+      dispatch({ type: "LOAD_MESSAGES_FAILED" });
     }
   }, []);
 
@@ -93,23 +101,34 @@ export function useAssistantWorkspace({
   useEffect(() => {
     let mounted = true;
     (async () => {
-      setIsLoadingSessions(true);
+      dispatch({ type: "INIT_START" });
       const res = await getChatSessions();
       if (!mounted) return;
       if (res.success) {
-        setSessions(res.data);
+        let chosenId: number | null = null;
         if (initialSessionId) {
-          setActiveSessionId(initialSessionId);
-          await loadMessages(initialSessionId);
+          chosenId = initialSessionId;
         } else if (res.data.length > 0) {
-          // Default to most recent session
-          const mostRecent = res.data[0];
-          setActiveSessionId(mostRecent.id);
-          window.history.replaceState(null, "", `/advisor/chat?session=${mostRecent.id}`);
-          await loadMessages(mostRecent.id);
+          chosenId = res.data[0].id;
+          window.history.replaceState(
+            null,
+            "",
+            `/advisor/chat?session=${chosenId}`,
+          );
         }
+        dispatch({
+          type: "INIT_SUCCESS",
+          payload: {
+            sessions: res.data,
+            activeSessionId: chosenId,
+          },
+        });
+        if (chosenId) {
+          await loadMessages(chosenId);
+        }
+      } else {
+        dispatch({ type: "INIT_FAILED" });
       }
-      setIsLoadingSessions(false);
     })();
 
     return () => {
@@ -123,12 +142,12 @@ export function useAssistantWorkspace({
   const handleSelectSession = useCallback(
     async (sessionId: number) => {
       if (sessionId === activeSessionId && !isGenerating) return;
-      setActiveSessionId(sessionId);
-      setStreamingText("");
-      setStreamingSources([]);
-      setStreamingPersona(undefined);
-      setStreamingToolCalls([]);
-      window.history.replaceState(null, "", `/advisor/chat?session=${sessionId}`);
+      dispatch({ type: "SELECT_SESSION", payload: { sessionId } });
+      window.history.replaceState(
+        null,
+        "",
+        `/advisor/chat?session=${sessionId}`,
+      );
       await loadMessages(sessionId);
     },
     [activeSessionId, isGenerating, loadMessages],
@@ -141,12 +160,7 @@ export function useAssistantWorkspace({
     if (isGenerating && abortControllerRef.current) {
       abortControllerRef.current.abort();
     }
-    setActiveSessionId(null);
-    setMessages([]);
-    setStreamingText("");
-    setStreamingSources([]);
-    setStreamingPersona(undefined);
-    setStreamingToolCalls([]);
+    dispatch({ type: "RESET_NEW_SESSION" });
     window.history.replaceState(null, "", "/advisor/chat");
   }, [isGenerating]);
 
@@ -158,7 +172,10 @@ export function useAssistantWorkspace({
       const res = await deleteChatSession(sessionId);
       if (res.success) {
         toast.success("Oturum silindi.");
-        setSessions((prev) => prev.filter((s) => s.id !== sessionId));
+        dispatch({
+          type: "SET_SESSIONS",
+          payload: sessions.filter((s) => s.id !== sessionId),
+        });
         if (activeSessionId === sessionId) {
           handleNewSession();
         }
@@ -166,7 +183,7 @@ export function useAssistantWorkspace({
         toast.error(res.error || "Oturum silinemedi.");
       }
     },
-    [activeSessionId, handleNewSession],
+    [activeSessionId, sessions, handleNewSession],
   );
 
   /**
@@ -180,7 +197,6 @@ export function useAssistantWorkspace({
       let targetSessionId = activeSessionId;
       const isFirstMessage = !targetSessionId || messages.length === 0;
 
-      // Create session if none active
       if (!targetSessionId) {
         const createRes = await createChatSession("Yeni Sohbet");
         if (!createRes.success || !createRes.sessionId) {
@@ -188,11 +204,13 @@ export function useAssistantWorkspace({
           return;
         }
         targetSessionId = createRes.sessionId;
-        setActiveSessionId(targetSessionId);
-        window.history.replaceState(null, "", `/advisor/chat?session=${targetSessionId}`);
+        window.history.replaceState(
+          null,
+          "",
+          `/advisor/chat?session=${targetSessionId}`,
+        );
       }
 
-      // Optimistic user message
       const optimisticUserMsg: Message = {
         id: Date.now(),
         sessionId: targetSessionId,
@@ -205,12 +223,10 @@ export function useAssistantWorkspace({
         createdAt: new Date(),
       };
 
-      setMessages((prev) => [...prev, optimisticUserMsg]);
-      setIsGenerating(true);
-      setStreamingText("");
-      setStreamingSources([]);
-      setStreamingPersona(undefined);
-      setStreamingToolCalls([]);
+      dispatch({
+        type: "START_STREAMING",
+        payload: { userMessage: optimisticUserMsg, targetSessionId },
+      });
 
       const controller = new AbortController();
       abortControllerRef.current = controller;
@@ -238,88 +254,36 @@ export function useAssistantWorkspace({
           throw new Error(errData.error || "Danışman yanıt veremedi.");
         }
 
-        if (!response.body) {
-          throw new Error("Yanıt akışı başlatılamadı.");
-        }
+        const streamResult = await consumeAssistantChatStream(response, {
+          onPersona: (persona) =>
+            dispatch({ type: "SET_STREAMING_PERSONA", payload: persona }),
+          onDelta: (textVal) =>
+            dispatch({ type: "SET_STREAMING_TEXT", payload: textVal }),
+          onToolCalls: (calls) =>
+            dispatch({ type: "SET_STREAMING_TOOL_CALLS", payload: calls }),
+          onError: (err) => toast.error(err),
+        });
 
-        const reader = response.body.getReader();
-        const decoder = new TextDecoder();
-        const flusher = createStreamFlusher();
-        let buffer = "";
-        let finalResponseText = "";
-        let finalSources: RagSearchResultItem[] = [];
-        let finalPersona = "SOCRATIC_ADVISOR";
-        let finalToolCalls: ChatToolCall[] = [];
-
-        try {
-          while (true) {
-            const { done, value } = await reader.read();
-            if (done) break;
-
-            buffer += decoder.decode(value, { stream: true });
-            const lines = buffer.split("\n\n");
-            buffer = lines.pop() ?? "";
-
-            for (const block of lines) {
-              const trimmedBlock = block.trim();
-              if (!trimmedBlock.startsWith("data:")) continue;
-
-              const jsonStr = trimmedBlock.replace(/^data:\s*/, "");
-              if (jsonStr === "[DONE]") continue;
-              try {
-                const eventData = JSON.parse(jsonStr);
-
-                if (eventData.type === "persona_assigned" && eventData.persona) {
-                  setStreamingPersona(eventData.persona);
-                  finalPersona = eventData.persona;
-                } else if (eventData.type === "delta" && eventData.text) {
-                  finalResponseText += eventData.text;
-                  flusher.schedule(() => setStreamingText(finalResponseText));
-                } else if (eventData.type === "tool_call_request") {
-                  const incomingToolCall: ChatToolCall = {
-                    toolCallId: eventData.toolCallId,
-                    name: eventData.name,
-                    args: eventData.args,
-                    explanation: eventData.explanation,
-                    status: eventData.status || "pending",
-                    previousState: eventData.previousState,
-                  };
-                  finalToolCalls = [...finalToolCalls, incomingToolCall];
-                  setStreamingToolCalls(finalToolCalls);
-                } else if (eventData.type === "done") {
-                  if (eventData.text) finalResponseText = eventData.text;
-                  if (eventData.sources) finalSources = eventData.sources;
-                  if (eventData.persona) finalPersona = eventData.persona;
-                  if (eventData.toolCalls) finalToolCalls = eventData.toolCalls;
-                } else if (eventData.type === "error") {
-                  toast.error(eventData.error || "Akış hatası oluştu.");
-                }
-              } catch {
-                // Ignore partial JSON parse errors in SSE chunks
-              }
-            }
-          }
-
-          flusher.flushNow();
-        } finally {
-          flusher.cancel();
-        }
-
-        // Add assistant message to local state
         const modelMsg: Message = {
           id: Date.now() + 1,
           sessionId: targetSessionId,
           role: "assistant",
-          content: finalResponseText,
-          persona: finalPersona,
-          sources: finalSources,
-          toolCalls: finalToolCalls.length > 0 ? finalToolCalls : null,
+          content: streamResult.finalResponseText,
+          persona: streamResult.finalPersona,
+          sources: streamResult.finalSources,
+          toolCalls:
+            streamResult.finalToolCalls.length > 0
+              ? streamResult.finalToolCalls
+              : null,
           pipelineData: null,
           createdAt: new Date(),
         };
-        setMessages((prev) => [...prev, modelMsg]);
 
-        // If this was the first message, generate a 3-5 word title in background
+        dispatch({
+          type: "FINISH_STREAMING",
+          payload: { assistantMessage: modelMsg },
+        });
+
         if (isFirstMessage) {
           generateChatTitleAction(targetSessionId, trimmed).then((titleRes) => {
             if (titleRes.success) {
@@ -334,129 +298,65 @@ export function useAssistantWorkspace({
           return;
         }
         const errorMsg =
-          err instanceof Error ? err.message : "Yanıt üretilirken bir hata oluştu.";
+          err instanceof Error
+            ? err.message
+            : "Yanıt üretilirken bir hata oluştu.";
         toast.error(errorMsg);
       } finally {
-        setIsGenerating(false);
-        setStreamingText("");
-        setStreamingSources([]);
-        setStreamingToolCalls([]);
+        dispatch({ type: "STREAMING_ERROR" });
         abortControllerRef.current = null;
       }
     },
     [activeSessionId, isGenerating, messages, refreshSessions],
   );
 
-  /**
-   * Approves and executes a pending mutation tool call.
-   */
+  const updateToolCallStatus = useCallback(
+    (messageId: number, toolCallId: string, patch: Partial<ChatToolCall>) => {
+      dispatch({
+        type: "UPDATE_MESSAGES",
+        payload: (prev) =>
+          prev.map((msg) => {
+            if (msg.id !== messageId || !msg.toolCalls) return msg;
+            const updatedToolCalls = msg.toolCalls.map((tc) =>
+              tc.toolCallId === toolCallId ? { ...tc, ...patch } : tc,
+            );
+            updateChatMessageToolCalls(msg.id, updatedToolCalls).catch(
+              console.error,
+            );
+            return { ...msg, toolCalls: updatedToolCalls };
+          }),
+      });
+    },
+    [],
+  );
+
   const handleApproveTool = useCallback(
     async (messageId: number, toolCall: ChatToolCall) => {
-      const res = await executeAdvisorToolAction({
-        toolName: toolCall.name,
-        args: toolCall.args,
-      });
-
-      if (!res.success) {
-        toast.error(res.error || "İşlem uygulanamadı.");
-        return;
-      }
-
-      toast.success(res.message || "İşlem başarıyla uygulandı.");
-
-      // Update message state locally and in database
-      setMessages((prev) =>
-        prev.map((msg) => {
-          if (msg.id !== messageId || !msg.toolCalls) return msg;
-          const updatedToolCalls = msg.toolCalls.map((tc) =>
-            tc.toolCallId === toolCall.toolCallId
-              ? {
-                  ...tc,
-                  status: "approved" as const,
-                  executionResult: res.data,
-                  previousState: res.previousState || tc.previousState,
-                }
-              : tc,
-          );
-          // Persist updated tool calls to DB
-          updateChatMessageToolCalls(msg.id, updatedToolCalls).catch(
-            console.error,
-          );
-          return { ...msg, toolCalls: updatedToolCalls };
-        }),
-      );
+      await approveToolMutation(messageId, toolCall, updateToolCallStatus);
     },
-    [],
+    [updateToolCallStatus],
   );
 
-  /**
-   * Rejects a pending mutation tool call.
-   */
   const handleRejectTool = useCallback(
     async (messageId: number, toolCall: ChatToolCall) => {
-      setMessages((prev) =>
-        prev.map((msg) => {
-          if (msg.id !== messageId || !msg.toolCalls) return msg;
-          const updatedToolCalls = msg.toolCalls.map((tc) =>
-            tc.toolCallId === toolCall.toolCallId
-              ? { ...tc, status: "rejected" as const }
-              : tc,
-          );
-          updateChatMessageToolCalls(msg.id, updatedToolCalls).catch(
-            console.error,
-          );
-          return { ...msg, toolCalls: updatedToolCalls };
-        }),
-      );
-      toast.info("İşlem talebi reddedildi.");
+      rejectToolMutation(messageId, toolCall, updateToolCallStatus);
     },
-    [],
+    [updateToolCallStatus],
   );
 
-  /**
-   * Reverts (undoes) an approved mutation tool call.
-   */
   const handleUndoTool = useCallback(
     async (messageId: number, toolCall: ChatToolCall) => {
-      const res = await undoAdvisorToolAction({
-        toolName: toolCall.name,
-        args: toolCall.args,
-        executionResult: toolCall.executionResult,
-        previousState: toolCall.previousState,
-      });
-
-      if (!res.success) {
-        toast.error(res.error || "İşlem geri alınamadı.");
-        return;
-      }
-
-      toast.success(res.message || "İşlem geri alındı.");
-
-      setMessages((prev) =>
-        prev.map((msg) => {
-          if (msg.id !== messageId || !msg.toolCalls) return msg;
-          const updatedToolCalls = msg.toolCalls.map((tc) =>
-            tc.toolCallId === toolCall.toolCallId
-              ? { ...tc, status: "undone" as const }
-              : tc,
-          );
-          updateChatMessageToolCalls(msg.id, updatedToolCalls).catch(
-            console.error,
-          );
-          return { ...msg, toolCalls: updatedToolCalls };
-        }),
-      );
+      await undoToolMutation(messageId, toolCall, updateToolCallStatus);
     },
-    [],
+    [updateToolCallStatus],
   );
 
   const handleOpenCitation = useCallback((source: RagSearchResultItem) => {
-    setActiveCitation(source);
-    setIsCitationOpen(true);
+    dispatch({ type: "OPEN_CITATION", payload: source });
   }, []);
 
   const handleCloseCitation = useCallback(() => {
-    setIsCitationOpen(false);
+    dispatch({ type: "CLOSE_CITATION" });
   }, []);
 
   return {

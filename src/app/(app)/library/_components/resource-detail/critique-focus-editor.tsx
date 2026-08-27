@@ -201,16 +201,16 @@ export function CritiqueFocusEditor({
 
           {/* Step Indicator Circles */}
           <div className="flex items-center gap-1.5">
-            {CRITIQUE_FIELDS.map((_, i) => (
+            {CRITIQUE_FIELDS.map((field, i) => (
               <button
-                key={i}
+                key={field.key}
                 type="button"
                 onClick={() => setActiveStepIndex(i)}
                 className={cn(
                   "size-2 rounded-full transition-all duration-200 cursor-pointer",
                   activeStepIndex === i
                     ? "bg-primary w-5"
-                    : values[CRITIQUE_FIELDS[i].key].trim().length > 0
+                    : values[field.key].trim().length > 0
                       ? "bg-primary/50 hover:bg-primary"
                       : "bg-muted-foreground/30 hover:bg-muted-foreground/60",
                 )}
@@ -246,7 +246,9 @@ export function CritiqueFocusEditor({
               <Sparkles
                 className={cn("size-3.5", isEvaluating && "animate-spin")}
               />
-              <span>{isEvaluating ? "Değerlendiriliyor..." : "Analizi Değerlendir"}</span>
+              <span>
+                {isEvaluating ? "Değerlendiriliyor..." : "Analizi Değerlendir"}
+              </span>
             </Button>
           ) : (
             <Button

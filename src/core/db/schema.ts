@@ -81,7 +81,9 @@ export const matrices = pgTable("matrices", {
   theoreticalFramework: text("theoretical_framework").notNull(),
   primaryMaterial: text("primary_material"),
   methodology: text("methodology").notNull(),
-  advisorMessages: jsonb("advisor_messages").$type<MatrixAdvisorMessage[]>().default([]),
+  advisorMessages: jsonb("advisor_messages")
+    .$type<MatrixAdvisorMessage[]>()
+    .default([]),
   createdAt: timestamp().defaultNow().notNull(),
   updatedAt: timestamp().defaultNow().notNull(),
 });

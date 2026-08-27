@@ -190,7 +190,7 @@ export function NoteItem({
           <div className="space-y-2 pt-1">
             {verification.issues.map((issue, idx) => (
               <div
-                key={idx}
+                key={`issue-${idx}-${issue.title.slice(0, 32)}`}
                 className="p-2 rounded bg-background/80 border border-warning/20 space-y-1"
               >
                 <p className="font-medium text-foreground text-[11px]">

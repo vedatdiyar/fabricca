@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, memo, useEffect } from "react";
+import { useState, memo, useEffect, useRef } from "react";
 import type { LucideIcon } from "lucide-react";
 import {
   Target,
@@ -23,6 +23,7 @@ import {
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import { MatrixValueMarkdown } from "@/components/shared/matrix-value-markdown";
 import type { ThesisMatrix } from "@/lib/types";
 import type { MatrixFieldKey } from "../_services/rubrics";
 
@@ -40,7 +41,8 @@ const MODAL_QUADRANTS: ModalQuadrantConfig[] = [
     number: "01",
     Icon: Target,
     label: "Araştırma Problemi, Aktörler ve Odak",
-    shortHint: "Çözülmek istenen problem gerilimi, aktörler ve araştırma sorusu.",
+    shortHint:
+      "Çözülmek istenen problem gerilimi, aktörler ve araştırma sorusu.",
   },
   {
     key: "theoreticalFramework",
@@ -86,15 +88,24 @@ export const MatrixModalView = memo(function MatrixModalView({
 }: MatrixModalViewProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [editValue, setEditValue] = useState("");
+  const textareaRef = useRef<HTMLTextAreaElement | null>(null);
 
   const currentQuadrant = MODAL_QUADRANTS.find((q) => q.key === selectedField);
-  const currentValue = selectedField ? matrix[selectedField]?.trim() ?? "" : "";
+  const currentValue = selectedField
+    ? (matrix[selectedField]?.trim() ?? "")
+    : "";
 
   // Reset editing state whenever the modal or selected field changes
   useEffect(() => {
     setIsEditing(false);
     setEditValue(currentValue);
   }, [isOpen, selectedField, currentValue]);
+
+  useEffect(() => {
+    if (isEditing) {
+      textareaRef.current?.focus();
+    }
+  }, [isEditing]);
 
   if (!currentQuadrant || !selectedField) return null;
 
@@ -173,11 +184,11 @@ export const MatrixModalView = memo(function MatrixModalView({
             {isEditing ? (
               <div className="space-y-3">
                 <Textarea
+                  ref={textareaRef}
                   rows={5}
                   value={editValue}
                   onChange={(e) => setEditValue(e.target.value)}
                   placeholder={shortHint}
-                  autoFocus
                   className="textarea-academic text-xs leading-relaxed resize-none"
                 />
                 <div className="flex items-center justify-end space-x-2">
@@ -207,9 +218,7 @@ export const MatrixModalView = memo(function MatrixModalView({
                 <div className="flex items-start justify-between gap-2">
                   <div className="flex-1">
                     {currentValue ? (
-                      <p className="text-sm font-normal leading-relaxed font-sans text-foreground whitespace-pre-wrap">
-                        {currentValue}
-                      </p>
+                      <MatrixValueMarkdown content={currentValue} />
                     ) : (
                       <p className="text-xs font-normal italic text-muted-foreground">
                         Bu kadran henüz olgunlaştırılmadı. Danışmanla sohbet

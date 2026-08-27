@@ -60,7 +60,10 @@ export async function generateStructuredContent<T>(
   if (options?.thinkingConfig?.thinkingBudget !== undefined) {
     logger?.warn("deprecated_thinking_budget_ignored", {
       service: "gemini",
-      data: { payloadStage: callLabel, thinkingBudget: options.thinkingConfig.thinkingBudget },
+      data: {
+        payloadStage: callLabel,
+        thinkingBudget: options.thinkingConfig.thinkingBudget,
+      },
     });
   }
 
@@ -136,7 +139,8 @@ export async function generateStructuredContent<T>(
 
           // CJK sızma guardı: Lite tier Türkçe akademik çıktıda nadiren Han/Kana üretir.
           // Tespit edilirse retry tetiklemek için hata fırlatılır.
-          const CJK_RE = /[\u4E00-\u9FFF\u3400-\u4DBF\u3040-\u30FF\uAC00-\uD7AF]/;
+          const CJK_RE =
+            /[\u4E00-\u9FFF\u3400-\u4DBF\u3040-\u30FF\uAC00-\uD7AF]/;
           if (CJK_RE.test(text)) {
             logger?.warn("cjk_leakage_detected", {
               service: "gemini",

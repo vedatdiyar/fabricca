@@ -2,7 +2,18 @@
 
 import { memo } from "react";
 import type { LucideIcon } from "lucide-react";
-import { Target, Compass, Database, BookOpen, CheckCircle2, Clock, Sparkles, ArrowRight, Loader2, RefreshCw } from "lucide-react";
+import {
+  Target,
+  Compass,
+  Database,
+  BookOpen,
+  CheckCircle2,
+  Clock,
+  Sparkles,
+  ArrowRight,
+  Loader2,
+  RefreshCw,
+} from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -12,6 +23,7 @@ import {
 } from "@/components/ui/dialog";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { MatrixValueMarkdown } from "@/components/shared/matrix-value-markdown";
 import type { ThesisMatrix } from "@/lib/types";
 
 interface QuadrantConfig {
@@ -23,10 +35,34 @@ interface QuadrantConfig {
 }
 
 const QUADRANTS: QuadrantConfig[] = [
-  { key: "subjectProblem", number: "01", Icon: Target, label: "Araştırma Problemi, Aktörler ve Odak", hint: "Neyi, hangi problemi ve hangi aktörleri inceliyorsun?" },
-  { key: "theoreticalFramework", number: "02", Icon: Compass, label: "Teorik ve Kavramsal Çerçeve", hint: "Hangi teorik mercek ve kavramsal model?" },
-  { key: "primaryMaterial", number: "03", Icon: Database, label: "Veri Kaynağı / Birincil Malzeme", hint: "Hangi birincil kaynaklar ve veri setleri?" },
-  { key: "methodology", number: "04", Icon: BookOpen, label: "Metodoloji", hint: "Veri nasıl toplanıyor ve analiz ediliyor?" },
+  {
+    key: "subjectProblem",
+    number: "01",
+    Icon: Target,
+    label: "Araştırma Problemi, Aktörler ve Odak",
+    hint: "Neyi, hangi problemi ve hangi aktörleri inceliyorsun?",
+  },
+  {
+    key: "theoreticalFramework",
+    number: "02",
+    Icon: Compass,
+    label: "Teorik ve Kavramsal Çerçeve",
+    hint: "Hangi teorik mercek ve kavramsal model?",
+  },
+  {
+    key: "primaryMaterial",
+    number: "03",
+    Icon: Database,
+    label: "Veri Kaynağı / Birincil Malzeme",
+    hint: "Hangi birincil kaynaklar ve veri setleri?",
+  },
+  {
+    key: "methodology",
+    number: "04",
+    Icon: BookOpen,
+    label: "Metodoloji",
+    hint: "Veri nasıl toplanıyor ve analiz ediliyor?",
+  },
 ];
 
 interface MatrixReviewModalProps {
@@ -63,7 +99,9 @@ export const MatrixReviewModal = memo(function MatrixReviewModal({
             </span>
           </DialogTitle>
           <DialogDescription className="text-xs text-muted-foreground">
-            Aşağıda danışmanla birlikte olgunlaştırdığın 4 kadran alt alta listeleniyor. Eksik varsa sohbete dönüp tamamlayabilir, hazırsa mühürleyip konumlandırma adımına geçebilirsin.
+            Aşağıda danışmanla birlikte olgunlaştırdığın 4 kadran alt alta
+            listeleniyor. Eksik varsa sohbete dönüp tamamlayabilir, hazırsa
+            mühürleyip konumlandırma adımına geçebilirsin.
           </DialogDescription>
         </DialogHeader>
 
@@ -90,7 +128,9 @@ export const MatrixReviewModal = memo(function MatrixReviewModal({
                       {number}
                     </span>
                     <Icon className="h-4 w-4 text-muted-foreground shrink-0" />
-                    <span className="text-sm font-semibold text-foreground">{label}</span>
+                    <span className="text-sm font-semibold text-foreground">
+                      {label}
+                    </span>
                   </div>
                   {isCompleted ? (
                     <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-xs font-medium bg-success/10 border border-success/20 text-success shrink-0">
@@ -108,13 +148,18 @@ export const MatrixReviewModal = memo(function MatrixReviewModal({
                     </span>
                   )}
                 </div>
-                <p className="text-[11px] text-muted-foreground leading-relaxed">{hint}</p>
+                <p className="text-[11px] text-muted-foreground leading-relaxed">
+                  {hint}
+                </p>
                 {value ? (
-                  <p className="text-sm font-normal leading-relaxed font-sans text-foreground whitespace-pre-wrap pt-1 border-t border-border/40">
-                    {value}
-                  </p>
+                  <div className="pt-1 border-t border-border/40">
+                    <MatrixValueMarkdown content={value} />
+                  </div>
                 ) : (
-                  <p className="text-xs italic text-muted-foreground pt-1 border-t border-border/40">Henüz olgunlaştırılmadı — danışmanla sohbet ettikçe burası dolacak.</p>
+                  <p className="text-xs italic text-muted-foreground pt-1 border-t border-border/40">
+                    Henüz olgunlaştırılmadı — danışmanla sohbet ettikçe burası
+                    dolacak.
+                  </p>
                 )}
               </Card>
             );

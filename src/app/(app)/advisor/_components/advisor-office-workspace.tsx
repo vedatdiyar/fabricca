@@ -49,7 +49,6 @@ export function AdvisorOfficeWorkspace({
 
   return (
     <div className="w-full">
-
       {isReviewActive && sessionDetail.currentReport ? (
         <OfficeReviewPhase
           activeOutlineId={sessionDetail.activeOutlineId}

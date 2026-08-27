@@ -20,6 +20,7 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import { MatrixValueMarkdown } from "@/components/shared/matrix-value-markdown";
 import type { ThesisMatrix } from "@/lib/types";
 import {
   evaluateMatrixReadiness,
@@ -40,7 +41,8 @@ const QUADRANTS: CanvasQuadrantConfig[] = [
     number: "01",
     Icon: Target,
     label: "Araştırma Problemi, Aktörler ve Odak",
-    shortHint: "Çözülmek istenen problem gerilimi, aktörler ve araştırma sorusu.",
+    shortHint:
+      "Çözülmek istenen problem gerilimi, aktörler ve araştırma sorusu.",
   },
   {
     key: "theoreticalFramework",
@@ -229,9 +231,7 @@ export const LiveMatrixCanvas = memo(function LiveMatrixCanvas({
                     </div>
                   </div>
                 ) : value ? (
-                  <p className="text-sm font-normal leading-relaxed font-sans text-foreground whitespace-pre-wrap">
-                    {value}
-                  </p>
+                  <MatrixValueMarkdown content={value} />
                 ) : (
                   <p className="text-xs font-normal italic text-muted-foreground">
                     {shortHint} Danışmanla konuştukça bu alan otomatik

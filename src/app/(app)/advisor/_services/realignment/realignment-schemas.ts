@@ -21,11 +21,15 @@ export const realignedSubBoxSchema = z.object({
   description: z
     .string()
     .min(10)
-    .describe("Detailed Turkish description of this sub-box in the context of the updated thesis matrix"),
+    .describe(
+      "Detailed Turkish description of this sub-box in the context of the updated thesis matrix",
+    ),
   concepts: z
     .array(z.string())
     .min(1)
-    .describe("List of core theoretical/methodological concepts in Turkish or English"),
+    .describe(
+      "List of core theoretical/methodological concepts in Turkish or English",
+    ),
   semanticQuery: z
     .string()
     .min(5)
@@ -43,7 +47,9 @@ export type RealignedSubBox = z.infer<typeof realignedSubBoxSchema>;
 export const matrixRealignmentSchema = z.object({
   analysisSummary: z
     .string()
-    .describe("Academic evaluation in Turkish explaining how the matrix change impacts the thesis architecture"),
+    .describe(
+      "Academic evaluation in Turkish explaining how the matrix change impacts the thesis architecture",
+    ),
   affectedBoxType: z
     .enum([
       "SUBJECT_PROBLEM",
@@ -56,16 +62,22 @@ export const matrixRealignmentSchema = z.object({
   updatedPillarTitle: z
     .string()
     .optional()
-    .describe("Updated Turkish title for the main root pillar of the affected quadrant (e.g. 'Bourdieu Alan ve Habitus Kuramı')"),
+    .describe(
+      "Updated Turkish title for the main root pillar of the affected quadrant (e.g. 'Bourdieu Alan ve Habitus Kuramı')",
+    ),
   obsoleteSubBoxIds: z
     .array(z.number())
     .default([])
-    .describe("IDs of existing sub-boxes belonging to the old framework/method that are now obsolete and must be deleted"),
+    .describe(
+      "IDs of existing sub-boxes belonging to the old framework/method that are now obsolete and must be deleted",
+    ),
   newSubBoxes: z
     .array(realignedSubBoxSchema)
     .min(1)
     .max(3)
-    .describe("1 to 3 targeted, high-precision new sub-boxes directly matching the new matrix focus"),
+    .describe(
+      "1 to 3 targeted, high-precision new sub-boxes directly matching the new matrix focus",
+    ),
   outlineSuggestions: z
     .array(z.string())
     .default([])
@@ -82,7 +94,8 @@ export const matrixRealignmentJsonSchema: JsonSchema = {
   properties: {
     analysisSummary: {
       type: "string",
-      description: "Academic evaluation in Turkish explaining the impact of the matrix change",
+      description:
+        "Academic evaluation in Turkish explaining the impact of the matrix change",
     },
     affectedBoxType: {
       type: "string",
@@ -93,16 +106,19 @@ export const matrixRealignmentJsonSchema: JsonSchema = {
         "METHODOLOGY",
         "RELATED_THESES",
       ],
-      description: "The primary quadrant directly affected by this matrix update",
+      description:
+        "The primary quadrant directly affected by this matrix update",
     },
     updatedPillarTitle: {
       type: "string",
-      description: "Updated Turkish title for the main root pillar of the affected quadrant",
+      description:
+        "Updated Turkish title for the main root pillar of the affected quadrant",
     },
     obsoleteSubBoxIds: {
       type: "array",
       items: { type: "integer" },
-      description: "IDs of existing sub-boxes that are no longer aligned with the new matrix and must be deleted",
+      description:
+        "IDs of existing sub-boxes that are no longer aligned with the new matrix and must be deleted",
     },
     newSubBoxes: {
       type: "array",
@@ -127,10 +143,17 @@ export const matrixRealignmentJsonSchema: JsonSchema = {
           },
           semanticQuery: {
             type: "string",
-            description: "Concise English academic search query for OpenAlex (max 15 words)",
+            description:
+              "Concise English academic search query for OpenAlex (max 15 words)",
           },
         },
-        required: ["parentBoxType", "title", "description", "concepts", "semanticQuery"],
+        required: [
+          "parentBoxType",
+          "title",
+          "description",
+          "concepts",
+          "semanticQuery",
+        ],
       },
     },
     outlineSuggestions: {
@@ -138,7 +161,10 @@ export const matrixRealignmentJsonSchema: JsonSchema = {
       items: { type: "string" },
     },
   },
-  required: ["analysisSummary", "affectedBoxType", "obsoleteSubBoxIds", "newSubBoxes"],
+  required: [
+    "analysisSummary",
+    "affectedBoxType",
+    "obsoleteSubBoxIds",
+    "newSubBoxes",
+  ],
 };
-
-

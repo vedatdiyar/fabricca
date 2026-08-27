@@ -66,6 +66,7 @@ export function AssistantInput({
           onChange={(e) => setText(e.target.value)}
           onKeyDown={handleKeyDown}
           placeholder={placeholder}
+          aria-label={placeholder || "Mesajınızı yazın"}
           disabled={isLoading || disabled}
           rows={1}
           className="flex-1 resize-none bg-transparent py-1.5 text-sm leading-relaxed text-foreground placeholder:text-muted-foreground focus:outline-hidden disabled:opacity-50 min-h-[28px] max-h-40 overflow-y-auto"

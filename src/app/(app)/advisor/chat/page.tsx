@@ -19,10 +19,7 @@ async function AssistantChatContent({
       : undefined;
 
   return (
-    <AssistantWorkspace
-      key={sessionId ?? "new"}
-      initialSessionId={sessionId}
-    />
+    <AssistantWorkspace key={sessionId ?? "new"} initialSessionId={sessionId} />
   );
 }
 
@@ -44,4 +41,3 @@ export default function AssistantChatPage({
     </Suspense>
   );
 }
-

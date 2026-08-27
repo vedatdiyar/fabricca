@@ -27,7 +27,7 @@ export interface AdvisorTurnResponse {
   replyText: string;
 }
 
-const ONBOARDING_TOOL_DECLARATIONS: FunctionDeclaration[] = [
+export const ONBOARDING_TOOL_DECLARATIONS: FunctionDeclaration[] = [
   {
     name: "lookupPrecedentTheses",
     description:
@@ -75,122 +75,24 @@ const ONBOARDING_TOOL_DECLARATIONS: FunctionDeclaration[] = [
   },
 ];
 
-/**
- * Executes a single conversational turn with the Socratic Academic Advisor (synchronous/non-streaming).
- * Uses FLASH_LITE_35, ThinkingLevel.MEDIUM and parallel tool execution with Promise.all.
- */
-export async function runAdvisorTurn(
-  history: AdvisorMessage[],
-  currentMatrix: Partial<ThesisMatrix>,
-): Promise<AdvisorTurnResponse> {
-  const systemInstruction = buildAdvisorSystemPrompt(currentMatrix);
-
-  type GeminiContentItem = {
-    role: "user" | "model";
-    parts: Array<
-      | { text: string }
-      | { functionCall: { name: string; args: Record<string, unknown> } }
-      | { functionResponse: { name: string; response: Record<string, unknown> } }
-    >;
+function isMatrixComplete(matrix: Partial<ThesisMatrix>): boolean {
+  const check = (val?: string | null) => {
+    if (!val) return false;
+    const t = val.trim();
+    return (
+      t.length >= 35 &&
+      !t.toLowerCase().includes("[bekliyor") &&
+      !t.toLowerCase().includes("[eksik") &&
+      !t.toLowerCase().includes("boş bırakıl") &&
+      !t.toLowerCase().includes("henüz mühürlen")
+    );
   };
-
-  const contents: GeminiContentItem[] = history.map((m) => ({
-    role: m.role,
-    parts: [{ text: m.content }],
-  }));
-
-  let loopLimit = 3;
-  let finalReply = "";
-
-  while (loopLimit > 0) {
-    loopLimit--;
-
-    const response = await dispatchGeminiCall({
-      model: FLASH_LITE_35,
-      task: async ({ model, apiKey }) => {
-        const ai = getAi(apiKey);
-        return ai.models.generateContent({
-          model,
-          contents: contents as never,
-          config: {
-            systemInstruction,
-            seed: GEMINI_SEED,
-            tools: [{ functionDeclarations: ONBOARDING_TOOL_DECLARATIONS }],
-            thinkingConfig: { thinkingLevel: ThinkingLevel.MEDIUM },
-          },
-        });
-      },
-    });
-
-    const candidate = response.candidates?.[0];
-    const parts = candidate?.content?.parts ?? [];
-
-    const functionCalls = parts.filter(
-      (
-        p,
-      ): p is {
-        functionCall: {
-          id?: string;
-          name: string;
-          args: Record<string, unknown>;
-        };
-      } => "functionCall" in p && Boolean(p.functionCall),
-    );
-
-    const textParts = parts.filter(
-      (p): p is { text: string } => "text" in p && typeof p.text === "string",
-    );
-
-    if (textParts.length > 0) {
-      finalReply += textParts.map((p) => p.text).join("\n");
-    }
-
-    if (functionCalls.length === 0) {
-      break;
-    }
-
-    // Append full model parts (including thoughtSignature) for 3.5+ thought preservation
-    contents.push({
-      role: "model",
-      parts: parts as unknown as GeminiContentItem["parts"],
-    });
-
-    // Execute requested tools in parallel via Promise.all (strict 3.5+ id+name matching)
-    const toolResponses = await Promise.all(
-      functionCalls.map(async (fc) => {
-        const { name, args } = fc.functionCall;
-        const id = (fc.functionCall as { id?: string }).id;
-        const query = typeof args.query === "string" ? args.query : "";
-
-        let toolResult: unknown = {};
-        if (name === "lookupPrecedentTheses") {
-          toolResult = await queryPrecedentTheses(query);
-        } else if (name === "lookupScholarlyLiterature") {
-          toolResult = await queryScholarlyLiterature(query);
-        } else if (name === "lookupEmpiricalContext") {
-          toolResult = await queryEmpiricalContext(query);
-        }
-
-        return {
-          functionResponse: {
-            ...(id ? { id } : {}),
-            name,
-            response: { output: toolResult },
-          },
-        };
-      }),
-    );
-
-    // Append tool responses back as user role for Gemini (id+name strictly matched)
-    contents.push({
-      role: "user",
-      parts: toolResponses,
-    });
-  }
-
-  return {
-    replyText: finalReply.trim(),
-  };
+  return Boolean(
+    check(matrix.subjectProblem) &&
+    check(matrix.theoreticalFramework) &&
+    check(matrix.primaryMaterial) &&
+    check(matrix.methodology),
+  );
 }
 
 /**
@@ -213,13 +115,16 @@ export async function runAdvisorTurnStream(
 ): Promise<AdvisorTurnResponse> {
   const { history, currentMatrix } = options;
   const systemInstruction = buildAdvisorSystemPrompt(currentMatrix);
+  const matrixDone = isMatrixComplete(currentMatrix);
 
   type GeminiContentItem = {
     role: "user" | "model";
     parts: Array<
       | { text: string }
       | { functionCall: { name: string; args: Record<string, unknown> } }
-      | { functionResponse: { name: string; response: Record<string, unknown> } }
+      | {
+          functionResponse: { name: string; response: Record<string, unknown> };
+        }
       | Record<string, unknown>
     >;
   };
@@ -228,6 +133,120 @@ export async function runAdvisorTurnStream(
     role: m.role,
     parts: [{ text: m.content }],
   }));
+
+  // Strictly Grounded Phase 1: Enforce tool research before streaming Socratic synthesis
+  if (!matrixDone && contents.length > 0) {
+    try {
+      writer.send("status", {
+        message: "Danışman literatürü ve emsal tez arşivini inceliyor...",
+      });
+
+      const toolDiscovery = await dispatchGeminiCall({
+        model: FLASH_LITE_35,
+        task: async ({ model, apiKey }) => {
+          const ai = getAi(apiKey);
+          return ai.models.generateContent({
+            model,
+            contents: contents as never,
+            config: {
+              systemInstruction,
+              seed: GEMINI_SEED,
+              tools: [{ functionDeclarations: ONBOARDING_TOOL_DECLARATIONS }],
+              toolConfig: {
+                functionCallingConfig: {
+                  mode: "ANY" as never,
+                },
+              },
+              thinkingConfig: { thinkingLevel: ThinkingLevel.MEDIUM },
+            },
+          });
+        },
+      });
+
+      const discoveryParts =
+        toolDiscovery.candidates?.[0]?.content?.parts ?? [];
+      const discoveryCalls = discoveryParts.filter(
+        (
+          p,
+        ): p is {
+          functionCall: {
+            id?: string;
+            name: string;
+            args: Record<string, unknown>;
+          };
+        } => "functionCall" in p && Boolean(p.functionCall),
+      );
+
+      if (discoveryCalls.length > 0) {
+        contents.push({
+          role: "model",
+          parts: discoveryParts as never,
+        });
+
+        // Execute discovered tools in parallel and emit real-time SSE events
+        const toolResponses = await Promise.all(
+          discoveryCalls.map(async (fc, idx) => {
+            const { name, args } = fc.functionCall;
+            const id = fc.functionCall.id ?? `tool-${Date.now()}-${idx}`;
+            const query = typeof args.query === "string" ? args.query : "";
+
+            writer.send("tool_call", {
+              id,
+              name,
+              query,
+              status: "running",
+            });
+
+            let toolResult: unknown = [];
+            if (name === "lookupPrecedentTheses") {
+              toolResult = await queryPrecedentTheses(query);
+            } else if (name === "lookupScholarlyLiterature") {
+              toolResult = await queryScholarlyLiterature(query);
+            } else if (name === "lookupEmpiricalContext") {
+              toolResult = await queryEmpiricalContext(query);
+            }
+
+            const count = Array.isArray(toolResult) ? toolResult.length : 0;
+            const titles = Array.isArray(toolResult)
+              ? (toolResult as Array<Record<string, unknown>>)
+                  .slice(0, 2)
+                  .map((r) => (typeof r.title === "string" ? r.title : ""))
+                  .filter(Boolean)
+              : [];
+
+            writer.send("tool_call", {
+              id,
+              name,
+              query,
+              status: "done",
+              resultCount: count,
+              resultTitles: titles,
+            });
+
+            return {
+              functionResponse: {
+                id,
+                name,
+                response: { output: toolResult },
+              },
+            };
+          }),
+        );
+
+        contents.push({
+          role: "user",
+          parts: toolResponses as never,
+        });
+
+        writer.send("status", {
+          message:
+            "Literatür bulguları sentezleniyor ve Sokratik analiz hazırlanıyor...",
+        });
+      }
+    } catch {
+      // Fallback seamlessly to conversational streaming if research discovery encounters error
+    }
+  }
 
   let loopLimit = 3;
   let fullAccumulatedText = "";
@@ -253,7 +272,8 @@ export async function runAdvisorTurnStream(
     });
 
     const turnModelParts: Array<Record<string, unknown>> = [];
-    const functionCalls: Array<{ id?: string; name?: string; args?: unknown }> = [];
+    const functionCalls: Array<{ id?: string; name?: string; args?: unknown }> =
+      [];
 
     for await (const chunk of stream) {
       turnModelParts.push(...collectModelParts(chunk as never));
@@ -275,10 +295,10 @@ export async function runAdvisorTurnStream(
     }
 
     writer.send("status", {
-      message: "Danışman literatürü ve emsal tez arşivini inceliyor...",
+      message: "Danışman ek literatürü inceliyor...",
     });
 
-    // Astryx-like ChatToolCalls: emit running events for visible research tools
+    // Emit running events for additional visible research tools
     const visibleCalls = functionCalls.map((fc, idx) => ({
       id: fc.id ?? `tool-${Date.now()}-${idx}`,
       name: fc.name ?? "unknown",

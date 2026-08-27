@@ -36,4 +36,3 @@ export async function deleteOfficeSessionAction(
 ): Promise<Awaited<ReturnType<typeof _deleteOfficeSessionAction>>> {
   return _deleteOfficeSessionAction(...args);
 }
-

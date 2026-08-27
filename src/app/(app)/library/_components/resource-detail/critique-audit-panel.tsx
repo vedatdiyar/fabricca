@@ -83,7 +83,10 @@ export function CritiqueAuditPanel({ auditReport }: CritiqueAuditPanelProps) {
                 </div>
                 <ul className="space-y-1.5 text-xs text-foreground leading-relaxed font-sans">
                   {strengths.map((str, i) => (
-                    <li key={i} className="flex items-start gap-1.5">
+                    <li
+                      key={`strength-${i}-${str.slice(0, 32)}`}
+                      className="flex items-start gap-1.5"
+                    >
                       <span className="text-primary select-none">•</span>
                       <span>{str}</span>
                     </li>
@@ -101,7 +104,10 @@ export function CritiqueAuditPanel({ auditReport }: CritiqueAuditPanelProps) {
                 </div>
                 <ul className="space-y-1.5 text-xs text-foreground leading-relaxed font-sans">
                   {blindSpots.map((spot, i) => (
-                    <li key={i} className="flex items-start gap-1.5">
+                    <li
+                      key={`spot-${i}-${spot.slice(0, 32)}`}
+                      className="flex items-start gap-1.5"
+                    >
                       <span className="text-warning select-none">•</span>
                       <span>{spot}</span>
                     </li>
@@ -120,7 +126,10 @@ export function CritiqueAuditPanel({ auditReport }: CritiqueAuditPanelProps) {
               </div>
               <ul className="space-y-1 text-xs text-foreground leading-relaxed font-sans">
                 {commentaryRisks.map((risk, i) => (
-                  <li key={i} className="flex items-start gap-1.5">
+                  <li
+                    key={`risk-${i}-${risk.slice(0, 32)}`}
+                    className="flex items-start gap-1.5"
+                  >
                     <span className="text-warning select-none">•</span>
                     <span>{risk}</span>
                   </li>

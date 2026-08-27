@@ -29,12 +29,16 @@ interface ToolActionCardProps {
  * Returns an appropriate icon based on the tool name.
  */
 function getToolIcon(toolName: string) {
-  if (toolName.includes("Task")) return <ListTodo className="size-4 text-primary" />;
-  if (toolName.includes("Outline")) return <Layers className="size-4 text-primary" />;
-  if (toolName.includes("Box")) return <FolderPlus className="size-4 text-primary" />;
+  if (toolName.includes("Task"))
+    return <ListTodo className="size-4 text-primary" />;
+  if (toolName.includes("Outline"))
+    return <Layers className="size-4 text-primary" />;
+  if (toolName.includes("Box"))
+    return <FolderPlus className="size-4 text-primary" />;
   if (toolName.includes("Note") || toolName.includes("Annotation"))
     return <BookMarked className="size-4 text-primary" />;
-  if (toolName.includes("Matrix")) return <FileEdit className="size-4 text-primary" />;
+  if (toolName.includes("Matrix"))
+    return <FileEdit className="size-4 text-primary" />;
   return <Database className="size-4 text-primary" />;
 }
 
@@ -186,7 +190,9 @@ export function ToolActionCard({
                 isDetailsExpanded ? "rotate-180" : ""
               }`}
             />
-            <span>{isDetailsExpanded ? "Parametreleri Gizle" : "İşlem Detayları"}</span>
+            <span>
+              {isDetailsExpanded ? "Parametreleri Gizle" : "İşlem Detayları"}
+            </span>
           </button>
 
           {isDetailsExpanded && (
@@ -195,7 +201,9 @@ export function ToolActionCard({
                 <div key={key} className="flex gap-2">
                   <span className="text-muted-foreground">{key}:</span>
                   <span className="font-sans font-medium text-foreground">
-                    {typeof val === "object" ? JSON.stringify(val) : String(val)}
+                    {typeof val === "object"
+                      ? JSON.stringify(val)
+                      : String(val)}
                   </span>
                 </div>
               ))}

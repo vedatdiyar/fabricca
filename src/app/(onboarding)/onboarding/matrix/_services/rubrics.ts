@@ -94,7 +94,11 @@ export function evaluateMatrixReadiness(matrix: Partial<ThesisMatrix>): {
     return {
       key,
       label: MATRIX_RUBRICS[key].label,
-      status: isCompleted ? "completed" : isDiscussing ? "discussing" : "pending",
+      status: isCompleted
+        ? "completed"
+        : isDiscussing
+          ? "discussing"
+          : "pending",
       value: isPlaceholder ? "" : val,
     };
   });

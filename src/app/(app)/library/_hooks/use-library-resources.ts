@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef, useMemo, useCallback } from "react";
+import { useReducer, useEffect, useRef, useMemo, useCallback } from "react";
 import { toast } from "sonner";
 import { compareBoxTypes } from "@/lib/box-constants";
 import {
@@ -14,6 +14,84 @@ import type {
   ThesisBoxType,
 } from "../_lib/types";
 
+interface LibraryResourcesState {
+  resources: LibraryResourceItem[];
+  outlines: LibraryOutlineItem[];
+  isLoading: boolean;
+  selectedResourceId: number | null;
+  activeTab: ThesisBoxType;
+  searchQuery: string;
+}
+
+type LibraryResourcesAction =
+  | {
+      type: "LOAD_SUCCESS";
+      payload: {
+        outlines: LibraryOutlineItem[];
+        resources: LibraryResourceItem[];
+        selectedResourceId: number | null;
+      };
+    }
+  | { type: "LOAD_COMPLETE" }
+  | {
+      type: "SET_RESOURCES";
+      payload: React.SetStateAction<LibraryResourceItem[]>;
+    }
+  | { type: "SET_SELECTED_RESOURCE_ID"; payload: number | null }
+  | { type: "SET_ACTIVE_TAB"; payload: ThesisBoxType }
+  | { type: "SET_SEARCH_QUERY"; payload: string };
+
+function libraryResourcesReducer(
+  state: LibraryResourcesState,
+  action: LibraryResourcesAction,
+): LibraryResourcesState {
+  switch (action.type) {
+    case "LOAD_SUCCESS":
+      return {
+        ...state,
+        isLoading: false,
+        outlines: action.payload.outlines,
+        resources: action.payload.resources,
+        selectedResourceId:
+          action.payload.selectedResourceId !== null
+            ? action.payload.selectedResourceId
+            : state.selectedResourceId,
+      };
+    case "LOAD_COMPLETE":
+      return {
+        ...state,
+        isLoading: false,
+      };
+    case "SET_RESOURCES": {
+      const nextResources =
+        typeof action.payload === "function"
+          ? action.payload(state.resources)
+          : action.payload;
+      return {
+        ...state,
+        resources: nextResources,
+      };
+    }
+    case "SET_SELECTED_RESOURCE_ID":
+      return {
+        ...state,
+        selectedResourceId: action.payload,
+      };
+    case "SET_ACTIVE_TAB":
+      return {
+        ...state,
+        activeTab: action.payload,
+      };
+    case "SET_SEARCH_QUERY":
+      return {
+        ...state,
+        searchQuery: action.payload,
+      };
+    default:
+      return state;
+  }
+}
+
 /**
  * Manages library resource list, selection state, CRUD operations, and data loading.
  *
@@ -21,25 +99,47 @@ import type {
  * @returns Resource state, sorted list, selection handlers, and mutation callbacks.
  */
 export function useLibraryResources(initialSelectedId: number | null) {
-  const [resources, setResources] = useState<LibraryResourceItem[]>([]);
-  const [outlines, setOutlines] = useState<LibraryOutlineItem[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [selectedResourceId, setSelectedResourceId] = useState<number | null>(
-    initialSelectedId,
-  );
-  const [activeTab, setActiveTab] = useState<ThesisBoxType>("ALL");
-  const [searchQuery, setSearchQuery] = useState("");
+  const [state, dispatch] = useReducer(libraryResourcesReducer, {
+    resources: [],
+    outlines: [],
+    isLoading: true,
+    selectedResourceId: initialSelectedId,
+    activeTab: "ALL",
+    searchQuery: "",
+  });
 
   const initialIdRef = useRef(initialSelectedId);
 
-  const handleSelectResource = useCallback((id: number) => {
-    setSelectedResourceId(id);
-    if (typeof window !== "undefined") {
-      const url = new URL(window.location.href);
-      url.searchParams.set("id", id.toString());
-      window.history.replaceState({}, "", url.toString());
-    }
+  const setSelectedResourceId = useCallback((id: number | null) => {
+    dispatch({ type: "SET_SELECTED_RESOURCE_ID", payload: id });
   }, []);
+
+  const setResources = useCallback(
+    (action: React.SetStateAction<LibraryResourceItem[]>) => {
+      dispatch({ type: "SET_RESOURCES", payload: action });
+    },
+    [],
+  );
+
+  const setActiveTab = useCallback((tab: ThesisBoxType) => {
+    dispatch({ type: "SET_ACTIVE_TAB", payload: tab });
+  }, []);
+
+  const setSearchQuery = useCallback((query: string) => {
+    dispatch({ type: "SET_SEARCH_QUERY", payload: query });
+  }, []);
+
+  const handleSelectResource = useCallback(
+    (id: number) => {
+      setSelectedResourceId(id);
+      if (typeof window !== "undefined") {
+        const url = new URL(window.location.href);
+        url.searchParams.set("id", id.toString());
+        window.history.replaceState({}, "", url.toString());
+      }
+    },
+    [setSelectedResourceId],
+  );
 
   const handleClearSelection = useCallback(() => {
     setSelectedResourceId(null);
@@ -48,7 +148,7 @@ export function useLibraryResources(initialSelectedId: number | null) {
       url.searchParams.delete("id");
       window.history.replaceState({}, "", url.toString());
     }
-  }, []);
+  }, [setSelectedResourceId]);
 
   useEffect(() => {
     /**
@@ -56,30 +156,32 @@ export function useLibraryResources(initialSelectedId: number | null) {
      */
     async function loadData() {
       try {
-        setIsLoading(true);
         const res = await getLibraryResourcesAction();
 
         if (res.success && res.data) {
-          if (res.data.outlines) {
-            setOutlines(res.data.outlines);
-          }
-          if (res.data.resources.length > 0) {
-            setResources(res.data.resources);
+          const currentId = initialIdRef.current;
+          let matchedId: number | null = null;
 
-            const currentId = initialIdRef.current;
-            if (currentId) {
-              const targetResource = res.data.resources.find(
-                (r) => r.id === currentId,
-              );
-              if (targetResource) {
-                setSelectedResourceId(targetResource.id);
-              }
+          if (currentId && res.data.resources.length > 0) {
+            const target = res.data.resources.find((r) => r.id === currentId);
+            if (target) {
+              matchedId = target.id;
             }
           }
+
+          dispatch({
+            type: "LOAD_SUCCESS",
+            payload: {
+              outlines: res.data.outlines || [],
+              resources: res.data.resources || [],
+              selectedResourceId: matchedId,
+            },
+          });
+        } else {
+          dispatch({ type: "LOAD_COMPLETE" });
         }
       } catch {
-      } finally {
-        setIsLoading(false);
+        dispatch({ type: "LOAD_COMPLETE" });
       }
     }
 
@@ -87,7 +189,7 @@ export function useLibraryResources(initialSelectedId: number | null) {
   }, []);
 
   const sortedResources = useMemo(() => {
-    return [...resources].sort((a, b) => {
+    return [...state.resources].sort((a, b) => {
       const aHasPdf = a.pdfStatus && a.pdfStatus !== "NOT_UPLOADED" ? 0 : 1;
       const bHasPdf = b.pdfStatus && b.pdfStatus !== "NOT_UPLOADED" ? 0 : 1;
       if (aHasPdf !== bHasPdf) return aHasPdf - bHasPdf;
@@ -95,7 +197,7 @@ export function useLibraryResources(initialSelectedId: number | null) {
       if (cmp !== 0) return cmp;
       return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
     });
-  }, [resources]);
+  }, [state.resources]);
 
   const handleDeleteResource = useCallback(
     async (resourceId: number) => {
@@ -103,7 +205,7 @@ export function useLibraryResources(initialSelectedId: number | null) {
       if (res.success) {
         setResources((prev) => prev.filter((r) => r.id !== resourceId));
 
-        if (selectedResourceId === resourceId) {
+        if (state.selectedResourceId === resourceId) {
           handleClearSelection();
         }
 
@@ -112,12 +214,12 @@ export function useLibraryResources(initialSelectedId: number | null) {
         toast.error(res.error || "Eser silinirken bir hata oluştu.");
       }
     },
-    [selectedResourceId, handleClearSelection],
+    [state.selectedResourceId, handleClearSelection, setResources],
   );
 
   const handleToggleReadStatus = useCallback(
     async (resourceId: number) => {
-      const target = resources.find((r) => r.id === resourceId);
+      const target = state.resources.find((r) => r.id === resourceId);
       if (!target) return;
 
       const nextStatus = !target.isRead;
@@ -138,7 +240,7 @@ export function useLibraryResources(initialSelectedId: number | null) {
         toast.error(res.error || "Okuma durumu güncellenemedi.");
       }
     },
-    [resources],
+    [state.resources, setResources],
   );
 
   const handleUpdateResource = useCallback(
@@ -149,18 +251,18 @@ export function useLibraryResources(initialSelectedId: number | null) {
         ),
       );
     },
-    [],
+    [setResources],
   );
 
   return {
-    resources,
+    resources: state.resources,
     setResources,
-    outlines,
-    isLoading,
-    selectedResourceId,
-    activeTab,
+    outlines: state.outlines,
+    isLoading: state.isLoading,
+    selectedResourceId: state.selectedResourceId,
+    activeTab: state.activeTab,
     setActiveTab,
-    searchQuery,
+    searchQuery: state.searchQuery,
     setSearchQuery,
     sortedResources,
     handleSelectResource,

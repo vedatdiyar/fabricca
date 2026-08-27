@@ -215,9 +215,10 @@ export default function CitationCardsPage() {
           {inspectorCard && (
             <div className="fixed inset-y-0 right-0 z-50 flex max-w-full pl-10 shadow-2xl">
               {/* Backdrop */}
-              <div
-                role="presentation"
-                className="fixed inset-0 bg-background/80 backdrop-blur-xs transition-opacity duration-200"
+              <button
+                type="button"
+                aria-label="İnceleme panelini kapat"
+                className="fixed inset-0 bg-background/80 backdrop-blur-xs transition-opacity duration-200 cursor-default"
                 onClick={handleCloseInspector}
               />
 

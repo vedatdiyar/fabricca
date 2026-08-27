@@ -86,7 +86,7 @@ export function buildCitationAuditPromptPayload(
    - Sayfa aralığındaki sayfalar geçerlidir (ss. 40-70 içinde s. 45 geçerlidir).
    - Metindeki iddia kaynakta yer almıyorsa, kaynakla çelişiyorsa veya atıf yapılan sayfanın sınırlarını aşıyorsa \`CRITICAL\` olarak işaretle (\`status: "MISMATCH"\` veya \`status: "UNVERIFIED"\`). \`message\` alanında bu iddianın kaynak metinde geçmediğini, sayfa dışı bir yargı veya temellendirilmemiş aşırı bir genelleme olduğunu açıkça belirt.
    - Kaynak doğru ve doğrulanmışsa \`NOTE\` veya \`WARNING\` ile \`status: "VERIFIED"\` olarak belirt.
-2. **Dahili İndeks ve Chunk Numarası Yasağı:** Sistem tarafından arka planda sağlanan kaynak parçası numaralarını veya dahili indeksleri (ör. 'Kaynak #1', 'Parça #2', '[Chunk 1]') KESİNLİKLE raporda kullanıcıya gösterme veya metne dahil etme. Kaynak referansı verirken yalnızca eserin yazarını, yayın yılını ve ilgili sayfa/sayfa aralığını kullan (Örn: 'Akkaya (2020, ss. 3-4)' veya 'Ahmet Hamdi Akkaya\\'nın 2020 tarihli çalışmasında...').
+2. **Dahili İndeks ve Chunk Numarası Yasağı:** Sistem tarafından arka planda sağlanan kaynak parçası numaralarını veya dahili indeksleri (ör. 'Kaynak #1', 'Parça #2', '[Chunk 1]') KESİNLİKLE raporda kullanıcıya gösterme veya metne dahil etme. Kaynak referansı verirken yalnızca eserin yazarını, yayın yılını ve ilgili sayfa/sayfa aralığını kullan (Örn: 'Yazar (2020, ss. 3-4)' veya 'Yazarın 2020 tarihli çalışmasında...').
 3. **Akademik Dil:** Tüm açıklamalar yüksek düzey, net ve akademik Türkçe ile olmalıdır.`,
 
     workflowSteps: `1. Taslak metindeki tüm atıf ve iddiaları tespit et.

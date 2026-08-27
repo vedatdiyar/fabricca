@@ -37,7 +37,10 @@ interface AssistantCitationDialogProps {
  */
 function formatPageNumber(page?: string | null): string | null {
   if (!page) return null;
-  const cleaned = page.trim().replace(/^(s\.|p\.|page\s*)/i, "").trim();
+  const cleaned = page
+    .trim()
+    .replace(/^(s\.|p\.|page\s*)/i, "")
+    .trim();
   return cleaned ? `s. ${cleaned}` : null;
 }
 
@@ -88,12 +91,13 @@ export function AssistantCitationDialog({
 
               <DialogDescription asChild>
                 <div className="flex flex-wrap items-center gap-2 pt-0.5 text-xs text-muted-foreground">
-                  {source?.resourceAuthors && source.resourceAuthors.length > 0 && (
-                    <span className="flex items-center gap-1 font-medium text-foreground">
-                      <User className="size-3 text-muted-foreground" />
-                      {source.resourceAuthors.join(", ")}
-                    </span>
-                  )}
+                  {source?.resourceAuthors &&
+                    source.resourceAuthors.length > 0 && (
+                      <span className="flex items-center gap-1 font-medium text-foreground">
+                        <User className="size-3 text-muted-foreground" />
+                        {source.resourceAuthors.join(", ")}
+                      </span>
+                    )}
                   {source?.resourceYear && (
                     <span className="font-mono px-1.5 py-0.5 rounded-md bg-secondary text-secondary-foreground text-xs border border-border">
                       {source.resourceYear}
@@ -134,7 +138,9 @@ export function AssistantCitationDialog({
                   {copied ? (
                     <>
                       <Check className="size-3 text-primary" />
-                      <span className="text-primary font-medium">Kopyalandı</span>
+                      <span className="text-primary font-medium">
+                        Kopyalandı
+                      </span>
                     </>
                   ) : (
                     <>

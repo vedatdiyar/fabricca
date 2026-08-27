@@ -285,7 +285,10 @@ export function CitationCard(props: CitationCardProps) {
               {authorsDisplay} ({card.sourceYear})
             </strong>
             <span className="mx-1 text-muted-foreground/40">—</span>
-            <span className="italic text-muted-foreground/80" title={card.sourceTitle}>
+            <span
+              className="italic text-muted-foreground/80"
+              title={card.sourceTitle}
+            >
               {card.sourceTitle}
             </span>
           </div>

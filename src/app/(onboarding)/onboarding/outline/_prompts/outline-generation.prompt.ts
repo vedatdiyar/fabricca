@@ -36,7 +36,7 @@ export function buildOutlineGenerationPromptPayload(
 - **Gövde Bölümleri (Bölüm 2, 3, 4):** Tezin ana kuramsal ve ampirik eksenlerini taşıyan 3 bağımsız ana bölümdür:
   - *Bölüm 2 (Kuramsal Çerçeve):* Konunun teorik temellerini ve kavramsal araçlarını derinlemesine inceleyen 2-3 alt bölüm.
   - *Bölüm 3 (Tarihsel Bağlam / Aktörler / Ampirik Süreç):* Araştırmanın birincil materyal ve aktörlerinin söylemsel/ampirik pratiklerini inceleyen 2-3 alt bölüm.
-  - *Bölüm 4 (Karşılaştırmalı Analiz / Karşı-Hegemonya / Sentez):* Farklı hatların, söylemlerin veya verilerin kuram ışığında karşılaştırmalı analizini ve tartışmasını yapan 2-3 alt bölüm.
+  - *Bölüm 4 (Karşılaştırmalı Analiz / Ampirik Tartışma / Sentez):* Farklı hatların, söylemlerin, bulguların veya verilerin kuram ışığında karşılaştırmalı analizini ve tartışmasını yapan 2-3 alt bölüm.
 - **Son Bölüm (Sonuç ve Değerlendirme):** Araştırma bulgularının sentezini, hipotezlerin değerlendirilmesini ve literatüre katkıyı içeren nihai bölümdür.
 
 ## 3. Metodoloji ve Kaynak Entegrasyonu

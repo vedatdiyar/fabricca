@@ -38,10 +38,6 @@ export function buildEmbeddingText(
   section: string | null,
   pageNumber: string | null,
 ): string {
-  const prefix = buildChunkContextPrefix(
-    headerHierarchy,
-    section,
-    pageNumber,
-  );
+  const prefix = buildChunkContextPrefix(headerHierarchy, section, pageNumber);
   return `${prefix}${content}`;
 }

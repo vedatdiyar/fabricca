@@ -46,7 +46,6 @@ export async function searchExa(
     return [];
   }
 
-
   const numResults = options?.numResults ?? 5;
   const highlights = options?.highlights ?? true;
 
@@ -86,4 +85,3 @@ export async function searchExa(
     return [];
   }
 }
-

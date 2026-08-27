@@ -89,11 +89,10 @@ export async function POST(request: Request) {
         modelMessage,
       ];
 
-      // Auto-harvest missing fields from chat history (regex + LLM synthesis)
-      const { harvestMatrixFromChat } = await import(
-        "@/app/(onboarding)/onboarding/matrix/_services/matrix-chat-sync"
-      );
-      const finalMatrix = await harvestMatrixFromChat(
+      // Deterministically extract crystallized quadrant fields from chat history (0ms regex)
+      const { extractMatrixFromChatRegex } =
+        await import("@/app/(onboarding)/onboarding/matrix/_services/matrix-chat-sync");
+      const finalMatrix = extractMatrixFromChatRegex(
         updatedMessages,
         sanitizedMatrix,
       );
@@ -131,10 +130,13 @@ export async function POST(request: Request) {
       });
       writer.done();
     } catch (err) {
-      new Logger(createFlowId()).error("Onboarding advisor streaming turn failed", {
-        service: "matrix",
-        error: err,
-      });
+      new Logger(createFlowId()).error(
+        "Onboarding advisor streaming turn failed",
+        {
+          service: "matrix",
+          error: err,
+        },
+      );
       writer.send("error", {
         error:
           err instanceof Error

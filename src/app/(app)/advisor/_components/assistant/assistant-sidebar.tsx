@@ -51,7 +51,8 @@ export function AssistantSidebar({
   onDeleteSession,
 }: AssistantSidebarProps) {
   const [search, setSearch] = useState("");
-  const [sessionToDelete, setSessionToDelete] = useState<ChatSessionListItem | null>(null);
+  const [sessionToDelete, setSessionToDelete] =
+    useState<ChatSessionListItem | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
 
   const filteredSessions = sessions.filter((s) =>
@@ -210,8 +211,8 @@ export function AssistantSidebar({
             </AlertDialogTitle>
             <AlertDialogDescription className="text-xs text-muted-foreground leading-relaxed">
               &quot;{sessionToDelete?.title}&quot; başlıklı oturumu ve tüm mesaj
-              geçmişini kalıcı olarak silmek istediğinizden emin misiniz? Bu işlem
-              geri alınamaz.
+              geçmişini kalıcı olarak silmek istediğinizden emin misiniz? Bu
+              işlem geri alınamaz.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter className="pt-2 gap-2">

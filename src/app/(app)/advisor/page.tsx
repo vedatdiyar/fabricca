@@ -35,5 +35,3 @@ export default function AdvisorPage({ searchParams }: AdvisorPageProps) {
     </Suspense>
   );
 }
-
-

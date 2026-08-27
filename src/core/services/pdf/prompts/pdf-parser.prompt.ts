@@ -22,8 +22,8 @@ export function buildPdfParserPromptPayload(
 
     rulesAndConstraints: `1. **Grounded Extraction & Verbatim Preservation:**
    - Treat the provided PDF text as the absolute limit of truth. Extract facts strictly printed in the source.
-   - Standardize document title into standard Academic Title Case (even if printed in ALL CAPS) and author names into Proper Case, preserving acronyms (NATO, YÖK, PKK, DOI, IMF, etc.) in uppercase.
-   - Extract journal name or edited book title into containerTitle if present in running headers, footers, or title blocks (e.g. "Alternatif Politika", "Routledge Handbook on the Kurds").
+    - Standardize document title into standard Academic Title Case (even if printed in ALL CAPS) and author names into Proper Case, preserving acronyms (NATO, AB, YÖK, TBMM, IMF, DOI, etc.) in uppercase.
+    - Extract journal name or edited book title into containerTitle if present in running headers, footers, or title blocks (e.g. "Alternatif Politika", "Journal of Social Policy").
    - Output null for missing metadata fields when absent from source text.
 
 2. **Language & Character Normalization:**

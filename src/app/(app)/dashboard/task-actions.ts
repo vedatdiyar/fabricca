@@ -4,7 +4,7 @@ import { eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { createFlowId, Logger } from "@/lib/logger";
 import { db } from "@/core/db";
-import { tasks, boxes, sources } from "@/core/db/schema";
+import { tasks, sources } from "@/core/db/schema";
 import { getSession, SESSION_ERROR_MSG } from "@/lib/session";
 import {
   AddTaskSchema,
@@ -16,9 +16,17 @@ import {
 } from "./_lib/schemas";
 import { syncAcademicTasks } from "./_services/task-sync-service";
 import {
-  runThesisStrategistAudit,
-  type StrategistAuditResult,
-} from "./_services/task-strategist-service";
+  fetchUserTaskRows,
+  fetchUserTaskById,
+  verifyBoxOwnership,
+  getBoxTitleById,
+} from "./_lib/task-db-queries";
+import {
+  syncTasksAction,
+  runStrategistAuditAction,
+} from "./_lib/task-sync-actions";
+
+export { syncTasksAction, runStrategistAuditAction };
 
 /**
  * Fetches all tasks for the current user, syncing automated tasks in the background.
@@ -37,52 +45,12 @@ export async function getTasksAction(): Promise<{
     const session = await getSession();
     if (!session) return { success: false, error: SESSION_ERROR_MSG };
 
-    let rows = await db
-      .select({
-        id: tasks.id,
-        title: tasks.title,
-        description: tasks.description,
-        taskType: tasks.taskType,
-        status: tasks.status,
-        priority: tasks.priority,
-        thesisBoxId: tasks.boxId,
-        sourceId: tasks.sourceId,
-        targetUrl: tasks.targetUrl,
-        isAutomated: tasks.isAutomated,
-        metadata: tasks.metadata,
-        boxTitle: boxes.title,
-        createdAt: tasks.createdAt,
-        updatedAt: tasks.updatedAt,
-      })
-      .from(tasks)
-      .leftJoin(boxes, eq(tasks.boxId, boxes.id))
-      .where(eq(tasks.userId, session.userId))
-      .orderBy(tasks.createdAt);
+    let rows = await fetchUserTaskRows(session.userId);
 
     // If user has no tasks at all, trigger initial sync once
     if (rows.length === 0) {
       await syncAcademicTasks(session.userId);
-      rows = await db
-        .select({
-          id: tasks.id,
-          title: tasks.title,
-          description: tasks.description,
-          taskType: tasks.taskType,
-          status: tasks.status,
-          priority: tasks.priority,
-          thesisBoxId: tasks.boxId,
-          sourceId: tasks.sourceId,
-          targetUrl: tasks.targetUrl,
-          isAutomated: tasks.isAutomated,
-          metadata: tasks.metadata,
-          boxTitle: boxes.title,
-          createdAt: tasks.createdAt,
-          updatedAt: tasks.updatedAt,
-        })
-        .from(tasks)
-        .leftJoin(boxes, eq(tasks.boxId, boxes.id))
-        .where(eq(tasks.userId, session.userId))
-        .orderBy(tasks.createdAt);
+      rows = await fetchUserTaskRows(session.userId);
     }
 
     return { success: true, data: rows };
@@ -92,73 +60,6 @@ export async function getTasksAction(): Promise<{
       error: err,
     });
     return { success: false, error: "Görevler yüklenirken bir hata oluştu." };
-  }
-}
-
-/**
- * Explicitly triggers academic task synchronization.
- *
- * @returns Sync statistics or an error
- */
-export async function syncTasksAction(): Promise<{
-  success: boolean;
-  autoCompletedCount?: number;
-  newTasksCreatedCount?: number;
-  error?: string;
-}> {
-  const flowId = createFlowId();
-  const log = new Logger(flowId);
-
-  try {
-    const session = await getSession();
-    if (!session) return { success: false, error: SESSION_ERROR_MSG };
-
-    const result = await syncAcademicTasks(session.userId);
-    revalidatePath("/dashboard");
-    return { success: true, ...result };
-  } catch (err) {
-    log.error("sync_tasks_action_failed", {
-      service: "dashboard",
-      error: err,
-    });
-    return {
-      success: false,
-      error: "Görevler senkronize edilirken bir hata oluştu.",
-    };
-  }
-}
-
-/**
- * Runs the Gemini Flash LLM Thesis Strategist audit.
- *
- * @returns Strategist result or an error
- */
-export async function runStrategistAuditAction(): Promise<{
-  success: boolean;
-  data?: StrategistAuditResult;
-  error?: string;
-}> {
-  const flowId = createFlowId();
-  const log = new Logger(flowId);
-
-  try {
-    const session = await getSession();
-    if (!session) return { success: false, error: SESSION_ERROR_MSG };
-
-    const result = await runThesisStrategistAudit(session.userId);
-    if (result.success) {
-      revalidatePath("/dashboard");
-    }
-    return result;
-  } catch (err) {
-    log.error("run_strategist_audit_action_failed", {
-      service: "dashboard",
-      error: err,
-    });
-    return {
-      success: false,
-      error: "Tez stratejisi analizi sırasında bir hata oluştu.",
-    };
   }
 }
 
@@ -193,22 +94,12 @@ export async function addTaskAction(input: TaskInput): Promise<{
 
     // If a box is linked, verify it belongs to the authenticated user's matrix
     if (valid.thesisBoxId) {
-      const linkedBox = await db.query.boxes.findFirst({
-        where: eq(boxes.id, valid.thesisBoxId),
-      });
-      if (!linkedBox) {
-        return { success: false, error: "Bağlanacak kutu bulunamadı." };
-      }
-      const { matrices: matrixTable } = await import("@/core/db/schema");
-      const [matrix] = await db
-        .select({ userId: matrixTable.userId })
-        .from(matrixTable)
-        .where(eq(matrixTable.id, linkedBox.matrixId));
-      if (!matrix || matrix.userId !== session.userId) {
-        return {
-          success: false,
-          error: "Bu kutuya görev bağlama yetkiniz yok.",
-        };
+      const ownership = await verifyBoxOwnership(
+        session.userId,
+        valid.thesisBoxId,
+      );
+      if (!ownership.success) {
+        return { success: false, error: ownership.error };
       }
     }
 
@@ -229,14 +120,9 @@ export async function addTaskAction(input: TaskInput): Promise<{
       })
       .returning();
 
-    let boxTitle: string | null = null;
-    if (inserted.boxId) {
-      const [box] = await db
-        .select({ title: boxes.title })
-        .from(boxes)
-        .where(eq(boxes.id, inserted.boxId));
-      boxTitle = box?.title ?? null;
-    }
+    const boxTitle = inserted.boxId
+      ? await getBoxTitleById(inserted.boxId)
+      : null;
 
     revalidatePath("/dashboard");
 
@@ -290,33 +176,19 @@ export async function updateTaskAction(
 
     const valid = parsed.data;
 
-    const [existing] = await db
-      .select()
-      .from(tasks)
-      .where(eq(tasks.id, taskId));
-
-    if (!existing || existing.userId !== session.userId) {
+    const existing = await fetchUserTaskById(taskId, session.userId);
+    if (!existing) {
       return { success: false, error: "Görev bulunamadı." };
     }
 
     // If re-linking to a different box, verify ownership
     if (valid.thesisBoxId) {
-      const linkedBox = await db.query.boxes.findFirst({
-        where: eq(boxes.id, valid.thesisBoxId),
-      });
-      if (!linkedBox) {
-        return { success: false, error: "Bağlanacak kutu bulunamadı." };
-      }
-      const { matrices: matrixTable } = await import("@/core/db/schema");
-      const [matrix] = await db
-        .select({ userId: matrixTable.userId })
-        .from(matrixTable)
-        .where(eq(matrixTable.id, linkedBox.matrixId));
-      if (!matrix || matrix.userId !== session.userId) {
-        return {
-          success: false,
-          error: "Bu kutuya görev bağlama yetkiniz yok.",
-        };
+      const ownership = await verifyBoxOwnership(
+        session.userId,
+        valid.thesisBoxId,
+      );
+      if (!ownership.success) {
+        return { success: false, error: ownership.error };
       }
     }
 
@@ -337,14 +209,9 @@ export async function updateTaskAction(
       .where(eq(tasks.id, taskId))
       .returning();
 
-    let boxTitle: string | null = null;
-    if (updated.boxId) {
-      const [box] = await db
-        .select({ title: boxes.title })
-        .from(boxes)
-        .where(eq(boxes.id, updated.boxId));
-      boxTitle = box?.title ?? null;
-    }
+    const boxTitle = updated.boxId
+      ? await getBoxTitleById(updated.boxId)
+      : null;
 
     revalidatePath("/dashboard");
 
@@ -387,12 +254,8 @@ export async function updateTaskStatusAction(
       return { success: false, error: "Geçersiz görev durumu." };
     }
 
-    const [existing] = await db
-      .select()
-      .from(tasks)
-      .where(eq(tasks.id, taskId));
-
-    if (!existing || existing.userId !== session.userId) {
+    const existing = await fetchUserTaskById(taskId, session.userId);
+    if (!existing) {
       return { success: false, error: "Görev bulunamadı." };
     }
 
@@ -449,12 +312,8 @@ export async function deleteTaskAction(taskId: number): Promise<{
     const session = await getSession();
     if (!session) return { success: false, error: SESSION_ERROR_MSG };
 
-    const [existing] = await db
-      .select()
-      .from(tasks)
-      .where(eq(tasks.id, taskId));
-
-    if (!existing || existing.userId !== session.userId) {
+    const existing = await fetchUserTaskById(taskId, session.userId);
+    if (!existing) {
       return { success: false, error: "Görev bulunamadı." };
     }
 

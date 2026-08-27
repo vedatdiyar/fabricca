@@ -83,6 +83,3 @@ export async function routeFunctionCall(
 
   return { shouldContinue: false, toolCall };
 }
-
-
-

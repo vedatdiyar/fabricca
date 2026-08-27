@@ -27,8 +27,8 @@ export default async function OnboardingMatrixPage() {
               Çalışma Matrisi & Tez Odası
             </h1>
             <p className="text-sm leading-relaxed text-muted-foreground">
-              Kıdemli tez danışmanıyla müzakere ederek çalışmanızın 4 temel
-              yapı taşını Sokratik yöntemle inşa edin.
+              Kıdemli tez danışmanıyla müzakere ederek çalışmanızın 4 temel yapı
+              taşını Sokratik yöntemle inşa edin.
             </p>
           </div>
           <div className="flex items-center self-end sm:self-center">
@@ -36,12 +36,8 @@ export default async function OnboardingMatrixPage() {
           </div>
         </div>
 
-        <MatrixOnboardingContainer
-          initialMatrix={initialMatrix}
-        />
+        <MatrixOnboardingContainer initialMatrix={initialMatrix} />
       </div>
     </div>
   );
 }
-
-

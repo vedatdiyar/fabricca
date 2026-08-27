@@ -61,10 +61,7 @@ export async function getOfficeInitialDataAction(): Promise<{
       })
       .from(sessions)
       .where(
-        and(
-          eq(sessions.userId, session.userId),
-          isNotNull(sessions.draftText),
-        ),
+        and(eq(sessions.userId, session.userId), isNotNull(sessions.draftText)),
       )
       .orderBy(desc(sessions.updatedAt));
 

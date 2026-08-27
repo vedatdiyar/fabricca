@@ -11,12 +11,9 @@ import {
   CardFooter,
 } from "@/components/ui/card";
 import { Copy, Pencil, FileText } from "lucide-react";
+import { MatrixValueMarkdown } from "@/components/shared/matrix-value-markdown";
 import type { MatrixCardDef, MatrixKey } from "../constants/matrix-cards";
-import {
-  countWords,
-  splitParagraphs,
-  copyToClipboard,
-} from "../utils/text-metrics";
+import { countWords, copyToClipboard } from "../utils/text-metrics";
 
 interface MatrixPillarCardProps {
   card: MatrixCardDef;
@@ -40,7 +37,7 @@ export function MatrixPillarCard({
 }: MatrixPillarCardProps) {
   const wordCount = countWords(value);
   const charCount = value.length;
-  const paragraphs = splitParagraphs(value);
+  const hasValue = value.trim().length > 0;
   const Icon = card.icon;
 
   return (
@@ -95,16 +92,9 @@ export function MatrixPillarCard({
 
       {/* Card Content */}
       <CardContent className="flex flex-1 flex-col p-4 sm:p-5 pt-4 space-y-3">
-        {paragraphs.length > 0 ? (
-          <div className="flex-1 rounded-md border border-border/40 bg-muted/10 p-4.5 font-sans text-sm leading-relaxed text-foreground min-h-[280px] space-y-3 select-text text-left">
-            {paragraphs.map((p, idx) => (
-              <p
-                key={`para-${idx}-${p.slice(0, 10)}`}
-                className="text-foreground/95"
-              >
-                {p}
-              </p>
-            ))}
+        {hasValue ? (
+          <div className="flex-1 rounded-md border border-border/40 bg-muted/10 p-4.5 font-sans text-sm leading-relaxed text-foreground min-h-[280px] select-text text-left">
+            <MatrixValueMarkdown content={value} />
           </div>
         ) : (
           <div

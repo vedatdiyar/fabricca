@@ -18,10 +18,7 @@ export function reciprocalRankFusion(
   searchLists: ThesisDetails[][],
   k = RRF_K,
 ): ThesisDetails[] {
-  const scoreMap = new Map<
-    number,
-    { thesis: ThesisDetails; score: number }
-  >();
+  const scoreMap = new Map<number, { thesis: ThesisDetails; score: number }>();
 
   for (const list of searchLists) {
     for (let rank = 0; rank < list.length; rank++) {

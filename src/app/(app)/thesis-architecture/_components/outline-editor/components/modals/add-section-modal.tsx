@@ -122,7 +122,7 @@ export function AddSectionModal({
               rows={4}
               className="textarea-academic w-full text-xs"
             />
-           </div>
+          </div>
         </div>
 
         <DialogFooter className="gap-2">

@@ -36,7 +36,9 @@ export function extractFunctionCalls(chunk: {
   functionCalls?: Array<{ id?: string; name?: string; args?: unknown }>;
   candidates?: Array<{
     content?: {
-      parts?: Array<{ functionCall?: { id?: string; name?: string; args?: unknown } }>;
+      parts?: Array<{
+        functionCall?: { id?: string; name?: string; args?: unknown };
+      }>;
     };
   }>;
 }): Array<{ id?: string; name?: string; args?: unknown }> {
