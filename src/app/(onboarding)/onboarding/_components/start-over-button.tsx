@@ -40,10 +40,11 @@ export function StartOverButton({ className, ...props }: ButtonProps) {
         if ("error" in result && result.error) {
           toast.error(result.error);
         } else {
-          queryClient.invalidateQueries();
+          queryClient.clear();
           toast.success("Onboarding süreci başarıyla sıfırlandı.");
           setIsOpen(false);
-          router.push("/onboarding");
+          router.replace("/onboarding/matrix");
+          router.refresh();
         }
       } catch {
         toast.error(

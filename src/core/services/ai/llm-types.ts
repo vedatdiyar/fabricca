@@ -45,6 +45,10 @@ export interface StructuredGenerationOptions<T> {
   thesisMatrix?: unknown;
   thinkingConfig?: {
     thinkingLevel?: ThinkingLevel;
+    /**
+     * @deprecated Gemini 3.x için önerilmez — `thinkingLevel` kullanın.
+     * Geriye dönük uyumluluk için tutulur, istekte iletilmez.
+     */
     thinkingBudget?: number;
   } | null;
   safetySettings?: Array<{
@@ -52,9 +56,16 @@ export interface StructuredGenerationOptions<T> {
     threshold: HarmBlockThreshold;
   }>;
   quiet?: boolean;
-  temperature?: number;
+  /**
+   * @deprecated Gemini 3.x `temperature`/`topP` önerilmez — iletilmez.
+   * Net sistem talimatları + `seed` kullanın.
+   */
+  temperature?: never;
   maxTokens?: number;
-  topP?: number;
+  /**
+   * @deprecated Gemini 3.x `topP` önerilmez — iletilmez.
+   */
+  topP?: never;
   /**
    * Pipeline operation key (e.g. "pdf_read", "sanitize"). Operations listed in
    * `GEMINI_FALLBACK_OPERATIONS` may fall back to a weaker model when every key

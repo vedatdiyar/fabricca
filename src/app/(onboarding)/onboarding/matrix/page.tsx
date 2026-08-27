@@ -1,11 +1,11 @@
 import { redirect } from "next/navigation";
 import { getProfile } from "@/lib/session";
-import { MatrixForm } from "./_components/matrix-form";
+import { MatrixOnboardingContainer } from "./_components/matrix-onboarding-container";
 import { StartOverButton } from "../_components/start-over-button";
 import { fetchThesisMatrixFresh } from "@/app/(onboarding)/onboarding/_services/fetch-actions";
 
 /**
- * Onboarding step 1: thesis matrix form page that fetches and passes the existing matrix to the form.
+ * Onboarding step 1: Socratic academic advisor and living thesis matrix canvas.
  *
  * @returns The rendered matrix onboarding page.
  */
@@ -24,11 +24,11 @@ export default async function OnboardingMatrixPage() {
         <div className="flex w-full flex-col sm:flex-row justify-between items-start sm:items-center gap-4 pb-6 border-b border-border">
           <div className="flex flex-col space-y-1 text-left">
             <h1 className="font-serif text-xl font-semibold tracking-tight text-foreground">
-              Çalışma Matrisi
+              Çalışma Matrisi & Tez Odası
             </h1>
             <p className="text-sm leading-relaxed text-muted-foreground">
-              Çalışmanızın temel yapı taşlarını tanımlayarak akademik
-              altyapınızı oluşturun.
+              Kıdemli tez danışmanıyla müzakere ederek çalışmanızın 4 temel
+              yapı taşını Sokratik yöntemle inşa edin.
             </p>
           </div>
           <div className="flex items-center self-end sm:self-center">
@@ -36,8 +36,12 @@ export default async function OnboardingMatrixPage() {
           </div>
         </div>
 
-        <MatrixForm initialMatrix={initialMatrix} />
+        <MatrixOnboardingContainer
+          initialMatrix={initialMatrix}
+        />
       </div>
     </div>
   );
 }
+
+

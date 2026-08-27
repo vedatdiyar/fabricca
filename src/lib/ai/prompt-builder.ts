@@ -43,6 +43,16 @@ export interface PromptBuilderInput {
 }
 
 /**
+ * Global language guard injected into every prompt to prevent CJK leakage.
+ * Gemini 3.5/3.6 Flash-Lite is multilingual; without an explicit ban the lite
+ * tier occasionally emits Han characters in Turkish academic outputs.
+ */
+const LANGUAGE_GUARD =
+  "**Dil Kilidi:** Tüm çıktı dili kesinlikle yüksek düzey akademik Türkçe olacaktır. " +
+  "Çince, Japonca veya Korece karakter (Han/Kana/Hangul, \\u4E00-\\u9FFF, \\u3040-\\u30FF, \\uAC00-\\uD7AF) üretimi kesinlikle yasaktır. " +
+  "Bu yasak JSON anahtarları ve değerleri dahil tüm çıktı için geçerlidir.";
+
+/**
  * Builds a standardized, type-safe PromptPayload following the Hybrid XML and Markdown
  * encapsulation rules defined in docs/LLM_INTEGRATION.md Section 4:
  *
@@ -80,10 +90,11 @@ export interface PromptBuilderInput {
  * @param input - Structural inputs for the prompt payload.
  * @returns Standardized PromptPayload containing systemInstruction and userPrompt.
  */
+
 export function buildPromptPayload(input: PromptBuilderInput): PromptPayload {
   const instructionSections: string[] = [
     `# Birincil Görev\n${input.primaryTask.trim()}`,
-    `# Kurallar ve Sınırlamalar\n${input.rulesAndConstraints.trim()}`,
+    `# Kurallar ve Sınırlamalar\n${input.rulesAndConstraints.trim()}\n\n${LANGUAGE_GUARD}`,
   ];
 
   if (input.workflowSteps?.trim()) {

@@ -50,6 +50,12 @@ export type {
   ResourceAuditReport,
 };
 
+export interface MatrixAdvisorMessage {
+  id: string;
+  role: "user" | "model";
+  content: string;
+}
+
 /** Users table — username is unique, password is bcrypt-hashed, onboardingCompleted tracks onboarding state. */
 export const users = pgTable("users", {
   id: serial().primaryKey(),
@@ -75,6 +81,7 @@ export const matrices = pgTable("matrices", {
   theoreticalFramework: text("theoretical_framework").notNull(),
   primaryMaterial: text("primary_material"),
   methodology: text("methodology").notNull(),
+  advisorMessages: jsonb("advisor_messages").$type<MatrixAdvisorMessage[]>().default([]),
   createdAt: timestamp().defaultNow().notNull(),
   updatedAt: timestamp().defaultNow().notNull(),
 });

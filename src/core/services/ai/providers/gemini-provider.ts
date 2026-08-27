@@ -55,6 +55,15 @@ export async function generateStructuredContent<T>(
   const safetySettings =
     options?.safetySettings ?? DEFAULT_GEMINI_SAFETY_SETTINGS;
 
+  // Gemini 3.x: thinkingBudget ve temperature/topP/topK iletilmez.
+  // Sadece thinkingLevel kullanılır; sıcaklık determinizmi seed + net talimatlarla sağlanır.
+  if (options?.thinkingConfig?.thinkingBudget !== undefined) {
+    logger?.warn("deprecated_thinking_budget_ignored", {
+      service: "gemini",
+      data: { payloadStage: callLabel, thinkingBudget: options.thinkingConfig.thinkingBudget },
+    });
+  }
+
   try {
     return await dispatchGeminiCall<T>({
       model: modelName,
@@ -75,6 +84,11 @@ export async function generateStructuredContent<T>(
           });
         }
 
+        // Gemini 3.x: sadece thinkingLevel iletilir, thinkingBudget ve temperature asla iletilmez.
+        const sanitizedThinkingConfig = options?.thinkingConfig?.thinkingLevel
+          ? { thinkingLevel: options.thinkingConfig.thinkingLevel }
+          : undefined;
+
         const payload = {
           model,
           contents: [{ role: "user", parts: [{ text: prompt }] }],
@@ -82,7 +96,7 @@ export async function generateStructuredContent<T>(
             systemInstruction,
             responseMimeType: "application/json",
             responseJsonSchema: schema,
-            thinkingConfig: options?.thinkingConfig ?? undefined,
+            thinkingConfig: sanitizedThinkingConfig,
             seed: options?.seed ?? GEMINI_SEED,
             safetySettings,
           },
@@ -118,6 +132,19 @@ export async function generateStructuredContent<T>(
           const text = response.text;
           if (!text) {
             throw new Error("Gemini returned an empty response.");
+          }
+
+          // CJK sızma guardı: Lite tier Türkçe akademik çıktıda nadiren Han/Kana üretir.
+          // Tespit edilirse retry tetiklemek için hata fırlatılır.
+          const CJK_RE = /[\u4E00-\u9FFF\u3400-\u4DBF\u3040-\u30FF\uAC00-\uD7AF]/;
+          if (CJK_RE.test(text)) {
+            logger?.warn("cjk_leakage_detected", {
+              service: "gemini",
+              data: { model, payloadStage: callLabel },
+            });
+            throw new Error(
+              "Model output contained disallowed CJK characters (language guard violated). Retrying.",
+            );
           }
 
           const parsed = sanitizeAndParseJson<T>(text);

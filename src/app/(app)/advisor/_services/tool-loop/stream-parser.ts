@@ -27,18 +27,19 @@ export function extractTextFromChunk(chunk: {
 
 /**
  * Extracts function calls from a Gemini chunk.
+ * Preserves the call `id` for strict 3.5+ FunctionResponse matching (id + name + count must be 1:1).
  *
  * @param chunk - Raw Gemini streaming chunk.
- * @returns Array of function calls, or empty array.
+ * @returns Array of function calls with id preserved, or empty array.
  */
 export function extractFunctionCalls(chunk: {
-  functionCalls?: Array<{ name?: string; args?: unknown }>;
+  functionCalls?: Array<{ id?: string; name?: string; args?: unknown }>;
   candidates?: Array<{
     content?: {
-      parts?: Array<{ functionCall?: { name?: string; args?: unknown } }>;
+      parts?: Array<{ functionCall?: { id?: string; name?: string; args?: unknown } }>;
     };
   }>;
-}): Array<{ name?: string; args?: unknown }> {
+}): Array<{ id?: string; name?: string; args?: unknown }> {
   if (chunk.functionCalls && chunk.functionCalls.length > 0) {
     return chunk.functionCalls;
   }
@@ -51,9 +52,10 @@ export function extractFunctionCalls(chunk: {
 
 /**
  * Collects model parts from a chunk for conversation history.
+ * Keeps thought / thoughtSignature parts (required for 3.5+ thought preservation).
  *
  * @param chunk - Raw Gemini streaming chunk.
- * @returns Array of part objects.
+ * @returns Array of part objects (unfiltered).
  */
 export function collectModelParts(chunk: {
   candidates?: Array<{ content?: { parts?: Array<Record<string, unknown>> } }>;
