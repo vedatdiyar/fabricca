@@ -1,6 +1,6 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
 import { eq, inArray } from "drizzle-orm";
 import { db } from "@/core/db";
 import {
@@ -25,12 +25,11 @@ import {
 
 /**
  * Deletes all onboarding and user data and sets onboardingCompleted to false.
- *
- * @returns A success flag or an error message.
+ * Uses redirect pattern (aligned with src/app/(app)/actions.ts) to avoid
+ * "The destination stream closed early" caused by returning JSON after
+ * revalidatePath/updateTag + immediate window.location.assign on the client.
  */
-export async function resetOnboardingAction(): Promise<
-  { success: boolean } | { error: string }
-> {
+export async function resetOnboardingAction(): Promise<void> {
   const flowId = createFlowId();
   const log = new Logger(flowId);
 
@@ -38,25 +37,35 @@ export async function resetOnboardingAction(): Promise<
 
   try {
     const session = await getSession();
-    if (!session) return { error: SESSION_ERROR_MSG };
+    if (!session) {
+      redirect("/login");
+      return;
+    }
 
     await resetUserOnboardingData(session.userId, log);
 
     await writeSessionCookie(session, false);
 
     revalidateOnboardingPaths();
-    revalidatePath("/onboarding/proposal");
-    revalidatePath("/onboarding/matrix");
     invalidateOnboardingCache();
 
     log.info("reset_onboarding_success");
-    return { success: true };
   } catch (error) {
+    if (
+      error !== null &&
+      typeof error === "object" &&
+      "digest" in error &&
+      typeof (error as { digest: unknown }).digest === "string" &&
+      (error as { digest: string }).digest.startsWith("NEXT_REDIRECT")
+    ) {
+      throw error;
+    }
     log.error("reset_onboarding_failed", {
       error,
     });
-    return { error: "Sıfırlama işlemi gerçekleştirilirken bir hata oluştu." };
   }
+
+  redirect("/onboarding/proposal");
 }
 
 /**

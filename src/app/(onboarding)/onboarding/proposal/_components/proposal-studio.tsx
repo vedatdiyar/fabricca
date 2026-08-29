@@ -266,7 +266,7 @@ export function ProposalStudio({
               value={rawProposal}
               onChange={(e) => setRawProposal(e.target.value)}
               placeholder="Örnek: Bu çalışmada Türkiye'de uzaktan çalışan bilişim çalışanlarının ve dijital göçebelerin emek süreçlerindeki güvencesizleşme dinamiklerini incelemeyi hedefliyorum. Kuramsal olarak Standing'in prekarya yaklaşımı ve esneklik tartışmalarından yararlanarak, İstanbul ve sahil kentlerinde yaşayan 25 uzaktan bilişimci ile yarı yapılandırılmış derinlemesine mülakatlar yapmayı planlıyorum..."
-              rows={14}
+              rows={11}
               className="textarea-academic border-border focus-visible:ring-primary/20 text-sm leading-relaxed"
             />
 
@@ -440,7 +440,7 @@ export function ProposalStudio({
                     </div>
 
                     <div className="space-y-1">
-                      <h3 className="font-serif text-sm font-semibold text-foreground leading-snug">
+                      <h3 className="font-serif text-sm font-medium text-foreground leading-snug">
                         {q.question}
                       </h3>
                       {q.contextNote && (

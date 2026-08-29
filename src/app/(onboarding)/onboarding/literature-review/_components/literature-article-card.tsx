@@ -52,7 +52,7 @@ export function LiteratureArticleCard({ article }: LiteratureArticleCardProps) {
     <Card className="p-4 space-y-2 rounded-md hover:border-primary/30 transition-all bg-card/60">
       <div className="flex items-start justify-between gap-2.5">
         <h4
-          className="font-serif text-sm font-semibold text-foreground leading-snug break-words hyphens-auto min-w-0 tracking-tight"
+          className="font-serif text-sm font-semibold text-medium leading-snug break-words hyphens-auto min-w-0 tracking-tight"
           title={article.title}
         >
           {displayTitle}

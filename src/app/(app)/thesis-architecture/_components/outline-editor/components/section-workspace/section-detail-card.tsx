@@ -59,7 +59,7 @@ export function SectionDetailCard({
             </Badge>
 
             {/* Title */}
-            <CardTitle className="font-serif text-sm font-semibold text-foreground leading-snug break-words">
+            <CardTitle className="font-serif text-sm font-medium text-foreground leading-snug break-words">
               {outline.title}
             </CardTitle>
           </div>
