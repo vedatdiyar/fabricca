@@ -165,3 +165,49 @@ Yukarıdaki üç kaynağı harmanlayarak, araştırmacının kararlarını ve li
 
   return result;
 }
+
+import type { Logger } from "@/lib/logger";
+
+/**
+ * Decomposes and synthesizes an initial 4-quadrant Thesis Matrix directly from a raw proposal text.
+ * Used for headless matrix creation to immediately seed multi-channel academic searches.
+ *
+ * @param proposalText - The user's raw proposal or draft text.
+ * @param log - Optional structured logger.
+ * @returns The initial 4-quadrant ThesisMatrix.
+ */
+export async function synthesizeInitialMatrixFromProposal(
+  proposalText: string,
+  log?: Logger,
+): Promise<ThesisMatrix> {
+  const systemInstruction = `<role>
+Kıdemli Tez Danışmanı ve Araştırma Metodoloğu.
+Göreviniz: Araştırmacının sunduğu ham tez önerisi veya taslak metnini analiz ederek 4 temel araştırma kadranına (Problem, Kuramsal Çerçeve, Veri/Malzeme, Metodoloji) ayrıştırmaktır.
+</role>
+
+<instructions>
+1. subjectProblem: Araştırma Problemi, Aktörler ve Odak (yoğun akademik paragraf).
+2. theoreticalFramework: Teorik ve Kavramsal Çerçeve (dayandığı kuramlar ve kavramlar).
+3. primaryMaterial: Veri Kaynağı / Birincil Malzeme (arşiv, saha, metin külliyatı).
+4. methodology: Metodoloji ve Yöntem (veri toplama ve analiz yaklaşımı).
+Metinde açıkça belirtilmeyen kısımlar varsa, konunun doğasına uygun enstitü standartlarında akademik bir öneri çerçevesi inşa edin.
+</instructions>`;
+
+  const prompt = `<proposal>\n${proposalText.slice(0, 10000)}\n</proposal>\nYukarıdaki tez taslağından 4 kadranlı akademik tez matrisini üret.`;
+
+  return generateGeminiStructuredContent<ThesisMatrix>(
+    FLASH_LITE_35,
+    systemInstruction,
+    prompt,
+    synthesizedMatrixJsonSchema,
+    log,
+    {
+      thinkingConfig: { thinkingLevel: ThinkingLevel.LOW },
+      zodSchema: synthesizedMatrixSchema,
+      seed: GEMINI_SEED,
+      payloadStage: "initial_matrix_synthesis",
+      quiet: true,
+    },
+  );
+}
+

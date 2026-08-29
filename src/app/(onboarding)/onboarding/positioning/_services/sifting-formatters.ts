@@ -1,6 +1,6 @@
-import type { ThesisDetails } from "@/lib/types";
-import type { PositioningQuery } from "./query-generator";
+import type { MultiSourcePositioningQuery } from "./query-generator";
 import type { PositioningMatrixInput } from "./validation";
+import type { SiftedThesis } from "./sifting";
 
 /**
  * Sanitizes a search query string by removing quotes, wildcards, and normalizing whitespace.
@@ -16,35 +16,35 @@ export function sanitizeSearchQuery(query: string): string {
 }
 
 /**
- * Formats the thesis matrix and distilled empirical topic queries into structured YAML
- * for Cohere Rerank v4.0 Pro, strictly comparing against the substantive subject matter and actors.
+ * Formats the thesis matrix and multi-channel queries into structured YAML for Cohere Rerank v4.0 Pro.
  *
  * @param distilledQuery - The generated multi-aspect queries.
  * @param matrix - The original matrix.
  * @returns YAML formatted string representing the target query.
  */
 export function formatMatrixToYamlQuery(
-  distilledQuery: PositioningQuery,
+  distilledQuery: MultiSourcePositioningQuery,
   matrix: PositioningMatrixInput,
 ): string {
-  return `arastirma_konusu_ve_sorunsali: ${matrix.subjectProblem}
-temel_olgusal_odak: ${distilledQuery.primaryEmpiricalQuery}
-aktorler_ve_kurumlar: ${distilledQuery.actorsAndSourcesQuery}
-donem_ve_vaka_baglami: ${distilledQuery.periodAndContextQuery}
-konusal_anahtar_kavramlar: ${distilledQuery.substantiveKeywords.join(", ")}`;
+  return `arastirma_problemi: ${matrix.subjectProblem}
+kuramsal_cerceve: ${matrix.theoreticalFramework || "Belirtilmemiş"}
+yontem_ve_saha: ${matrix.methodology || "Belirtilmemiş"}
+ampirik_odak: ${distilledQuery.thesisEmpiricalQuery}
+kuresel_kuram: ${distilledQuery.globalTheoreticalQuery}
+anahtar_kavramlar: ${distilledQuery.substantiveKeywords.join(", ")}`;
 }
 
 /**
- * Formats a candidate thesis into structured YAML for Cohere Rerank v4.0 Pro.
+ * Formats a candidate thesis or literature item into structured YAML for Cohere Rerank v4.0 Pro.
  *
- * @param thesis - The candidate thesis from the Qdrant thesis index.
+ * @param candidate - The candidate literature item.
  * @returns YAML formatted string representing the candidate document.
  */
-export function formatThesisToYaml(thesis: ThesisDetails): string {
-  return `baslik: ${thesis.title}
-yazar: ${thesis.author || "Bilinmiyor"} (${thesis.year || "N/A"})
-tur: ${thesis.thesisType || "N/A"}
-universite_bolum: ${thesis.university || "N/A"} - ${thesis.department || "N/A"}
-dil: ${thesis.language || "Türkçe"}
-ozet: ${thesis.abstract || ""}`;
+export function formatThesisToYaml(candidate: SiftedThesis): string {
+  return `baslik: ${candidate.title}
+yazar: ${candidate.author || "Bilinmiyor"} (${candidate.year || "N/A"})
+yayin_turu: ${candidate.publicationType || candidate.thesisType || "Makale"}
+kanal: ${candidate.sourceChannel || "Genel Literatür"}
+kurum_veya_dergi: ${candidate.university || "N/A"}
+ozet: ${candidate.abstract || ""}`;
 }

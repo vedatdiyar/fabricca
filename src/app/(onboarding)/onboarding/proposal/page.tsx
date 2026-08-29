@@ -3,7 +3,6 @@ import { getProfile } from "@/lib/session";
 import { ProposalStudio } from "./_components/proposal-studio";
 import { StartOverButton } from "../_components/start-over-button";
 import { fetchThesisMatrixFresh } from "@/app/(onboarding)/onboarding/_services/fetch-actions";
-import type { ProposalAuditResult } from "../matrix/_services/proposal-audit-service";
 
 /**
  * Onboarding Step 1: Thesis proposal intake, multi-angle research audit, and diagnostic critique.
@@ -45,10 +44,6 @@ export default async function OnboardingProposalPage() {
               : "proposal-empty"
           }
           initialProposal={initialMatrix?.rawProposal ?? ""}
-          initialAuditResult={
-            (initialMatrix?.auditResult as ProposalAuditResult | null) ??
-            undefined
-          }
         />
       </div>
     </div>

@@ -1,9 +1,8 @@
 import { searchTheses } from "@/core/services/thesis-search";
-import type { ThesisDetails } from "@/lib/types";
-import {
-  rerankWithCohere,
-  COHERE_RERANK_MODEL,
-} from "@/core/services/ai/cohere";
+import { searchOpenAlex } from "@/app/(onboarding)/onboarding/literature-review/_services/openalex/openalex-search";
+import { searchSemanticScholarPapers } from "@/core/services/semantic-scholar/semantic-scholar-search";
+import { searchExa, type ExaSearchResult } from "@/core/services/exa";
+import { rerankWithCohere } from "@/core/services/ai/cohere";
 import type { Logger } from "@/lib/logger";
 import type { PositioningMatrixInput } from "./validation";
 import { generatePositioningQuery } from "./query-generator";
@@ -12,15 +11,23 @@ import {
   formatThesisToYaml,
   formatMatrixToYamlQuery,
 } from "./sifting-formatters";
-import {
-  reciprocalRankFusion,
-  filterValidCandidates,
-} from "./candidate-fusion";
 
 export { sanitizeSearchQuery };
 
-/** Candidate thesis extended with Cohere semantic relevance score. */
-export interface SiftedThesis extends ThesisDetails {
+/** Candidate literature item extended with Cohere semantic relevance score. */
+export interface SiftedThesis {
+  id: string;
+  title: string;
+  author: string;
+  university: string;
+  year: number;
+  thesisType: string;
+  department?: string;
+  abstract: string;
+  url?: string;
+  doi?: string;
+  sourceChannel: "yok" | "openalex" | "semantic_scholar" | "exa";
+  publicationType: "Tez" | "Makale" | "Kitap" | "Kitap Bölümü" | "Rapor";
   relevanceScore?: number;
 }
 
@@ -28,20 +35,23 @@ export interface SiftedThesis extends ThesisDetails {
 const SCORE_EPSILON = 1e-4;
 
 /** Minimum Cohere Rerank v4.0 relevance score to filter out irrelevant/noisy candidates. */
-export const MIN_COHERE_RELEVANCE_SCORE = 0.5;
+export const MIN_COHERE_RELEVANCE_SCORE = 0.45;
+
+/** Minimum abstract character length for candidate evaluation. */
+const MIN_ABSTRACT_LENGTH = 40;
 
 /**
- * 3-Dimensional Academic Sifting Engine:
- * 1. Generates 3 complementary queries (Problem, Theory, Method) via FLASH_LITE_35.
- * 2. Fetches candidate theses from Qdrant vector index in parallel.
- * 3. Fuses candidate pools via Reciprocal Rank Fusion (RRF).
- * 4. Filters valid candidates (abstract length, non-empty metadata).
- * 5. Applies Cohere Rerank v4.0 Pro and strictly filters out candidates below MIN_COHERE_RELEVANCE_SCORE.
+ * 4-Channel Multi-Source Academic Sifting Engine:
+ * 1. Generates 6 complementary queries (Qdrant, OpenAlex, Semantic Scholar, Exa) via FLASH_LITE_35.
+ * 2. Fetches candidates in parallel from all 4 channels via Promise.all.
+ * 3. Normalizes and deduplicates candidates into unified SiftedThesis models.
+ * 4. Applies Cohere Rerank v4.0 Pro across the combined candidate pool.
+ * 5. Returns sorted candidates ready for batch jury evaluation.
  *
  * @param matrixInput - The validated positioning matrix input.
  * @param logger - Optional structured logger.
  * @param options - Optional limits for topN and candidate retrieval.
- * @returns Sorted candidate theses list.
+ * @returns Sorted candidate literature list across all 4 channels.
  */
 export async function searchAndSiftTheses(
   matrixInput: PositioningMatrixInput,
@@ -49,151 +59,243 @@ export async function searchAndSiftTheses(
   options?: { topN?: number; candidateLimit?: number },
 ): Promise<SiftedThesis[]> {
   const topN = options?.topN ?? 20;
-  const singleQueryLimit = options?.candidateLimit ?? 50;
 
   const queryGenStart = performance.now();
-  logger?.info("sifting_query_generation_start", {
-    service: "gemini",
-    filePath:
-      "src/app/(onboarding)/onboarding/positioning/_services/sifting.ts",
-    hidden: true,
-  });
-
   const distilledQuery = await generatePositioningQuery(matrixInput, logger);
 
-  const query1 = sanitizeSearchQuery(
-    distilledQuery.primaryEmpiricalQuery || matrixInput.subjectProblem,
-  );
-  const query2 = sanitizeSearchQuery(
-    distilledQuery.actorsAndSourcesQuery || matrixInput.subjectProblem,
-  );
-  const query3 = sanitizeSearchQuery(
-    distilledQuery.periodAndContextQuery || matrixInput.subjectProblem,
-  );
-
-  logger?.info("sifting_query_generation_success", {
+  logger?.info("multi_source_sifting_query_gen_success", {
     service: "gemini",
-    filePath:
-      "src/app/(onboarding)/onboarding/positioning/_services/sifting.ts",
+    filePath: "src/app/(onboarding)/onboarding/positioning/_services/sifting.ts",
     durationMs: performance.now() - queryGenStart,
     hidden: true,
-    data: {
-      query1,
-      query2,
-      query3,
-      keywords: distilledQuery.substantiveKeywords,
-    },
   });
 
   const searchStart = performance.now();
 
-  logger?.info("sifting_multi_search_start", {
-    service: "thesis-search",
-    filePath:
-      "src/app/(onboarding)/onboarding/positioning/_services/sifting.ts",
-    hidden: true,
-    data: { queries: [query1, query2, query3], singleQueryLimit },
-  });
+  // Parallel 4-Channel Search Execution
+  const [
+    yokRes1,
+    yokRes2,
+    openAlexRes1,
+    openAlexRes2,
+    semanticScholarRes,
+    exaDergiparkRes,
+    exaFieldRes,
+  ] = await Promise.all([
+    // 1. Qdrant YÖK Theses (Empirical Query)
+    searchTheses(
+      sanitizeSearchQuery(distilledQuery.thesisEmpiricalQuery),
+      logger,
+      { limit: 12, silent: true },
+    ).catch(() => []),
 
-  // 1. Parallel Multi-Aspect Vector Searches in the Qdrant thesis index (E5)
-  const [res1, res2, res3] = await Promise.all([
-    searchTheses(query1, logger, {
-      limit: singleQueryLimit,
-      silent: true,
-    }),
-    searchTheses(query2, logger, {
-      limit: singleQueryLimit,
-      silent: true,
-    }),
-    searchTheses(query3, logger, {
-      limit: singleQueryLimit,
-      silent: true,
-    }),
+    // 2. Qdrant YÖK Theses (Methodology/Theory Query)
+    searchTheses(
+      sanitizeSearchQuery(distilledQuery.thesisMethodologyQuery),
+      logger,
+      { limit: 12, silent: true },
+    ).catch(() => []),
+
+    // 3. OpenAlex Global Literature (Theoretical Semantic Search)
+    searchOpenAlex(
+      sanitizeSearchQuery(distilledQuery.globalTheoreticalQuery),
+      8,
+    ).catch(() => []),
+
+    // 4. OpenAlex Global Literature (Empirical Semantic Search)
+    searchOpenAlex(
+      sanitizeSearchQuery(distilledQuery.globalEmpiricalQuery),
+      8,
+    ).catch(() => []),
+
+    // 5. Semantic Scholar (High Impact / Influential Papers)
+    searchSemanticScholarPapers(
+      sanitizeSearchQuery(distilledQuery.globalTheoreticalQuery),
+      10,
+    ).catch(() => []),
+
+    // 6. Exa.ai (DergiPark Academic Papers)
+    searchExa(distilledQuery.dergiparkQuery, {
+      numResults: 6,
+      includeDomains: ["dergipark.org.tr"],
+    }).catch(() => [] as ExaSearchResult[]),
+
+    // 7. Exa.ai (Field & Policy Context)
+    searchExa(distilledQuery.fieldWebQuery, {
+      numResults: 6,
+    }).catch(() => [] as ExaSearchResult[]),
   ]);
 
-  // 2. Fuse candidate pools via Reciprocal Rank Fusion (RRF)
-  const fusedTheses = reciprocalRankFusion([res1, res2, res3]);
+  const candidates: SiftedThesis[] = [];
+  const seenTitles = new Set<string>();
 
-  // 3. Filter valid candidates
-  const filteredCandidates = filterValidCandidates(fusedTheses);
+  const normalizeTitleKey = (t: string) =>
+    t
+      .toLowerCase()
+      .replace(/[^a-z0-9ğüşıöç]/gi, "")
+      .slice(0, 40);
 
-  if (filteredCandidates.length === 0) {
-    logger?.info("sifting_multi_search_success", {
-      service: "thesis-search",
-      filePath:
-        "src/app/(onboarding)/onboarding/positioning/_services/sifting.ts",
-      durationMs: performance.now() - searchStart,
-      hidden: true,
-      data: { candidateCount: 0 },
+  // Ingest YÖK Theses
+  for (const t of [...yokRes1, ...yokRes2]) {
+    const key = normalizeTitleKey(t.title);
+    if (!key || seenTitles.has(key)) continue;
+    seenTitles.add(key);
+
+    candidates.push({
+      id: `yok-${t.id}`,
+      title: t.title,
+      author: t.author || "Bilinmiyor",
+      university: t.university || "Türkiye Üniversiteleri",
+      year: t.year || new Date().getFullYear(),
+      thesisType: t.thesisType || "Doktora/Yüksek Lisans Tezi",
+      department: t.department,
+      abstract: t.abstract || "",
+      url: t.yokPdfUrl || `https://tez.yok.gov.tr/UlusalTezMerkezi/tezDetay.jsp?id=${t.id}`,
+      sourceChannel: "yok",
+      publicationType: "Tez",
     });
+  }
+
+  // Ingest OpenAlex Papers
+  for (const p of [...openAlexRes1, ...openAlexRes2]) {
+    const title = p.title || "";
+    const key = normalizeTitleKey(title);
+    if (!key || seenTitles.has(key)) continue;
+    seenTitles.add(key);
+
+    const authorsStr = (p.authors ?? []).slice(0, 3).join(", ") || "Bilinmiyor";
+    const year = p.year || new Date().getFullYear();
+    const abstractStr = p.abstract || "";
+    const pubType = "Makale";
+
+    candidates.push({
+      id: p.openAlexId ? String(p.openAlexId).replace("https://openalex.org/", "") : `oa-${Math.random().toString(36).slice(2, 8)}`,
+      title,
+      author: authorsStr,
+      university: p.publisher || "Uluslararası Akademik Yayın",
+      year,
+      thesisType: pubType,
+      abstract: abstractStr,
+      doi: p.doi || undefined,
+      url: p.doi ? `https://doi.org/${p.doi}` : undefined,
+      sourceChannel: "openalex",
+      publicationType: pubType,
+    });
+  }
+
+  // Ingest Semantic Scholar Papers
+  for (const p of semanticScholarRes) {
+    const title = p.title || "";
+    const key = normalizeTitleKey(title);
+    if (!key || seenTitles.has(key)) continue;
+    seenTitles.add(key);
+
+    const authorsStr = (p.authors ?? []).map((a) => a.name).slice(0, 3).join(", ") || "Bilinmiyor";
+    const year = p.year || new Date().getFullYear();
+    const abstractStr = p.abstract || "";
+
+    const s2Type = (p.publicationTypes ?? []).includes("Book")
+      ? "Kitap"
+      : (p.publicationTypes ?? []).includes("BookSection")
+        ? "Kitap Bölümü"
+        : "Makale";
+
+    candidates.push({
+      id: `s2-${p.paperId}`,
+      title,
+      author: authorsStr,
+      university: p.venue || "Uluslararası Hakemli Dergi",
+      year,
+      thesisType: s2Type,
+      abstract: abstractStr,
+      doi: p.externalIds?.DOI,
+      url: p.url || (p.externalIds?.DOI ? `https://doi.org/${p.externalIds.DOI}` : undefined),
+      sourceChannel: "semantic_scholar",
+      publicationType: s2Type,
+    });
+  }
+
+  // Ingest Exa Results (DergiPark and Web)
+  for (const r of [...exaDergiparkRes, ...exaFieldRes]) {
+    const title = r.title || "";
+    const key = normalizeTitleKey(title);
+    if (!key || seenTitles.has(key)) continue;
+    seenTitles.add(key);
+
+    const text = (r.highlights ?? []).join(" ") || r.title || "";
+    const isDergiPark = (r.url || "").includes("dergipark.org.tr");
+
+    candidates.push({
+      id: `exa-${Math.random().toString(36).slice(2, 8)}`,
+      title,
+      author: r.author || (isDergiPark ? "DergiPark Yazarı" : "Araştırmacı/Kurum"),
+      university: isDergiPark ? "DergiPark Akademik Dergi" : "Saha & Sektörel Rapor",
+      year: new Date().getFullYear(),
+      thesisType: isDergiPark ? "Makale" : "Rapor",
+      abstract: text,
+      url: r.url,
+      sourceChannel: "exa",
+      publicationType: isDergiPark ? "Makale" : "Rapor",
+    });
+  }
+
+  // Filter candidates with minimum viable abstract content
+  const validCandidates = candidates.filter(
+    (c) => c.abstract.trim().length >= MIN_ABSTRACT_LENGTH,
+  );
+
+  logger?.info("multi_source_search_completed", {
+    service: "thesis-search",
+    filePath: "src/app/(onboarding)/onboarding/positioning/_services/sifting.ts",
+    durationMs: performance.now() - searchStart,
+    data: {
+      totalFound: candidates.length,
+      validFound: validCandidates.length,
+      yokCount: candidates.filter((c) => c.sourceChannel === "yok").length,
+      openAlexCount: candidates.filter((c) => c.sourceChannel === "openalex").length,
+      s2Count: candidates.filter((c) => c.sourceChannel === "semantic_scholar").length,
+      exaCount: candidates.filter((c) => c.sourceChannel === "exa").length,
+    },
+    hidden: true,
+  });
+
+  if (validCandidates.length === 0) {
     return [];
   }
 
-  logger?.info("sifting_multi_search_success", {
-    service: "thesis-search",
-    filePath:
-      "src/app/(onboarding)/onboarding/positioning/_services/sifting.ts",
-    durationMs: performance.now() - searchStart,
-    hidden: true,
-    data: { candidateCount: filteredCandidates.length },
-  });
-
-  // 4. Cohere Rerank v4.0 Pro
+  // Cohere Rerank v4.0 Pro
   const targetYamlQuery = formatMatrixToYamlQuery(distilledQuery, matrixInput);
-  const candidateYamlDocs = filteredCandidates.map(formatThesisToYaml);
+  const candidateYamlDocs = validCandidates.map((c) => formatThesisToYaml(c));
 
-  const rerankStart = performance.now();
+  try {
+    const rerankResults = await rerankWithCohere({
+      query: targetYamlQuery,
+      documents: candidateYamlDocs,
+      logger,
+      silent: true,
+    });
 
-  logger?.info("sifting_rerank_start", {
-    service: "cohere",
-    filePath:
-      "src/app/(onboarding)/onboarding/positioning/_services/sifting.ts",
-    hidden: true,
-    data: {
-      model: COHERE_RERANK_MODEL,
-      candidateCount: filteredCandidates.length,
-    },
-  });
-
-  const rerankResults = await rerankWithCohere({
-    query: targetYamlQuery,
-    documents: candidateYamlDocs,
-    logger,
-    silent: true,
-  });
-
-  const scoredTheses: SiftedThesis[] = rerankResults.map((res) => {
-    const candidate = filteredCandidates[res.index];
-    return {
-      ...candidate,
+    const scoredTheses: SiftedThesis[] = rerankResults.map((res) => ({
+      ...validCandidates[res.index],
       relevanceScore: res.relevanceScore,
-    };
-  });
+    }));
 
-  scoredTheses.sort((a, b) => {
-    const delta = (b.relevanceScore ?? 0) - (a.relevanceScore ?? 0);
-    if (Math.abs(delta) > SCORE_EPSILON) return delta;
-    return a.id - b.id;
-  });
+    scoredTheses.sort((a, b) => {
+      const delta = (b.relevanceScore ?? 0) - (a.relevanceScore ?? 0);
+      if (Math.abs(delta) > SCORE_EPSILON) return delta;
+      return 0;
+    });
 
-  const confidentTheses = scoredTheses.filter(
-    (t) => (t.relevanceScore ?? 0) >= MIN_COHERE_RELEVANCE_SCORE,
-  );
+    const confident = scoredTheses.filter(
+      (t) => (t.relevanceScore ?? 0) >= MIN_COHERE_RELEVANCE_SCORE,
+    );
 
-  const selected = confidentTheses.slice(0, topN);
+    // Ensure at least 6-8 candidates if available
+    const finalSelected = (confident.length >= 6 ? confident : scoredTheses).slice(0, topN);
 
-  logger?.info("sifting_rerank_success", {
-    service: "cohere",
-    filePath:
-      "src/app/(onboarding)/onboarding/positioning/_services/sifting.ts",
-    durationMs: performance.now() - rerankStart,
-    hidden: true,
-    data: {
-      candidateCount: filteredCandidates.length,
-      confidentCount: confidentTheses.length,
-      topCount: selected.length,
-    },
-  });
-
-  return selected;
+    return finalSelected;
+  } catch (err) {
+    logger?.warn("cohere_rerank_fallback_to_raw", { error: err });
+    return validCandidates.slice(0, topN);
+  }
 }

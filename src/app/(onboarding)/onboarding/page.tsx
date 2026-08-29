@@ -33,10 +33,6 @@ export default async function OnboardingPage() {
     redirect("/onboarding/proposal");
   }
 
-  if (!matrix.subjectProblem || matrix.subjectProblem.trim().length === 0) {
-    redirect("/onboarding/matrix");
-  }
-
   const [positioningRow] = await db
     .select({
       id: positioning.id,

@@ -67,12 +67,13 @@ export async function analyzePositioningJury(
     .map((ev, idx) => {
       const t = ev.thesis;
       const e = ev.evaluation;
-      return `[Tez #${idx + 1}] ID: "${t.id}"
+      const pubType = e.publicationType || t.publicationType || t.thesisType || "Makale";
+      return `[Kaynak #${idx + 1}] ID: "${t.id}"
 Başlık: ${t.title}
 Yazar: ${t.author || "Bilinmiyor"} (${t.year || "N/A"})
-Üniversite/Bölüm: ${t.university || "N/A"} - ${t.department || "N/A"}
-Tür: ${t.thesisType || "N/A"}
-Dil: ${t.language || "Türkçe"}
+Yayın Türü: ${pubType}
+Kanal: ${t.sourceChannel}
+Kurum/Yayıncı: ${t.university || "N/A"}
 Birebir Çakışma: ${e.isDirectOverlap ? "EVET" : "HAYIR"}
 Stratejik Rol: ${e.strategicRole || "SPECIFIC_FOCUS"}
 Literatürdeki Yeri: ${e.literaturePosition || "N/A"}
@@ -122,12 +123,16 @@ Katkı/Odak Alanları: ${e.contributionAreas.join(", ") || "Yok"}`;
     }
   }
 
-  // Cap at 8 max recommended theses without artificial padding
+  // Cap at 8 max recommended sources without artificial padding
   selectedItems = selectedItems.slice(0, 8);
 
   const recommendedTheses: RecommendedThesisItem[] = selectedItems.map((ev) => {
     const t = ev.thesis;
     const e = ev.evaluation;
+    const pubType = e.publicationType || t.publicationType || "Makale";
+    const isYok = t.sourceChannel === "yok";
+    const yokId = String(t.id).replace("yok-", "");
+
     return {
       id: String(t.id),
       externalThesisId: String(t.id),
@@ -135,20 +140,80 @@ Katkı/Odak Alanları: ${e.contributionAreas.join(", ") || "Yok"}`;
       author: t.author || "Bilinmiyor",
       year: t.year || new Date().getFullYear(),
       university: t.university || "Bilinmiyor",
+      publicationType: pubType,
+      sourceChannel: t.sourceChannel,
       strategicRole: e.strategicRole || "SPECIFIC_FOCUS",
       literaturePosition: e.literaturePosition,
       contributionArea:
         e.contributionAreas.join(", ") || "Literatür İncelemesi",
       relevanceReason: e.strategicUtility || e.relevanceReasoning || "",
-      thesisType: t.thesisType,
+      thesisType: pubType,
       abstract: t.abstract,
-      yokUrl: `https://tez.yok.gov.tr/UlusalTezMerkezi/tezDetay.jsp?id=${t.id}`,
+      url: t.url,
+      doi: t.doi,
+      yokUrl: isYok ? `https://tez.yok.gov.tr/UlusalTezMerkezi/tezDetay.jsp?id=${yokId}` : undefined,
     };
   });
 
   const finalGlobalStatus = overlapping
     ? "DIRECT_OVERLAP"
     : synthesis.globalStatus;
+
+  // Ensure robust fallback for pivotOptions if DIRECT_OVERLAP occurred
+  if (
+    finalGlobalStatus === "DIRECT_OVERLAP" &&
+    (!synthesis.gapAnalysisSummary.pivotOptions ||
+      synthesis.gapAnalysisSummary.pivotOptions.length === 0)
+  ) {
+    synthesis.gapAnalysisSummary.pivotOptions = [
+      {
+        id: "field_pivot",
+        dimension: "SAHA_ORNEKLEM",
+        title: "Saha ve Örneklem Farklılaşması",
+        description:
+          "Emsal çalışmanın incelemediği farklı bir bölgesel bağlam, sektör veya spesifik aktör kümesine odaklanın.",
+        suggestedFocus:
+          "Farklı bir bölgesel veya sektörel örneklem ile özgün ampirik veri üretimi.",
+      },
+      {
+        id: "theory_pivot",
+        dimension: "KURAMSAL_CERCEVE",
+        title: "Kuramsal Paradigma Farklılaşması",
+        description:
+          "Aynı olguyu emsal çalışmanın ana akım modelinden farklı, alternatif bir kuramsal mercekle ele alın.",
+        suggestedFocus:
+          "Alternatif bir kavramsal model ile olgunun farklı bir boyutunu aydınlatma.",
+      },
+      {
+        id: "method_pivot",
+        dimension: "YONTEMSEL_DESEN",
+        title: "Yöntemsel Desen Farklılaşması",
+        description:
+          "Emsal çalışmanın yöntem sınırlarını aşarak nitel derinlemesine mülakat, arşiv veya karma desen kullanın.",
+        suggestedFocus:
+          "Daha derinlikli veya karşılaştırmalı bir araştırma yöntemi kurgulama.",
+      },
+    ];
+  }
+
+  // Ensure overlappingWorks list is populated if direct overlap exists
+  if (
+    overlapping &&
+    (!synthesis.gapAnalysisSummary.overlappingWorks ||
+      synthesis.gapAnalysisSummary.overlappingWorks.length === 0)
+  ) {
+    synthesis.gapAnalysisSummary.overlappingWorks = evaluatedTheses
+      .filter((ev) => ev.evaluation.isDirectOverlap)
+      .map((ev) => ({
+        title: ev.thesis.title,
+        author: ev.thesis.author,
+        year: ev.thesis.year,
+        sourceType: ev.evaluation.publicationType || ev.thesis.publicationType,
+        reason:
+          ev.evaluation.relevanceReasoning ||
+          "Aynı konu, kuram veya yöntemsel kapsamda doğrudan örtüşme.",
+      }));
+  }
 
   return {
     globalStatus: finalGlobalStatus,

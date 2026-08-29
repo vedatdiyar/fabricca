@@ -26,6 +26,8 @@ export async function savePositioningReportTransaction(
       author: t.author,
       year: t.year,
       university: t.university,
+      publicationType: t.publicationType,
+      sourceChannel: t.sourceChannel,
       strategicRole: t.strategicRole,
       literaturePosition: t.literaturePosition,
       contributionArea: t.contributionArea,
@@ -33,6 +35,7 @@ export async function savePositioningReportTransaction(
       doi: t.doi,
       thesisType: t.thesisType,
       abstract: t.abstract,
+      url: t.url,
       yokUrl: t.yokUrl,
     }));
 

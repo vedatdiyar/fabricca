@@ -7,10 +7,10 @@ export interface JuryAnalysisPromptPayload {
 }
 
 /**
- * Builds the hybrid XML/Markdown prompt payload for the final jury synthesis analysis,
- * strictly focusing on the empirical research topic, actors, and subject-matter literature gap.
+ * Builds the hybrid XML/Markdown prompt payload for the final multi-source jury synthesis analysis,
+ * synthesizing evidence across YÖK theses, OpenAlex/Semantic Scholar papers, and Exa/DergiPark works.
  *
- * @param params - Parameters containing the validated matrix, formatted evaluated theses text, and count.
+ * @param params - Parameters containing the validated matrix, formatted evaluated literature text, and count.
  * @returns Structured prompt payload.
  */
 export function buildPositioningJuryPromptPayload(params: {
@@ -21,70 +21,58 @@ export function buildPositioningJuryPromptPayload(params: {
   const { input, thesisListText, evaluatedCount } = params;
 
   const systemInstruction = `<role>
-Akademik jüri başkanı, tez izleme komitesi raportörü ve alan uzmanı.
+Kıdemli akademik jüri başkanı, tez izleme komitesi raportörü ve çok disiplinli araştırma metodoloğu.
 </role>
 
 <instructions>
 # Görev ve Sentez Amacı
-Kullanıcının sunduğu tez konusunu/sorunsalını ve ilgili bulunan **KONUSAL ve OLGUSAL TEZLERİ** inceleyerek; çalışmanın konu literatüründeki özgünlük durumunu karara bağla, 3 boyutlu derin bir Konusal Boşluk Analizi Raporu sentezle ve araştırmacıya doğrudan referans sunacak kılavuz tezlerin ID'lerini seç.
+Kullanıcının sunduğu tez konusunu/sorunsalını ve 4 kanaldan (YÖK Tezler, OpenAlex, Semantic Scholar, Exa/DergiPark) incelenen kaynakları analiz ederek:
+1. Çalışmanın özgünlük ve çakışma durumunu karara bağla (globalStatus).
+2. 3 boyutlu derin bir Akademik Boşluk Analizi Raporu sentezle (gapAnalysisSummary).
+3. Varsa birebir çakışmaları belirle ve araştırmacıyı kurtaracak 3 somut Farklılaşma (Pivot) seçeneği üret.
+4. Çakışma yoksa ve çalışma özgünse araştırmanın kapsamını netleştirecek 1-2 odak sorusu üret.
+5. Araştırmacıya rehberlik edecek 6-8 adet dengeli kılavuz kaynağın ID'lerini seç (Tezler, Makaleler, Kitaplar).
 
-# Jüri Değerlendirme Kuralları
-1. **globalStatus (Jüri Genel Kararı):**
-   - **NOVEL_GAP_IDENTIFIED (Özgün Katkı / Boşluk Mevcut):** Literatürde aynı konuyu/hareketi inceleyen çalışmalar var ancak araştırmacının dönemi, aktör ayrımı veya konu sorunsalı belirgin ve özgün bir olgusal boşluğu dolduruyor.
-   - **DIRECT_OVERLAP (Birebir Çakışma / Özgünlük Riski):** İncelenen tezlerden biri kullanıcının araştırma konusunu, aynı dönemi ve aynı aktörleri aynı kapsamda daha önce birebir çalışmış.
-   - **NO_RELATED_LITERATURE (Bakir Alan / Doğrudan Konu Tezi Yok):** Veritabanında doğrudan aynı konuyu veya aktörleri inceleyen tez bulunamadı.
+# 1. globalStatus (Jüri Genel Kararı):
+- **DIRECT_OVERLAP (Birebir Çakışma / Özgünlük Riski):**
+  * Eğer incelenen YÖK tezleri veya yerel literatürde kullanıcının araştırma konusunu, aynı ampirik sahada, aynı dönemde ve aynı yöntemle birebir çalışmış tamamlanmış bir eser varsa BU KARAR VERİLİR.
+  * Bu durumda 'overlappingWorks' alanına çakışan eserin detayları yazılır.
+  * Ve MUTLAKA 'pivotOptions' alanına araştırmacının çalışmasını kurtaracak 3 somut farklılaşma rotası üretilir:
+    1. field_pivot (Saha / Örneklem Farkı): Emsalin bakmadığı farklı bir coğrafya, sektör, kurum veya aktör grubu.
+    2. theory_pivot (Kuramsal Çerçeve Farkı): Emsalin kuramından farklı, alternatif bir kuramsal mercek.
+    3. method_pivot (Yöntemsel Desen Farkı): Emsalin yönteminden farklı (örn. anket yerine derinlemesine mülakat / etnografi) bir yöntem.
+- **NOVEL_GAP_IDENTIFIED (Özgün Katkı / Boşluk Mevcut):**
+  * Literatürde benzer eksenlerde çalışmalar olsa da kullanıcının çalışması özgün bir sorunsala, kuramsal senteze veya ampirik boşluğa oturuyorsa verilir.
+  * Bu durumda 'clarificationQuestions' alanına araştırmacının literatür taramasına başlarken işini kolaylaştıracak 1-2 pratik kapsam/odak tercihi sorusu eklenir.
+- **NO_RELATED_LITERATURE (Bakir Alan / Doğrudan Emsal Yok):**
+  * Doğrudan örtüşen hiçbir çalışma bulunamadıysa verilir.
 
-2. **gapAnalysisSummary (3 Boyutlu Konusal Boşluk Analizi Raporu):**
-   - **literatureMapping (Mevcut Konu Literatürünün Haritalandırılması):** Mevcut konu tezlerinin hangi aktörler, hangi dönemler ve hangi temalar üzerinde yoğunlaştığının akademik analizi (Markdown).
-   - **academicGap (Konudaki Olgusal / Dönemsel Boşluk):** Mevcut çalışmaların neleri ele almadığı, hangi dönem veya aktör dinamiklerini açıkta bıraktığının analizi (Markdown).
-   - **originalContribution (Çalışmanın Özgün Konusal Katkısı):** Araştırmacının tezinin bu olgusal/dönemsel boşluğu nasıl dolduracağının analizi (Markdown).
+# 2. gapAnalysisSummary (3 Boyutlu Akademik Boşluk Analizi):
+- **literatureMapping:** Mevcut ulusal tezlerin ve uluslararası makalelerin hangi kuramsal ve ampirik alanlarda yoğunlaştığının akademik analizi (Markdown).
+- **academicGap:** İncelenen literatürün neleri ele almadığı, hangi boyutları açıkta bıraktığının analizi (Markdown).
+- **originalContribution:** Araştırmacının tezinin bu boşluğu problem, kuram ve yöntem açısından nasıl dolduracağının analizi (Markdown).
 
-3. **selectedThesisIds (Kılavuz Konu Tezlerinin Seçimi):**
-   - İncelenen ilgili tezler arasından araştırmacıya doğrudan konusal referans sunacak en stratejik tezlerin ID'lerini seç.
-   - **Önemli:** Gerçek literatür durumunu yansıtın (0, 1, 2 veya daha fazla olabilir). Kesinlikle yapay olarak sayı tamamlamaya veya sınırda kalmış tezleri eklemeye çalışmayın; yalnızca gerçekten kılavuz niteliği taşıyanları seçin.
+# 3. selectedThesisIds (Dengeli Kılavuz Kart Seçimi):
+- İncelenen liste içerisinden araştırmacı için en değerli 6-8 kaynağın ID'lerini seç.
+- Mümkün olduğunca dengeli bir dağılım gözet: 2-3 YÖK Tezi (Yöntem & Emsal) + 3-4 Küresel Makale/Kitap (Kuramsal Öncül) + 1-2 Saha/DergiPark yayını.
 
-# Sınırlamalar
-- Yalnızca araştırmanın somut konusuna, aktörlerine ve ampirik alanına odaklanın. Konu dışı soyut teori veya genel yöntem tartışmalarına girmeyin.
-- Metinlerde akıcı, yetkin ve saygın bir akademik Türkçe kullanın.
-</instructions>
-
-<examples>
-<example>
-<input>
-[Kullanıcı Tez Konusu]:
-Kürt Özgürlük Hareketi'nin 1991-1999 döneminde söylemsel dönüşümü; PKK ve HEP-DEP-HADEP hattının taleplerindeki değişim ve kuluçka evresi.
-
-[İncelenen İlgili Tezler]:
-[Tez #1] ID: "201" | Başlık: 1990-2014 Dönemi Kürt Siyasal Hareketinin Söyleminin Dönüşümü | Rol: SPECIFIC_FOCUS
-[Tez #2] ID: "302" | Başlık: Türkiye'de Kürt Etno-Bölgesel Hareketi (1959-1984) | Rol: FOUNDATIONAL_WORK
-[Tez #3] ID: "403" | Başlık: PKK'nın Kürtçe ve Kültürel Haklar Politikası (1990'lar) | Rol: SPECIFIC_FOCUS
-</input>
-<output>
-{
-  "globalStatus": "NOVEL_GAP_IDENTIFIED",
-  "gapAnalysisSummary": {
-    "literatureMapping": "Türkiye'de Kürt hareketi üzerine yapılan mevcut tezler; 1980 öncesi tarihsel kökenler (Alış, 2017) ve 1990 sonrası yasal siyasi partilerin genel söylem evrimi (Okudan Dernek, 2014) ekseninde yoğunlaşmaktadır. Literatürde yasal partilerin parlamenter söylemleri ile silahlı kanadın yayın organlarındaki dönüşüm dinamikleri çoğunlukla birbirinden yalıtılmış olarak ele alınmıştır.",
-    "academicGap": "Mevcut konu literatürü, 1999 sonrasındaki söylemsel değişimi ani bir kırılma olarak görme eğilimindedir. 1991-1999 arası kuluçka dönemi; silahlı kanat (PKK) ile yasal parti hattının (HEP-DEP-HADEP) talep içeriklerindeki niteliksel dönüşüm ve bu iki aktör arasındaki söylemsel etkileşim açısından derinlemesine incelenmemiştir.",
-    "originalContribution": "Bu çalışma, 1991-1999 dönemini iki ayrı aktör hattının (silahlı ve yasal) talep tipolojisi üzerinden bağımsız olarak inceleyip karşılaştırarak, 1999 dönüşümünün tarihsel ve söylemsel kuluçka evresini ortaya koymakta ve konu literatüründeki önemli bir dönemsel ve olgusal boşluğu doldurmaktadır."
-  },
-  "selectedThesisIds": ["201", "302", "403"]
-}
-</output>
-</example>
-</examples>`;
+# Dil ve Üslup
+- Akıcı, yetkin, yapıcı ve saygın bir akademik Türkçe kullanın.
+- Plaza dili veya yapay jargondan kaçının.
+</instructions>`;
 
   const userPrompt = `<context>
 [Kullanıcı Tez Konusu ve Sorunsalı]:
 Araştırma Problemi ve Odak: ${input.subjectProblem}
 Kuramsal Çerçeve: ${input.theoreticalFramework || "Belirtilmemiş"}
-Yöntem ve Veri: ${input.methodology || "Belirtilmemiş"}
+Yöntem ve Saha: ${input.methodology || "Belirtilmemiş"}
 
-[İncelenen İlgili Konu Tezleri (${evaluatedCount} Adet)]:
+[İncelenen Çok Kaynaklı Literatür (${evaluatedCount} Adet)]:
 ${thesisListText}
 </context>
 
 <task>
-Yukarıdaki <context> içeriğindeki ${evaluatedCount} adet konu tezini ve kullanıcı konusunu <instructions> kurallarına göre analiz et; jüri durum kararını, 3 boyutlu konusal boşluk analizi raporunu ve kılavuz tez ID listesini içeren JSON çıktısını üret.
+Yukarıdaki <context> içeriğindeki ${evaluatedCount} adet kaynağı ve kullanıcı tezini inceleyerek; jüri durum kararını, 3 boyutlu boşluk analizi raporunu, (varsa çakışma durumunda pivot seçeneklerini, özgünlük durumunda netleştirme sorularını) ve en stratejik kılavuz kaynak ID listesini içeren JSON çıktısını üret.
 </task>`;
 
   return { systemInstruction, userPrompt };

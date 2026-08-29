@@ -21,7 +21,7 @@ export default async function OnboardingPositioningPage() {
   const record = await getPositioningAction();
 
   if (!record || !record.globalStatus) {
-    redirect("/onboarding/matrix");
+    redirect("/onboarding/proposal");
   }
 
   return (

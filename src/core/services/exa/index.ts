@@ -6,6 +6,10 @@ export interface ExaSearchOptions {
   numResults?: number;
   /** Whether to extract highlights (default: true). */
   highlights?: boolean;
+  /** Filter to only include specific domains (e.g., ['dergipark.org.tr']). */
+  includeDomains?: string[];
+  /** Filter by category (e.g., 'publication', 'news', 'company'). */
+  category?: "publication" | "company" | "news" | "financial report";
 }
 
 /** Individual search result returned by Exa. */
@@ -59,11 +63,14 @@ export async function searchExa(
           headers: {
             "Content-Type": "application/json",
             "x-api-key": apiKey,
+            Authorization: `Bearer ${apiKey}`,
           },
           body: JSON.stringify({
             query,
             type: "auto",
             numResults,
+            includeDomains: options?.includeDomains,
+            category: options?.category,
             contents: {
               highlights,
             },

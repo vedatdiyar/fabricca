@@ -243,3 +243,249 @@ export async function getPositioningAction(): Promise<Positioning | null> {
     return null;
   }
 }
+
+import { clearDownstreamDbAction } from "../actions";
+import { synthesizeInitialMatrixFromProposal } from "../matrix/_services/proposal-synthesis-service";
+import { invalidateOnboardingStepCache } from "@/lib/cache-tags";
+import { sql } from "drizzle-orm";
+import type { GapAnalysisStructured } from "./_services/validation";
+
+/**
+ * Unified entry action:
+ * Takes raw proposal, automatically creates headless background matrix,
+ * runs 4-channel search (Qdrant, OpenAlex, Semantic Scholar, Exa) + Cohere Rerank + Jury,
+ * saves everything to DB and prepares for instant redirect to /onboarding/positioning.
+ *
+ * @param rawProposal - The user's raw proposal text.
+ * @returns Success flag or error message.
+ */
+export async function startOnboardingFromProposalAction(
+  rawProposal: string,
+): Promise<{ success: true } | { error: string }> {
+  try {
+    const session = await getSession();
+    if (!session) return { error: SESSION_ERROR_MSG };
+
+    const trimmed = rawProposal.trim();
+    if (trimmed.length < 50) {
+      return {
+        error:
+          "Lütfen analiz için en az 50 karakter uzunluğunda bir tez taslağı girin.",
+      };
+    }
+
+    // 1. Clear downstream step data
+    await clearDownstreamDbAction("proposal");
+
+    // 2. Synthesize initial headless 4-quadrant matrix
+    const matrix = await synthesizeInitialMatrixFromProposal(trimmed);
+
+    // 3. Persist matrix to DB
+    const [savedMatrix] = await db
+      .insert(matrices)
+      .values({
+        userId: session.userId,
+        rawProposal: trimmed,
+        subjectProblem: matrix.subjectProblem,
+        theoreticalFramework: matrix.theoreticalFramework,
+        primaryMaterial: matrix.primaryMaterial,
+        methodology: matrix.methodology,
+        updatedAt: sql`now()`,
+      })
+      .onConflictDoUpdate({
+        target: matrices.userId,
+        set: {
+          rawProposal: trimmed,
+          subjectProblem: matrix.subjectProblem,
+          theoreticalFramework: matrix.theoreticalFramework,
+          primaryMaterial: matrix.primaryMaterial,
+          methodology: matrix.methodology,
+          updatedAt: sql`now()`,
+        },
+      })
+      .returning({ id: matrices.id });
+
+    if (!savedMatrix) {
+      return { error: "Tez matrisi oluşturulamadı." };
+    }
+
+    // 4. Run 4-Channel Multi-Source Sifting
+    const siftedCandidates = await searchAndSiftTheses({
+      subjectProblem: matrix.subjectProblem,
+      theoreticalFramework: matrix.theoreticalFramework,
+      methodology: matrix.methodology,
+    });
+
+    // 5. Evaluate candidates in parallel
+    const evaluated = await evaluateThesesInParallel(
+      {
+        subjectProblem: matrix.subjectProblem,
+        theoreticalFramework: matrix.theoreticalFramework,
+        methodology: matrix.methodology,
+      },
+      siftedCandidates,
+    );
+
+    const relevant = evaluated.filter((e) => e.evaluation.isRelevant);
+
+    // 6. Final Multi-Source Jury Analysis
+    const juryResult = await analyzePositioningJury(
+      {
+        subjectProblem: matrix.subjectProblem,
+        theoreticalFramework: matrix.theoreticalFramework,
+        methodology: matrix.methodology,
+      },
+      relevant,
+    );
+
+    // 7. Sanitize and persist positioning report
+    if (juryResult.recommendedTheses.length > 0) {
+      const itemsToSanitize = juryResult.recommendedTheses.map((t) => ({
+        title: t.title || "",
+        author: t.author || "",
+      }));
+      const sanitized = await sanitizeAcademicDataBulk(itemsToSanitize);
+      juryResult.recommendedTheses = juryResult.recommendedTheses.map(
+        (t, idx) => ({
+          ...t,
+          title: sanitized[idx]?.title || t.title,
+          author: sanitized[idx]?.author || t.author,
+        }),
+      );
+    }
+
+    await savePositioningReportTransaction(
+      session.userId,
+      savedMatrix.id,
+      juryResult,
+    );
+
+    invalidateOnboardingStepCache("proposal");
+    invalidateOnboardingStepCache("positioning");
+
+    return { success: true };
+  } catch (err) {
+    const msg =
+      err instanceof Error
+        ? err.message
+        : "Tez taslağı incelenirken beklenmeyen bir hata oluştu.";
+    return { error: msg };
+  }
+}
+
+/**
+ * Applies a user-selected differentiation (Pivot) option when a DIRECT_OVERLAP occurs.
+ * Updates the background matrix and resolves the positioning status to NOVEL_GAP_IDENTIFIED.
+ *
+ * @param payload - The chosen pivot option details.
+ * @returns Success flag or error.
+ */
+export async function applyPositioningPivotAction(payload: {
+  pivotId: string;
+  title: string;
+  suggestedFocus: string;
+}): Promise<{ success: true } | { error: string }> {
+  try {
+    const session = await getSession();
+    if (!session) return { error: SESSION_ERROR_MSG };
+
+    const [matrix] = await db
+      .select()
+      .from(matrices)
+      .where(eq(matrices.userId, session.userId));
+
+    if (!matrix) return { error: "Tez matrisi bulunamadı." };
+
+    const updatedProblem = `${matrix.subjectProblem}\n\n[Akademik Farklılaşma Rotası]: ${payload.title} — ${payload.suggestedFocus}`;
+
+    await db
+      .update(matrices)
+      .set({
+        subjectProblem: updatedProblem,
+        updatedAt: sql`now()`,
+      })
+      .where(eq(matrices.id, matrix.id));
+
+    // Update positioning record
+    const [posRow] = await db
+      .select()
+      .from(positioning)
+      .where(eq(positioning.matrixId, matrix.id));
+
+    if (posRow && posRow.gapAnalysisSummary) {
+      const summary = posRow.gapAnalysisSummary as GapAnalysisStructured;
+      summary.originalContribution = `**Farklılaşma (Pivot) Rotası Kabul Edildi:** Araştırma, emsal tezden farklılaşarak "${payload.title}" (${payload.suggestedFocus}) odağında yapılandırılmıştır.\n\n${summary.originalContribution}`;
+
+      await db
+        .update(positioning)
+        .set({
+          globalStatus: "NOVEL_GAP_IDENTIFIED",
+          gapAnalysisSummary: summary,
+          updatedAt: sql`now()`,
+        })
+        .where(eq(positioning.id, posRow.id));
+    }
+
+    invalidateOnboardingStepCache("positioning");
+
+    return { success: true };
+  } catch (err) {
+    return {
+      error:
+        err instanceof Error
+          ? err.message
+          : "Farklılaşma rotası kaydedilemedi.",
+    };
+  }
+}
+
+/**
+ * Saves user clarification answers to the background matrix and prepares for advancing to Boxes step.
+ *
+ * @param answers - Array of question/answer pairs from the positioning report.
+ * @returns Success flag or error.
+ */
+export async function completePositioningClarificationsAction(
+  answers: Array<{ question: string; answer: string }>,
+): Promise<{ success: true } | { error: string }> {
+  try {
+    const session = await getSession();
+    if (!session) return { error: SESSION_ERROR_MSG };
+
+    const [matrix] = await db
+      .select()
+      .from(matrices)
+      .where(eq(matrices.userId, session.userId));
+
+    if (!matrix) return { error: "Tez matrisi bulunamadı." };
+
+    const validAnswers = answers.filter((a) => a.answer.trim().length > 0);
+
+    if (validAnswers.length > 0) {
+      const clarificationsText = validAnswers
+        .map((a) => `[Odak Netleştirmesi]: ${a.question} -> ${a.answer}`)
+        .join("\n");
+
+      await db
+        .update(matrices)
+        .set({
+          subjectProblem: `${matrix.subjectProblem}\n\n${clarificationsText}`,
+          updatedAt: sql`now()`,
+        })
+        .where(eq(matrices.id, matrix.id));
+    }
+
+    invalidateOnboardingStepCache("positioning");
+    invalidateOnboardingStepCache("boxes");
+
+    return { success: true };
+  } catch (err) {
+    return {
+      error:
+        err instanceof Error
+          ? err.message
+          : "Netleştirme yanıtları kaydedilemedi.",
+    };
+  }
+}
+

@@ -7,8 +7,7 @@ import { cn } from "@/lib/utils";
 import { checkStepsDataAction } from "@/app/(onboarding)/onboarding/_services/fetch-actions";
 
 const STEPS = [
-  { key: "proposal", label: "Tez Önerisi", route: "/onboarding/proposal" },
-  { key: "matrix", label: "Çalışma Matrisi", route: "/onboarding/matrix" },
+  { key: "proposal", label: "Tez Taslağı", route: "/onboarding/proposal" },
   {
     key: "positioning",
     label: "Konumlandırma",

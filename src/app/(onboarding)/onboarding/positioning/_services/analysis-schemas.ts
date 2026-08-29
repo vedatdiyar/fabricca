@@ -35,6 +35,11 @@ export const perThesisEvaluationSchema = z.object({
     .describe(
       "Tezin kullanıcının çalışmasındaki stratejik rolü: FOUNDATIONAL_WORK | METHODOLOGICAL_BENCHMARK | SPECIFIC_FOCUS | ALTERNATIVE_PERSPECTIVE",
     ),
+  publicationType: z
+    .enum(["Tez", "Makale", "Kitap", "Kitap Bölümü", "Rapor"])
+    .optional()
+    .default("Makale")
+    .describe("Yayın türü: Tez, Makale, Kitap, Kitap Bölümü veya Rapor"),
   contributionAreas: z
     .array(z.string())
     .describe(
@@ -88,6 +93,11 @@ export const batchThesisEvaluationJsonSchema: JsonSchema = {
             type: "boolean",
             description:
               "Kullanıcının tezi ile birebir çakışma (özgünlük riski) var mı?",
+          },
+          publicationType: {
+            type: "string",
+            enum: ["Tez", "Makale", "Kitap", "Kitap Bölümü", "Rapor"],
+            description: "Yayın türü: Tez, Makale, Kitap, Kitap Bölümü veya Rapor",
           },
           strategicRole: {
             type: "string",
@@ -167,17 +177,77 @@ export const jurySynthesisResultJsonSchema: JsonSchema = {
         literatureMapping: {
           type: "string",
           description:
-            "Mevcut Literatürün Haritalandırılması: İncelenen tezlerin hangi kuramsal ve ampirik alanlarda yoğunlaştığının akademik analizi (Markdown).",
+            "Mevcut Literatürün Haritalandırılması: İncelenen tez ve makalelerin hangi kuramsal ve ampirik alanlarda yoğunlaştığının akademik analizi (Markdown).",
         },
         academicGap: {
           type: "string",
           description:
-            "Literatürdeki Boşluk: İncelenen tezlerin neleri ele almadığı, hangi boyutları açıkta bıraktığının analizi (Markdown).",
+            "Literatürdeki Boşluk: İncelenen çalışmaların neleri ele almadığı, hangi boyutları açıkta bıraktığının analizi (Markdown).",
         },
         originalContribution: {
           type: "string",
           description:
             "Çalışmanın Özgün Katkısı: Araştırmacının tezinin bu boşluğu problem, kuram ve yöntem açısından nasıl dolduracağının analizi (Markdown).",
+        },
+        overlappingWorks: {
+          type: "array",
+          items: {
+            type: "object",
+            properties: {
+              title: { type: "string" },
+              author: { type: "string" },
+              year: { type: "number" },
+              sourceType: { type: "string" },
+              reason: { type: "string" },
+            },
+            required: ["title", "sourceType", "reason"],
+          },
+          description:
+            "Birebir çakışan veya yüksek özgünlük riski oluşturan emsal çalışma(lar) listesi.",
+        },
+        pivotOptions: {
+          type: "array",
+          items: {
+            type: "object",
+            properties: {
+              id: {
+                type: "string",
+                enum: ["field_pivot", "theory_pivot", "method_pivot"],
+              },
+              dimension: {
+                type: "string",
+                enum: [
+                  "SAHA_ORNEKLEM",
+                  "KURAMSAL_CERCEVE",
+                  "YONTEMSEL_DESEN",
+                ],
+              },
+              title: { type: "string" },
+              description: { type: "string" },
+              suggestedFocus: { type: "string" },
+            },
+            required: ["id", "dimension", "title", "description", "suggestedFocus"],
+          },
+          description:
+            "Yalnızca DIRECT_OVERLAP durumunda araştırmacının çalışmasını kurtaracak 3 somut farklılaşma (pivot) seçeneği.",
+        },
+        clarificationQuestions: {
+          type: "array",
+          items: {
+            type: "object",
+            properties: {
+              id: { type: "string" },
+              question: { type: "string" },
+              category: {
+                type: "string",
+                enum: ["scope", "focus", "methodology", "theoretical"],
+              },
+              contextNote: { type: "string" },
+            },
+            required: ["id", "question", "category", "contextNote"],
+          },
+          description:
+            "Yalnızca NOVEL_GAP_IDENTIFIED durumunda araştırmanın odağını keskinleştirecek 1-2 odak/kapsam sorusu.",
         },
       },
       required: ["literatureMapping", "academicGap", "originalContribution"],
@@ -187,7 +257,7 @@ export const jurySynthesisResultJsonSchema: JsonSchema = {
       type: "array",
       items: { type: "string" },
       description:
-        "İncelenen ilgili tezler arasından kılavuz kart olarak seçilen en stratejik 4-8 tezin ID listesi.",
+        "İncelenen ilgili tezler ve yayınlar arasından kılavuz kart olarak seçilen en stratejik 4-8 yayının ID listesi.",
     },
   },
   required: ["globalStatus", "gapAnalysisSummary", "selectedThesisIds"],
@@ -200,3 +270,4 @@ export interface JuryAnalysisResult {
   gapAnalysisSummary: GapAnalysisStructured;
   recommendedTheses: RecommendedThesisItem[];
 }
+

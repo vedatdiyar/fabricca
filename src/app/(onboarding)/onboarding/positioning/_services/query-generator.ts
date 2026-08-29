@@ -5,25 +5,43 @@ import {
   generateGeminiStructuredContent,
   type JsonSchema,
 } from "@/core/services/ai";
-import { buildQueryGenerationPromptPayload } from "../_prompts/query-generator.prompt";
+import {
+  buildQueryGenerationPromptPayload,
+  type MatrixInputForQuery,
+} from "../_prompts/query-generator.prompt";
 import type { Logger } from "@/lib/logger";
 
-/** Zod schema for generated dense multi-aspect semantic search queries. */
-export const positioningQuerySchema = z.object({
-  primaryEmpiricalQuery: z
+/** Zod schema for 4-channel, 6-facet multi-source queries. */
+export const multiSourcePositioningQuerySchema = z.object({
+  thesisEmpiricalQuery: z
     .string()
     .describe(
-      "Vektör arama motoru için araştırmanın temel ampirik sorunsalını ve olgusunu hedefleyen 20-25 kelimelik yoğun semantik sorgu.",
+      "YÖK tez arşivi için araştırmanın temel ampirik sorunsalını ve vaka alanını hedefleyen yoğun Türkçe semantik sorgu.",
     ),
-  actorsAndSourcesQuery: z
+  thesisMethodologyQuery: z
     .string()
     .describe(
-      "Araştırmanın dayandığı kuramsal modelleri, kavramsal çerçeveyi ve temel analitik eksenleri hedefleyen 20-25 kelimelik semantik sorgu.",
+      "YÖK tez arşivi için araştırmanın yöntemini, kuramsal desenini ve analitik modelini hedefleyen Türkçe sorgu.",
     ),
-  periodAndContextQuery: z
+  globalTheoreticalQuery: z
     .string()
     .describe(
-      "Araştırmanın yöntemini, vaka/örneklem yapısını, dönemini veya ampirik bağlamını hedefleyen 20-25 kelimelik semantik sorgu.",
+      "Uluslararası kuramsal literatür, kavramsal modeller ve seminal yazarlar için İngilizce akademik sorgu.",
+    ),
+  globalEmpiricalQuery: z
+    .string()
+    .describe(
+      "Benzer uluslararası vakalar, ampirik araştırmalar ve olgusal tartışmalar için İngilizce sorgu.",
+    ),
+  dergiparkQuery: z
+    .string()
+    .describe(
+      "Türkiye hakemli dergi makaleleri için DergiPark odaklı akademik Türkçe sorgu.",
+    ),
+  fieldWebQuery: z
+    .string()
+    .describe(
+      "Türkiye sahası, güncel raporlar, mevzuat ve sektörel olgular için Exa arama sorgusu.",
     ),
   substantiveKeywords: z
     .array(z.string())
@@ -32,82 +50,105 @@ export const positioningQuerySchema = z.object({
     ),
 });
 
-export type PositioningQuery = z.infer<typeof positioningQuerySchema>;
+export type MultiSourcePositioningQuery = z.infer<
+  typeof multiSourcePositioningQuerySchema
+>;
 
-/** JSON schema matching positioningQuerySchema for Gemini structured outputs. */
-export const positioningQueryJsonSchema: JsonSchema = {
+/** JSON schema for Gemini structured outputs matching multiSourcePositioningQuerySchema. */
+export const multiSourcePositioningQueryJsonSchema: JsonSchema = {
   type: "object",
   properties: {
-    primaryEmpiricalQuery: {
+    thesisEmpiricalQuery: {
       type: "string",
       description:
-        "Vektör arama motoru için araştırmanın temel ampirik sorunsalını ve olgusunu hedefleyen 20-25 kelimelik yoğun semantik sorgu.",
+        "YÖK tez arşivi için araştırmanın temel ampirik sorunsalını ve vaka alanını hedefleyen yoğun Türkçe semantik sorgu.",
     },
-    actorsAndSourcesQuery: {
+    thesisMethodologyQuery: {
       type: "string",
       description:
-        "Araştırmanın dayandığı kuramsal modelleri, kavramsal çerçeveyi ve temel analitik eksenleri hedefleyen 20-25 kelimelik semantik sorgu.",
+        "YÖK tez arşivi için araştırmanın yöntemini, kuramsal desenini ve analitik modelini hedefleyen Türkçe sorgu.",
     },
-    periodAndContextQuery: {
+    globalTheoreticalQuery: {
       type: "string",
       description:
-        "Araştırmanın yöntemini, vaka/örneklem yapısını, dönemini veya ampirik bağlamını hedefleyen 20-25 kelimelik semantik sorgu.",
+        "Uluslararası kuramsal literatür, kavramsal modeller ve seminal yazarlar için İngilizce akademik sorgu.",
+    },
+    globalEmpiricalQuery: {
+      type: "string",
+      description:
+        "Benzer uluslararası vakalar, ampirik araştırmalar ve olgusal tartışmalar için İngilizce sorgu.",
+    },
+    dergiparkQuery: {
+      type: "string",
+      description:
+        "Türkiye hakemli dergi makaleleri için DergiPark odaklı akademik Türkçe sorgu.",
+    },
+    fieldWebQuery: {
+      type: "string",
+      description:
+        "Türkiye sahası, güncel raporlar, mevzuat ve sektörel olgular için Exa arama sorgusu.",
     },
     substantiveKeywords: {
       type: "array",
       items: { type: "string" },
       description:
-        "Literatür eşleştirmesinde ve yeniden sıralamada kullanılacak 4-6 adet spesifik akademik olgu, aktör, kuram ve yöntem kavramı.",
+        "Literatür eşleştirmesinde ve yeniden sıralamada kullanılacak 4-6 adet spesifik akademik kavram.",
     },
   },
   required: [
-    "primaryEmpiricalQuery",
-    "actorsAndSourcesQuery",
-    "periodAndContextQuery",
+    "thesisEmpiricalQuery",
+    "thesisMethodologyQuery",
+    "globalTheoreticalQuery",
+    "globalEmpiricalQuery",
+    "dergiparkQuery",
+    "fieldWebQuery",
     "substantiveKeywords",
   ],
   additionalProperties: false,
 };
 
 /**
- * Generates 3 complementary empirical, theoretical, and methodological semantic search queries
- * from the thesis matrix using FLASH_LITE_35 with LOW thinking for high speed and determinism.
+ * Generates 6 complementary multi-channel search queries from the thesis matrix or proposal.
  *
- * @param matrix - The positioning matrix containing subjectProblem, theoreticalFramework, methodology.
+ * @param matrix - The input containing subjectProblem and optional theoretical/methodological context.
  * @param logger - Optional logger for observability.
- * @returns The structured multi-aspect positioning query output.
+ * @returns The structured multi-source positioning query output.
  */
 export async function generatePositioningQuery(
-  matrix: { subjectProblem: string },
+  matrix: MatrixInputForQuery,
   logger?: Logger,
-): Promise<PositioningQuery> {
+): Promise<MultiSourcePositioningQuery> {
   const payload = buildQueryGenerationPromptPayload(matrix);
 
   try {
-    const result = await generateGeminiStructuredContent<PositioningQuery>(
-      FLASH_LITE_35,
-      payload.systemInstruction,
-      payload.userPrompt,
-      positioningQueryJsonSchema,
-      logger,
-      {
-        zodSchema: positioningQuerySchema,
-        payloadStage: "positioning_query_generation",
-        seed: GEMINI_SEED,
-        thinkingConfig: { thinkingLevel: ThinkingLevel.LOW },
-        thesisMatrix: matrix,
-        quiet: true,
-      },
-    );
+    const result =
+      await generateGeminiStructuredContent<MultiSourcePositioningQuery>(
+        FLASH_LITE_35,
+        payload.systemInstruction,
+        payload.userPrompt,
+        multiSourcePositioningQueryJsonSchema,
+        logger,
+        {
+          zodSchema: multiSourcePositioningQuerySchema,
+          payloadStage: "positioning_query_generation",
+          seed: GEMINI_SEED,
+          thinkingConfig: { thinkingLevel: ThinkingLevel.LOW },
+          thesisMatrix: matrix,
+          quiet: true,
+        },
+      );
 
     return result;
   } catch (error) {
     logger?.warn("positioning_query_generation_fallback", { error });
     const fallbackSlice = matrix.subjectProblem.slice(0, 250);
     return {
-      primaryEmpiricalQuery: fallbackSlice,
-      actorsAndSourcesQuery: fallbackSlice,
-      periodAndContextQuery: fallbackSlice,
+      thesisEmpiricalQuery: fallbackSlice,
+      thesisMethodologyQuery: fallbackSlice,
+      globalTheoreticalQuery: fallbackSlice,
+      globalEmpiricalQuery: fallbackSlice,
+      dergiparkQuery: `DergiPark ${fallbackSlice}`,
+      fieldWebQuery: fallbackSlice,
       substantiveKeywords: [],
     };
   }
