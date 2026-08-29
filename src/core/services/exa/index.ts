@@ -40,8 +40,9 @@ export async function searchExa(
   const log = new Logger(createFlowId());
   const apiKey = process.env.EXA_API_KEY;
   if (!apiKey) {
-    log.warn("Exa.ai API key is missing. Skipping search.", {
-      step: "exa_search_missing_key",
+    log.warn("exa_search_missing_key", {
+      service: "literature",
+      data: { summary: "EXA_API_KEY missing" },
     });
     return [];
   }
@@ -50,38 +51,36 @@ export async function searchExa(
   const highlights = options?.highlights ?? true;
 
   try {
-    const response = await fetch("https://api.exa.ai/search", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "x-api-key": apiKey,
+    return await log.time(
+      "exa_search",
+      async () => {
+        const response = await fetch("https://api.exa.ai/search", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "x-api-key": apiKey,
+          },
+          body: JSON.stringify({
+            query,
+            type: "auto",
+            numResults,
+            contents: {
+              highlights,
+            },
+          }),
+        });
+
+        if (!response.ok) {
+          const errorBody = await response.text();
+          throw new Error(`Exa API HTTP ${response.status}: ${errorBody}`);
+        }
+
+        const data = (await response.json()) as ExaApiResponse;
+        return data.results ?? [];
       },
-      body: JSON.stringify({
-        query,
-        type: "auto",
-        numResults,
-        contents: {
-          highlights,
-        },
-      }),
-    });
-
-    if (!response.ok) {
-      const errorBody = await response.text();
-      log.error("Exa search API request failed", {
-        step: "exa_search_failed",
-        data: { status: response.status, error: errorBody },
-      });
-      return [];
-    }
-
-    const data = (await response.json()) as ExaApiResponse;
-    return data.results ?? [];
-  } catch (error) {
-    log.error("Unexpected error during Exa search", {
-      step: "exa_search_error",
-      error: error instanceof Error ? error.message : String(error),
-    });
+      { service: "literature" },
+    );
+  } catch {
     return [];
   }
 }

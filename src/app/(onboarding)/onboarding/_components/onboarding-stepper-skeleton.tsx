@@ -14,7 +14,7 @@ export function OnboardingStepperSkeleton() {
       aria-label="Onboarding adım navigasyonu yükleniyor"
     >
       <div className="relative flex h-full flex-col justify-center">
-        {Array.from({ length: 5 }).map((_, index) => (
+        {Array.from({ length: 6 }).map((_, index) => (
           <div
             key={`stepper-skeleton-${index}`}
             className="relative flex w-full items-center pl-4"

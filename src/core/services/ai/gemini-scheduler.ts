@@ -8,6 +8,7 @@
  * naturally catches it up, preserving equal utilization across all keys.
  * If a key exhausts its daily quota (RPD), it fails over to healthy keys until midnight.
  */
+import type { Logger } from "@/lib/logger";
 import {
   GEMINI_FALLBACK_CHAINS,
   GEMINI_FALLBACK_OPERATIONS,
@@ -42,6 +43,8 @@ export interface GeminiDispatchParams<T> {
    * `GEMINI_FALLBACK_OPERATIONS`, a model fallback may be attempted.
    */
   operation?: string;
+  /** Optional logger to output key rotation and scheduler events. */
+  logger?: Logger;
   /**
    * Runs the actual LLM call under the resolved target.
    */
@@ -91,16 +94,44 @@ export async function dispatchGeminiCall<T>(
         recordKeyUsage(apiKey);
         return result;
       } catch (error) {
+        const currentKeyIdx = keyIndicesToTry[i];
         if (isRpdError(error)) {
           markKeyRpdExhausted(model, apiKey);
-          if (i < keyIndicesToTry.length - 1) {
-            continue;
-          }
         } else if (isRateLimitError(error)) {
           markKeyRpmCoolingDown(model, apiKey);
-          if (i < keyIndicesToTry.length - 1) {
-            continue;
-          }
+        }
+
+        if (i < keyIndicesToTry.length - 1) {
+          const nextKeyIdx = keyIndicesToTry[i + 1];
+          params.logger?.info("gemini_key_rotate_retry", {
+            service: "gemini",
+            status: "RETRY",
+            data: {
+              summary: `(key ${currentKeyIdx + 1} failed, rotating to key ${nextKeyIdx + 1}/${pool.length})`,
+              fromKey: currentKeyIdx + 1,
+              toKey: nextKeyIdx + 1,
+              totalKeys: pool.length,
+              model,
+            },
+          });
+          continue;
+        }
+
+        // If this is the last key attempt on the current model, but a fallback model is available
+        if (
+          i === keyIndicesToTry.length - 1 &&
+          model !== models[models.length - 1]
+        ) {
+          const nextModel = models[models.indexOf(model) + 1];
+          params.logger?.info("gemini_model_fallback_retry", {
+            service: "gemini",
+            status: "RETRY",
+            data: {
+              summary: `(all keys failed on ${model}, falling back to ${nextModel})`,
+              fromModel: model,
+              toModel: nextModel,
+            },
+          });
         }
 
         // If this is the last key attempt on the last available model, throw

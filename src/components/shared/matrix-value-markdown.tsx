@@ -14,9 +14,7 @@ const matrixComponents: Components = {
   strong: ({ children }) => (
     <strong className="font-semibold text-foreground">{children}</strong>
   ),
-  em: ({ children }) => (
-    <em className="italic text-foreground">{children}</em>
-  ),
+  em: ({ children }) => <em className="italic text-foreground">{children}</em>,
   ul: ({ children }) => (
     <ul className="list-disc pl-5 space-y-1 my-2 text-sm font-normal text-foreground">
       {children}

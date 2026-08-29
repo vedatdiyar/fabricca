@@ -137,10 +137,8 @@ async function loadSectionContext(userId: number, outlineId: number) {
  */
 async function runCitationAuditTask(
   params: OfficeReviewPromptInput,
+  logger?: Logger,
 ): Promise<{ data: OfficeReviewReport["audit"]; durationMs: number }> {
-  console.log(
-    "  ▶ [Task 1/3 - Citation Audit] Gemini (Flash Lite 3.5 - Low) started...",
-  );
   const start = performance.now();
   const payload = buildCitationAuditPromptPayload(params);
   const data = await generateGeminiStructuredContent<
@@ -150,14 +148,13 @@ async function runCitationAuditTask(
     payload.systemInstruction,
     payload.userPrompt,
     citationAuditJsonSchema,
-    undefined,
+    logger,
     {
       payloadStage: "advisor_citation_audit",
       thinkingConfig: { thinkingLevel: ThinkingLevel.LOW },
     },
   );
   const durationMs = Math.round(performance.now() - start);
-  console.log(`  ✓ [Task 1/3 - Citation Audit] Finished in ${durationMs}ms`);
   return {
     data,
     durationMs,
@@ -169,10 +166,8 @@ async function runCitationAuditTask(
  */
 async function runEditorialPolishTask(
   params: OfficeReviewPromptInput,
+  logger?: Logger,
 ): Promise<{ data: OfficeReviewReport["diff"]; durationMs: number }> {
-  console.log(
-    "  ▶ [Task 2/3 - Editorial Polish] Gemini (Flash Lite 3.5 - Minimal) started...",
-  );
   const start = performance.now();
   const payload = buildEditorialPolishPromptPayload(params);
   const data = await generateGeminiStructuredContent<
@@ -182,14 +177,13 @@ async function runEditorialPolishTask(
     payload.systemInstruction,
     payload.userPrompt,
     editorialPolishJsonSchema,
-    undefined,
+    logger,
     {
       payloadStage: "advisor_editorial_polish",
       thinkingConfig: { thinkingLevel: ThinkingLevel.MINIMAL },
     },
   );
   const durationMs = Math.round(performance.now() - start);
-  console.log(`  ✓ [Task 2/3 - Editorial Polish] Finished in ${durationMs}ms`);
   return {
     data,
     durationMs,
@@ -201,10 +195,8 @@ async function runEditorialPolishTask(
  */
 async function runJuryCritiquesTask(
   params: OfficeReviewPromptInput,
+  logger?: Logger,
 ): Promise<{ data: { juryCritiques: JuryCritique[] }; durationMs: number }> {
-  console.log(
-    "  ▶ [Task 3/3 - Jury Critiques] Gemini (Flash Lite 3.5 - Low) started...",
-  );
   const start = performance.now();
   const payload = buildJuryCritiquesPromptPayload(params);
   const data = await generateGeminiStructuredContent<{
@@ -214,14 +206,13 @@ async function runJuryCritiquesTask(
     payload.systemInstruction,
     payload.userPrompt,
     juryCritiquesJsonSchema,
-    undefined,
+    logger,
     {
       payloadStage: "advisor_jury_critiques",
       thinkingConfig: { thinkingLevel: ThinkingLevel.LOW },
     },
   );
   const durationMs = Math.round(performance.now() - start);
-  console.log(`  ✓ [Task 3/3 - Jury Critiques] Finished in ${durationMs}ms`);
   return {
     data,
     durationMs,
@@ -231,10 +222,7 @@ async function runJuryCritiquesTask(
 /**
  * Runs Danışmanın Çalışma Odası Stage 1 Review:
  * 1. Hybrid RAG retrieval + Outline/Annotation Grounding.
- * 2. 3 Concurrent (Parallel) LLM Tasks via Promise.all with real-time start/end logs:
- *    - Task 1: Ultra-strict Citation & Page Auditor (Red Pen)
- *    - Task 2: Non-destructive Editorial Polish Stylist (Yellow Pen)
- *    - Task 3: Senior Defense Jury Challenger (Blue Pen)
+ * 2. 3 Concurrent (Parallel) LLM Tasks via Promise.all.
  * 3. Immediate DB persistence into `sessions` and `messages`.
  *
  * @param input - userId, outlineId, draftText.
@@ -247,33 +235,24 @@ export async function runOfficeReview(
   const logger = new Logger(createFlowId());
   const overallStart = performance.now();
 
-  console.log(`\n🔵 [Advisor Review] >>> STARTING STAGE 1 REVIEW`);
-  console.log(
-    `   Outline ID: ${outlineId} | Draft length: ${draftText.length} chars (~${draftText.trim().split(/\s+/).length} words)`,
-  );
-
   // Step 1: Load section context & notes
-  const step1Start = performance.now();
-  const { outline, pinnedSourceIds, notesContext, notesCount } =
-    await loadSectionContext(userId, outlineId);
-  const step1Duration = Math.round(performance.now() - step1Start);
-  console.log(
-    `📦 [Advisor Step 1/3] Context loaded in ${step1Duration}ms (Outline: "${outline?.title || "N/A"}", Pinned Sources: ${pinnedSourceIds.length}, Notes: ${notesCount})`,
-  );
+  const { outline, pinnedSourceIds, notesContext } =
+    await logger.time(
+      "load_section_context",
+      () => loadSectionContext(userId, outlineId),
+      { service: "advisor" },
+    );
 
   // Step 2: Hybrid RAG Search
-  console.log(
-    `🔍 [Advisor Step 2/3] Running Hybrid RAG search (Cloudflare BGE-M3 + Neon pgvector + Cohere Rerank)...`,
-  );
-  const step2Start = performance.now();
-  const ragSources = await performHybridRagSearch({
-    query: draftText,
-    resourceIds: pinnedSourceIds.length > 0 ? pinnedSourceIds : undefined,
-    topK: 7,
-  });
-  const step2Duration = Math.round(performance.now() - step2Start);
-  console.log(
-    `✅ [Advisor Step 2/3] Hybrid RAG finished in ${step2Duration}ms (Retrieved ${ragSources.length} relevant chunks)`,
+  const ragSources = await logger.time(
+    "hybrid_rag_search",
+    () =>
+      performHybridRagSearch({
+        query: draftText,
+        resourceIds: pinnedSourceIds.length > 0 ? pinnedSourceIds : undefined,
+        topK: 7,
+      }),
+    { service: "rag-search" },
   );
 
   const ragContext =
@@ -289,46 +268,24 @@ export async function runOfficeReview(
     notesContext,
   };
 
-  logger.info("Starting concurrent parallel office review tasks", {
-    service: "advisor",
-    step: "office_review_parallel_start",
-    data: {
-      userId,
-      outlineId,
-      draftWordCount: draftText.trim().split(/\s+/).length,
-      ragSourcesCount: ragSources.length,
-    },
-  });
-
-  console.log(
-    `⚡ [Advisor Step 3/3] DISPATCHING 3 CONCURRENT GEMINI TASKS (Promise.all)...`,
-  );
-
   // Run all 3 specialized LLM tasks concurrently in parallel
   const [auditRes, diffRes, juryRes] = await Promise.all([
-    runCitationAuditTask(promptInput),
-    runEditorialPolishTask(promptInput),
-    runJuryCritiquesTask(promptInput),
+    runCitationAuditTask(promptInput, logger),
+    runEditorialPolishTask(promptInput, logger),
+    runJuryCritiquesTask(promptInput, logger),
   ]);
 
   const totalDurationMs = Math.round(performance.now() - overallStart);
 
-  logger.info("Parallel office review completed successfully", {
+  logger.total("advisor_review", totalDurationMs, {
     service: "advisor",
-    step: "office_review_parallel_completed",
-    durationMs: totalDurationMs,
     data: {
-      step1Duration,
-      step2Duration,
-      citationAuditDurationMs: auditRes.durationMs,
-      editorialPolishDurationMs: diffRes.durationMs,
-      juryCritiquesDurationMs: juryRes.durationMs,
+      summary: "3 review models & context completed",
+      auditDurationMs: auditRes.durationMs,
+      diffDurationMs: diffRes.durationMs,
+      juryDurationMs: juryRes.durationMs,
     },
   });
-
-  console.log(
-    `🏁 [Advisor Review] >>> ALL COMPLETED in ${totalDurationMs}ms | Audit: ${auditRes.durationMs}ms | Polish: ${diffRes.durationMs}ms | Jury: ${juryRes.durationMs}ms\n`,
-  );
 
   const reviewReport: OfficeReviewReport = {
     audit: auditRes.data,

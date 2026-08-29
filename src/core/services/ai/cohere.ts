@@ -54,6 +54,7 @@ export interface RerankParams {
   documents: string[];
   topN?: number;
   logger?: Logger;
+  silent?: boolean;
 }
 
 /**
@@ -67,7 +68,7 @@ export interface RerankParams {
 export async function rerankWithCohere(
   params: RerankParams,
 ): Promise<RerankResult[]> {
-  const { query, documents, logger } = params;
+  const { query, documents, logger, silent } = params;
 
   if (documents.length === 0) return [];
 
@@ -84,6 +85,8 @@ export async function rerankWithCohere(
 
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), COHERE_TIMEOUT_MS);
+
+  const rerankStart = performance.now();
 
   try {
     const response = await cohereRequestQueue.exec(() =>
@@ -128,17 +131,14 @@ export async function rerankWithCohere(
           getRetryAfter: (error) =>
             error instanceof HttpError ? error.retryAfter : null,
           onRetry: (attempt, delayMs, error) => {
-            const status =
-              error instanceof HttpError ? error.status : undefined;
-            logger?.info("cohere_rerank_retry", {
+            logger?.retry("cohere_rerank", {
               service: "cohere",
+              durationMs: delayMs,
+              error,
               data: {
+                summary: `(attempt ${attempt}/${COHERE_MAX_RETRIES})`,
                 attempt,
-                maxRetries: COHERE_MAX_RETRIES,
                 delayMs: Math.round(delayMs),
-                status,
-                errorMessage:
-                  error instanceof Error ? error.message : String(error),
               },
             });
           },
@@ -164,10 +164,13 @@ export async function rerankWithCohere(
       }))
       .sort((a, b) => b.relevanceScore - a.relevanceScore);
 
-    if (results.length !== documents.length) {
-      logger?.info("cohere_rerank_partial_scores", {
+    const durationMs = Math.round(performance.now() - rerankStart);
+    if (!silent) {
+      logger?.success("cohere_rerank", {
         service: "cohere",
+        durationMs,
         data: {
+          summary: `(${documents.length} docs)`,
           returned: results.length,
           expected: documents.length,
         },
@@ -176,8 +179,10 @@ export async function rerankWithCohere(
 
     return results;
   } catch (error) {
-    logger?.error("cohere_rerank_failed", {
+    const durationMs = Math.round(performance.now() - rerankStart);
+    logger?.failed("cohere_rerank", {
       service: "cohere",
+      durationMs,
       error,
     });
     throw toAiProviderError(error, "cohere");

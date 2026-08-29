@@ -1,6 +1,5 @@
 import React from "react";
 import { Compass, ScanEye, Sparkles } from "lucide-react";
-import { Card } from "@/components/ui/card";
 import type { GapAnalysisStructured } from "@/app/(onboarding)/onboarding/positioning/_services/validation";
 
 interface PositioningMarkdownRendererProps {
@@ -210,11 +209,11 @@ export function PositioningMarkdownRenderer({
       {sections.map((sec) => {
         const Icon = sec.icon;
         return (
-          <Card
+          <div
             key={sec.step}
             className={`p-4 sm:p-5 rounded-md border transition-all duration-200 space-y-3 ${
               sec.isHighlight
-                ? "border-primary/30 bg-primary/5 hover:border-primary/40"
+                ? "border-primary/20 bg-primary/10 hover:border-primary/40"
                 : "border-border bg-card hover:border-primary/20"
             }`}
           >
@@ -229,23 +228,23 @@ export function PositioningMarkdownRenderer({
                   {sec.title}
                 </h3>
               </div>
-              <span className="font-sans text-xs font-medium text-muted-foreground bg-secondary px-2 py-0.5 rounded-md border border-border shrink-0">
+              <span className="font-sans text-xs font-medium text-secondary-foreground bg-secondary px-2 py-0.5 rounded-md border border-border shrink-0">
                 {sec.subtitle}
               </span>
             </div>
 
             {/* Content Paragraphs */}
-            <div className="text-sm font-normal leading-relaxed text-muted-foreground space-y-2 font-sans">
+            <div className="text-sm font-normal leading-relaxed text-foreground space-y-2 font-sans">
               {sec.content.split("\n\n").map((para) => (
                 <p
                   key={paragraphKey(para)}
-                  className="text-muted-foreground leading-relaxed"
+                  className="text-foreground leading-relaxed"
                 >
                   {parseInlineMarkdown(para)}
                 </p>
               ))}
             </div>
-          </Card>
+          </div>
         );
       })}
     </div>

@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { useRouter } from "next/navigation";
 import { RotateCcw, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { useQueryClient } from "@tanstack/react-query";
@@ -22,13 +21,13 @@ import { resetOnboardingAction } from "@/app/(onboarding)/onboarding/actions";
 
 /**
  * Renders a confirmation dialog that resets the entire onboarding process.
+ * Uses hard navigation to guarantee all client-side state (useState, TanStack cache, RSC cache) is fully discarded.
  *
  * @param root0 - The button props object.
  * @param root0.className - Additional CSS classes for the trigger button.
  * @returns The reset confirmation dialog trigger button.
  */
 export function StartOverButton({ className, ...props }: ButtonProps) {
-  const router = useRouter();
   const queryClient = useQueryClient();
   const [isOpen, setIsOpen] = useState(false);
   const [isPending, startTransition] = useTransition();
@@ -43,8 +42,10 @@ export function StartOverButton({ className, ...props }: ButtonProps) {
           queryClient.clear();
           toast.success("Onboarding süreci başarıyla sıfırlandı.");
           setIsOpen(false);
-          router.replace("/onboarding/matrix");
-          router.refresh();
+          // Hard navigation guarantees ProposalStudio and all other onboarding client components
+          // remount with fresh server props (router.replace + router.refresh alone preserves useState).
+          // eslint-disable-next-line @next/next/no-location-assign-relative-destination
+          window.location.assign("/onboarding/proposal");
         }
       } catch {
         toast.error(

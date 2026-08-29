@@ -22,7 +22,12 @@ export const TQ_KEYS = {
   reanalyze: ["reanalyze"] as const,
 } as const;
 
-export type OnboardingStep = "matrix" | "positioning" | "boxes" | "outline";
+export type OnboardingStep =
+  | "proposal"
+  | "matrix"
+  | "positioning"
+  | "boxes"
+  | "outline";
 
 /**
  * Maps each onboarding step to the cache entries that become stale when that step is
@@ -36,6 +41,21 @@ export const STEP_CACHE_DEPENDENCIES: Record<
     tanStackKeys: readonly (readonly string[])[];
   }
 > = {
+  proposal: {
+    nextJsTags: [
+      CACHE_TAGS.thesisMatrix,
+      CACHE_TAGS.positioning,
+      CACHE_TAGS.thesisBoxes,
+      CACHE_TAGS.thesisOutline,
+    ] as const,
+    tanStackKeys: [
+      TQ_KEYS.positioning,
+      TQ_KEYS.boxes,
+      TQ_KEYS.outline,
+      TQ_KEYS.onboardingSteps,
+      TQ_KEYS.reanalyze,
+    ] as const,
+  },
   matrix: {
     nextJsTags: [
       CACHE_TAGS.positioning,

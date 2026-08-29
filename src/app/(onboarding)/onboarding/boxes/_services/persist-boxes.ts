@@ -58,7 +58,6 @@ export async function persistBoxesAction(
     ? PipelineRun.resume(BOX_GENERATION_PIPELINE, flowId)
     : PipelineRun.create(BOX_GENERATION_PIPELINE);
   const log = run.logger;
-  const startTime = performance.now();
 
   try {
     const session = await getSession();
@@ -97,7 +96,7 @@ export async function persistBoxesAction(
       });
     }
 
-    run.finish({ durationMs: Math.round(performance.now() - startTime) });
+    run.finish();
 
     return { success: true };
   } catch {

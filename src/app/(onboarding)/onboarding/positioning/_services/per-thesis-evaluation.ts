@@ -41,13 +41,6 @@ export async function evaluateThesesInParallel(
   }
 
   const evalStart = performance.now();
-  logger?.info("per_thesis_evaluation_start", {
-    service: "gemini",
-    filePath:
-      "src/app/(onboarding)/onboarding/positioning/_services/per-thesis-evaluation.ts",
-    hidden: true,
-    data: { candidateCount: theses.length, chunkSize: BATCH_CHUNK_SIZE },
-  });
 
   // Divide candidate list into chunks of 4
   const chunks: SiftedThesis[][] = [];
@@ -113,20 +106,17 @@ export async function evaluateThesesInParallel(
     }
   }
 
-  logger?.info("per_thesis_evaluation_success", {
+  const durationMs = Math.round(performance.now() - evalStart);
+  logger?.success("evaluate_theses", {
     service: "gemini",
-    filePath:
-      "src/app/(onboarding)/onboarding/positioning/_services/per-thesis-evaluation.ts",
-    durationMs: performance.now() - evalStart,
+    durationMs,
     hidden: true,
     data: {
+      summary: `(${theses.length} candidate theses in parallel)`,
       totalCandidates: theses.length,
       evaluatedCount: evaluatedTheses.length,
-      relevantCount: evaluatedTheses.filter((e) => e.evaluation.isRelevant)
-        .length,
-      overlappingCount: evaluatedTheses.filter(
-        (e) => e.evaluation.isDirectOverlap,
-      ).length,
+      relevantCount: evaluatedTheses.filter((e) => e.evaluation.isRelevant).length,
+      overlappingCount: evaluatedTheses.filter((e) => e.evaluation.isDirectOverlap).length,
     },
   });
 

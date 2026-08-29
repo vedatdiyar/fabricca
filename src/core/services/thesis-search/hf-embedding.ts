@@ -91,15 +91,15 @@ export async function getE5QueryEmbedding(
           return true;
         },
         onRetry: (attempt, delayMs, error) => {
-          logger?.info("hf_embedding_retry", {
+          logger?.retry("hf_embedding", {
             service: "thesis-search",
             filePath: "src/core/services/thesis-search/hf-embedding.ts",
-            step: "get_query_embedding",
+            durationMs: delayMs,
+            error,
             data: {
+              summary: `(attempt ${attempt}/${MAX_RETRIES})`,
               attempt,
               delayMs: Math.round(delayMs),
-              errorMessage:
-                error instanceof Error ? error.message : String(error),
             },
           });
         },
@@ -108,7 +108,7 @@ export async function getE5QueryEmbedding(
 
     const durationMs = performance.now() - startTime;
     if (!silent) {
-      logger?.info("hf_embedding_success", {
+      logger?.success("hf_embedding", {
         service: "thesis-search",
         filePath: "src/core/services/thesis-search/hf-embedding.ts",
         step: "get_query_embedding",
@@ -120,12 +120,10 @@ export async function getE5QueryEmbedding(
     return vector;
   } catch (err) {
     const durationMs = performance.now() - startTime;
-    logger?.error("hf_embedding_failed", {
+    logger?.failed("hf_embedding", {
       service: "thesis-search",
       filePath: "src/core/services/thesis-search/hf-embedding.ts",
-      step: "get_query_embedding",
       durationMs,
-      data: { query: trimmed },
       error: err,
     });
     throw err;

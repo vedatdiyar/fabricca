@@ -12,7 +12,15 @@ const globalForDb = globalThis as unknown as {
 };
 
 const pool =
-  globalForDb.pool ?? new Pool({ connectionString: process.env.DATABASE_URL });
+  globalForDb.pool ??
+  (() => {
+    const p = new Pool({ connectionString: process.env.DATABASE_URL });
+    p.on("error", (err: unknown) => {
+      // Idle WebSocket connections to Neon may drop or time out; catching here avoids uncaughtException crashes.
+      console.warn("Neon DB pool idle connection event:", err);
+    });
+    return p;
+  })();
 globalForDb.pool = pool;
 
 export const db = drizzle(pool, { schema, casing: "snake_case" });

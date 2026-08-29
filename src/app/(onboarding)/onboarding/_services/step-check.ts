@@ -28,11 +28,20 @@ export async function checkStepsDataAction(): Promise<Record<
     const userId = session.userId;
 
     const [matrix] = await db
-      .select({ id: matrices.id })
+      .select({
+        id: matrices.id,
+        rawProposal: matrices.rawProposal,
+        subjectProblem: matrices.subjectProblem,
+      })
       .from(matrices)
       .where(eq(matrices.userId, userId));
 
-    const hasMatrix = !!matrix;
+    const hasProposal = Boolean(
+      matrix?.rawProposal && matrix.rawProposal.trim().length >= 50,
+    );
+    const hasMatrix = Boolean(
+      matrix && matrix.subjectProblem && matrix.subjectProblem.trim().length > 0,
+    );
 
     let hasPositioning = false;
     let hasBoxes = false;
@@ -80,6 +89,7 @@ export async function checkStepsDataAction(): Promise<Record<
     }
 
     return {
+      proposal: hasProposal,
       matrix: hasMatrix,
       positioning: hasPositioning,
       boxes: hasBoxes,

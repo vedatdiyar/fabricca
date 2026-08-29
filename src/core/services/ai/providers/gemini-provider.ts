@@ -44,8 +44,6 @@ export async function generateStructuredContent<T>(
   logger?: Logger,
   options?: StructuredGenerationOptions<T>,
 ): Promise<T> {
-  const scheduledTime = performance.now();
-
   const thinkingLevel = options?.thinkingConfig?.thinkingLevel;
   const callLabel = options?.payloadStage ?? "gemini";
   const operation = options?.operation;
@@ -71,13 +69,16 @@ export async function generateStructuredContent<T>(
     return await dispatchGeminiCall<T>({
       model: modelName,
       operation,
+      logger,
       task: async ({ model, apiKey }) => {
+        const taskStartTime = performance.now();
         const projectIndex = getProjectIndex(apiKey);
 
         if (options?.quiet !== true) {
-          logger?.info(`${callLabel}_scheduled`, {
+          logger?.info(`${callLabel}_start`, {
             service: "gemini",
             data: {
+              summary: `(${model}, key ${projectIndex + 1})`,
               model,
               projectIndex: projectIndex + 1,
               instructionLength: systemInstruction.length,
@@ -180,7 +181,7 @@ export async function generateStructuredContent<T>(
             throw err;
           }
 
-          const durationMs = performance.now() - scheduledTime;
+          const taskDurationMs = performance.now() - taskStartTime;
           const metadata = (
             response as unknown as {
               usageMetadata?: {
@@ -205,7 +206,7 @@ export async function generateStructuredContent<T>(
           if (options?.quiet !== true) {
             logger?.info(`${callLabel}_success`, {
               service: "gemini",
-              durationMs,
+              durationMs: taskDurationMs,
               tokens,
               data: {
                 model,
@@ -218,7 +219,7 @@ export async function generateStructuredContent<T>(
           }
           return parsed;
         } catch (error) {
-          const durationMs = performance.now() - scheduledTime;
+          const taskDurationMs = performance.now() - taskStartTime;
           const scenario = classifyError(error);
           const quotaDetails = extractQuotaDetails(error);
 
@@ -228,7 +229,7 @@ export async function generateStructuredContent<T>(
           logger?.error(`${callLabel}_failed`, {
             service: "gemini",
             filePath: "src/services/ai/providers/gemini-provider.ts",
-            durationMs,
+            durationMs: taskDurationMs,
             data: {
               model,
               projectIndex: projectIndex + 1,

@@ -45,6 +45,7 @@ export async function resetOnboardingAction(): Promise<
     await writeSessionCookie(session, false);
 
     revalidateOnboardingPaths();
+    revalidatePath("/onboarding/proposal");
     revalidatePath("/onboarding/matrix");
     invalidateOnboardingCache();
 
@@ -65,7 +66,7 @@ export async function resetOnboardingAction(): Promise<
  * @returns A success flag or an error message.
  */
 export async function clearDownstreamDbAction(
-  fromStep: "matrix" | "positioning" | "boxes" | "outline",
+  fromStep: "proposal" | "matrix" | "positioning" | "boxes" | "outline",
 ): Promise<{ success: boolean } | { error: string }> {
   const session = await getSession();
   if (!session) return { error: SESSION_ERROR_MSG };
@@ -74,7 +75,29 @@ export async function clearDownstreamDbAction(
 
   try {
     await db.transaction(async (tx) => {
-      if (fromStep === "matrix") {
+      if (fromStep === "proposal") {
+        await tx.delete(positioning).where(eq(positioning.userId, userId));
+
+        const matrixResult = await tx
+          .select({ id: matrices.id })
+          .from(matrices)
+          .where(eq(matrices.userId, userId));
+
+        const matrix = matrixResult[0];
+        if (matrix) {
+          await tx.delete(outlines).where(eq(outlines.matrixId, matrix.id));
+          await tx.delete(boxes).where(eq(boxes.matrixId, matrix.id));
+          await tx
+            .update(matrices)
+            .set({
+              subjectProblem: "",
+              theoreticalFramework: "",
+              primaryMaterial: null,
+              methodology: "",
+            })
+            .where(eq(matrices.id, matrix.id));
+        }
+      } else if (fromStep === "matrix") {
         await tx.delete(positioning).where(eq(positioning.userId, userId));
 
         const matrixResult = await tx

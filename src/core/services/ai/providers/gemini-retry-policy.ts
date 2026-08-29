@@ -44,19 +44,20 @@ export function createGeminiRetryPolicy(
     baseDelay: 2000,
     onAttempt: (attempt, previousError) => {
       onAttemptCallback?.(attempt);
-      logger?.info("ai_attempt", {
-        service: "gemini",
-        filePath: "src/services/ai/providers/gemini-provider.ts",
-        data: {
-          attempt,
-          maxRetries,
-          projectIndex: projectIndex + 1,
-          model,
-          retried: attempt > 1,
-          previousError:
-            previousError instanceof Error ? previousError.message : undefined,
-        },
-      });
+      if (attempt > 1) {
+        logger?.retry("gemini", {
+          service: "gemini",
+          filePath: "src/services/ai/providers/gemini-provider.ts",
+          error: previousError,
+          data: {
+            summary: `(attempt ${attempt}/${maxRetries}, key ${projectIndex + 1})`,
+            attempt,
+            maxRetries,
+            projectIndex: projectIndex + 1,
+            model,
+          },
+        });
+      }
     },
     getDelay: (attempt, error, defaultDelay) => {
       if (isServerOverloadError(error)) {
@@ -75,7 +76,7 @@ export function createGeminiRetryPolicy(
       }
       return defaultDelay;
     },
-    isRetryable: (error) => {
+    isRetryable: (error, attempt = 1) => {
       if (error instanceof Error) {
         // If it's an RPD (Daily Quota) error, do not retry on the same key;
         // let dispatchGeminiCall immediately switch to the next API key!
@@ -92,7 +93,7 @@ export function createGeminiRetryPolicy(
           return true;
         }
 
-        if (
+        const isOverload =
           isServerOverloadError(error) ||
           ("status" in error &&
             ((error as { status: string }).status === "UNAVAILABLE" ||
@@ -102,8 +103,14 @@ export function createGeminiRetryPolicy(
               (error as { code: number }).code === 429)) ||
           error.message.includes("high demand") ||
           error.message.includes("503") ||
-          error.message.includes("UNAVAILABLE")
-        ) {
+          error.message.includes("UNAVAILABLE");
+
+        if (isOverload) {
+          // If multiple keys exist in the pool, avoid stalling for 3 consecutive timeouts
+          // on the same key. Allow 1 retry on the current key, then failover on attempt >= 2.
+          if (getGeminiKeyPool().keys.length > 1 && attempt >= 2) {
+            return false;
+          }
           return true;
         }
       }
@@ -113,12 +120,15 @@ export function createGeminiRetryPolicy(
       const httpStatus = extractHttpStatus(error);
       const quotaDetails = extractQuotaDetails(error);
       const retryAfterMs = extractRetryDelayMs(error);
-      logger?.info("ai_retry_attempt", {
+      logger?.info("gemini_retry", {
         service: "gemini",
+        status: "RETRY",
         filePath: "src/services/ai/providers/gemini-provider.ts",
         step: `retry_attempt_${attempt}`,
         durationMs: delay,
+        error,
         data: {
+          summary: `(attempt ${attempt}/${maxRetries}, key ${projectIndex + 1})`,
           attempt,
           maxRetries,
           projectIndex: projectIndex + 1,

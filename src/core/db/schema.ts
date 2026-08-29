@@ -70,17 +70,20 @@ export type User = InferSelectModel<typeof users>;
 
 export type NewUser = InferInsertModel<typeof users>;
 
-/** Thesis Matrix table — stores subjectProblem, theoreticalFramework, primaryMaterial, and methodology from the first onboarding step. */
+/** Thesis Matrix table — stores proposal intake, audit results, and the 4-quadrant academic thesis matrix. */
 export const matrices = pgTable("matrices", {
   id: serial().primaryKey(),
   userId: integer()
     .notNull()
     .references(() => users.id, { onDelete: "cascade" })
     .unique(),
-  subjectProblem: text("subject_problem").notNull(),
-  theoreticalFramework: text("theoretical_framework").notNull(),
+  rawProposal: text("raw_proposal"),
+  evidenceSummary: text("evidence_summary"),
+  auditResult: jsonb("audit_result").$type<Record<string, unknown>>(),
+  subjectProblem: text("subject_problem").notNull().default(""),
+  theoreticalFramework: text("theoretical_framework").notNull().default(""),
   primaryMaterial: text("primary_material"),
-  methodology: text("methodology").notNull(),
+  methodology: text("methodology").notNull().default(""),
   advisorMessages: jsonb("advisor_messages")
     .$type<MatrixAdvisorMessage[]>()
     .default([]),

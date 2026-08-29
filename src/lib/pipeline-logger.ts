@@ -1,5 +1,9 @@
 import { Logger, createFlowId } from "./logger";
-import { C_GREEN, C_RED, C_RESET, formatDuration } from "./logger-format";
+import {
+  formatPipelineHeader,
+  formatStageLine,
+  formatPipelineFinish,
+} from "./logger-format";
 import { stageIndexOf, type PipelineDefinition } from "./pipeline-definitions";
 
 interface StageRecord {
@@ -14,6 +18,7 @@ interface StageRecord {
 interface FlowRecord {
   definitionId: string;
   createdAt: number;
+  headerPrinted: boolean;
   stages: Map<string, StageRecord>;
 }
 
@@ -34,9 +39,33 @@ function pruneFlows(now: number): void {
 }
 
 /**
- * Orchestrates logging for a multi-step pipeline run: emits conforming
- * `<pipeline>_<stage>_start/_success/_failed` event pairs per stage and a
- * final TOTAL summary with the full stage manifest.
+ * Maps a stage key to a default human-readable technical description.
+ *
+ * @param key - The stage key.
+ * @returns Technical description for terminal logging.
+ */
+function defaultDescriptionForKey(key: string): string {
+  const map: Record<string, string> = {
+    save: "State Checkpoint",
+    search: "Cohere Rerank & Vector Search",
+    jury_review: "Gemini Parallel Review",
+    jury: "Gemini Parallel Review",
+    persist: "Final Storage",
+    decompose: "Gemini Flash",
+    discovery: "Parallel Literature Scan",
+    critique: "Gemini Flash",
+    analysis: "User Clarification Answers",
+    synthesis: "Matrix Synthesis",
+    generate: "AI Synthesis",
+    check: "Literature Pool Check",
+    scan: "Academic Sources Scan",
+  };
+  return map[key] || key.replace(/_/g, " ");
+}
+
+/**
+ * Orchestrates logging for a multi-step pipeline run: emits clean badge-aligned
+ * stage completions, parallel sub-steps, and a final summary.
  */
 export class PipelineRun {
   public readonly flowId: string;
@@ -45,6 +74,7 @@ export class PipelineRun {
   private readonly definition: PipelineDefinition;
   private readonly record: FlowRecord;
   private finished = false;
+  private readonly devMode = process.env.NODE_ENV === "development";
 
   /**
    * Creates a fresh pipeline run with a new flowId.
@@ -90,6 +120,7 @@ export class PipelineRun {
       this.record = {
         definitionId: definition.id,
         createdAt: Date.now(),
+        headerPrinted: false,
         stages: new Map(),
       };
       flows.set(flowId, this.record);
@@ -99,27 +130,70 @@ export class PipelineRun {
   }
 
   /**
-   * Runs a single pipeline stage, emitting its start/success/failed event pair,
-   * measuring its duration, and rethrowing any failure to the caller.
+   * Prints the pipeline header banner if it has not yet been output for this flow.
+   */
+  private printHeader(): void {
+    if (this.record.headerPrinted) return;
+    this.record.headerPrinted = true;
+    if (this.devMode) {
+      console.log(
+        formatPipelineHeader({
+          module: this.definition.service,
+          name: this.definition.id,
+        }),
+      );
+    }
+  }
+
+  /**
+   * Emits a formatted sub-step log line under the current stage (e.g. for parallel calls).
+   *
+   * @param description - Short technical label of the sub-step.
+   * @param durationMs - Duration in milliseconds.
+   * @param status - Step status (SUCCESS, FAILED, RETRY).
+   * @param options - Additional error or backoff parameters.
+   */
+  subStep(
+    description: string,
+    durationMs: number,
+    status: "SUCCESS" | "FAILED" | "RETRY" = "SUCCESS",
+    options?: { backoffMs?: number; error?: unknown },
+  ): void {
+    this.printHeader();
+    if (this.devMode) {
+      console.log(
+        formatStageLine({
+          isSubStep: true,
+          description,
+          durationMs: Math.round(durationMs),
+          status,
+          backoffMs: options?.backoffMs,
+          error: options?.error,
+        }),
+      );
+    }
+  }
+
+  /**
+   * Runs a single pipeline stage, emitting its completion event,
+   * measuring pure execution duration, and rethrowing any failure.
    *
    * @param key - The stage key declared in the pipeline definition.
    * @param fn - The stage work; must throw on failure so the stage is marked FAILED.
+   * @param options - Optional custom description for the terminal line.
    * @returns The value returned by the stage work.
    */
-  async execute<R>(key: string, fn: () => Promise<R>): Promise<R> {
+  async execute<R>(
+    key: string,
+    fn: () => Promise<R>,
+    options?: { description?: string },
+  ): Promise<R> {
+    this.printHeader();
     const index = stageIndexOf(this.definition, key);
     const total = this.definition.stages.length;
-    const eventBase = `${this.definition.id}_${key}`;
+    const stageDesc =
+      options?.description ?? defaultDescriptionForKey(key);
     const startedAt = performance.now();
-
-    this.logger.info(`${eventBase}_start`, {
-      service: this.definition.service,
-      data: {
-        summary: `[${index + 1}/${total}]`,
-        stageIndex: index + 1,
-        stageTotal: total,
-      },
-    });
 
     try {
       const result = await fn();
@@ -131,10 +205,30 @@ export class PipelineRun {
         startedAt,
         durationMs,
       });
-      this.logger.info(`${eventBase}_success`, {
-        service: this.definition.service,
-        durationMs,
-      });
+
+      if (this.devMode) {
+        console.log(
+          formatStageLine({
+            stageIndex: index + 1,
+            stageTotal: total,
+            stageKey: key,
+            description: stageDesc,
+            durationMs,
+            status: "SUCCESS",
+          }),
+        );
+      } else {
+        const eventBase = `${this.definition.id}_${key}`;
+        this.logger.success(`${eventBase}_success`, {
+          service: this.definition.service,
+          durationMs,
+          data: {
+            summary: `[${index + 1}/${total}]`,
+            stageIndex: index + 1,
+            stageTotal: total,
+          },
+        });
+      }
       return result;
     } catch (err) {
       const durationMs = Math.round(performance.now() - startedAt);
@@ -146,20 +240,40 @@ export class PipelineRun {
         durationMs,
         error: err instanceof Error ? err.message : String(err),
       });
-      this.logger.info(`${eventBase}_failed`, {
-        service: this.definition.service,
-        durationMs,
-        error: err,
-      });
+
+      if (this.devMode) {
+        console.log(
+          formatStageLine({
+            stageIndex: index + 1,
+            stageTotal: total,
+            stageKey: key,
+            description: stageDesc,
+            durationMs,
+            status: "FAILED",
+            error: err,
+          }),
+        );
+      } else {
+        const eventBase = `${this.definition.id}_${key}`;
+        this.logger.failed(`${eventBase}_failed`, {
+          service: this.definition.service,
+          durationMs,
+          error: err,
+          data: {
+            summary: `[${index + 1}/${total}]`,
+            stageIndex: index + 1,
+            stageTotal: total,
+          },
+        });
+      }
       throw err;
     }
   }
 
   /**
-   * Emits the final TOTAL line with the accumulated stage manifest and clears
-   * the flow record; safe to call multiple times within one flow.
+   * Emits the final completion summary line with accumulated pure execution duration.
    *
-   * @param p - Optional override of the total duration in milliseconds.
+   * @param p - Optional override of total duration in milliseconds.
    */
   finish(p?: { durationMs?: number }): void {
     if (this.finished) return;
@@ -171,46 +285,36 @@ export class PipelineRun {
 
     let durationMs = p?.durationMs;
     if (durationMs === undefined && stages.length > 0) {
-      const firstStart = Math.min(...stages.map((s) => s.startedAt));
-      const lastEnd = Math.max(
-        ...stages.map((s) => s.startedAt + s.durationMs),
-      );
-      durationMs = Math.round(lastEnd - firstStart);
+      durationMs = stages.reduce((acc, s) => acc + s.durationMs, 0);
     }
     if (durationMs === undefined) return;
 
-    this.logger.total(this.definition.id, durationMs, {
-      service: this.definition.service,
-      data: {
-        stages: stages.map(({ key, status, durationMs: d }) => ({
-          key,
-          status,
-          durationMs: d,
-        })),
-      },
-    });
-    this.printDevManifest(stages);
+    const totalStages = this.definition.stages.length;
+
+    if (this.devMode) {
+      console.log(
+        formatPipelineFinish({
+          completedStages: stages.length,
+          totalStages,
+          durationMs,
+          status: "SUCCESS",
+        }),
+      );
+    } else {
+      const summary = `(${stages.length}/${totalStages} stages)`;
+      this.logger.total(this.definition.id, durationMs, {
+        service: "pipeline",
+        data: {
+          summary,
+          stages: stages.map(({ key, status, durationMs: d }) => ({
+            key,
+            status,
+            durationMs: d,
+          })),
+        },
+      });
+    }
 
     flows.delete(this.flowId);
-  }
-
-  /**
-   * Prints the compact per-stage manifest beneath the TOTAL line in dev mode.
-   *
-   * @param stages - The recorded stages ordered by execution index.
-   */
-  private printDevManifest(stages: StageRecord[]): void {
-    if (process.env.NODE_ENV !== "development" || stages.length === 0) return;
-
-    const width = Math.max(...stages.map((s) => s.key.length));
-    for (let i = 0; i < stages.length; i++) {
-      const stage = stages[i];
-      const icon = stage.status === "SUCCESS" ? "✓" : "✖";
-      const color = stage.status === "SUCCESS" ? C_GREEN : C_RED;
-      const branch = i === stages.length - 1 ? "└─" : "├─";
-      console.log(
-        `  ${branch} ${color}${icon}${C_RESET} ${stage.key.padEnd(width)}  ${formatDuration(stage.durationMs)}`,
-      );
-    }
   }
 }

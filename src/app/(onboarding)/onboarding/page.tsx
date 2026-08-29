@@ -21,11 +21,19 @@ export default async function OnboardingPage() {
   }
 
   const [matrix] = await db
-    .select({ id: matrices.id })
+    .select({
+      id: matrices.id,
+      rawProposal: matrices.rawProposal,
+      subjectProblem: matrices.subjectProblem,
+    })
     .from(matrices)
     .where(eq(matrices.userId, profile.id));
 
-  if (!matrix) {
+  if (!matrix || !matrix.rawProposal || matrix.rawProposal.trim().length < 50) {
+    redirect("/onboarding/proposal");
+  }
+
+  if (!matrix.subjectProblem || matrix.subjectProblem.trim().length === 0) {
     redirect("/onboarding/matrix");
   }
 

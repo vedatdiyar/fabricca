@@ -159,6 +159,7 @@ export async function searchAndSiftTheses(
     query: targetYamlQuery,
     documents: candidateYamlDocs,
     logger,
+    silent: true,
   });
 
   const scoredTheses: SiftedThesis[] = rerankResults.map((res) => {

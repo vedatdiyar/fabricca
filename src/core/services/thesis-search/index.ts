@@ -58,12 +58,13 @@ export async function searchTheses(
     }
 
     if (!silent) {
-      logger?.info("qdrant_vector_search_success", {
+      logger?.success("qdrant_vector_search", {
         service: "thesis-search",
         filePath: "src/core/services/thesis-search/index.ts",
         step: "search_qdrant_vector",
         durationMs: totalDurationMs,
         data: {
+          summary: `(${results.length} theses)`,
           query,
           resultCount: results.length,
           qdrantDurationMs: Math.round(qdrantDurationMs),

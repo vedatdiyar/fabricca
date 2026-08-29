@@ -75,7 +75,7 @@ export function toLoadingSteps(
 }
 
 /** Matrix submission flow: save matrix, search theses, jury review, persist report. */
-export const MATRIX_SUBMIT_PIPELINE = definePipeline("matrix_submit", "flow", [
+export const MATRIX_SUBMIT_PIPELINE = definePipeline("submit_pipeline", "matrix", [
   { key: "save", text: "Çalışma matrisi kaydediliyor..." },
   { key: "search", text: "Tezler bulunuyor…" },
   { key: "jury_review", text: "Literatür inceleniyor…" },
@@ -83,7 +83,7 @@ export const MATRIX_SUBMIT_PIPELINE = definePipeline("matrix_submit", "flow", [
 ]);
 
 /** Thesis box generation flow: AI structure generation then persistence. */
-export const BOX_GENERATION_PIPELINE = definePipeline("boxes", "boxes", [
+export const BOX_GENERATION_PIPELINE = definePipeline("generation", "boxes", [
   {
     key: "generate",
     text: "Altyapısal kutular ve tarama sorguları oluşturuluyor…",
@@ -93,7 +93,7 @@ export const BOX_GENERATION_PIPELINE = definePipeline("boxes", "boxes", [
 
 /** Thesis outline generation flow: AI outline generation then persistence. */
 export const OUTLINE_GENERATION_PIPELINE = definePipeline(
-  "outline",
+  "generation",
   "outline",
   [
     { key: "generate", text: "Tez planı yapay zeka tarafından oluşturuluyor…" },
@@ -102,8 +102,45 @@ export const OUTLINE_GENERATION_PIPELINE = definePipeline(
 );
 
 /** Literature review flow: pool check, academic scanning, pool persistence. */
-export const LITERATURE_PIPELINE = definePipeline("literature", "literature", [
+export const LITERATURE_PIPELINE = definePipeline("review", "literature", [
   { key: "check", text: "Mevcut literatür havuzu kontrol ediliyor..." },
   { key: "scan", text: "Akademik kaynaklar taranıyor..." },
   { key: "persist", text: "Literatür havuzu kaydediliyor..." },
 ]);
+
+/** Proposal audit flow: web and theses search, diagnostic critique. */
+export const PROPOSAL_AUDIT_PIPELINE = definePipeline(
+  "proposal_audit",
+  "onboarding",
+  [
+    {
+      key: "decompose",
+      text: "Tez önerisi analiz ediliyor ve arama sorguları türetiliyor...",
+    },
+    {
+      key: "discovery",
+      text: "Web, tez ve uluslararası literatür taranıyor...",
+    },
+    {
+      key: "critique",
+      text: "Teşhis raporu ve eleştirel sorular hazırlanıyor...",
+    },
+  ],
+);
+
+/** Matrix synthesis flow: user answer analysis, 4-quadrant matrix synthesis. */
+export const MATRIX_SYNTHESIS_PIPELINE = definePipeline(
+  "matrix_synthesis",
+  "onboarding",
+  [
+    {
+      key: "analysis",
+      text: "Araştırmacı yanıtları ve literatür verileri çözümleniyor...",
+    },
+    {
+      key: "synthesis",
+      text: "4 kadranlı nihai tez mimarisi sentezleniyor...",
+    },
+  ],
+);
+

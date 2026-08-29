@@ -1,13 +1,10 @@
 import {
-  C_RESET,
-  C_GREEN,
   deriveStatus,
-  statusIcon,
-  statusColor,
   formatDuration,
+  formatLogLine,
   extractReason,
 } from "./logger-format";
-export { deriveStatus, statusIcon, statusColor, formatDuration, extractReason };
+export { deriveStatus, formatDuration, formatLogLine, extractReason };
 
 /**
  * Generates a unique flow identifier in the form fl_<timestamp36>_<random>.
@@ -49,6 +46,8 @@ export type ServiceName =
   | "literature-matrix"
   | "outline"
   | "thesis-architecture"
+  | "pipeline"
+  | "onboarding"
   | "ui";
 
 export interface LogParams {
@@ -65,6 +64,11 @@ export interface LogParams {
   hidden?: boolean;
 }
 
+export interface ScopedTimer {
+  done(summary?: string): void;
+  fail(error: unknown, summary?: string): void;
+}
+
 export interface LoggerInstance {
   flowId: string;
   lastTokens?: TokenUsage;
@@ -72,6 +76,11 @@ export interface LoggerInstance {
   info(arg1: string | Record<string, unknown>, params?: LogParams): void;
   error(arg1: string | Record<string, unknown>, params?: LogParams): void;
   warn(arg1: string | Record<string, unknown>, params?: LogParams): void;
+  success(event: string, params?: LogParams): void;
+  failed(event: string, params?: LogParams): void;
+  retry(event: string, params?: LogParams): void;
+  time<T>(event: string, fn: () => Promise<T>, params?: LogParams): Promise<T>;
+  startTimer(event: string, params?: LogParams): ScopedTimer;
   saveDebugPayload?(
     s: string,
     m: string,
@@ -102,6 +111,90 @@ export class Logger implements LoggerInstance {
    */
   constructor(flowId: string) {
     this.flowId = flowId;
+  }
+
+  /**
+   * Times an asynchronous operation and logs its completion or failure.
+   *
+   * @param event - Event name to log.
+   * @param fn - Asynchronous function to execute and time.
+   * @param p - Optional log parameters.
+   * @returns Result of the executed function.
+   */
+  async time<T>(
+    event: string,
+    fn: () => Promise<T>,
+    p?: LogParams,
+  ): Promise<T> {
+    const startedAt = performance.now();
+    try {
+      const result = await fn();
+      const durationMs = Math.round(performance.now() - startedAt);
+      this.success(event, { ...p, durationMs });
+      return result;
+    } catch (err) {
+      const durationMs = Math.round(performance.now() - startedAt);
+      this.failed(event, { ...p, durationMs, error: err });
+      throw err;
+    }
+  }
+
+  /**
+   * Starts a manual scoped stopwatch timer that logs upon done() or fail().
+   *
+   * @param event - Event name to log.
+   * @param p - Optional log parameters.
+   * @returns Scoped timer object with done and fail callbacks.
+   */
+  startTimer(event: string, p?: LogParams): ScopedTimer {
+    const startedAt = performance.now();
+    let finished = false;
+    return {
+      done: (summary?: string) => {
+        if (finished) return;
+        finished = true;
+        const durationMs = Math.round(performance.now() - startedAt);
+        const data = summary ? { ...p?.data, summary } : p?.data;
+        this.success(event, { ...p, durationMs, data });
+      },
+      fail: (error: unknown, summary?: string) => {
+        if (finished) return;
+        finished = true;
+        const durationMs = Math.round(performance.now() - startedAt);
+        const data = summary ? { ...p?.data, summary } : p?.data;
+        this.failed(event, { ...p, durationMs, error, data });
+      },
+    };
+  }
+
+  /**
+   * Logs a successful operation entry.
+   *
+   * @param event - Event name.
+   * @param p - Optional log parameters.
+   */
+  success(event: string, p?: LogParams): void {
+    this.write("info", event, { ...p, status: "SUCCESS" });
+  }
+
+  /**
+   * Logs a failed operation entry.
+   *
+   * @param event - Event name.
+   * @param p - Optional log parameters.
+   */
+  failed(event: string, p?: LogParams): void {
+    this.write("error", event, { ...p, status: "FAILED" });
+  }
+
+  /**
+   * Logs a retry operation entry.
+   *
+   * @param event - Event name.
+   * @param p - Optional log parameters.
+   */
+  retry(event: string, p?: LogParams): void {
+    this.write("warn", event, { ...p, status: "RETRY" });
   }
 
   /**
@@ -157,7 +250,7 @@ export class Logger implements LoggerInstance {
   }
 
   /**
-   * Prints a total-duration summary line for a completed flow.
+   * Prints a total-duration summary line for a completed flow or pipeline.
    *
    * @param event - Flow-level event name.
    * @param durationMs - Total duration in milliseconds.
@@ -169,9 +262,15 @@ export class Logger implements LoggerInstance {
     p?: { service?: ServiceName; data?: Record<string, unknown> },
   ): void {
     if (this.devMode) {
-      const timeTag = this.timestamp();
+      const summary = p?.data?.summary as string | undefined;
       console.log(
-        `${timeTag} TOTAL ${C_GREEN}✓${C_RESET} ${event} (${formatDuration(durationMs)})`,
+        formatLogLine({
+          status: "TOTAL",
+          service: p?.service ?? "pipeline",
+          event: `${event} completed`,
+          summary,
+          durationMs,
+        }),
       );
       return;
     }
@@ -187,16 +286,6 @@ export class Logger implements LoggerInstance {
     };
     if (p?.data) entry.data = p.data;
     console.info(JSON.stringify(entry));
-  }
-
-  /**
-   * Returns the current time as "[HH:MM:SS]".
-   *
-   * @returns Current time string.
-   */
-  private timestamp(): string {
-    const d = new Date();
-    return `[${d.getHours().toString().padStart(2, "0")}:${d.getMinutes().toString().padStart(2, "0")}:${d.getSeconds().toString().padStart(2, "0")}]`;
   }
 
   /**
@@ -217,67 +306,72 @@ export class Logger implements LoggerInstance {
           ? (((arg1 as Record<string, unknown>).step as string) ?? "unknown")
           : (arg1 as string);
 
-      const status = deriveStatus(event);
+      const status = p?.status ?? deriveStatus(event);
 
+      // START events are silently recorded to avoid terminal noise.
       if (status === "START") {
         const baseEvent = event.replace(/_(start)$/, "");
         this._starts.set(baseEvent, performance.now());
-        if (p?.silentStart || p?.hidden) {
-          return;
-        }
-        const timeTag = this.timestamp();
-        const icon = statusIcon("START");
-        const color = statusColor("START");
-        const annotation = p?.data?.summary ? ` ${p.data.summary}` : "";
+        return;
+      }
+
+      if (status === "RETRY") {
+        if (p?.hidden) return;
+        const baseEvent = event.replace(/_(retry)$/, "");
+        const summary = (p?.data?.summary as string) ?? undefined;
         console.log(
-          `${timeTag} START ${color}${icon}${C_RESET} ${baseEvent}${annotation}`,
+          formatLogLine({
+            status: "RETRY",
+            service: p?.service,
+            event: baseEvent,
+            summary,
+            backoffMs: p?.durationMs,
+          }),
         );
+        if (p?.error != null) {
+          console.log(`  ↳ reason: ${extractReason(p.error)}`);
+        }
         return;
       }
 
       if (status === "SUCCESS" || status === "FAILED") {
+        if (p?.hidden) return;
+
         const baseEvent = event.replace(
           /_(success|failed|filtered|empty)$/,
           "",
         );
-        const startTime = this._starts.get(baseEvent);
-        let durStr = "";
-        if (startTime != null) {
-          durStr = ` (${formatDuration(performance.now() - startTime)})`;
-          this._starts.delete(baseEvent);
-        } else if (p?.durationMs != null) {
-          durStr = ` (${formatDuration(p.durationMs)})`;
-        } else if (
-          p?.data &&
-          typeof p.data === "object" &&
-          "durationMs" in p.data
-        ) {
-          durStr = ` (${formatDuration((p.data as Record<string, unknown>).durationMs as number)})`;
+
+        let durationMs = p?.durationMs;
+        if (durationMs === undefined) {
+          const startTime = this._starts.get(baseEvent);
+          if (startTime !== undefined) {
+            durationMs = Math.round(performance.now() - startTime);
+            this._starts.delete(baseEvent);
+          } else if (
+            p?.data &&
+            typeof p.data === "object" &&
+            "durationMs" in p.data
+          ) {
+            durationMs = Math.round(
+              (p.data as Record<string, unknown>).durationMs as number,
+            );
+          }
         }
 
-        const icon = statusIcon(status);
-        const color = statusColor(status);
-        const timeTag = this.timestamp();
-
-        if (p?.hidden) {
-          return;
-        }
-
-        const blank = p?.blank ?? "after";
-
-        if (blank === "before") {
-          console.log("");
-        }
-
+        const summary = (p?.data?.summary as string) ?? undefined;
         console.log(
-          `${timeTag} ${status} ${color}${icon}${C_RESET} ${baseEvent}${durStr}`,
+          formatLogLine({
+            status,
+            service: p?.service,
+            event: baseEvent,
+            summary,
+            durationMs,
+          }),
         );
 
         if (p?.error != null) {
           console.log(`  ↳ reason: ${extractReason(p.error)}`);
-        }
-        if (blank === "after") {
-          console.log("");
         }
         return;
       }
@@ -317,3 +411,4 @@ export class Logger implements LoggerInstance {
     console[level](JSON.stringify(entry));
   }
 }
+

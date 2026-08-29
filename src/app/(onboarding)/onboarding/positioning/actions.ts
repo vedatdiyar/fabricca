@@ -51,8 +51,10 @@ export async function runPositioningSearchAction(
     const session = await getSession();
     if (!session) return { error: SESSION_ERROR_MSG };
 
-    const theses = await run.execute("search", () =>
-      searchAndSiftTheses(validated, run.logger),
+    const theses = await run.execute(
+      "search",
+      () => searchAndSiftTheses(validated, run.logger),
+      { description: "Cohere Rerank & Vector Search" },
     );
 
     return { success: true, theses };
@@ -102,21 +104,25 @@ export async function runPositioningJuryAction(
     const session = await getSession();
     if (!session) return { error: SESSION_ERROR_MSG };
 
-    const juryResult = await run.execute("jury_review", async () => {
-      // 2. Kademe: Paralel derin tez değerlendirmesi
-      const evaluatedTheses = await evaluateThesesInParallel(
-        validated,
-        theses,
-        run.logger,
-      );
+    const juryResult = await run.execute(
+      "jury_review",
+      async () => {
+        // 2. Kademe: Paralel derin tez değerlendirmesi
+        const evaluatedTheses = await evaluateThesesInParallel(
+          validated,
+          theses,
+          run.logger,
+        );
 
-      const relevantTheses = evaluatedTheses.filter(
-        (ev) => ev.evaluation.isRelevant,
-      );
+        const relevantTheses = evaluatedTheses.filter(
+          (ev) => ev.evaluation.isRelevant,
+        );
 
-      // 3. Kademe: FLASH_LITE_35 Jüri sentezi
-      return analyzePositioningJury(validated, relevantTheses, run.logger);
-    });
+        // 3. Kademe: FLASH_LITE_35 Jüri sentezi
+        return analyzePositioningJury(validated, relevantTheses, run.logger);
+      },
+      { description: `Gemini Parallel (${theses.length} theses)` },
+    );
 
     return { success: true, juryResult };
   } catch {
@@ -156,7 +162,9 @@ export async function persistPositioningReportAction(
       return { error: "Form doğrulaması başarısız." };
     }
 
-    await run.execute("persist", async () => {
+    await run.execute(
+      "persist",
+      async () => {
       // Sanitization for titles and authors
       if (juryResult.recommendedTheses.length > 0) {
         const itemsToSanitize = juryResult.recommendedTheses.map((t) => ({

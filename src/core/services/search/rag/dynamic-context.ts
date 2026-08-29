@@ -1,6 +1,7 @@
 import { db } from "@/core/db";
 import { chunks } from "@/core/db/schema";
 import { and, eq, inArray, or } from "drizzle-orm";
+import { Logger, createFlowId } from "@/lib/logger";
 
 export interface ChunkTarget {
   resourceId: number;
@@ -70,7 +71,10 @@ export async function fetchDynamicContextWindows(
       windowMap.set(key, parts.join("\n\n"));
     }
   } catch (error) {
-    console.error("fetchDynamicContextWindows failed:", error);
+    new Logger(createFlowId()).failed("fetch_dynamic_context_windows", {
+      service: "rag-search",
+      error,
+    });
   }
 
   return windowMap;
