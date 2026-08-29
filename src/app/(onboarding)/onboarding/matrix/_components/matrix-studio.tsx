@@ -105,7 +105,9 @@ export function MatrixStudio({ initialMatrix }: MatrixStudioProps) {
   });
 
   // Track editing state per quadrant
-  const [editingCards, setEditingCards] = useState<Record<keyof ThesisMatrix, boolean>>({
+  const [editingCards, setEditingCards] = useState<
+    Record<keyof ThesisMatrix, boolean>
+  >({
     subjectProblem: false,
     theoreticalFramework: false,
     primaryMaterial: false,
@@ -182,10 +184,18 @@ export function MatrixStudio({ initialMatrix }: MatrixStudioProps) {
 
     // Automatically sync any open drafts before validation and submission
     const finalMatrix: ThesisMatrix = {
-      subjectProblem: editingCards.subjectProblem ? drafts.subjectProblem : matrix.subjectProblem,
-      theoreticalFramework: editingCards.theoreticalFramework ? drafts.theoreticalFramework : matrix.theoreticalFramework,
-      primaryMaterial: editingCards.primaryMaterial ? drafts.primaryMaterial : matrix.primaryMaterial,
-      methodology: editingCards.methodology ? drafts.methodology : matrix.methodology,
+      subjectProblem: editingCards.subjectProblem
+        ? drafts.subjectProblem
+        : matrix.subjectProblem,
+      theoreticalFramework: editingCards.theoreticalFramework
+        ? drafts.theoreticalFramework
+        : matrix.theoreticalFramework,
+      primaryMaterial: editingCards.primaryMaterial
+        ? drafts.primaryMaterial
+        : matrix.primaryMaterial,
+      methodology: editingCards.methodology
+        ? drafts.methodology
+        : matrix.methodology,
     };
 
     if (!finalMatrix.subjectProblem.trim() || !finalMatrix.methodology.trim()) {
@@ -374,7 +384,9 @@ export function MatrixStudio({ initialMatrix }: MatrixStudioProps) {
                   ) : (
                     <>
                       <Pencil className="size-3.5 text-muted-foreground shrink-0" />
-                      <span>Henüz içerik girilmedi. Düzenlemek için tıklayın.</span>
+                      <span>
+                        Henüz içerik girilmedi. Düzenlemek için tıklayın.
+                      </span>
                     </>
                   )}
                 </div>
@@ -418,4 +430,3 @@ export function MatrixStudio({ initialMatrix }: MatrixStudioProps) {
     </div>
   );
 }
-

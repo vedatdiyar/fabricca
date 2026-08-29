@@ -128,29 +128,51 @@ export async function generateStructuredContent<T>(
             },
           });
 
-          const response = await withRetry(
-            async () => getAi(apiKey).models.generateContent(payload),
-            retryPolicy,
-          );
-
-          const text = response.text;
-          if (!text) {
-            throw new Error("Gemini returned an empty response.");
-          }
-
-          // CJK sızma guardı: Lite tier Türkçe akademik çıktıda nadiren Han/Kana üretir.
-          // Tespit edilirse retry tetiklemek için hata fırlatılır.
           const CJK_RE =
             /[\u4E00-\u9FFF\u3400-\u4DBF\u3040-\u30FF\uAC00-\uD7AF]/;
-          if (CJK_RE.test(text)) {
-            logger?.warn("cjk_leakage_detected", {
-              service: "gemini",
-              data: { model, payloadStage: callLabel },
-            });
-            throw new Error(
-              "Model output contained disallowed CJK characters (language guard violated). Retrying.",
-            );
-          }
+
+          let geminiResponse: unknown = null;
+
+          const text = await withRetry(async () => {
+            const currentPayload =
+              attempts > 1
+                ? {
+                    ...payload,
+                    config: {
+                      ...payload.config,
+                      seed:
+                        (options?.seed ?? GEMINI_SEED) + attempts * 1000 + 7,
+                    },
+                  }
+                : payload;
+
+            const res =
+              await getAi(apiKey).models.generateContent(currentPayload);
+            geminiResponse = res;
+            let outputText = res.text;
+            if (!outputText) {
+              throw new Error("Gemini returned an empty response.");
+            }
+
+            // CJK sızma guardı: Lite tier Türkçe akademik çıktıda nadiren Han/Kana üretir.
+            if (CJK_RE.test(outputText)) {
+              logger?.warn("cjk_leakage_detected", {
+                service: "gemini",
+                data: { model, payloadStage: callLabel, attempt: attempts },
+              });
+
+              if (attempts < maxRetries) {
+                throw new Error(
+                  "Model output contained disallowed CJK characters (language guard violated). Retrying with perturbed seed.",
+                );
+              }
+
+              // Son denemede akışı bozmamak için tekil CJK karakterini temizle
+              outputText = outputText.replace(new RegExp(CJK_RE, "g"), "");
+            }
+
+            return outputText;
+          }, retryPolicy);
 
           const parsed = sanitizeAndParseJson<T>(text);
 
@@ -183,7 +205,7 @@ export async function generateStructuredContent<T>(
 
           const taskDurationMs = performance.now() - taskStartTime;
           const metadata = (
-            response as unknown as {
+            geminiResponse as unknown as {
               usageMetadata?: {
                 promptTokenCount?: number;
                 candidatesTokenCount?: number;

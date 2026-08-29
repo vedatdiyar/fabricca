@@ -115,8 +115,11 @@ export async function evaluateThesesInParallel(
       summary: `(${theses.length} candidate theses in parallel)`,
       totalCandidates: theses.length,
       evaluatedCount: evaluatedTheses.length,
-      relevantCount: evaluatedTheses.filter((e) => e.evaluation.isRelevant).length,
-      overlappingCount: evaluatedTheses.filter((e) => e.evaluation.isDirectOverlap).length,
+      relevantCount: evaluatedTheses.filter((e) => e.evaluation.isRelevant)
+        .length,
+      overlappingCount: evaluatedTheses.filter(
+        (e) => e.evaluation.isDirectOverlap,
+      ).length,
     },
   });
 

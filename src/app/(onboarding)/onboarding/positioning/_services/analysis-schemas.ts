@@ -97,7 +97,8 @@ export const batchThesisEvaluationJsonSchema: JsonSchema = {
           publicationType: {
             type: "string",
             enum: ["Tez", "Makale", "Kitap", "Kitap Bölümü", "Rapor"],
-            description: "Yayın türü: Tez, Makale, Kitap, Kitap Bölümü veya Rapor",
+            description:
+              "Yayın türü: Tez, Makale, Kitap, Kitap Bölümü veya Rapor",
           },
           strategicRole: {
             type: "string",
@@ -216,17 +217,19 @@ export const jurySynthesisResultJsonSchema: JsonSchema = {
               },
               dimension: {
                 type: "string",
-                enum: [
-                  "SAHA_ORNEKLEM",
-                  "KURAMSAL_CERCEVE",
-                  "YONTEMSEL_DESEN",
-                ],
+                enum: ["SAHA_ORNEKLEM", "KURAMSAL_CERCEVE", "YONTEMSEL_DESEN"],
               },
               title: { type: "string" },
               description: { type: "string" },
               suggestedFocus: { type: "string" },
             },
-            required: ["id", "dimension", "title", "description", "suggestedFocus"],
+            required: [
+              "id",
+              "dimension",
+              "title",
+              "description",
+              "suggestedFocus",
+            ],
           },
           description:
             "Yalnızca DIRECT_OVERLAP durumunda araştırmacının çalışmasını kurtaracak 3 somut farklılaşma (pivot) seçeneği.",
@@ -270,4 +273,3 @@ export interface JuryAnalysisResult {
   gapAnalysisSummary: GapAnalysisStructured;
   recommendedTheses: RecommendedThesisItem[];
 }
-

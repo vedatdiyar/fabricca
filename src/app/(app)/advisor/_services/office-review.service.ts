@@ -236,12 +236,11 @@ export async function runOfficeReview(
   const overallStart = performance.now();
 
   // Step 1: Load section context & notes
-  const { outline, pinnedSourceIds, notesContext } =
-    await logger.time(
-      "load_section_context",
-      () => loadSectionContext(userId, outlineId),
-      { service: "advisor" },
-    );
+  const { outline, pinnedSourceIds, notesContext } = await logger.time(
+    "load_section_context",
+    () => loadSectionContext(userId, outlineId),
+    { service: "advisor" },
+  );
 
   // Step 2: Hybrid RAG Search
   const ragSources = await logger.time(

@@ -67,7 +67,8 @@ export async function analyzePositioningJury(
     .map((ev, idx) => {
       const t = ev.thesis;
       const e = ev.evaluation;
-      const pubType = e.publicationType || t.publicationType || t.thesisType || "Makale";
+      const pubType =
+        e.publicationType || t.publicationType || t.thesisType || "Makale";
       return `[Kaynak #${idx + 1}] ID: "${t.id}"
 Başlık: ${t.title}
 Yazar: ${t.author || "Bilinmiyor"} (${t.year || "N/A"})
@@ -151,7 +152,9 @@ Katkı/Odak Alanları: ${e.contributionAreas.join(", ") || "Yok"}`;
       abstract: t.abstract,
       url: t.url,
       doi: t.doi,
-      yokUrl: isYok ? `https://tez.yok.gov.tr/UlusalTezMerkezi/tezDetay.jsp?id=${yokId}` : undefined,
+      yokUrl: isYok
+        ? `https://tez.yok.gov.tr/UlusalTezMerkezi/tezDetay.jsp?id=${yokId}`
+        : undefined,
     };
   });
 

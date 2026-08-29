@@ -6,7 +6,10 @@ import { positioning, matrices } from "@/core/db/schema";
 import type { Positioning } from "@/core/db/schema";
 import { getSession, SESSION_ERROR_MSG } from "@/lib/session";
 import { PipelineRun } from "@/lib/pipeline-logger";
-import { MATRIX_SUBMIT_PIPELINE } from "@/lib/pipeline-definitions";
+import {
+  MATRIX_SUBMIT_PIPELINE,
+  PROPOSAL_POSITIONING_PIPELINE,
+} from "@/lib/pipeline-definitions";
 import type { ThesisMatrix } from "@/lib/types";
 import { positioningMatrixSchema } from "./_services/validation";
 import { searchAndSiftTheses, type SiftedThesis } from "./_services/sifting";
@@ -53,7 +56,7 @@ export async function runPositioningSearchAction(
 
     const theses = await run.execute(
       "search",
-      () => searchAndSiftTheses(validated, run.logger),
+      () => searchAndSiftTheses(validated, run.logger, { pipelineRun: run }),
       { description: "Cohere Rerank & Vector Search" },
     );
 
@@ -162,9 +165,7 @@ export async function persistPositioningReportAction(
       return { error: "Form doğrulaması başarısız." };
     }
 
-    await run.execute(
-      "persist",
-      async () => {
+    await run.execute("persist", async () => {
       // Sanitization for titles and authors
       if (juryResult.recommendedTheses.length > 0) {
         const itemsToSanitize = juryResult.recommendedTheses.map((t) => ({
@@ -257,11 +258,17 @@ import type { GapAnalysisStructured } from "./_services/validation";
  * saves everything to DB and prepares for instant redirect to /onboarding/positioning.
  *
  * @param rawProposal - The user's raw proposal text.
+ * @param flowId - Optional shared flow identifier of the proposal positioning pipeline run.
  * @returns Success flag or error message.
  */
 export async function startOnboardingFromProposalAction(
   rawProposal: string,
+  flowId?: string,
 ): Promise<{ success: true } | { error: string }> {
+  const run = flowId
+    ? PipelineRun.resume(PROPOSAL_POSITIONING_PIPELINE, flowId)
+    : PipelineRun.create(PROPOSAL_POSITIONING_PIPELINE);
+
   try {
     const session = await getSession();
     if (!session) return { error: SESSION_ERROR_MSG };
@@ -277,94 +284,161 @@ export async function startOnboardingFromProposalAction(
     // 1. Clear downstream step data
     await clearDownstreamDbAction("proposal");
 
-    // 2. Synthesize initial headless 4-quadrant matrix
-    const matrix = await synthesizeInitialMatrixFromProposal(trimmed);
+    // 2. Synthesize initial headless 4-quadrant matrix & persist to DB
+    const savedMatrix = await run.execute(
+      "matrix",
+      async () => {
+        const t0 = performance.now();
+        const matrix = await synthesizeInitialMatrixFromProposal(
+          trimmed,
+          run.logger,
+        );
+        run.subStep(
+          "Proposal Decomposition (Gemini Flash)",
+          performance.now() - t0,
+        );
 
-    // 3. Persist matrix to DB
-    const [savedMatrix] = await db
-      .insert(matrices)
-      .values({
-        userId: session.userId,
-        rawProposal: trimmed,
-        subjectProblem: matrix.subjectProblem,
-        theoreticalFramework: matrix.theoreticalFramework,
-        primaryMaterial: matrix.primaryMaterial,
-        methodology: matrix.methodology,
-        updatedAt: sql`now()`,
-      })
-      .onConflictDoUpdate({
-        target: matrices.userId,
-        set: {
-          rawProposal: trimmed,
-          subjectProblem: matrix.subjectProblem,
-          theoreticalFramework: matrix.theoreticalFramework,
-          primaryMaterial: matrix.primaryMaterial,
-          methodology: matrix.methodology,
-          updatedAt: sql`now()`,
-        },
-      })
-      .returning({ id: matrices.id });
+        const t1 = performance.now();
+        const [persisted] = await db
+          .insert(matrices)
+          .values({
+            userId: session.userId,
+            rawProposal: trimmed,
+            subjectProblem: matrix.subjectProblem,
+            theoreticalFramework: matrix.theoreticalFramework,
+            primaryMaterial: matrix.primaryMaterial,
+            methodology: matrix.methodology,
+            updatedAt: sql`now()`,
+          })
+          .onConflictDoUpdate({
+            target: matrices.userId,
+            set: {
+              rawProposal: trimmed,
+              subjectProblem: matrix.subjectProblem,
+              theoreticalFramework: matrix.theoreticalFramework,
+              primaryMaterial: matrix.primaryMaterial,
+              methodology: matrix.methodology,
+              updatedAt: sql`now()`,
+            },
+          })
+          .returning({ id: matrices.id });
 
-    if (!savedMatrix) {
-      return { error: "Tez matrisi oluşturulamadı." };
-    }
+        if (!persisted) {
+          throw new Error("Tez matrisi oluşturulamadı.");
+        }
 
-    // 4. Run 4-Channel Multi-Source Sifting
-    const siftedCandidates = await searchAndSiftTheses({
-      subjectProblem: matrix.subjectProblem,
-      theoreticalFramework: matrix.theoreticalFramework,
-      methodology: matrix.methodology,
-    });
-
-    // 5. Evaluate candidates in parallel
-    const evaluated = await evaluateThesesInParallel(
-      {
-        subjectProblem: matrix.subjectProblem,
-        theoreticalFramework: matrix.theoreticalFramework,
-        methodology: matrix.methodology,
+        run.subStep("Matrix Saved to Database", performance.now() - t1);
+        return { ...matrix, id: persisted.id };
       },
-      siftedCandidates,
+      { description: "Initial Matrix Synthesis (Gemini Flash)" },
     );
 
-    const relevant = evaluated.filter((e) => e.evaluation.isRelevant);
+    // 3. Run 4-Channel Multi-Source Sifting with Cohere Rerank
+    const siftedCandidates = await run.execute(
+      "search",
+      () =>
+        searchAndSiftTheses(
+          {
+            subjectProblem: savedMatrix.subjectProblem,
+            theoreticalFramework: savedMatrix.theoreticalFramework,
+            methodology: savedMatrix.methodology,
+          },
+          run.logger,
+          { pipelineRun: run },
+        ),
+      { description: "4-Channel Literature Scan & Cohere Rerank" },
+    );
 
-    // 6. Final Multi-Source Jury Analysis
-    const juryResult = await analyzePositioningJury(
-      {
-        subjectProblem: matrix.subjectProblem,
-        theoreticalFramework: matrix.theoreticalFramework,
-        methodology: matrix.methodology,
+    // 4. Evaluate candidates in parallel and run Jury Review
+    const juryResult = await run.execute(
+      "jury_review",
+      async () => {
+        const t0 = performance.now();
+        const evaluated = await evaluateThesesInParallel(
+          {
+            subjectProblem: savedMatrix.subjectProblem,
+            theoreticalFramework: savedMatrix.theoreticalFramework,
+            methodology: savedMatrix.methodology,
+          },
+          siftedCandidates,
+          run.logger,
+        );
+        run.subStep(
+          `Parallel Candidate Evaluation (${siftedCandidates.length} theses)`,
+          performance.now() - t0,
+        );
+
+        const relevant = evaluated.filter((e) => e.evaluation.isRelevant);
+
+        const t1 = performance.now();
+        const jury = await analyzePositioningJury(
+          {
+            subjectProblem: savedMatrix.subjectProblem,
+            theoreticalFramework: savedMatrix.theoreticalFramework,
+            methodology: savedMatrix.methodology,
+          },
+          relevant,
+          run.logger,
+        );
+        run.subStep(
+          `Positioning Jury Synthesis (${relevant.length} relevant)`,
+          performance.now() - t1,
+        );
+
+        return jury;
       },
-      relevant,
+      { description: "Gemini Candidate Evaluation & Jury Review" },
     );
 
-    // 7. Sanitize and persist positioning report
-    if (juryResult.recommendedTheses.length > 0) {
-      const itemsToSanitize = juryResult.recommendedTheses.map((t) => ({
-        title: t.title || "",
-        author: t.author || "",
-      }));
-      const sanitized = await sanitizeAcademicDataBulk(itemsToSanitize);
-      juryResult.recommendedTheses = juryResult.recommendedTheses.map(
-        (t, idx) => ({
-          ...t,
-          title: sanitized[idx]?.title || t.title,
-          author: sanitized[idx]?.author || t.author,
-        }),
-      );
-    }
+    // 5. Sanitize and persist positioning report
+    await run.execute(
+      "persist",
+      async () => {
+        if (juryResult.recommendedTheses.length > 0) {
+          const t0 = performance.now();
+          const itemsToSanitize = juryResult.recommendedTheses.map((t) => ({
+            title: t.title || "",
+            author: t.author || "",
+          }));
+          const sanitized = await sanitizeAcademicDataBulk(
+            itemsToSanitize,
+            run.logger,
+          );
+          juryResult.recommendedTheses = juryResult.recommendedTheses.map(
+            (t, idx) => ({
+              ...t,
+              title: sanitized[idx]?.title || t.title,
+              author: sanitized[idx]?.author || t.author,
+            }),
+          );
+          run.subStep(
+            `Data Sanitization (${itemsToSanitize.length} titles)`,
+            performance.now() - t0,
+          );
+        }
 
-    await savePositioningReportTransaction(
-      session.userId,
-      savedMatrix.id,
-      juryResult,
+        const t1 = performance.now();
+        await savePositioningReportTransaction(
+          session.userId,
+          savedMatrix.id,
+          juryResult,
+        );
+        run.subStep(
+          "Positioning Report Saved to Database",
+          performance.now() - t1,
+        );
+      },
+      { description: "Save Positioning Report to Database" },
     );
+
+    run.finish();
 
     invalidateOnboardingStepCache("proposal");
     invalidateOnboardingStepCache("positioning");
 
     return { success: true };
   } catch (err) {
+    run.finish();
     const msg =
       err instanceof Error
         ? err.message
@@ -488,4 +562,3 @@ export async function completePositioningClarificationsAction(
     };
   }
 }
-

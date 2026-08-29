@@ -40,7 +40,9 @@ export async function checkStepsDataAction(): Promise<Record<
       matrix?.rawProposal && matrix.rawProposal.trim().length >= 50,
     );
     const hasMatrix = Boolean(
-      matrix && matrix.subjectProblem && matrix.subjectProblem.trim().length > 0,
+      matrix &&
+      matrix.subjectProblem &&
+      matrix.subjectProblem.trim().length > 0,
     );
 
     let hasPositioning = false;

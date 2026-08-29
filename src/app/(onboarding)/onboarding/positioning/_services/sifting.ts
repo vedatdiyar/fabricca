@@ -4,6 +4,7 @@ import { searchSemanticScholarPapers } from "@/core/services/semantic-scholar/se
 import { searchExa, type ExaSearchResult } from "@/core/services/exa";
 import { rerankWithCohere } from "@/core/services/ai/cohere";
 import type { Logger } from "@/lib/logger";
+import type { PipelineRun } from "@/lib/pipeline-logger";
 import type { PositioningMatrixInput } from "./validation";
 import { generatePositioningQuery } from "./query-generator";
 import {
@@ -56,16 +57,27 @@ const MIN_ABSTRACT_LENGTH = 40;
 export async function searchAndSiftTheses(
   matrixInput: PositioningMatrixInput,
   logger?: Logger,
-  options?: { topN?: number; candidateLimit?: number },
+  options?: {
+    topN?: number;
+    candidateLimit?: number;
+    pipelineRun?: PipelineRun;
+  },
 ): Promise<SiftedThesis[]> {
   const topN = options?.topN ?? 20;
+  const pipelineRun = options?.pipelineRun;
 
   const queryGenStart = performance.now();
   const distilledQuery = await generatePositioningQuery(matrixInput, logger);
 
+  pipelineRun?.subStep(
+    "Query Distillation (Gemini Flash)",
+    performance.now() - queryGenStart,
+  );
+
   logger?.info("multi_source_sifting_query_gen_success", {
     service: "gemini",
-    filePath: "src/app/(onboarding)/onboarding/positioning/_services/sifting.ts",
+    filePath:
+      "src/app/(onboarding)/onboarding/positioning/_services/sifting.ts",
     durationMs: performance.now() - queryGenStart,
     hidden: true,
   });
@@ -74,56 +86,90 @@ export async function searchAndSiftTheses(
 
   // Parallel 4-Channel Search Execution
   const [
-    yokRes1,
-    yokRes2,
-    openAlexRes1,
-    openAlexRes2,
+    [yokRes1, yokRes2],
+    [openAlexRes1, openAlexRes2],
     semanticScholarRes,
-    exaDergiparkRes,
-    exaFieldRes,
+    [exaDergiparkRes, exaFieldRes],
   ] = await Promise.all([
-    // 1. Qdrant YÖK Theses (Empirical Query)
-    searchTheses(
-      sanitizeSearchQuery(distilledQuery.thesisEmpiricalQuery),
-      logger,
-      { limit: 12, silent: true },
-    ).catch(() => []),
+    // 1. Qdrant YÖK Theses (Empirical + Methodology Queries)
+    (async () => {
+      const t0 = performance.now();
+      const [r1, r2] = await Promise.all([
+        searchTheses(
+          sanitizeSearchQuery(distilledQuery.thesisEmpiricalQuery),
+          logger,
+          { limit: 12, silent: true },
+        ).catch(() => []),
+        searchTheses(
+          sanitizeSearchQuery(distilledQuery.thesisMethodologyQuery),
+          logger,
+          { limit: 12, silent: true },
+        ).catch(() => []),
+      ]);
+      const totalCount = r1.length + r2.length;
+      pipelineRun?.subStep(
+        `YÖK Theses (Qdrant x2 · ${totalCount} candidates)`,
+        performance.now() - t0,
+      );
+      return [r1, r2] as const;
+    })(),
 
-    // 2. Qdrant YÖK Theses (Methodology/Theory Query)
-    searchTheses(
-      sanitizeSearchQuery(distilledQuery.thesisMethodologyQuery),
-      logger,
-      { limit: 12, silent: true },
-    ).catch(() => []),
+    // 2. OpenAlex Global Literature (Theoretical + Empirical Semantic Search)
+    (async () => {
+      const t0 = performance.now();
+      const [r1, r2] = await Promise.all([
+        searchOpenAlex(
+          sanitizeSearchQuery(distilledQuery.globalTheoreticalQuery),
+          8,
+        ).catch(() => []),
+        searchOpenAlex(
+          sanitizeSearchQuery(distilledQuery.globalEmpiricalQuery),
+          8,
+        ).catch(() => []),
+      ]);
+      const totalCount = r1.length + r2.length;
+      pipelineRun?.subStep(
+        `OpenAlex (Global x2 · ${totalCount} papers)`,
+        performance.now() - t0,
+      );
+      return [r1, r2] as const;
+    })(),
 
-    // 3. OpenAlex Global Literature (Theoretical Semantic Search)
-    searchOpenAlex(
-      sanitizeSearchQuery(distilledQuery.globalTheoreticalQuery),
-      8,
-    ).catch(() => []),
+    // 3. Semantic Scholar (High Impact / Influential Papers)
+    (async () => {
+      const t0 = performance.now();
+      const res = await searchSemanticScholarPapers(
+        sanitizeSearchQuery(distilledQuery.globalTheoreticalQuery),
+        10,
+      ).catch(() => []);
+      pipelineRun?.subStep(
+        `Semantic Scholar (${res.length} papers)`,
+        performance.now() - t0,
+      );
+      return res;
+    })(),
 
-    // 4. OpenAlex Global Literature (Empirical Semantic Search)
-    searchOpenAlex(
-      sanitizeSearchQuery(distilledQuery.globalEmpiricalQuery),
-      8,
-    ).catch(() => []),
-
-    // 5. Semantic Scholar (High Impact / Influential Papers)
-    searchSemanticScholarPapers(
-      sanitizeSearchQuery(distilledQuery.globalTheoreticalQuery),
-      10,
-    ).catch(() => []),
-
-    // 6. Exa.ai (DergiPark Academic Papers)
-    searchExa(distilledQuery.dergiparkQuery, {
-      numResults: 6,
-      includeDomains: ["dergipark.org.tr"],
-    }).catch(() => [] as ExaSearchResult[]),
-
-    // 7. Exa.ai (Field & Policy Context)
-    searchExa(distilledQuery.fieldWebQuery, {
-      numResults: 6,
-    }).catch(() => [] as ExaSearchResult[]),
+    // 4. Exa.ai (DergiPark Academic Papers + Field/Policy Context)
+    (async () => {
+      const t0 = performance.now();
+      const [r1, r2] = await Promise.all([
+        searchExa(distilledQuery.dergiparkQuery, {
+          numResults: 6,
+          includeDomains: ["dergipark.org.tr"],
+          silent: true,
+        }).catch(() => [] as ExaSearchResult[]),
+        searchExa(distilledQuery.fieldWebQuery, {
+          numResults: 6,
+          silent: true,
+        }).catch(() => [] as ExaSearchResult[]),
+      ]);
+      const totalCount = r1.length + r2.length;
+      pipelineRun?.subStep(
+        `Exa.ai (DergiPark & Web · ${totalCount} articles)`,
+        performance.now() - t0,
+      );
+      return [r1, r2] as const;
+    })(),
   ]);
 
   const candidates: SiftedThesis[] = [];
@@ -150,7 +196,9 @@ export async function searchAndSiftTheses(
       thesisType: t.thesisType || "Doktora/Yüksek Lisans Tezi",
       department: t.department,
       abstract: t.abstract || "",
-      url: t.yokPdfUrl || `https://tez.yok.gov.tr/UlusalTezMerkezi/tezDetay.jsp?id=${t.id}`,
+      url:
+        t.yokPdfUrl ||
+        `https://tez.yok.gov.tr/UlusalTezMerkezi/tezDetay.jsp?id=${t.id}`,
       sourceChannel: "yok",
       publicationType: "Tez",
     });
@@ -169,7 +217,9 @@ export async function searchAndSiftTheses(
     const pubType = "Makale";
 
     candidates.push({
-      id: p.openAlexId ? String(p.openAlexId).replace("https://openalex.org/", "") : `oa-${Math.random().toString(36).slice(2, 8)}`,
+      id: p.openAlexId
+        ? String(p.openAlexId).replace("https://openalex.org/", "")
+        : `oa-${Math.random().toString(36).slice(2, 8)}`,
       title,
       author: authorsStr,
       university: p.publisher || "Uluslararası Akademik Yayın",
@@ -190,7 +240,11 @@ export async function searchAndSiftTheses(
     if (!key || seenTitles.has(key)) continue;
     seenTitles.add(key);
 
-    const authorsStr = (p.authors ?? []).map((a) => a.name).slice(0, 3).join(", ") || "Bilinmiyor";
+    const authorsStr =
+      (p.authors ?? [])
+        .map((a) => a.name)
+        .slice(0, 3)
+        .join(", ") || "Bilinmiyor";
     const year = p.year || new Date().getFullYear();
     const abstractStr = p.abstract || "";
 
@@ -209,7 +263,11 @@ export async function searchAndSiftTheses(
       thesisType: s2Type,
       abstract: abstractStr,
       doi: p.externalIds?.DOI,
-      url: p.url || (p.externalIds?.DOI ? `https://doi.org/${p.externalIds.DOI}` : undefined),
+      url:
+        p.url ||
+        (p.externalIds?.DOI
+          ? `https://doi.org/${p.externalIds.DOI}`
+          : undefined),
       sourceChannel: "semantic_scholar",
       publicationType: s2Type,
     });
@@ -228,8 +286,11 @@ export async function searchAndSiftTheses(
     candidates.push({
       id: `exa-${Math.random().toString(36).slice(2, 8)}`,
       title,
-      author: r.author || (isDergiPark ? "DergiPark Yazarı" : "Araştırmacı/Kurum"),
-      university: isDergiPark ? "DergiPark Akademik Dergi" : "Saha & Sektörel Rapor",
+      author:
+        r.author || (isDergiPark ? "DergiPark Yazarı" : "Araştırmacı/Kurum"),
+      university: isDergiPark
+        ? "DergiPark Akademik Dergi"
+        : "Saha & Sektörel Rapor",
       year: new Date().getFullYear(),
       thesisType: isDergiPark ? "Makale" : "Rapor",
       abstract: text,
@@ -246,14 +307,17 @@ export async function searchAndSiftTheses(
 
   logger?.info("multi_source_search_completed", {
     service: "thesis-search",
-    filePath: "src/app/(onboarding)/onboarding/positioning/_services/sifting.ts",
+    filePath:
+      "src/app/(onboarding)/onboarding/positioning/_services/sifting.ts",
     durationMs: performance.now() - searchStart,
     data: {
       totalFound: candidates.length,
       validFound: validCandidates.length,
       yokCount: candidates.filter((c) => c.sourceChannel === "yok").length,
-      openAlexCount: candidates.filter((c) => c.sourceChannel === "openalex").length,
-      s2Count: candidates.filter((c) => c.sourceChannel === "semantic_scholar").length,
+      openAlexCount: candidates.filter((c) => c.sourceChannel === "openalex")
+        .length,
+      s2Count: candidates.filter((c) => c.sourceChannel === "semantic_scholar")
+        .length,
       exaCount: candidates.filter((c) => c.sourceChannel === "exa").length,
     },
     hidden: true,
@@ -268,12 +332,18 @@ export async function searchAndSiftTheses(
   const candidateYamlDocs = validCandidates.map((c) => formatThesisToYaml(c));
 
   try {
+    const cohereStart = performance.now();
     const rerankResults = await rerankWithCohere({
       query: targetYamlQuery,
       documents: candidateYamlDocs,
       logger,
       silent: true,
     });
+
+    pipelineRun?.subStep(
+      `Cohere Rerank v4.0 Pro (${validCandidates.length} candidates)`,
+      performance.now() - cohereStart,
+    );
 
     const scoredTheses: SiftedThesis[] = rerankResults.map((res) => ({
       ...validCandidates[res.index],
@@ -291,7 +361,9 @@ export async function searchAndSiftTheses(
     );
 
     // Ensure at least 6-8 candidates if available
-    const finalSelected = (confident.length >= 6 ? confident : scoredTheses).slice(0, topN);
+    const finalSelected = (
+      confident.length >= 6 ? confident : scoredTheses
+    ).slice(0, topN);
 
     return finalSelected;
   } catch (err) {

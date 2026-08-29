@@ -75,12 +75,16 @@ export function toLoadingSteps(
 }
 
 /** Matrix submission flow: save matrix, search theses, jury review, persist report. */
-export const MATRIX_SUBMIT_PIPELINE = definePipeline("submit_pipeline", "matrix", [
-  { key: "save", text: "Çalışma matrisi kaydediliyor..." },
-  { key: "search", text: "Tezler bulunuyor…" },
-  { key: "jury_review", text: "Literatür inceleniyor…" },
-  { key: "persist", text: "Rapor kaydediliyor..." },
-]);
+export const MATRIX_SUBMIT_PIPELINE = definePipeline(
+  "submit_pipeline",
+  "matrix",
+  [
+    { key: "save", text: "Çalışma matrisi kaydediliyor..." },
+    { key: "search", text: "Tezler bulunuyor…" },
+    { key: "jury_review", text: "Literatür inceleniyor…" },
+    { key: "persist", text: "Rapor kaydediliyor..." },
+  ],
+);
 
 /** Thesis box generation flow: AI structure generation then persistence. */
 export const BOX_GENERATION_PIPELINE = definePipeline("generation", "boxes", [
@@ -144,3 +148,26 @@ export const MATRIX_SYNTHESIS_PIPELINE = definePipeline(
   ],
 );
 
+/** Proposal positioning flow: matrix synthesis, 4-channel literature scan, jury review, persist report. */
+export const PROPOSAL_POSITIONING_PIPELINE = definePipeline(
+  "proposal_positioning",
+  "positioning",
+  [
+    {
+      key: "matrix",
+      text: "Tez taslağınız akademik olarak ayrıştırılıyor ve araştırma mimarisi kuruluyor...",
+    },
+    {
+      key: "search",
+      text: "4 kanallı literatür taranıyor (YÖK Tez, OpenAlex, Semantic Scholar, DergiPark/Exa)...",
+    },
+    {
+      key: "jury_review",
+      text: "Aday çalışmalar ve akademik konumlandırma jürisi çalıştırılıyor...",
+    },
+    {
+      key: "persist",
+      text: "Konumlandırma raporu veritabanına kaydediliyor...",
+    },
+  ],
+);

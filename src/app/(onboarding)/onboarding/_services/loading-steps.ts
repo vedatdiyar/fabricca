@@ -5,6 +5,7 @@ import {
   MATRIX_SYNTHESIS_PIPELINE,
   OUTLINE_GENERATION_PIPELINE,
   PROPOSAL_AUDIT_PIPELINE,
+  PROPOSAL_POSITIONING_PIPELINE,
   toLoadingSteps,
 } from "@/lib/pipeline-definitions";
 
@@ -33,6 +34,10 @@ export const PROPOSAL_AUDIT_STEPS: LoadingStep[] = toLoadingSteps(
   PROPOSAL_AUDIT_PIPELINE,
 );
 
+export const PROPOSAL_POSITIONING_STEPS: LoadingStep[] = toLoadingSteps(
+  PROPOSAL_POSITIONING_PIPELINE,
+);
+
 export const MATRIX_SYNTHESIS_STEPS: LoadingStep[] = toLoadingSteps(
   MATRIX_SYNTHESIS_PIPELINE,
 );
@@ -47,4 +52,3 @@ export const LITERATURE_PIPELINE_STEPS: LoadingStep[] =
 export const OUTLINE_GENERATION_STEPS: LoadingStep[] = toLoadingSteps(
   OUTLINE_GENERATION_PIPELINE,
 );
-

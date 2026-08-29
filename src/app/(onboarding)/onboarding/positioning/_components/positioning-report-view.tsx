@@ -92,15 +92,35 @@ function getRoleBadgeConfig(role?: StrategicRole) {
 function getPublicationBadge(pubType?: string) {
   switch (pubType) {
     case "Tez":
-      return { label: "Tez", className: "bg-indigo-500/10 text-indigo-700 dark:text-indigo-400 border-indigo-500/20" };
+      return {
+        label: "Tez",
+        className:
+          "bg-indigo-500/10 text-indigo-700 dark:text-indigo-400 border-indigo-500/20",
+      };
     case "Kitap":
-      return { label: "Kitap", className: "bg-amber-500/10 text-amber-700 dark:text-amber-400 border-amber-500/20" };
+      return {
+        label: "Kitap",
+        className:
+          "bg-amber-500/10 text-amber-700 dark:text-amber-400 border-amber-500/20",
+      };
     case "Kitap Bölümü":
-      return { label: "Kitap Bölümü", className: "bg-purple-500/10 text-purple-700 dark:text-purple-400 border-purple-500/20" };
+      return {
+        label: "Kitap Bölümü",
+        className:
+          "bg-purple-500/10 text-purple-700 dark:text-purple-400 border-purple-500/20",
+      };
     case "Rapor":
-      return { label: "Rapor", className: "bg-zinc-500/10 text-zinc-700 dark:text-zinc-400 border-zinc-500/20" };
+      return {
+        label: "Rapor",
+        className:
+          "bg-zinc-500/10 text-zinc-700 dark:text-zinc-400 border-zinc-500/20",
+      };
     default:
-      return { label: "Makale", className: "bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border-emerald-500/20" };
+      return {
+        label: "Makale",
+        className:
+          "bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border-emerald-500/20",
+      };
   }
 }
 
@@ -125,7 +145,9 @@ export function PositioningReportView({
 }: PositioningReportViewProps) {
   const router = useRouter();
   const [confirming, setConfirming] = useState(false);
-  const [activePivotLoading, setActivePivotLoading] = useState<string | null>(null);
+  const [activePivotLoading, setActivePivotLoading] = useState<string | null>(
+    null,
+  );
 
   const gapSummary = reportData.gapAnalysisSummary;
   const isNovelGap = reportData.globalStatus === "NOVEL_GAP_IDENTIFIED";
@@ -276,7 +298,8 @@ export function PositioningReportView({
                 Tezinizi Özgünleştirecek 3 Farklılaşma (Pivot) Rotası
               </h3>
               <p className="text-xs text-muted-foreground">
-                Emsal tezden ayrışmak için aşağıdaki akademik rotalardan birini seçerek tez tasarımınızı anında özgünleştirebilirsiniz:
+                Emsal tezden ayrışmak için aşağıdaki akademik rotalardan birini
+                seçerek tez tasarımınızı anında özgünleştirebilirsiniz:
               </p>
             </div>
 
@@ -284,7 +307,11 @@ export function PositioningReportView({
               {pivotOptions.map((pivot) => {
                 const isField = pivot.dimension === "SAHA_ORNEKLEM";
                 const isTheory = pivot.dimension === "KURAMSAL_CERCEVE";
-                const PivotIcon = isField ? Building2 : isTheory ? Scale : Scroll;
+                const PivotIcon = isField
+                  ? Building2
+                  : isTheory
+                    ? Scale
+                    : Scroll;
                 const isLoading = activePivotLoading === pivot.id;
 
                 return (
@@ -294,9 +321,16 @@ export function PositioningReportView({
                   >
                     <div className="space-y-2">
                       <div className="flex items-center justify-between">
-                        <Badge variant="outline" className="text-[10px] font-mono">
+                        <Badge
+                          variant="outline"
+                          className="text-[10px] font-mono"
+                        >
                           <PivotIcon className="size-3 mr-1 text-primary" />
-                          {isField ? "Saha & Örneklem" : isTheory ? "Kuramsal Mercek" : "Yöntemsel Desen"}
+                          {isField
+                            ? "Saha & Örneklem"
+                            : isTheory
+                              ? "Kuramsal Mercek"
+                              : "Yöntemsel Desen"}
                         </Badge>
                       </div>
                       <h4 className="font-serif text-xs font-bold text-foreground">
@@ -336,7 +370,8 @@ export function PositioningReportView({
             {/* Back to Draft button */}
             <div className="flex items-center justify-between pt-3 border-t border-border/40">
               <span className="text-xs text-muted-foreground">
-                Farklılaşma seçenekleri yerine taslağınızı baştan değiştirmek ister misiniz?
+                Farklılaşma seçenekleri yerine taslağınızı baştan değiştirmek
+                ister misiniz?
               </span>
               <Button
                 variant="outline"
@@ -364,14 +399,19 @@ export function PositioningReportView({
               </h3>
             </div>
             <p className="text-xs text-muted-foreground pl-6">
-              Jüri, çalışmanızın özgünlüğünü pekiştirmek ve konu kutularını en doğru şekilde yapılandırmak için aşağıdaki tercihleri netleştirmenizi önermektedir:
+              Jüri, çalışmanızın özgünlüğünü pekiştirmek ve konu kutularını en
+              doğru şekilde yapılandırmak için aşağıdaki tercihleri
+              netleştirmenizi önermektedir:
             </p>
           </div>
 
           <div className="space-y-3 pl-6">
             {questions.map((q, idx) => (
               <div key={q.id || `q-${idx}`} className="space-y-1.5">
-                <Label htmlFor={`q-${q.id}`} className="text-xs font-semibold text-foreground">
+                <Label
+                  htmlFor={`q-${q.id}`}
+                  className="text-xs font-semibold text-foreground"
+                >
                   {idx + 1}. {q.question}
                 </Label>
                 {q.contextNote && (
@@ -399,7 +439,8 @@ export function PositioningReportView({
             Akademik Boşluk Analizi ve Çok Kanallı Literatür Sentezi
           </h2>
           <p className="text-sm leading-relaxed text-muted-foreground">
-            Çalışmanızın literatürdeki konumu, tespit edilen boşluklar ve özgün katkısı aşağıda 3 stratejik boyutta sentezlenmiştir.
+            Çalışmanızın literatürdeki konumu, tespit edilen boşluklar ve özgün
+            katkısı aşağıda 3 stratejik boyutta sentezlenmiştir.
           </p>
         </div>
 
@@ -419,14 +460,17 @@ export function PositioningReportView({
               </span>
             </div>
             <p className="text-sm leading-relaxed text-muted-foreground">
-              Çalışmanızın temel kuramsal, yöntemsel ve olgusal zeminini oluşturan en stratejik kaynaklar ve konumlandırma rehberi.
+              Çalışmanızın temel kuramsal, yöntemsel ve olgusal zeminini
+              oluşturan en stratejik kaynaklar ve konumlandırma rehberi.
             </p>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {sortedTheses.map((thesis, idx) => {
               const roleConfig = getRoleBadgeConfig(thesis.strategicRole);
-              const pubBadge = getPublicationBadge(thesis.publicationType || thesis.thesisType);
+              const pubBadge = getPublicationBadge(
+                thesis.publicationType || thesis.thesisType,
+              );
               const RoleIcon = roleConfig.icon;
               const { mainTitle } = splitBilingualTitle(thesis.title);
               const sourceLabel = getChannelLabel(thesis.sourceChannel);
@@ -448,7 +492,10 @@ export function PositioningReportView({
                         <RoleIcon className="size-3 text-primary shrink-0" />
                         <span>{roleConfig.label}</span>
                       </span>
-                      <Badge variant="outline" className={`text-[10px] font-medium ${pubBadge.className}`}>
+                      <Badge
+                        variant="outline"
+                        className={`text-[10px] font-medium ${pubBadge.className}`}
+                      >
                         {pubBadge.label}
                       </Badge>
                       <span className="text-[11px] text-muted-foreground font-mono">
@@ -542,7 +589,9 @@ export function PositioningReportView({
 
         <Button
           onClick={handleConfirm}
-          disabled={confirming || isDirectOverlap || activePivotLoading !== null}
+          disabled={
+            confirming || isDirectOverlap || activePivotLoading !== null
+          }
           size="lg"
           className="cursor-pointer"
         >

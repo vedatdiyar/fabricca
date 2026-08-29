@@ -105,6 +105,13 @@ export function createGeminiRetryPolicy(
           error.message.includes("503") ||
           error.message.includes("UNAVAILABLE");
 
+        if (
+          error.message.includes("language guard violated") ||
+          error.message.includes("disallowed CJK characters")
+        ) {
+          return true;
+        }
+
         if (isOverload) {
           // If multiple keys exist in the pool, avoid stalling for 3 consecutive timeouts
           // on the same key. Allow 1 retry on the current key, then failover on attempt >= 2.

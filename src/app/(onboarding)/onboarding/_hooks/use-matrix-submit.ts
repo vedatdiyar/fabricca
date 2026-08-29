@@ -47,8 +47,8 @@ export function useMatrixSubmit() {
       activateStep(0, steps);
 
       showLoading(
-        "Çalışma Matrisi Kaydediliyor & Konumlandırma Raporu Hazırlanıyor",
-        "Tez matrisiniz kaydediliyor, akademik veri tabanlarında tezler taranıyor ve jüri analizi ile konumlandırma raporu oluşturuluyor.",
+        "Matris Kaydediliyor ve Rapor Hazırlanıyor",
+        "Matrisiniz kaydediliyor ve konumlandırma raporunuz hazırlanıyor.",
         steps,
       );
 

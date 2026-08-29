@@ -210,4 +210,3 @@ Metinde açıkça belirtilmeyen kısımlar varsa, konunun doğasına uygun ensti
     },
   );
 }
-

@@ -411,4 +411,3 @@ export class Logger implements LoggerInstance {
     console[level](JSON.stringify(entry));
   }
 }
-

@@ -137,4 +137,3 @@ export const gapAnalysisStructuredSchema = z.object({
 
 /** Structured gap analysis type inferred from Zod schema. */
 export type GapAnalysisStructured = z.infer<typeof gapAnalysisStructuredSchema>;
-

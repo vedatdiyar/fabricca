@@ -23,11 +23,7 @@ export const TQ_KEYS = {
 } as const;
 
 export type OnboardingStep =
-  | "proposal"
-  | "matrix"
-  | "positioning"
-  | "boxes"
-  | "outline";
+  "proposal" | "matrix" | "positioning" | "boxes" | "outline";
 
 /**
  * Maps each onboarding step to the cache entries that become stale when that step is

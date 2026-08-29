@@ -10,6 +10,12 @@ export interface ExaSearchOptions {
   includeDomains?: string[];
   /** Filter by category (e.g., 'publication', 'news', 'company'). */
   category?: "publication" | "company" | "news" | "financial report";
+  /** Optional logger instance for observability. */
+  logger?: Logger;
+  /** Whether to silence individual console logging when nested in a pipeline. */
+  silent?: boolean;
+  /** Optional descriptive summary tag for terminal logs. */
+  summary?: string;
 }
 
 /** Individual search result returned by Exa. */
@@ -31,7 +37,6 @@ interface ExaApiResponse {
 
 /**
  * Executes a neural/semantic search using Exa.ai.
- * Designed for empirical, Turkish publications (DergiPark), industry reports, and gray literature.
  *
  * @param query - Natural language search query.
  * @param options - Search configuration options.
@@ -41,51 +46,69 @@ export async function searchExa(
   query: string,
   options?: ExaSearchOptions,
 ): Promise<ExaSearchResult[]> {
-  const log = new Logger(createFlowId());
+  const log = options?.logger ?? new Logger(createFlowId());
+  const silent = options?.silent ?? false;
   const apiKey = process.env.EXA_API_KEY;
   if (!apiKey) {
-    log.warn("exa_search_missing_key", {
-      service: "literature",
-      data: { summary: "EXA_API_KEY missing" },
-    });
+    if (!silent) {
+      log.warn("exa_search_missing_key", {
+        service: "literature",
+        data: { summary: "EXA_API_KEY missing" },
+      });
+    }
     return [];
   }
 
   const numResults = options?.numResults ?? 5;
   const highlights = options?.highlights ?? true;
 
+  const executeFetch = async (): Promise<ExaSearchResult[]> => {
+    const response = await fetch("https://api.exa.ai/search", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "x-api-key": apiKey,
+        Authorization: `Bearer ${apiKey}`,
+      },
+      body: JSON.stringify({
+        query,
+        type: "auto",
+        numResults,
+        includeDomains: options?.includeDomains,
+        category: options?.category,
+        contents: {
+          highlights,
+        },
+      }),
+    });
+
+    if (!response.ok) {
+      const errorBody = await response.text();
+      throw new Error(`Exa API HTTP ${response.status}: ${errorBody}`);
+    }
+
+    const data = (await response.json()) as ExaApiResponse;
+    return data.results ?? [];
+  };
+
   try {
+    if (silent) {
+      return await executeFetch();
+    }
+
+    const domainSummary =
+      options?.summary ||
+      (options?.includeDomains?.length
+        ? options.includeDomains.join(", ")
+        : "web");
+
     return await log.time(
       "exa_search",
-      async () => {
-        const response = await fetch("https://api.exa.ai/search", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "x-api-key": apiKey,
-            Authorization: `Bearer ${apiKey}`,
-          },
-          body: JSON.stringify({
-            query,
-            type: "auto",
-            numResults,
-            includeDomains: options?.includeDomains,
-            category: options?.category,
-            contents: {
-              highlights,
-            },
-          }),
-        });
-
-        if (!response.ok) {
-          const errorBody = await response.text();
-          throw new Error(`Exa API HTTP ${response.status}: ${errorBody}`);
-        }
-
-        const data = (await response.json()) as ExaApiResponse;
-        return data.results ?? [];
+      executeFetch,
+      {
+        service: "literature",
+        data: { summary: domainSummary },
       },
-      { service: "literature" },
     );
   } catch {
     return [];

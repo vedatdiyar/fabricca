@@ -56,6 +56,7 @@ function defaultDescriptionForKey(key: string): string {
     critique: "Gemini Flash",
     analysis: "User Clarification Answers",
     synthesis: "Matrix Synthesis",
+    matrix: "Initial Matrix Synthesis",
     generate: "AI Synthesis",
     check: "Literature Pool Check",
     scan: "Academic Sources Scan",
@@ -191,8 +192,7 @@ export class PipelineRun {
     this.printHeader();
     const index = stageIndexOf(this.definition, key);
     const total = this.definition.stages.length;
-    const stageDesc =
-      options?.description ?? defaultDescriptionForKey(key);
+    const stageDesc = options?.description ?? defaultDescriptionForKey(key);
     const startedAt = performance.now();
 
     try {

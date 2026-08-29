@@ -71,10 +71,8 @@ export async function saveThesisMatrixAction(
       return { error: SESSION_ERROR_MSG };
     }
 
-    await run.execute(
-      "save",
-      async () => {
-        await db.transaction(async (tx) => {
+    await run.execute("save", async () => {
+      await db.transaction(async (tx) => {
         const [matrixRow] = await tx
           .insert(matrices)
           .values({
@@ -277,8 +275,7 @@ export async function synthesizeAndSaveMatrixAction(payload: {
           rawProposal: payload.originalProposal,
           evidenceSummary: payload.evidenceSummary,
           auditResult: payload.auditResult as
-            | Record<string, unknown>
-            | undefined,
+            Record<string, unknown> | undefined,
           subjectProblem: matrix.subjectProblem,
           theoreticalFramework: matrix.theoreticalFramework,
           primaryMaterial: matrix.primaryMaterial,
@@ -291,8 +288,7 @@ export async function synthesizeAndSaveMatrixAction(payload: {
             rawProposal: payload.originalProposal,
             evidenceSummary: payload.evidenceSummary,
             auditResult: payload.auditResult as
-              | Record<string, unknown>
-              | undefined,
+              Record<string, unknown> | undefined,
             subjectProblem: matrix.subjectProblem,
             theoreticalFramework: matrix.theoreticalFramework,
             primaryMaterial: matrix.primaryMaterial,
@@ -316,4 +312,3 @@ export async function synthesizeAndSaveMatrixAction(payload: {
     return { error: message };
   }
 }
-

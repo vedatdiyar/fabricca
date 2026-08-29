@@ -167,15 +167,21 @@ export function formatStageLine(options: StageLineOptions): string {
     const dur = options.backoffMs ? formatDuration(options.backoffMs) : "";
     rightPart = `${C_YELLOW}↻ ${dur}${C_RESET}`.trim();
   } else if (status === "FAILED") {
-    const dur = options.durationMs !== undefined ? ` (${formatDuration(options.durationMs)})` : "";
+    const dur =
+      options.durationMs !== undefined
+        ? ` (${formatDuration(options.durationMs)})`
+        : "";
     const reason = options.error ? extractReason(options.error) : "Failed";
     rightPart = `${C_RED}✖ ${reason}${dur}${C_RESET}`;
   } else {
-    const dur = options.durationMs !== undefined ? formatDuration(options.durationMs) : "";
+    const dur =
+      options.durationMs !== undefined
+        ? formatDuration(options.durationMs)
+        : "";
     rightPart = `${C_GREEN}${dur}${C_RESET}`;
   }
 
-  const content = formatLeaderLine(options.description, rightPart);
+  const content = formatLeaderLine(options.description, rightPart, 46);
   return `  ${badgeStr} ${sep} ${content}`;
 }
 
@@ -197,7 +203,9 @@ export interface PipelineFinishOptions {
 export function formatPipelineFinish(options: PipelineFinishOptions): string {
   const dur = formatDuration(options.durationMs);
   if (options.status === "FAILED") {
-    const reason = options.error ? `\n  ${C_DIM}↳ reason: ${extractReason(options.error)}${C_RESET}` : "";
+    const reason = options.error
+      ? `\n  ${C_DIM}↳ reason: ${extractReason(options.error)}${C_RESET}`
+      : "";
     return `${C_RED}${C_BOLD}✖ Pipeline failed at stage [${options.completedStages}/${options.totalStages}] in ${dur}${C_RESET}${reason}`;
   }
   return `${C_GREEN}${C_BOLD}🏁 Completed (${options.completedStages}/${options.totalStages} stages) in ${dur}${C_RESET}`;
@@ -228,7 +236,9 @@ export function formatLogLine(options: SingleLineLogOptions): string {
     ? `${C_CYAN}[${options.service}]${C_RESET} `
     : "";
 
-  const annotation = options.summary ? ` ${C_DIM}${options.summary}${C_RESET}` : "";
+  const annotation = options.summary
+    ? ` ${C_DIM}${options.summary}${C_RESET}`
+    : "";
 
   let rightPart = "";
   if (options.durationMs !== undefined && options.durationMs !== null) {
@@ -238,7 +248,9 @@ export function formatLogLine(options: SingleLineLogOptions): string {
   }
 
   const leftPart = `${serviceTag}${options.event}${annotation}`;
-  const content = rightPart ? formatLeaderLine(leftPart, rightPart, 45) : leftPart;
+  const content = rightPart
+    ? formatLeaderLine(leftPart, rightPart, 45)
+    : leftPart;
 
   return `${timeTag} ${iconPart} ${content}`;
 }
