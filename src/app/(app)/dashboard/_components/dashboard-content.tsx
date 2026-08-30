@@ -1,13 +1,13 @@
-"use client";
-
-import { useMemo } from "react";
+import { useState, useMemo } from "react";
 import { FolderKanban, BookOpen, CheckSquare, Sparkles } from "lucide-react";
 import type { Box, Source } from "@/core/db/schema";
 import type { TaskRow } from "../_lib/schemas";
 import { Card, CardContent } from "@/components/ui/card";
 import { BoxCard } from "./box-card";
 import { KanbanBoard } from "./kanban-board";
+import { AcademicTimelineBar } from "./academic-timeline-bar";
 import { useDashboard } from "../_hooks/use-dashboard";
+import type { TimelineMetrics } from "@/core/services/timeline/timeline-engine";
 
 interface DashboardContentProps {
   initialBoxes: Box[];
@@ -15,10 +15,11 @@ interface DashboardContentProps {
   initialTasks: TaskRow[];
   childIdToParentId: Map<number, number>;
   allBoxRows: Box[];
+  initialTimelineMetrics?: TimelineMetrics | null;
 }
 
 /**
- * Renders the interactive dashboard with topic boxes, overview metrics, and the ADHD-balanced Kanban board.
+ * Renders the interactive dashboard with topic boxes, overview metrics, academic timeline bar, and the Kanban board.
  *
  * @param props - Component props.
  * @returns The rendered dashboard content.
@@ -29,7 +30,11 @@ export function DashboardContent({
   initialTasks,
   childIdToParentId,
   allBoxRows,
+  initialTimelineMetrics,
 }: DashboardContentProps) {
+  const [timelineMetrics, setTimelineMetrics] =
+    useState<TimelineMetrics | null>(initialTimelineMetrics ?? null);
+
   const {
     topicBoxes,
     combinedTasks,
@@ -86,7 +91,13 @@ export function DashboardContent({
   }, [topicBoxes, combinedTasks]);
 
   return (
-    <div className="w-full space-y-8">
+    <div className="w-full space-y-6">
+      {/* Academic Timeline Progress Bar */}
+      <AcademicTimelineBar
+        metrics={timelineMetrics}
+        onMetricsUpdated={setTimelineMetrics}
+      />
+
       {/* Overview Metric Cards */}
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
         {/* Metric 1: Konu Kutuları */}

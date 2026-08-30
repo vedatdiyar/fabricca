@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { getSession } from "@/lib/session";
 import { getUsersMatrixAndBoxesWithResources } from "./_services/box-service";
 import { getTasksAction } from "./task-actions";
+import { getTimelineMetricsAction } from "./timeline-actions";
 import { DashboardContent } from "./_components/dashboard-content";
 import { Card } from "@/components/ui/card";
 
@@ -16,9 +17,10 @@ export default async function DashboardPage() {
     redirect("/login");
   }
 
-  const [boxResult, tasksResult] = await Promise.all([
+  const [boxResult, tasksResult, timelineResult] = await Promise.all([
     getUsersMatrixAndBoxesWithResources(session.userId),
     getTasksAction(),
+    getTimelineMetricsAction(),
   ]);
 
   if ("error" in boxResult) {
@@ -42,6 +44,9 @@ export default async function DashboardPage() {
     allBoxRows,
   } = boxResult.data;
   const dbTasks = tasksResult.success ? (tasksResult.data ?? []) : [];
+  const dbTimeline = timelineResult.success
+    ? (timelineResult.data ?? null)
+    : null;
 
   return (
     <div className="w-full space-y-6">
@@ -51,6 +56,7 @@ export default async function DashboardPage() {
         initialTasks={dbTasks}
         childIdToParentId={childIdToParentId}
         allBoxRows={allBoxRows}
+        initialTimelineMetrics={dbTimeline}
       />
     </div>
   );

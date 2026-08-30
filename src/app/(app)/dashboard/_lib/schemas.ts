@@ -5,6 +5,7 @@ export const TaskTypeSchema = z.enum([
   "READING",
   "NOTE_TAKING",
   "CARD_SORTING",
+  "OUTLINE_WRITING",
   "BOX_GAP",
   "ADVISOR_REQUEST",
   "MANUAL",

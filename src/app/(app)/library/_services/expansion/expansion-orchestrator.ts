@@ -1,12 +1,13 @@
 import { db } from "@/core/db";
-import { boxes, sources } from "@/core/db/schema";
-import { eq, inArray } from "drizzle-orm";
+import { boxes, sources, matrices } from "@/core/db/schema";
+import { eq, inArray, count, and } from "drizzle-orm";
 import { Logger, createFlowId } from "@/lib/logger";
 import { sanitizeTargetedArticles } from "@/core/services/academic";
 import type { ExpansionResult } from "./types";
 import { executeBackwardExpansion } from "./backward-expansion";
 import { executeForwardExpansion } from "./forward-expansion";
 import { persistExpansionResult } from "./expansion-persistence";
+import { calculateTimelineMetrics } from "@/core/services/timeline/timeline-engine";
 
 /**
  * Main orchestrator for Sub-Box automatic literature expansion.
@@ -14,6 +15,10 @@ import { persistExpansionResult } from "./expansion-persistence";
  * updates box activeSeedIds, and increments expansionCycle. When the active seed
  * sources expose no usable identifiers (DOI / OpenAlex ID), only backward
  * expansion runs and all candidates come from the parsed reference lists.
+ *
+ * Enforces:
+ * 1. Global Literature Source Ceiling (80 Master / 180 Doctorate).
+ * 2. Academic Calendar Freeze Date (Literature frozen in Phase >= 2).
  *
  * @param boxId - Sub-Box ID to expand literature for.
  * @returns ExpansionResult detailing previous and new active seed source IDs.
@@ -31,10 +36,11 @@ export async function runLiteratureExpansion(
     data: { boxId },
   });
 
-  // 1. Fetch box and current activeSeedIds
+  // 1. Fetch box, matrix, and enforce global academic limits
   const boxRows = await db
     .select({
       id: boxes.id,
+      matrixId: boxes.matrixId,
       activeSeedIds: boxes.activeSeedIds,
       expansionCycle: boxes.expansionCycle,
     })
@@ -49,6 +55,58 @@ export async function runLiteratureExpansion(
       error: `Box with ID ${boxId} not found`,
     });
     throw new Error(`Box with ID ${boxId} not found.`);
+  }
+
+  // Load matrix for timeline and degree ceiling checks
+  const matrixRows = await db
+    .select()
+    .from(matrices)
+    .where(eq(matrices.id, box.matrixId));
+  const userMatrix = matrixRows[0];
+
+  if (userMatrix) {
+    const totalSourcesRows = await db
+      .select({ count: count() })
+      .from(sources)
+      .innerJoin(boxes, eq(sources.boxId, boxes.id))
+      .where(eq(boxes.matrixId, userMatrix.id));
+    const totalSourcesCount = Number(totalSourcesRows[0]?.count ?? 0);
+
+    const readSourcesRows = await db
+      .select({ count: count() })
+      .from(sources)
+      .innerJoin(boxes, eq(sources.boxId, boxes.id))
+      .where(and(eq(boxes.matrixId, userMatrix.id), eq(sources.isRead, true)));
+    const readSourcesCount = Number(readSourcesRows[0]?.count ?? 0);
+
+    const timeline = calculateTimelineMetrics({
+      startDate: userMatrix.createdAt,
+      targetDate: userMatrix.targetCompletionDate,
+      degree: userMatrix.thesisDegree,
+      weeklyHours: userMatrix.weeklyTargetHours,
+      currentSources: totalSourcesCount,
+      readSources: readSourcesCount,
+    });
+
+    if (timeline.isSourceLimitReached) {
+      const errorMsg = `Bu tez için belirlenen azami akademik kaynak tavanına (${timeline.maxSourceLimit} kaynak) ulaşıldı. Literatür doygunluğu sağlandığından yeni genişletme yapılamaz.`;
+      logger.warn("literature_expansion_limit_reached", {
+        service: "literature",
+        status: "FAILED",
+        error: errorMsg,
+      });
+      throw new Error(errorMsg);
+    }
+
+    if (timeline.isLiteratureFrozen) {
+      const errorMsg = `Tez takviminizin ${timeline.currentPhase?.phaseNumber ?? 2}. aşamasındasınız (${timeline.currentPhase?.title ?? "Fişleme & Taslak"}). Bu aşamada literatür dondurulmuştur; lütfen mevcut kaynakları fişleyip tez planına bağlamaya odaklanın.`;
+      logger.warn("literature_expansion_frozen_phase", {
+        service: "literature",
+        status: "FAILED",
+        error: errorMsg,
+      });
+      throw new Error(errorMsg);
+    }
   }
 
   let activeSeedIds = (box.activeSeedIds as number[]) ?? [];

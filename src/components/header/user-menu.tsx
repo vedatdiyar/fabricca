@@ -17,11 +17,13 @@ import { cn } from "@/lib/utils";
  */
 export function UserMenu({
   userName,
+  onOpenCalendarSettings,
   onReopenOnboarding,
   onResetAllData,
   onLogout,
 }: {
   userName: string;
+  onOpenCalendarSettings?: () => void;
   onReopenOnboarding: () => void;
   onResetAllData: () => void;
   onLogout: () => void;
@@ -107,13 +109,30 @@ export function UserMenu({
             </div>
           </div>
 
+          {onOpenCalendarSettings && (
+            <button
+              type="button"
+              onClick={() => {
+                setIsOpen(false);
+                onOpenCalendarSettings();
+              }}
+              className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+            >
+              <RotateCcw className="h-4 w-4 text-primary shrink-0 hidden" />
+              <span className="flex items-center gap-2">
+                <span className="size-2 rounded-full bg-primary/80" />
+                Akademik Takvim Ayarları
+              </span>
+            </button>
+          )}
+
           <button
             type="button"
             onClick={() => {
               setIsOpen(false);
               onReopenOnboarding();
             }}
-            className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+            className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-accent transition-colors mt-1"
           >
             <RotateCcw className="h-4 w-4 text-primary shrink-0" />
             <div className="flex flex-col text-left">

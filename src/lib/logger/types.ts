@@ -30,6 +30,7 @@ export type ServiceName =
   | "outline"
   | "thesis-architecture"
   | "pipeline"
+  | "timeline"
   | "onboarding"
   | "ui";
 

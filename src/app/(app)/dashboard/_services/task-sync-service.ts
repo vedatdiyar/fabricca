@@ -7,7 +7,9 @@ import {
   type AcademicTaskContext,
 } from "./task-context-loader";
 
-const MAX_ACTIVE_AUTOMATED_TASKS = 4;
+import { calculateTimelineMetrics } from "@/core/services/timeline/timeline-engine";
+
+const MAX_ACTIVE_AUTOMATED_TASKS = 3;
 
 interface CandidateTask {
   taskType: TaskType;
@@ -116,6 +118,16 @@ export function generateCandidateTasks(
 
   const boxMap = new Map(context.boxes.map((b) => [b.id, b]));
 
+  const readCount = context.sources.filter((s) => s.isRead).length;
+  const timeline = calculateTimelineMetrics({
+    startDate: context.matrix.createdAt,
+    targetDate: context.matrix.targetCompletionDate,
+    degree: context.matrix.thesisDegree,
+    weeklyHours: context.matrix.weeklyTargetHours,
+    currentSources: context.sources.length,
+    readSources: readCount,
+  });
+
   const activeReadingSourceIds = new Set(
     context.tasks
       .filter((t) => t.sourceId && t.status !== "DONE")
@@ -134,29 +146,33 @@ export function generateCandidateTasks(
       .map((t) => t.boxId),
   );
 
-  // Candidates A: Unread Sources (READING)
-  for (const src of context.sources) {
-    if (src.isRead || activeReadingSourceIds.has(src.id)) continue;
-    const box = boxMap.get(src.boxId);
-    if (!box) continue;
+  // Candidates A: Unread Sources (READING) — Only generated if literature is NOT frozen
+  if (!timeline.isLiteratureFrozen) {
+    for (const src of context.sources) {
+      if (src.isRead || activeReadingSourceIds.has(src.id)) continue;
+      const box = boxMap.get(src.boxId);
+      if (!box) continue;
 
-    const authorDisplay =
-      src.authors && src.authors.length > 0
-        ? src.authors[0]
-        : "Akademik Kaynak";
-    const yearDisplay = src.publicationYear ? ` (${src.publicationYear})` : "";
+      const authorDisplay =
+        src.authors && src.authors.length > 0
+          ? src.authors[0]
+          : "Akademik Kaynak";
+      const yearDisplay = src.publicationYear
+        ? ` (${src.publicationYear})`
+        : "";
 
-    if (box.boxType && box.boxType in candidatesByPillar) {
-      candidatesByPillar[box.boxType]?.push({
-        taskType: "READING",
-        title: `${authorDisplay}${yearDisplay} makalesini oku`,
-        description: `"${src.title}" başlıklı yayını inceleyerek temel argümanları ve bulguları değerlendirin.`,
-        priority: "HIGH",
-        boxId: box.id,
-        sourceId: src.id,
-        targetUrl: `/library`,
-        pillar: box.boxType,
-      });
+      if (box.boxType && box.boxType in candidatesByPillar) {
+        candidatesByPillar[box.boxType]?.push({
+          taskType: "READING",
+          title: `${authorDisplay}${yearDisplay} eserini incele ve fişle`,
+          description: `"${src.title}" kaynağını inceleyerek teziniz için kritik argümanları ve alıntı fişlerini çıkarın.`,
+          priority: "HIGH",
+          boxId: box.id,
+          sourceId: src.id,
+          targetUrl: `/library`,
+          pillar: box.boxType,
+        });
+      }
     }
   }
 
@@ -173,13 +189,14 @@ export function generateCandidateTasks(
       src.authors && src.authors.length > 0
         ? src.authors[0]
         : "Akademik Kaynak";
+    const yearDisplay = src.publicationYear ? ` (${src.publicationYear})` : "";
 
     if (box.boxType && box.boxType in candidatesByPillar) {
       candidatesByPillar[box.boxType]?.push({
         taskType: "NOTE_TAKING",
-        title: `${authorDisplay} kaynağından alıntı/not çıkar`,
-        description: `Okunan "${src.title}" kaynağından tezinize kanıt oluşturacak alıntı veya notlar ekleyin.`,
-        priority: "MEDIUM",
+        title: `${authorDisplay}${yearDisplay} kaynağından alıntı fişi çıkar`,
+        description: `İncelenen "${src.title}" eserinden tez planınıza kanıt oluşturacak alıntı fişleri oluşturun.`,
+        priority: "HIGH",
         boxId: box.id,
         sourceId: src.id,
         targetUrl: `/library`,
@@ -208,8 +225,8 @@ export function generateCandidateTasks(
     ) {
       candidatesByPillar[box.boxType]?.push({
         taskType: "CARD_SORTING",
-        title: `"${box.title}" kutusundaki ${unsortedCards.length} fişi taslağa yerleştir`,
-        description: `Kutunuzda tasnif bekleyen ${unsortedCards.length} adet alıntı kartını tezin ilgili başlıklarına bağlayın.`,
+        title: `"${box.title}" kutusundaki ${unsortedCards.length} fişi tez planına bağla`,
+        description: `Kutunuzda bulunan ${unsortedCards.length} adet alıntı kartını ilgili tez alt başlıklarıyla eşleştirin.`,
         priority: "HIGH",
         boxId: box.id,
         sourceId: null,
@@ -219,25 +236,27 @@ export function generateCandidateTasks(
     }
   }
 
-  // Candidates D: Empty Boxes (BOX_GAP)
-  for (const box of context.boxes) {
-    if (activeBoxGapIds.has(box.id)) continue;
-    const boxSources = context.sources.filter((s) => s.boxId === box.id);
-    if (
-      boxSources.length === 0 &&
-      box.boxType &&
-      box.boxType in candidatesByPillar
-    ) {
-      candidatesByPillar[box.boxType]?.push({
-        taskType: "BOX_GAP",
-        title: `"${box.title}" alt kutusu için literatür tara`,
-        description: `Bu kutu altında henüz onaylanmış bir kaynak bulunmuyor. Kütüphaneden kaynak ekleyin.`,
-        priority: "MEDIUM",
-        boxId: box.id,
-        sourceId: null,
-        targetUrl: `/library`,
-        pillar: box.boxType,
-      });
+  // Candidates D: Empty Boxes (BOX_GAP) — Only if literature is NOT frozen
+  if (!timeline.isLiteratureFrozen) {
+    for (const box of context.boxes) {
+      if (activeBoxGapIds.has(box.id)) continue;
+      const boxSources = context.sources.filter((s) => s.boxId === box.id);
+      if (
+        boxSources.length === 0 &&
+        box.boxType &&
+        box.boxType in candidatesByPillar
+      ) {
+        candidatesByPillar[box.boxType]?.push({
+          taskType: "BOX_GAP",
+          title: `"${box.title}" teması için literatür tara`,
+          description: `Bu alt kutuda henüz onaylanmış bir akademik kaynak bulunmuyor. Kütüphaneden kaynak ekleyin.`,
+          priority: "MEDIUM",
+          boxId: box.id,
+          sourceId: null,
+          targetUrl: `/library`,
+          pillar: box.boxType,
+        });
+      }
     }
   }
 

@@ -88,6 +88,13 @@ export const TASK_TYPE_CONFIG: Record<TaskType, TaskTypeDefinition> = {
       "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20",
     ctaText: "Taslağa Eşle →",
   },
+  OUTLINE_WRITING: {
+    label: "Bölüm Yazımı",
+    icon: PenTool,
+    badgeClass:
+      "bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/20",
+    ctaText: "Taslağı Yaz →",
+  },
   BOX_GAP: {
     label: "Literatür Tarama",
     icon: Target,

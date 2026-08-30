@@ -70,6 +70,11 @@ export type User = InferSelectModel<typeof users>;
 
 export type NewUser = InferInsertModel<typeof users>;
 
+export const thesisDegreeEnum = pgEnum("thesis_degree", [
+  "MASTER",
+  "DOCTORATE",
+]);
+
 /** Thesis Matrix table — stores proposal intake, audit results, and the 4-quadrant academic thesis matrix. */
 export const matrices = pgTable("matrices", {
   id: serial().primaryKey(),
@@ -80,6 +85,9 @@ export const matrices = pgTable("matrices", {
   rawProposal: text("raw_proposal"),
   evidenceSummary: text("evidence_summary"),
   auditResult: jsonb("audit_result").$type<Record<string, unknown>>(),
+  thesisDegree: thesisDegreeEnum("thesis_degree").default("MASTER").notNull(),
+  targetCompletionDate: timestamp("target_completion_date"),
+  weeklyTargetHours: integer("weekly_target_hours").default(15).notNull(),
   subjectProblem: text("subject_problem").notNull().default(""),
   theoreticalFramework: text("theoretical_framework").notNull().default(""),
   primaryMaterial: text("primary_material"),
@@ -450,6 +458,7 @@ export const taskTypeEnum = pgEnum("task_type", [
   "READING",
   "NOTE_TAKING",
   "CARD_SORTING",
+  "OUTLINE_WRITING",
   "BOX_GAP",
   "ADVISOR_REQUEST",
   "MANUAL",
