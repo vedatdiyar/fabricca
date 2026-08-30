@@ -1,3 +1,5 @@
+"use client";
+
 import { useState, useMemo } from "react";
 import { FolderKanban, BookOpen, CheckSquare, Sparkles } from "lucide-react";
 import type { Box, Source } from "@/core/db/schema";

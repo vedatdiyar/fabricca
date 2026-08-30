@@ -13,13 +13,14 @@ Platformudur**.
 ## Onboarding (Kayıt) Süreci
 
 Yeni kullanıcı ilk girişinde sırasıyla **5 adımlı** onboarding sürecini
-tamamlar:
+tamamlar (güncel akış — `proposal` tek giriş noktası, `matrix` legacy route `/onboarding/positioning`'e yönlenir):
 
 ```
-1. Çalışma Matrisi (Matrix)
+1. Tez Taslağı (Proposal)
+   └─ Ham öneri → Gemini sentez (MATRIX_SYNTHESIS) → 4 kadranlı matris
         ↓
 2. Akademik Konumlandırma (Positioning)
-   └─ Thesis Search (Qdrant Cloud E5) + Cohere Rerank + Gemini jüri analizi
+   └─ Thesis Search (Qdrant Cloud E5) + Cohere Rerank + Gemini jüri analizi (PROPOSAL_POSITIONING)
         ↓
 3. Konu Kutuları (Boxes)
    └─ Gemini ile otomatik kutu üretimi + kullanıcı onayı
@@ -32,6 +33,8 @@ tamamlar:
         ↓
    Dashboard (onboarding tamamlandı)
 ```
+
+> **Not:** Eski `matrix` (Çalışma Matrisi editörü) ve `proposal-audit` (3 aşamalı web/tez taramalı ön denetim) pipeline'ları Faz 1'de kaldırıldı; yerini `proposal → positioning` birleşik akışı (`PROPOSAL_POSITIONING_PIPELINE`) aldı.
 
 Sistem, her adımda kullanıcının kaldığı yerden devam edebilmesini sağlar.
 
@@ -165,16 +168,17 @@ src/
 │   │   └── login/                   # /login — Giriş sayfası
 │   ├── (onboarding)/                # Onboarding koruma grubu
 │   │   └── layout.tsx               # Oturum kontrolü
-│   ├── (onboarding)/onboarding/     # 4 adımlı onboarding süreci
+│   ├── (onboarding)/onboarding/     # 5 adımlı onboarding süreci (proposal → dashboard)
 │   │   ├── layout.tsx               # Adım navigasyonu (stepper)
 │   │   ├── actions.ts               # Ortak onboarding server action'ları
 │   │   ├── _components/             # Ortak onboarding bileşenleri
 │   │   ├── _hooks/                  # Navigation & step hooks
 │   │   ├── _services/               # Onboarding fetch & step check servisleri
-│   │   ├── matrix/                  # Adım 1: Çalışma Matrisi
+│   │   ├── proposal/                # Adım 1: Tez Taslağı (Proposal)
 │   │   ├── positioning/             # Adım 2: Akademik Konumlandırma (_services, _prompts)
 │   │   ├── boxes/                   # Adım 3: Konu Kutuları (_services, _prompts)
-│   │   └── literature-review/       # Adım 4: Literatür Tarama (_services, _prompts)
+│   │   ├── outline/                 # Adım 4: Tez Planı
+│   │   └── literature-review/       # Adım 5: Literatür Tarama (_services, _prompts)
 │   └── (app)/                       # Giriş sonrası ana uygulama
 │       ├── layout.tsx               # Header + oturum/yönlendirme kontrolü
 │       ├── actions.ts               # Ortak uygulama server action'ları
@@ -205,7 +209,7 @@ src/
 │   ├── session.ts                   # Cookie tabanlı session yönetimi
 │   ├── constants.ts                 # Model sabitleri
 │   ├── box-constants.ts            # Kutu türü sıra/etiket
-│   ├── error-utils.ts              # Hata sınıflandırma
+│   ├── errors/                      # AppError hiyerarşisi + handleActionError
 │   ├── logger.ts                   # Yapılandırılmış loglama sistemi
 │   └── rate-limiter.ts             # Concurrency / rate limit yönetimi
 ```

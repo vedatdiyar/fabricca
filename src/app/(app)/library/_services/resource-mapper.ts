@@ -33,6 +33,79 @@ export type ResourceFieldOverrides = Partial<
   >
 >;
 
+// ---------------------------------------------------------------------------
+// Lookup table & small formatters (SRP helpers)
+// ---------------------------------------------------------------------------
+
+const DEFAULT_BOX_TYPE: Exclude<ThesisBoxType, "ALL"> = "THEORETICAL_FRAMEWORK";
+
+const VALID_BOX_TYPES = new Set<string>([
+  "SUBJECT_PROBLEM",
+  "THEORETICAL_FRAMEWORK",
+  "PRIMARY_MATERIAL",
+  "METHODOLOGY",
+]);
+
+function resolveBoxType(boxType: string | null): Exclude<ThesisBoxType, "ALL"> {
+  if (boxType && VALID_BOX_TYPES.has(boxType)) {
+    return boxType as Exclude<ThesisBoxType, "ALL">;
+  }
+  return DEFAULT_BOX_TYPE;
+}
+
+function resolveSubBoxMeta(
+  box: ResourceBoxContext,
+  sourceBoxId: number,
+): Pick<LibraryResourceItem, "subBoxId" | "subBoxTitle"> {
+  const isSubBox = box.parentId != null;
+  if (!isSubBox) return {};
+  return { subBoxId: sourceBoxId, subBoxTitle: box.title };
+}
+
+function resolvePublisher(rawPublisher: string | null | undefined): string {
+  return rawPublisher ?? "Belirtilmemiş";
+}
+
+function resolvePublicationYear(
+  overrideYear: number | null | undefined,
+  sourceYear: number | null | undefined,
+  hasOverride: boolean,
+): number | null {
+  if (hasOverride) return overrideYear ?? null;
+  return sourceYear ?? null;
+}
+
+function resolveOptional<T>(overrideVal: T | undefined, sourceVal: T | null | undefined): T | undefined {
+  if (overrideVal !== undefined) return overrideVal;
+  return sourceVal ?? undefined;
+}
+
+function resolvePdfStatus(
+  overrideStatus: LibraryResourceItem["pdfStatus"] | undefined,
+  sourceStatus: string | null | undefined,
+): LibraryResourceItem["pdfStatus"] {
+  if (overrideStatus) return overrideStatus;
+  return (sourceStatus as LibraryResourceItem["pdfStatus"]) ?? "NOT_UPLOADED";
+}
+
+function resolveTitle(
+  overrideTitle: string | undefined,
+  sourceTitle: string,
+): string {
+  return overrideTitle ?? sourceTitle;
+}
+
+function resolveIsRead(
+  overrideIsRead: boolean | undefined,
+  sourceIsRead: boolean,
+): boolean {
+  return overrideIsRead ?? sourceIsRead;
+}
+
+// ---------------------------------------------------------------------------
+// Public mapper — composes helpers, no branching logic inline
+// ---------------------------------------------------------------------------
+
 /**
  * Maps a library source row (with its attached box context) into the client-facing
  * LibraryResourceItem DTO, deriving the badge type and optional sub-box metadata from
@@ -67,41 +140,31 @@ export function mapSourceToResource(
   box: ResourceBoxContext,
   overrides: ResourceFieldOverrides = {},
 ): LibraryResourceItem {
-  const isSubBox = box.parentId != null;
-  const boxType = (box.boxType || "THEORETICAL_FRAMEWORK") as Exclude<
-    ThesisBoxType,
-    "ALL"
-  >;
+  const boxType = resolveBoxType(box.boxType);
+  const subBoxMeta = resolveSubBoxMeta(box, source.boxId);
 
   const rawAuthors = overrides.authors ?? source.authors;
   const rawPublisher = overrides.publisher ?? source.publisher;
 
+  const hasYearOverride = overrides.publicationYear !== undefined;
+
   return {
     id: source.id,
     boxType,
-    subBoxId: isSubBox ? source.boxId : undefined,
-    subBoxTitle: isSubBox ? box.title : undefined,
-    title: overrides.title ?? source.title,
-    authors: formatResourceAuthors({
-      authors: rawAuthors,
-      publisher: rawPublisher,
-      boxType,
-    }),
-    containerTitle:
-      overrides.containerTitle ?? source.containerTitle ?? undefined,
-    documentType: overrides.documentType ?? source.documentType ?? undefined,
-    publisher: rawPublisher ?? "Belirtilmemiş",
-    publicationYear:
-      overrides.publicationYear !== undefined
-        ? overrides.publicationYear
-        : (source.publicationYear ?? null),
-    doi: overrides.doi ?? source.doi ?? undefined,
+    ...subBoxMeta,
+    title: resolveTitle(overrides.title, source.title),
+    authors: formatResourceAuthors({ authors: rawAuthors, publisher: rawPublisher, boxType }),
+    containerTitle: resolveOptional(overrides.containerTitle, source.containerTitle),
+    documentType: resolveOptional(overrides.documentType, source.documentType),
+    publisher: resolvePublisher(rawPublisher),
+    publicationYear: resolvePublicationYear(overrides.publicationYear, source.publicationYear, hasYearOverride),
+    doi: resolveOptional(overrides.doi, source.doi),
     openalexId: source.openalexId ?? undefined,
-    isRead: overrides.isRead ?? source.isRead,
-    pdfUrl: overrides.pdfUrl ?? source.pdfUrl ?? undefined,
-    pdfFileName: overrides.pdfFileName ?? source.pdfFileName ?? undefined,
-    pdfFileSize: overrides.pdfFileSize ?? source.pdfFileSize ?? undefined,
-    pdfStatus: overrides.pdfStatus ?? source.pdfStatus ?? "NOT_UPLOADED",
+    isRead: resolveIsRead(overrides.isRead, source.isRead),
+    pdfUrl: resolveOptional(overrides.pdfUrl, source.pdfUrl),
+    pdfFileName: resolveOptional(overrides.pdfFileName, source.pdfFileName),
+    pdfFileSize: resolveOptional(overrides.pdfFileSize, source.pdfFileSize),
+    pdfStatus: resolvePdfStatus(overrides.pdfStatus, source.pdfStatus),
     createdAt: source.createdAt.toISOString(),
   };
 }

@@ -112,26 +112,6 @@ export const LITERATURE_PIPELINE = definePipeline("review", "literature", [
   { key: "persist", text: "Literatür havuzu kaydediliyor..." },
 ]);
 
-/** Proposal audit flow: web and theses search, diagnostic critique. */
-export const PROPOSAL_AUDIT_PIPELINE = definePipeline(
-  "proposal_audit",
-  "onboarding",
-  [
-    {
-      key: "decompose",
-      text: "Tez önerisi analiz ediliyor ve arama sorguları türetiliyor...",
-    },
-    {
-      key: "discovery",
-      text: "Web, tez ve uluslararası literatür taranıyor...",
-    },
-    {
-      key: "critique",
-      text: "Teşhis raporu ve eleştirel sorular hazırlanıyor...",
-    },
-  ],
-);
-
 /** Matrix synthesis flow: user answer analysis, 4-quadrant matrix synthesis. */
 export const MATRIX_SYNTHESIS_PIPELINE = definePipeline(
   "matrix_synthesis",

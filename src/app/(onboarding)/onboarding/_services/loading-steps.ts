@@ -4,7 +4,6 @@ import {
   MATRIX_SUBMIT_PIPELINE,
   MATRIX_SYNTHESIS_PIPELINE,
   OUTLINE_GENERATION_PIPELINE,
-  PROPOSAL_AUDIT_PIPELINE,
   PROPOSAL_POSITIONING_PIPELINE,
   toLoadingSteps,
 } from "@/lib/pipeline-definitions";
@@ -28,10 +27,6 @@ export function isNavigationStepText(text: string): boolean {
 
 export const MATRIX_SUBMIT_STEPS: LoadingStep[] = toLoadingSteps(
   MATRIX_SUBMIT_PIPELINE,
-);
-
-export const PROPOSAL_AUDIT_STEPS: LoadingStep[] = toLoadingSteps(
-  PROPOSAL_AUDIT_PIPELINE,
 );
 
 export const PROPOSAL_POSITIONING_STEPS: LoadingStep[] = toLoadingSteps(

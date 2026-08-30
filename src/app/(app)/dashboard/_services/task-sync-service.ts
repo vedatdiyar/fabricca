@@ -37,6 +37,82 @@ export function sanitizeTaskTitle(title: string): string {
 }
 
 /**
+ * Checks whether a READING task is satisfied (linked source is marked read).
+ *
+ * @param task - The task to evaluate.
+ * @param context - Aggregated academic state.
+ * @returns True when the task should be completed.
+ */
+function isReadingTaskSatisfied(task: Task, context: AcademicTaskContext): boolean {
+  if (!task.sourceId) return false;
+  const src = context.sources.find((s) => s.id === task.sourceId);
+  return !!src && src.isRead;
+}
+
+/**
+ * Checks whether a NOTE_TAKING task is satisfied (linked source has at least one annotation).
+ *
+ * @param task - The task to evaluate.
+ * @param context - Aggregated academic state.
+ * @returns True when the task should be completed.
+ */
+function isNoteTakingTaskSatisfied(task: Task, context: AcademicTaskContext): boolean {
+  if (!task.sourceId) return false;
+  return context.annotations.some((a) => a.sourceId === task.sourceId);
+}
+
+/**
+ * Checks whether a CARD_SORTING task is satisfied (all citation cards for the box are linked to outline).
+ *
+ * @param task - The task to evaluate.
+ * @param context - Aggregated academic state.
+ * @returns True when the task should be completed.
+ */
+function isCardSortingTaskSatisfied(task: Task, context: AcademicTaskContext): boolean {
+  if (!task.boxId) return false;
+  const boxSourceIds = context.sources.filter((s) => s.boxId === task.boxId).map((s) => s.id);
+  const boxCards = context.annotations.filter(
+    (a) => boxSourceIds.includes(a.sourceId) && a.sentToCitationCards,
+  );
+  if (boxCards.length === 0) return false;
+  return boxCards.every((c) => context.linkedAnnotationIds.has(c.id));
+}
+
+/**
+ * Checks whether a BOX_GAP task is satisfied (box now contains at least one source).
+ *
+ * @param task - The task to evaluate.
+ * @param context - Aggregated academic state.
+ * @returns True when the task should be completed.
+ */
+function isBoxGapTaskSatisfied(task: Task, context: AcademicTaskContext): boolean {
+  if (!task.boxId) return false;
+  return context.sources.some((s) => s.boxId === task.boxId);
+}
+
+/**
+ * Pure rule dispatcher that evaluates whether a single task meets its completion condition.
+ *
+ * @param task - The task to evaluate.
+ * @param context - Aggregated academic state.
+ * @returns True when the task should be auto-completed.
+ */
+function shouldTaskComplete(task: Task, context: AcademicTaskContext): boolean {
+  switch (task.taskType) {
+    case "READING":
+      return isReadingTaskSatisfied(task, context);
+    case "NOTE_TAKING":
+      return isNoteTakingTaskSatisfied(task, context);
+    case "CARD_SORTING":
+      return isCardSortingTaskSatisfied(task, context);
+    case "BOX_GAP":
+      return isBoxGapTaskSatisfied(task, context);
+    default:
+      return false;
+  }
+}
+
+/**
  * Auto-completes automated tasks whose completion conditions are now satisfied.
  *
  * @param userTasks - Existing tasks of the user (mutated in place for completed rows)
@@ -51,52 +127,148 @@ export async function autoCompleteTasks(
 
   for (const t of userTasks) {
     if (!t.isAutomated || t.status === "DONE") continue;
+    if (!shouldTaskComplete(t, context)) continue;
 
-    let shouldComplete = false;
-
-    if (t.taskType === "READING" && t.sourceId) {
-      const src = context.sources.find((s) => s.id === t.sourceId);
-      if (src && src.isRead) {
-        shouldComplete = true;
-      }
-    } else if (t.taskType === "NOTE_TAKING" && t.sourceId) {
-      const hasNotes = context.annotations.some(
-        (a) => a.sourceId === t.sourceId,
-      );
-      if (hasNotes) {
-        shouldComplete = true;
-      }
-    } else if (t.taskType === "CARD_SORTING" && t.boxId) {
-      const boxSourceIds = context.sources
-        .filter((s) => s.boxId === t.boxId)
-        .map((s) => s.id);
-      const boxCards = context.annotations.filter(
-        (a) => boxSourceIds.includes(a.sourceId) && a.sentToCitationCards,
-      );
-      const allSorted =
-        boxCards.length > 0 &&
-        boxCards.every((c) => context.linkedAnnotationIds.has(c.id));
-      if (allSorted) {
-        shouldComplete = true;
-      }
-    } else if (t.taskType === "BOX_GAP" && t.boxId) {
-      const hasSources = context.sources.some((s) => s.boxId === t.boxId);
-      if (hasSources) {
-        shouldComplete = true;
-      }
-    }
-
-    if (shouldComplete) {
-      await db
-        .update(tasks)
-        .set({ status: "DONE", updatedAt: new Date() })
-        .where(eq(tasks.id, t.id));
-      t.status = "DONE";
-      autoCompletedCount++;
-    }
+    await db.update(tasks).set({ status: "DONE", updatedAt: new Date() }).where(eq(tasks.id, t.id));
+    t.status = "DONE";
+    autoCompletedCount++;
   }
 
   return autoCompletedCount;
+}
+
+// ---------------------------------------------------------------------------
+// Candidate generation — 4 independent helpers (SRP)
+// ---------------------------------------------------------------------------
+
+function formatAuthorDisplay(
+  authors: string[] | null | undefined,
+  publicationYear: number | null | undefined,
+): { authorDisplay: string; yearDisplay: string } {
+  const authorDisplay =
+    authors && authors.length > 0 ? authors[0] : "Akademik Kaynak";
+  const yearDisplay = publicationYear ? ` (${publicationYear})` : "";
+  return { authorDisplay, yearDisplay };
+}
+
+function isPillarKey(
+  boxType: string | null | undefined,
+  candidatesByPillar: Record<string, CandidateTask[]>,
+): boolean {
+  return !!boxType && boxType in candidatesByPillar;
+}
+
+/**
+ * Candidates A: unread sources (READING). Only when literature is not frozen.
+ */
+function generateReadingCandidates(
+  context: AcademicTaskContext,
+  boxMap: Map<number, (typeof context.boxes)[number]>,
+  candidatesByPillar: Record<string, CandidateTask[]>,
+  activeReadingSourceIds: Set<number>,
+  isLiteratureFrozen: boolean,
+): void {
+  if (isLiteratureFrozen) return;
+  for (const src of context.sources) {
+    if (src.isRead || activeReadingSourceIds.has(src.id)) continue;
+    const box = boxMap.get(src.boxId);
+    if (!box || !isPillarKey(box.boxType, candidatesByPillar)) continue;
+    const { authorDisplay, yearDisplay } = formatAuthorDisplay(src.authors, src.publicationYear);
+    candidatesByPillar[box.boxType!]!.push({
+      taskType: "READING",
+      title: `${authorDisplay}${yearDisplay} eserini incele ve fişle`,
+      description: `"${src.title}" kaynağını inceleyerek teziniz için kritik argümanları ve alıntı fişlerini çıkarın.`,
+      priority: "HIGH",
+      boxId: box.id,
+      sourceId: src.id,
+      targetUrl: `/library`,
+      pillar: box.boxType!,
+    });
+  }
+}
+
+/**
+ * Candidates B: read sources without notes (NOTE_TAKING).
+ */
+function generateNoteTakingCandidates(
+  context: AcademicTaskContext,
+  boxMap: Map<number, (typeof context.boxes)[number]>,
+  candidatesByPillar: Record<string, CandidateTask[]>,
+  activeReadingSourceIds: Set<number>,
+): void {
+  for (const src of context.sources) {
+    if (!src.isRead || activeReadingSourceIds.has(src.id)) continue;
+    const hasNotes = context.annotations.some((a) => a.sourceId === src.id);
+    if (hasNotes) continue;
+    const box = boxMap.get(src.boxId);
+    if (!box || !isPillarKey(box.boxType, candidatesByPillar)) continue;
+    const { authorDisplay, yearDisplay } = formatAuthorDisplay(src.authors, src.publicationYear);
+    candidatesByPillar[box.boxType!]!.push({
+      taskType: "NOTE_TAKING",
+      title: `${authorDisplay}${yearDisplay} kaynağından alıntı fişi çıkar`,
+      description: `İncelenen "${src.title}" eserinden tez planınıza kanıt oluşturacak alıntı fişleri oluşturun.`,
+      priority: "HIGH",
+      boxId: box.id,
+      sourceId: src.id,
+      targetUrl: `/library`,
+      pillar: box.boxType!,
+    });
+  }
+}
+
+/**
+ * Candidates C: unsorted citation cards (CARD_SORTING).
+ */
+function generateSortingCandidates(
+  context: AcademicTaskContext,
+  candidatesByPillar: Record<string, CandidateTask[]>,
+  activeSortingBoxIds: Set<number>,
+): void {
+  for (const box of context.boxes) {
+    if (activeSortingBoxIds.has(box.id)) continue;
+    const boxSourceIds = context.sources.filter((s) => s.boxId === box.id).map((s) => s.id);
+    const unsortedCards = context.annotations.filter(
+      (a) => boxSourceIds.includes(a.sourceId) && a.sentToCitationCards && !context.linkedAnnotationIds.has(a.id),
+    );
+    if (unsortedCards.length === 0 || !isPillarKey(box.boxType, candidatesByPillar)) continue;
+    candidatesByPillar[box.boxType!]!.push({
+      taskType: "CARD_SORTING",
+      title: `"${box.title}" kutusundaki ${unsortedCards.length} fişi tez planına bağla`,
+      description: `Kutunuzda bulunan ${unsortedCards.length} adet alıntı kartını ilgili tez alt başlıklarıyla eşleştirin.`,
+      priority: "HIGH",
+      boxId: box.id,
+      sourceId: null,
+      targetUrl: `/citation-cards`,
+      pillar: box.boxType!,
+    });
+  }
+}
+
+/**
+ * Candidates D: empty boxes (BOX_GAP). Only when literature is not frozen.
+ */
+function generateGapCandidates(
+  context: AcademicTaskContext,
+  candidatesByPillar: Record<string, CandidateTask[]>,
+  activeBoxGapIds: Set<number>,
+  isLiteratureFrozen: boolean,
+): void {
+  if (isLiteratureFrozen) return;
+  for (const box of context.boxes) {
+    if (activeBoxGapIds.has(box.id)) continue;
+    const boxSources = context.sources.filter((s) => s.boxId === box.id);
+    if (boxSources.length !== 0 || !isPillarKey(box.boxType, candidatesByPillar)) continue;
+    candidatesByPillar[box.boxType!]!.push({
+      taskType: "BOX_GAP",
+      title: `"${box.title}" teması için literatür tara`,
+      description: `Bu alt kutuda henüz onaylanmış bir akademik kaynak bulunmuyor. Kütüphaneden kaynak ekleyin.`,
+      priority: "MEDIUM",
+      boxId: box.id,
+      sourceId: null,
+      targetUrl: `/library`,
+      pillar: box.boxType!,
+    });
+  }
 }
 
 /**
@@ -128,137 +300,20 @@ export function generateCandidateTasks(
     readSources: readCount,
   });
 
-  const activeReadingSourceIds = new Set(
-    context.tasks
-      .filter((t) => t.sourceId && t.status !== "DONE")
-      .map((t) => t.sourceId),
+  const activeReadingSourceIds = new Set<number>(
+    context.tasks.filter((t) => t.sourceId !== null && t.status !== "DONE").map((t) => t.sourceId as number),
   );
-  const activeBoxGapIds = new Set(
-    context.tasks
-      .filter((t) => t.taskType === "BOX_GAP" && t.boxId && t.status !== "DONE")
-      .map((t) => t.boxId),
+  const activeBoxGapIds = new Set<number>(
+    context.tasks.filter((t) => t.taskType === "BOX_GAP" && t.boxId !== null && t.status !== "DONE").map((t) => t.boxId as number),
   );
-  const activeSortingBoxIds = new Set(
-    context.tasks
-      .filter(
-        (t) => t.taskType === "CARD_SORTING" && t.boxId && t.status !== "DONE",
-      )
-      .map((t) => t.boxId),
+  const activeSortingBoxIds = new Set<number>(
+    context.tasks.filter((t) => t.taskType === "CARD_SORTING" && t.boxId !== null && t.status !== "DONE").map((t) => t.boxId as number),
   );
 
-  // Candidates A: Unread Sources (READING) — Only generated if literature is NOT frozen
-  if (!timeline.isLiteratureFrozen) {
-    for (const src of context.sources) {
-      if (src.isRead || activeReadingSourceIds.has(src.id)) continue;
-      const box = boxMap.get(src.boxId);
-      if (!box) continue;
-
-      const authorDisplay =
-        src.authors && src.authors.length > 0
-          ? src.authors[0]
-          : "Akademik Kaynak";
-      const yearDisplay = src.publicationYear
-        ? ` (${src.publicationYear})`
-        : "";
-
-      if (box.boxType && box.boxType in candidatesByPillar) {
-        candidatesByPillar[box.boxType]?.push({
-          taskType: "READING",
-          title: `${authorDisplay}${yearDisplay} eserini incele ve fişle`,
-          description: `"${src.title}" kaynağını inceleyerek teziniz için kritik argümanları ve alıntı fişlerini çıkarın.`,
-          priority: "HIGH",
-          boxId: box.id,
-          sourceId: src.id,
-          targetUrl: `/library`,
-          pillar: box.boxType,
-        });
-      }
-    }
-  }
-
-  // Candidates B: Read sources without notes (NOTE_TAKING)
-  for (const src of context.sources) {
-    if (!src.isRead || activeReadingSourceIds.has(src.id)) continue;
-    const hasNotes = context.annotations.some((a) => a.sourceId === src.id);
-    if (hasNotes) continue;
-
-    const box = boxMap.get(src.boxId);
-    if (!box) continue;
-
-    const authorDisplay =
-      src.authors && src.authors.length > 0
-        ? src.authors[0]
-        : "Akademik Kaynak";
-    const yearDisplay = src.publicationYear ? ` (${src.publicationYear})` : "";
-
-    if (box.boxType && box.boxType in candidatesByPillar) {
-      candidatesByPillar[box.boxType]?.push({
-        taskType: "NOTE_TAKING",
-        title: `${authorDisplay}${yearDisplay} kaynağından alıntı fişi çıkar`,
-        description: `İncelenen "${src.title}" eserinden tez planınıza kanıt oluşturacak alıntı fişleri oluşturun.`,
-        priority: "HIGH",
-        boxId: box.id,
-        sourceId: src.id,
-        targetUrl: `/library`,
-        pillar: box.boxType,
-      });
-    }
-  }
-
-  // Candidates C: Unsorted Citation Cards (CARD_SORTING)
-  for (const box of context.boxes) {
-    if (activeSortingBoxIds.has(box.id)) continue;
-    const boxSourceIds = context.sources
-      .filter((s) => s.boxId === box.id)
-      .map((s) => s.id);
-    const unsortedCards = context.annotations.filter(
-      (a) =>
-        boxSourceIds.includes(a.sourceId) &&
-        a.sentToCitationCards &&
-        !context.linkedAnnotationIds.has(a.id),
-    );
-
-    if (
-      unsortedCards.length > 0 &&
-      box.boxType &&
-      box.boxType in candidatesByPillar
-    ) {
-      candidatesByPillar[box.boxType]?.push({
-        taskType: "CARD_SORTING",
-        title: `"${box.title}" kutusundaki ${unsortedCards.length} fişi tez planına bağla`,
-        description: `Kutunuzda bulunan ${unsortedCards.length} adet alıntı kartını ilgili tez alt başlıklarıyla eşleştirin.`,
-        priority: "HIGH",
-        boxId: box.id,
-        sourceId: null,
-        targetUrl: `/citation-cards`,
-        pillar: box.boxType,
-      });
-    }
-  }
-
-  // Candidates D: Empty Boxes (BOX_GAP) — Only if literature is NOT frozen
-  if (!timeline.isLiteratureFrozen) {
-    for (const box of context.boxes) {
-      if (activeBoxGapIds.has(box.id)) continue;
-      const boxSources = context.sources.filter((s) => s.boxId === box.id);
-      if (
-        boxSources.length === 0 &&
-        box.boxType &&
-        box.boxType in candidatesByPillar
-      ) {
-        candidatesByPillar[box.boxType]?.push({
-          taskType: "BOX_GAP",
-          title: `"${box.title}" teması için literatür tara`,
-          description: `Bu alt kutuda henüz onaylanmış bir akademik kaynak bulunmuyor. Kütüphaneden kaynak ekleyin.`,
-          priority: "MEDIUM",
-          boxId: box.id,
-          sourceId: null,
-          targetUrl: `/library`,
-          pillar: box.boxType,
-        });
-      }
-    }
-  }
+  generateReadingCandidates(context, boxMap, candidatesByPillar, activeReadingSourceIds, timeline.isLiteratureFrozen);
+  generateNoteTakingCandidates(context, boxMap, candidatesByPillar, activeReadingSourceIds);
+  generateSortingCandidates(context, candidatesByPillar, activeSortingBoxIds);
+  generateGapCandidates(context, candidatesByPillar, activeBoxGapIds, timeline.isLiteratureFrozen);
 
   return candidatesByPillar;
 }
