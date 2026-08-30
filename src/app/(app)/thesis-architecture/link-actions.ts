@@ -3,7 +3,7 @@
 import { db } from "@/core/db";
 import { outlineAnnotations, outlineSources } from "@/core/db/schema";
 import { getSession } from "@/lib/session";
-import { createFlowId, Logger } from "@/lib/logger";
+import { handleActionError } from "@/lib/errors/handle-error";
 import { eq, and } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 
@@ -36,14 +36,7 @@ export async function linkAnnotationToOutlineAction(
     revalidatePath("/citation-cards");
     return { success: true };
   } catch (err) {
-    new Logger(createFlowId()).error("linkAnnotationToOutlineAction error:", {
-      service: "thesis-architecture",
-      error: err,
-    });
-    return {
-      success: false,
-      error: "Alıntı fişi bölüme bağlanırken bir hata oluştu.",
-    };
+    return handleActionError(err);
   }
 }
 
@@ -71,14 +64,7 @@ export async function unlinkAnnotationFromOutlineAction(
     revalidatePath("/citation-cards");
     return { success: true };
   } catch (err) {
-    new Logger(createFlowId()).error(
-      "unlinkAnnotationFromOutlineAction error:",
-      {
-        service: "thesis-architecture",
-        error: err,
-      },
-    );
-    return { success: false, error: "Fiş bağı kaldırılırken bir hata oluştu." };
+    return handleActionError(err);
   }
 }
 
@@ -111,14 +97,7 @@ export async function linkSourceToOutlineAction(
     revalidatePath("/library");
     return { success: true };
   } catch (err) {
-    new Logger(createFlowId()).error("linkSourceToOutlineAction error:", {
-      service: "thesis-architecture",
-      error: err,
-    });
-    return {
-      success: false,
-      error: "Kaynak bölüme bağlanırken bir hata oluştu.",
-    };
+    return handleActionError(err);
   }
 }
 
@@ -146,13 +125,6 @@ export async function unlinkSourceFromOutlineAction(
     revalidatePath("/library");
     return { success: true };
   } catch (err) {
-    new Logger(createFlowId()).error("unlinkSourceFromOutlineAction error:", {
-      service: "thesis-architecture",
-      error: err,
-    });
-    return {
-      success: false,
-      error: "Kaynak bağı kaldırılırken bir hata oluştu.",
-    };
+    return handleActionError(err);
   }
 }

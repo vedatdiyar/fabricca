@@ -1,11 +1,22 @@
 import { z } from "zod";
 import type { JsonSchema } from "@/core/services/ai";
+import type {
+  JuryCritique as CoreJuryCritique,
+  OfficeReviewReport as CoreOfficeReviewReport,
+  PipelineResultData as CorePipelineResultData,
+  PipelineStage as CorePipelineStage,
+  AuditFinding as CoreAuditFinding,
+  AuditReport as CoreAuditReport,
+  PipelineResult as CorePipelineResult,
+  JuryCritiqueCategory as CoreJuryCritiqueCategory,
+  AuditFindingSeverity as CoreAuditFindingSeverity,
+} from "@/core/types/jsonb";
 
 /** Pipeline stage identifiers emitted over the advisor SSE stream (Heavy Flow runs Stage 1 Audit only). */
-export type PipelineStage = "audit";
+export type PipelineStage = CorePipelineStage;
 
 /** Severity classification for a single audit finding. */
-export type AuditFindingSeverity = "CRITICAL" | "WARNING" | "NOTE";
+export type AuditFindingSeverity = CoreAuditFindingSeverity;
 
 /** Zod schema for a single audit finding verifying citation accuracy against RAG context. */
 export const auditFindingSchema = z.object({
@@ -16,7 +27,7 @@ export const auditFindingSchema = z.object({
 });
 
 /** A single audit finding verifying citation accuracy and claim consistency against RAG context. */
-export type AuditFinding = z.infer<typeof auditFindingSchema>;
+export type AuditFinding = CoreAuditFinding;
 
 /** Zod schema for the structured output of the Stage 1 strict audit layer. */
 export const auditReportSchema = z.object({
@@ -26,7 +37,7 @@ export const auditReportSchema = z.object({
 });
 
 /** Structured output of the Stage 1 strict audit layer. */
-export type AuditReport = z.infer<typeof auditReportSchema>;
+export type AuditReport = CoreAuditReport;
 
 /** JSON schema used for Gemini structured content generation of the Stage 1 audit report. */
 export const auditReportJsonSchema: JsonSchema = {
@@ -75,77 +86,16 @@ export const auditReportJsonSchema: JsonSchema = {
 };
 
 /** Persisted pipeline result attached to a chat message (Heavy Flow Stage 1 audit outcome). */
-export interface PipelineResult {
-  stage: PipelineStage;
-  audit?: AuditReport;
-}
+export type PipelineResult = CorePipelineResult;
 
 /** Category of jury critique / Socratic challenge. */
-export type JuryCritiqueCategory =
-  "LOGIC_LEAP" | "UNBACKED_CLAIM" | "METHODOLOGICAL_GAP";
+export type JuryCritiqueCategory = CoreJuryCritiqueCategory;
 
 /** A single jury remark / critique identified during the draft audit. */
-export interface JuryCritique {
-  id: string;
-  title: string;
-  critique: string;
-  category: JuryCritiqueCategory;
-  suggestedDefensePoint: string;
-}
+export type JuryCritique = CoreJuryCritique;
 
 /** Structured output of the Office Review stage (Audit + Diff + Jury Remarks). */
-export interface OfficeReviewReport {
-  outlineId?: number;
-  draftText?: string;
-  studentNote?: string;
-  audit: {
-    summary: string;
-    findings: Array<{
-      message: string;
-      severity: "CRITICAL" | "WARNING" | "NOTE";
-      sourceTitle?: string;
-      citedPages?: string;
-      status?: "VERIFIED" | "MISMATCH" | "UNVERIFIED";
-    }>;
-    hasCriticalIssues: boolean;
-  };
-  diff: {
-    original: string;
-    polished: string;
-    changes: string[];
-  };
-  juryCritiques: JuryCritique[];
-}
+export type OfficeReviewReport = CoreOfficeReviewReport;
 
 /** Pipeline result type for Academic Pipeline / Office Hours stored on chat messages. */
-export interface PipelineResultData {
-  stage:
-    "audit" | "socratic" | "redaction" | "office_review" | "office_defense";
-  cycle?: number;
-  originalDraft?: string;
-  outlineId?: number;
-  draftText?: string;
-  studentNote?: string;
-  audit?: {
-    summary: string;
-    findings: Array<{
-      message: string;
-      severity: "CRITICAL" | "WARNING" | "NOTE";
-      sourceTitle?: string;
-      citedPages?: string;
-      status?: "VERIFIED" | "MISMATCH" | "UNVERIFIED";
-    }>;
-    hasCriticalIssues: boolean;
-  };
-  verdict?: {
-    state: "REQUIRES_ANSWER" | "COMPLETE";
-    summary: string;
-    readinessScore: number;
-  };
-  diff?: {
-    original: string;
-    polished: string;
-    changes?: string[];
-  };
-  juryCritiques?: JuryCritique[];
-}
+export type PipelineResultData = CorePipelineResultData;

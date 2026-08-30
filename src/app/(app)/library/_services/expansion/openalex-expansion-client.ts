@@ -2,6 +2,7 @@ import { OPENALEX_USER_AGENT } from "@/lib/api-utils";
 import { withRetry } from "@/core/services/ai/llm-retry";
 import { createRateLimiter } from "@/lib/rate-limiter";
 import { OPENALEX_SEMANTIC_LIMITS } from "@/core/config/rate-limits";
+import { OPENALEX_BASE_URL } from "@/core/config/endpoints";
 import type { CandidateSource } from "./types";
 
 interface OpenAlexWorkItem {
@@ -128,7 +129,7 @@ export async function fetchOpenAlexForwardCitations(
     params.set("api_key", process.env.OPENALEX_API_KEY);
   }
 
-  const url = `https://api.openalex.org/works?${params.toString().replace(/\+/g, "%20")}`;
+  const url = `${OPENALEX_BASE_URL}/works?${params.toString().replace(/\+/g, "%20")}`;
 
   try {
     const response = await fetchOpenAlexUrl(url);
@@ -145,7 +146,7 @@ export async function fetchOpenAlexForwardCitations(
     if (rawResults.length === 0 && searchQuery) {
       params.delete("search");
       params.set("sort", "cited_by_count:desc");
-      const fallbackUrl = `https://api.openalex.org/works?${params.toString().replace(/\+/g, "%20")}`;
+      const fallbackUrl = `${OPENALEX_BASE_URL}/works?${params.toString().replace(/\+/g, "%20")}`;
       const fallbackRes = await fetchOpenAlexUrl(fallbackUrl);
 
       if (fallbackRes) {

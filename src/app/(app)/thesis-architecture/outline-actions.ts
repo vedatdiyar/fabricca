@@ -3,7 +3,7 @@
 import { db } from "@/core/db";
 import { matrices, outlines } from "@/core/db/schema";
 import { getSession } from "@/lib/session";
-import { createFlowId, Logger } from "@/lib/logger";
+import { handleActionError } from "@/lib/errors/handle-error";
 import { eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 
@@ -50,11 +50,7 @@ export async function createOutlineSectionAction(data: {
     revalidatePath("/thesis-architecture");
     return { success: true };
   } catch (err) {
-    new Logger(createFlowId()).error("createOutlineSectionAction error:", {
-      service: "thesis-architecture",
-      error: err,
-    });
-    return { success: false, error: "Bölüm eklenirken bir hata oluştu." };
+    return handleActionError(err);
   }
 }
 
@@ -88,11 +84,7 @@ export async function updateOutlineSectionAction(data: {
     revalidatePath("/thesis-architecture");
     return { success: true };
   } catch (err) {
-    new Logger(createFlowId()).error("updateOutlineSectionAction error:", {
-      service: "thesis-architecture",
-      error: err,
-    });
-    return { success: false, error: "Bölüm güncellenirken bir hata oluştu." };
+    return handleActionError(err);
   }
 }
 
@@ -111,10 +103,6 @@ export async function deleteOutlineSectionAction(
     revalidatePath("/thesis-architecture");
     return { success: true };
   } catch (err) {
-    new Logger(createFlowId()).error("deleteOutlineSectionAction error:", {
-      service: "thesis-architecture",
-      error: err,
-    });
-    return { success: false, error: "Bölüm silinirken bir hata oluştu." };
+    return handleActionError(err);
   }
 }

@@ -84,7 +84,7 @@ export function CitationFilterBar({
   ];
 
   return (
-    <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-2 w-full bg-card/40 border border-border/40 p-1.5 rounded-xl">
+    <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-2 w-full bg-card/40 border border-border/40 p-1.5 rounded-lg">
       {/* 1. Left: Search Input */}
       <div className="relative flex-1 min-w-[200px] max-w-md">
         <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 size-3.5 text-muted-foreground" />

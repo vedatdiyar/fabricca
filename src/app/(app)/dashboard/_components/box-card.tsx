@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { BookOpen, CheckCircle2, Trash2, Library } from "lucide-react";
-import { LiteratureExpansionButton } from "@/components/shared/literature-expansion-button";
+import { LiteratureExpansionButton } from "@/app/(app)/library/_components/literature-expansion-button";
 import {
   Card,
   CardHeader,

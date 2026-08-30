@@ -1,4 +1,5 @@
 import { openAlexQueue, fetchWithOpenAlexRetry } from "./openalex-http";
+import { OPENALEX_BASE_URL } from "@/core/config/endpoints";
 
 interface OpenAlexHealCandidate {
   id: string;
@@ -37,7 +38,7 @@ export async function healAuthorsByTitle(title: string): Promise<string[]> {
   });
   const apiKey = process.env.OPENALEX_API_KEY;
   if (apiKey) params.set("api_key", apiKey);
-  const url = `https://api.openalex.org/works?${params.toString().replace(/\+/g, "%20")}`;
+  const url = `${OPENALEX_BASE_URL}/works?${params.toString().replace(/\+/g, "%20")}`;
 
   try {
     const response = (await openAlexQueue.exec(() =>

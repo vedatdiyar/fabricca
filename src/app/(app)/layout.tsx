@@ -1,7 +1,7 @@
 import { Suspense } from "react";
 import { redirect } from "next/navigation";
 import { getSessionWithOnboarding } from "@/lib/session";
-import { Header } from "@/components/header";
+import { Header } from "./_components/header";
 
 /**
  * Authenticated app layout that validates the session and onboarding status and then

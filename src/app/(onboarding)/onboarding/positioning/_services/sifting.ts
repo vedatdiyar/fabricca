@@ -2,6 +2,7 @@ import { searchTheses } from "@/core/services/thesis-search";
 import { searchOpenAlex } from "@/app/(onboarding)/onboarding/literature-review/_services/openalex/openalex-search";
 import { searchSemanticScholarPapers } from "@/core/services/semantic-scholar/semantic-scholar-search";
 import { rerankWithCohere } from "@/core/services/ai/cohere";
+import { buildYokThesisUrl } from "@/core/config/endpoints";
 import type { Logger } from "@/lib/logger";
 import type { PipelineRun } from "@/lib/pipeline-logger";
 import type { PositioningMatrixInput } from "./validation";
@@ -90,67 +91,16 @@ export async function searchAndSiftTheses(
 
   const searchStart = performance.now();
 
-  // Parallel 3-Channel Search Execution
-  const [[yokRes1, yokRes2], [openAlexRes1, openAlexRes2], semanticScholarRes] =
-    await Promise.all([
-      // 1. Qdrant YÖK Theses (Empirical + Methodology Queries)
-      (async () => {
-        const t0 = performance.now();
-        const [r1, r2] = await Promise.all([
-          searchTheses(
-            sanitizeSearchQuery(distilledQuery.thesisEmpiricalQuery),
-            logger,
-            { limit: 12, silent: true },
-          ).catch(() => []),
-          searchTheses(
-            sanitizeSearchQuery(distilledQuery.thesisMethodologyQuery),
-            logger,
-            { limit: 12, silent: true },
-          ).catch(() => []),
-        ]);
-        const totalCount = r1.length + r2.length;
-        pipelineRun?.subStep(
-          `YÖK Theses (Qdrant x2 · ${totalCount} candidates)`,
-          performance.now() - t0,
-        );
-        return [r1, r2] as const;
-      })(),
-
-      // 2. OpenAlex Global Literature (Theoretical + Empirical Semantic Search)
-      (async () => {
-        const t0 = performance.now();
-        const [r1, r2] = await Promise.all([
-          searchOpenAlex(
-            sanitizeSearchQuery(distilledQuery.globalTheoreticalQuery),
-            8,
-          ).catch(() => []),
-          searchOpenAlex(
-            sanitizeSearchQuery(distilledQuery.globalEmpiricalQuery),
-            8,
-          ).catch(() => []),
-        ]);
-        const totalCount = r1.length + r2.length;
-        pipelineRun?.subStep(
-          `OpenAlex (Global x2 · ${totalCount} papers)`,
-          performance.now() - t0,
-        );
-        return [r1, r2] as const;
-      })(),
-
-      // 3. Semantic Scholar (High Impact / Influential Papers)
-      (async () => {
-        const t0 = performance.now();
-        const res = await searchSemanticScholarPapers(
-          sanitizeSearchQuery(distilledQuery.globalTheoreticalQuery),
-          10,
-        ).catch(() => []);
-        pipelineRun?.subStep(
-          `Semantic Scholar (${res.length} papers)`,
-          performance.now() - t0,
-        );
-        return res;
-      })(),
-    ]);
+  const { yokResults, openAlexResults, s2Results } = await fetchAllChannels(
+    distilledQuery,
+    logger,
+    pipelineRun,
+  );
+  const [[yokRes1, yokRes2], [openAlexRes1, openAlexRes2], semanticScholarRes] = [
+    yokResults,
+    openAlexResults,
+    s2Results,
+  ] as const;
 
   const candidates: SiftedThesis[] = [];
   const seenTitles = new Set<string>();
@@ -176,9 +126,7 @@ export async function searchAndSiftTheses(
       thesisType: t.thesisType || "Doktora/Yüksek Lisans Tezi",
       department: t.department,
       abstract: t.abstract || "",
-      url:
-        t.yokPdfUrl ||
-        `https://tez.yok.gov.tr/UlusalTezMerkezi/tezDetay.jsp?id=${t.id}`,
+      url: t.yokPdfUrl || buildYokThesisUrl(t.id),
       sourceChannel: "yok",
       publicationType: "Tez",
     });
@@ -272,11 +220,99 @@ export async function searchAndSiftTheses(
     hidden: true,
   });
 
-  if (validCandidates.length === 0) {
-    return [];
-  }
+  if (validCandidates.length === 0) return [];
 
-  // Cohere Rerank v4.0 Pro
+  return rerankCandidates(validCandidates, distilledQuery, matrixInput, logger, pipelineRun, topN);
+}
+
+// ── Channel fetchers ──
+
+async function fetchQdrantChannel(
+  distilledQuery: MultiSourcePositioningQuery,
+  logger: Logger | undefined,
+  pipelineRun: PipelineRun | undefined,
+) {
+  const t0 = performance.now();
+  const [r1, r2] = await Promise.all([
+    searchTheses(sanitizeSearchQuery(distilledQuery.thesisEmpiricalQuery), logger, {
+      limit: 12,
+      silent: true,
+    }).catch((err) => {
+      logger?.warn("sifting_qdrant_channel_error", { service: "thesis-search", error: err });
+      return [];
+    }),
+    searchTheses(sanitizeSearchQuery(distilledQuery.thesisMethodologyQuery), logger, {
+      limit: 12,
+      silent: true,
+    }).catch((err) => {
+      logger?.warn("sifting_qdrant_channel_error", { service: "thesis-search", error: err });
+      return [];
+    }),
+  ]);
+  pipelineRun?.subStep(`YÖK Theses (Qdrant x2 · ${r1.length + r2.length} candidates)`, performance.now() - t0);
+  return [r1, r2] as const;
+}
+
+async function fetchOpenAlexChannel(
+  distilledQuery: MultiSourcePositioningQuery,
+  logger: Logger | undefined,
+  pipelineRun: PipelineRun | undefined,
+) {
+  const t0 = performance.now();
+  const [r1, r2] = await Promise.all([
+    searchOpenAlex(sanitizeSearchQuery(distilledQuery.globalTheoreticalQuery), 8).catch((err) => {
+      logger?.warn("sifting_openalex_channel_error", { service: "openalex", error: err });
+      return [];
+    }),
+    searchOpenAlex(sanitizeSearchQuery(distilledQuery.globalEmpiricalQuery), 8).catch((err) => {
+      logger?.warn("sifting_openalex_channel_error", { service: "openalex", error: err });
+      return [];
+    }),
+  ]);
+  pipelineRun?.subStep(`OpenAlex (Global x2 · ${r1.length + r2.length} papers)`, performance.now() - t0);
+  return [r1, r2] as const;
+}
+
+async function fetchSemanticScholarChannel(
+  distilledQuery: MultiSourcePositioningQuery,
+  logger: Logger | undefined,
+  pipelineRun: PipelineRun | undefined,
+) {
+  const t0 = performance.now();
+  const res = await searchSemanticScholarPapers(
+    sanitizeSearchQuery(distilledQuery.globalTheoreticalQuery),
+    10,
+  ).catch((err) => {
+      logger?.warn("sifting_s2_channel_error", { service: "thesis-search", error: err });
+      return [];
+    });
+  pipelineRun?.subStep(`Semantic Scholar (${res.length} papers)`, performance.now() - t0);
+  return res;
+}
+
+async function fetchAllChannels(
+  distilledQuery: MultiSourcePositioningQuery,
+  logger: Logger | undefined,
+  pipelineRun: PipelineRun | undefined,
+) {
+  const [yokResults, openAlexResults, s2Results] = await Promise.all([
+    fetchQdrantChannel(distilledQuery, logger, pipelineRun),
+    fetchOpenAlexChannel(distilledQuery, logger, pipelineRun),
+    fetchSemanticScholarChannel(distilledQuery, logger, pipelineRun),
+  ]);
+  return { yokResults, openAlexResults, s2Results };
+}
+
+// ── Reranking ──
+
+async function rerankCandidates(
+  validCandidates: SiftedThesis[],
+  distilledQuery: MultiSourcePositioningQuery,
+  matrixInput: PositioningMatrixInput,
+  logger: Logger | undefined,
+  pipelineRun: PipelineRun | undefined,
+  topN: number,
+): Promise<SiftedThesis[]> {
   const targetYamlQuery = formatMatrixToYamlQuery(distilledQuery, matrixInput);
   const candidateYamlDocs = validCandidates.map((c) => formatThesisToYaml(c));
 
@@ -288,7 +324,6 @@ export async function searchAndSiftTheses(
       logger,
       silent: true,
     });
-
     pipelineRun?.subStep(
       `Cohere Rerank v4.0 Pro (${validCandidates.length} candidates)`,
       performance.now() - cohereStart,
@@ -305,15 +340,8 @@ export async function searchAndSiftTheses(
       return 0;
     });
 
-    const confident = scoredTheses.filter(
-      (t) => (t.relevanceScore ?? 0) >= MIN_COHERE_RELEVANCE_SCORE,
-    );
-
-    // Ensure at least 6-8 candidates if available
-    const finalSelected = (
-      confident.length >= 6 ? confident : scoredTheses
-    ).slice(0, topN);
-
+    const confident = scoredTheses.filter((t) => (t.relevanceScore ?? 0) >= MIN_COHERE_RELEVANCE_SCORE);
+    const finalSelected = (confident.length >= 6 ? confident : scoredTheses).slice(0, topN);
     return finalSelected;
   } catch (err) {
     logger?.warn("cohere_rerank_fallback_to_raw", { error: err });

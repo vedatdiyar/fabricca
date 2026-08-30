@@ -13,31 +13,60 @@ import {
 } from "./box-fetch";
 
 import { checkStepsDataAction as _checkStepsDataAction } from "./step-check";
+import { handleActionError } from "@/lib/errors/handle-error";
 
 export async function getCachedThesisMatrix(userId: number) {
-  return _getCachedThesisMatrix(userId);
+  try {
+    return await _getCachedThesisMatrix(userId);
+  } catch (err) {
+    return handleActionError(err) as never;
+  }
 }
 
 export async function fetchThesisMatrix() {
-  return _fetchThesisMatrix();
+  try {
+    return await _fetchThesisMatrix();
+  } catch (err) {
+    return handleActionError(err) as never;
+  }
 }
 
 export async function fetchThesisMatrixFresh() {
-  return _fetchThesisMatrixFresh();
+  try {
+    return await _fetchThesisMatrixFresh();
+  } catch (err) {
+    return handleActionError(err) as never;
+  }
 }
 
 export async function getCachedBoxes(thesisMatrixId: number) {
-  return _getCachedBoxes(thesisMatrixId);
+  try {
+    return await _getCachedBoxes(thesisMatrixId);
+  } catch (err) {
+    return handleActionError(err) as never;
+  }
 }
 
 export async function fetchBoxesWithFullShape() {
-  return _fetchBoxesWithFullShape();
+  try {
+    return await _fetchBoxesWithFullShape();
+  } catch (err) {
+    return handleActionError(err) as never;
+  }
 }
 
 export async function fetchUncachedBoxesWithFullShape() {
-  return _fetchUncachedBoxesWithFullShape();
+  try {
+    return await _fetchUncachedBoxesWithFullShape();
+  } catch (err) {
+    return handleActionError(err) as never;
+  }
 }
 
 export async function checkStepsDataAction() {
-  return _checkStepsDataAction();
+  try {
+    return await _checkStepsDataAction();
+  } catch (err) {
+    return handleActionError(err) as never;
+  }
 }

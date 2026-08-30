@@ -19,6 +19,7 @@ import {
   undoToolMutation,
   updateChatMessageToolCalls,
 } from "../_lib/assistant-tool-helpers";
+import { buildHistoryPayload } from "../_lib/chat-helpers";
 
 interface UseAssistantWorkspaceOptions {
   initialSessionId?: number;
@@ -232,10 +233,7 @@ export function useAssistantWorkspace({
       abortControllerRef.current = controller;
 
       try {
-        const historyPayload = messages.slice(-6).map((m) => ({
-          role: m.role as "user" | "model" | "assistant",
-          content: m.content,
-        }));
+        const historyPayload = buildHistoryPayload(messages);
 
         const response = await fetch("/api/advisor", {
           method: "POST",

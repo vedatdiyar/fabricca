@@ -3,7 +3,7 @@
 import { db } from "@/core/db";
 import { matrices } from "@/core/db/schema";
 import { getSession } from "@/lib/session";
-import { createFlowId, Logger } from "@/lib/logger";
+import { handleActionError } from "@/lib/errors/handle-error";
 import { eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 
@@ -47,10 +47,6 @@ export async function updateMatrixAction(data: {
     revalidatePath("/thesis-architecture");
     return { success: true };
   } catch (err) {
-    new Logger(createFlowId()).error("updateMatrixAction error:", {
-      service: "thesis-architecture",
-      error: err,
-    });
-    return { success: false, error: "Matris güncellenirken bir hata oluştu." };
+    return handleActionError(err);
   }
 }

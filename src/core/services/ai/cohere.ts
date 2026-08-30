@@ -6,6 +6,7 @@ import {
 } from "@/core/services/ai/llm-retry";
 import { createRateLimiter } from "@/lib/rate-limiter";
 import { COHERE_LIMITS } from "@/core/config/rate-limits";
+import { COHERE_RERANK_URL } from "@/core/config/endpoints";
 import { toAiProviderError } from "./llm-errors";
 
 /** Multilingual (incl. Turkish) Cohere Rerank model ID — 32,768-token context. */
@@ -15,7 +16,7 @@ const COHERE_TIMEOUT_MS = 30000;
 /** Maximum retry attempts for transient Cohere failures (429/5xx). */
 const COHERE_MAX_RETRIES = 3;
 
-const COHERE_RERANK_URL = "https://api.cohere.com/v2/rerank";
+
 
 /**
  * Global Cohere Rerank limiter (trial key: 10 req/min). All parallel pipeline

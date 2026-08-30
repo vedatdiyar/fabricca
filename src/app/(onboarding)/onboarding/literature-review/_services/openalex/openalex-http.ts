@@ -3,6 +3,7 @@ import {
   OPENALEX_REGULAR_LIMITS,
   OPENALEX_SEMANTIC_LIMITS,
 } from "@/core/config/rate-limits";
+import { OPENALEX_BASE_URL } from "@/core/config/endpoints";
 import { OPENALEX_USER_AGENT } from "@/lib/api-utils";
 import { withRetry } from "@/core/services/ai/llm-retry";
 import { parseOpenAlexResults } from "./parser";
@@ -78,7 +79,7 @@ export async function queryOpenAlexWorks(
 ): Promise<RawPaper[]> {
   const apiKey = process.env.OPENALEX_API_KEY;
   if (apiKey) params.set("api_key", apiKey);
-  const url = `https://api.openalex.org/works?${params.toString().replace(/\+/g, "%20")}`;
+  const url = `${OPENALEX_BASE_URL}/works?${params.toString().replace(/\+/g, "%20")}`;
 
   try {
     const response = await fetchWithOpenAlexRetry(url, checkCancelled);

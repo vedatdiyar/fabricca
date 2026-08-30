@@ -58,12 +58,12 @@ export function AcademicTimelineBar({
                     Hedef: {targetDateDisplay}
                   </span>
                   {metrics?.isLiteratureFrozen ? (
-                    <span className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-medium border border-amber-500/20 bg-amber-500/10 text-amber-600 dark:text-amber-400">
+                    <span className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-medium border border-warning/20 bg-warning/10 text-warning">
                       <Lock className="size-3" />
                       Literatür Donduruldu
                     </span>
                   ) : (
-                    <span className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-medium border border-emerald-500/20 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
+                    <span className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-medium border border-success/20 bg-success/10 text-success">
                       <Unlock className="size-3" />
                       Literatür Taraması Açık
                     </span>
@@ -126,7 +126,7 @@ export function AcademicTimelineBar({
                       <div className="flex items-center justify-between gap-1 mb-1">
                         <span className="font-semibold text-[11px] uppercase tracking-wider text-muted-foreground flex items-center gap-1">
                           {isDone ? (
-                            <CheckCircle2 className="size-3 text-emerald-500" />
+                            <CheckCircle2 className="size-3 text-success" />
                           ) : (
                             <span>{phase.phaseNumber}. Faz</span>
                           )}

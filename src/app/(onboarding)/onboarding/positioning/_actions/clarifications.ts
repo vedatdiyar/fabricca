@@ -8,20 +8,6 @@ import { getSession, SESSION_ERROR_MSG } from "@/lib/session";
 import { invalidateOnboardingStepCache } from "@/lib/cache-tags";
 
 /**
- * @deprecated Gatekeeper Model disallows automatic 1-click pivot status overrides.
- *
- * @returns Error message.
- */
-export async function applyPositioningPivotAction(): Promise<{
-  error: string;
-}> {
-  return {
-    error:
-      "Akademik özgünlük kuralı gereği otomatik farklılaşma seçimi kaldırılmıştır. Lütfen taslağınızı yeniden düzenleyiniz.",
-  };
-}
-
-/**
  * Saves user clarification answers to the background matrix and prepares for advancing to Boxes step.
  *
  * @param answers - Array of question/answer pairs from the positioning report.

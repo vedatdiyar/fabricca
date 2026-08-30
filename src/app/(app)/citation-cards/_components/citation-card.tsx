@@ -140,7 +140,7 @@ export function CitationCard(props: CitationCardProps) {
         }
       }}
       className={cn(
-        "cursor-pointer rounded-xl p-3.5 transition-all duration-200 border bg-card/60 hover:bg-card hover:border-border/80 flex flex-col justify-between group select-none w-full gap-2.5 relative overflow-hidden shadow-xs",
+        "cursor-pointer rounded-lg p-3.5 transition-all duration-200 border bg-card/60 hover:bg-card hover:border-border/80 flex flex-col justify-between group select-none w-full gap-2.5 relative overflow-hidden shadow-xs",
         isSelected
           ? "border-primary/80 ring-1 ring-primary/20 bg-primary/5"
           : "border-border/50",
@@ -160,7 +160,7 @@ export function CitationCard(props: CitationCardProps) {
             </span>
           ) : (
             <span
-              className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-medium text-amber-500 bg-amber-500/10 border border-amber-500/20 shrink-0"
+              className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-medium bg-warning/10 text-warning border border-warning/20 shrink-0"
               title="Henüz bir tez bölümüne bağlanmadı"
             >
               <span>Atanmamış</span>

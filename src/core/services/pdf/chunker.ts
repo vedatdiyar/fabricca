@@ -129,6 +129,42 @@ export class ChunkBuilder {
     this.bufferEndPage = pageNumber;
   }
 
+  private tryMergeWithPrevious(
+    content: string,
+    tokenCount: number,
+    section: string | null,
+    startPage: number | null,
+    endPage: number | null,
+  ): boolean {
+    if (tokenCount >= MIN_CHUNK_TOKENS || this.chunks.length === 0) return false;
+    const prev = this.chunks[this.chunks.length - 1];
+    const mergedTokens = prev.tokenCount + tokenCount;
+    if (mergedTokens > SOFT_LIMIT_CHARS / 3 || prev.section !== section) return false;
+    prev.content = `${prev.content}\n\n${content}`;
+    prev.tokenCount = mergedTokens;
+    const mergedPrintedPages = [...this.lastFlushedPrintedPages, ...this.bufferPrintedPages];
+    prev.pageNumber = formatPrintedPageRange(mergedPrintedPages) ?? formatPrintedPageNumber(startPage, endPage);
+    this.lastFlushedPrintedPages = mergedPrintedPages;
+    this.clearBuffer();
+    return true;
+  }
+
+  private extractOverlap(
+    content: string,
+    endPage: number | null,
+  ): { content: string; tokenCount: number } {
+    const tokenCount = estimateTokenCount(content);
+    if (content.length <= CHUNK_OVERLAP_CHARS * 2) return { content, tokenCount };
+    const overlapStart = findSentenceBoundary(content, content.length - CHUNK_OVERLAP_CHARS);
+    const overlapText = content.slice(overlapStart).trim();
+    if (overlapText.length <= 10) return { content, tokenCount };
+    this.overlapRemainder = overlapText;
+    this.overlapStartPage = endPage;
+    this.overlapPrintedPages = this.bufferPrintedPages.slice(-1);
+    const trimmed = content.slice(0, overlapStart).trim();
+    return { content: trimmed, tokenCount: estimateTokenCount(trimmed) };
+  }
+
   flush(): void {
     let content = this.bufferParts.join("\n\n").trim();
     const startPage = this.bufferStartPage;
@@ -141,60 +177,22 @@ export class ChunkBuilder {
       return;
     }
 
-    let tokenCount = estimateTokenCount(content);
+    const initialTokenCount = estimateTokenCount(content);
+    if (this.tryMergeWithPrevious(content, initialTokenCount, section, startPage, endPage)) return;
 
-    if (tokenCount < MIN_CHUNK_TOKENS && this.chunks.length > 0) {
-      const prev = this.chunks[this.chunks.length - 1];
-      const mergedTokens = prev.tokenCount + tokenCount;
-
-      if (mergedTokens <= SOFT_LIMIT_CHARS / 3 && prev.section === section) {
-        prev.content = `${prev.content}\n\n${content}`;
-        prev.tokenCount = mergedTokens;
-        const mergedPrintedPages = [
-          ...this.lastFlushedPrintedPages,
-          ...this.bufferPrintedPages,
-        ];
-        prev.pageNumber =
-          formatPrintedPageRange(mergedPrintedPages) ??
-          formatPrintedPageNumber(startPage, endPage);
-        this.lastFlushedPrintedPages = mergedPrintedPages;
-        this.clearBuffer();
-        return;
-      }
-    }
-
-    const overlapCharTarget = CHUNK_OVERLAP_CHARS;
-
-    if (content.length > overlapCharTarget * 2) {
-      const overlapStart = findSentenceBoundary(
-        content,
-        content.length - overlapCharTarget,
-      );
-      const overlapText = content.slice(overlapStart).trim();
-
-      if (overlapText.length > 10) {
-        this.overlapRemainder = overlapText;
-        this.overlapStartPage = endPage;
-        this.overlapPrintedPages = this.bufferPrintedPages.slice(-1);
-
-        content = content.slice(0, overlapStart).trim();
-        tokenCount = estimateTokenCount(content);
-      }
-    }
+    const overlapResult = this.extractOverlap(content, endPage);
+    content = overlapResult.content;
+    const tokenCount = overlapResult.tokenCount;
 
     const printedPages = this.bufferPrintedPages.slice();
-    const pageNumber =
-      formatPrintedPageRange(printedPages) ??
-      formatPrintedPageNumber(startPage, endPage);
+    const pageNumber = formatPrintedPageRange(printedPages) ?? formatPrintedPageNumber(startPage, endPage);
 
     this.clearBuffer();
     this.lastFlushedPrintedPages = printedPages;
 
-    const chunkType = inferChunkType(section, content);
-
     this.chunks.push({
       chunkIndex: this.chunks.length,
-      chunkType,
+      chunkType: inferChunkType(section, content),
       content,
       section,
       headerHierarchy: hierarchy,
@@ -210,6 +208,38 @@ export class ChunkBuilder {
    * @param pageNumber - The page the block belongs to.
    * @param printedPageNumber - Optional printed page number string.
    */
+  private findSplitBoundary(text: string, size: number): number {
+    const boundary = Math.max(
+      text.lastIndexOf("\n\n", size),
+      text.lastIndexOf(". ", size),
+      text.lastIndexOf("; ", size),
+      text.lastIndexOf(", ", size),
+      text.lastIndexOf(" ", size),
+    );
+    return boundary > 0 ? boundary + 1 : size;
+  }
+
+  private emitChunkPart(
+    part: string,
+    pageNumber: number,
+    printedPageNumber?: string | null,
+  ): void {
+    if (!part || part.length < 5 || isNoiseContent(part)) return;
+    const normalizedPrinted = normalizePrintedPage(printedPageNumber);
+    this.chunks.push({
+      chunkIndex: this.chunks.length,
+      chunkType: inferChunkType(this.currentSection, part),
+      content: part,
+      section: this.currentSection,
+      headerHierarchy: this.currentHierarchy,
+      pageNumber: normalizedPrinted
+        ? `s. ${normalizedPrinted}`
+        : formatPrintedPageNumber(pageNumber, pageNumber),
+      tokenCount: estimateTokenCount(part),
+    });
+    this.lastFlushedPrintedPages = [normalizedPrinted ?? String(pageNumber)];
+  }
+
   emitOversized(
     content: string,
     pageNumber: number,
@@ -218,42 +248,13 @@ export class ChunkBuilder {
     let remainder = content.trim();
     let first = true;
     while (remainder.length > 0) {
-      const take = first
-        ? TARGET_CHUNK_SIZE_CHARS
-        : TARGET_CHUNK_SIZE_CHARS - CHUNK_OVERLAP_CHARS;
+      const take = first ? TARGET_CHUNK_SIZE_CHARS : TARGET_CHUNK_SIZE_CHARS - CHUNK_OVERLAP_CHARS;
       let size = Math.min(take, remainder.length);
-      if (size < remainder.length) {
-        const boundary = Math.max(
-          remainder.lastIndexOf("\n\n", size),
-          remainder.lastIndexOf(". ", size),
-          remainder.lastIndexOf("; ", size),
-          remainder.lastIndexOf(", ", size),
-          remainder.lastIndexOf(" ", size),
-        );
-        if (boundary > 0) size = boundary + 1;
-      }
-
+      if (size < remainder.length) size = this.findSplitBoundary(remainder, size);
       const part = remainder.slice(0, size).trim();
       remainder = remainder.slice(size).trim();
       first = false;
-
-      if (!part || part.length < 5 || isNoiseContent(part)) continue;
-
-      const chunkType = inferChunkType(this.currentSection, part);
-
-      const normalizedPrinted = normalizePrintedPage(printedPageNumber);
-      this.chunks.push({
-        chunkIndex: this.chunks.length,
-        chunkType,
-        content: part,
-        section: this.currentSection,
-        headerHierarchy: this.currentHierarchy,
-        pageNumber: normalizedPrinted
-          ? `s. ${normalizedPrinted}`
-          : formatPrintedPageNumber(pageNumber, pageNumber),
-        tokenCount: estimateTokenCount(part),
-      });
-      this.lastFlushedPrintedPages = [normalizedPrinted ?? String(pageNumber)];
+      this.emitChunkPart(part, pageNumber, printedPageNumber);
     }
   }
 

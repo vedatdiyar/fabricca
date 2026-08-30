@@ -13,7 +13,7 @@ You are the **Lead Software Engineer** and **Primary Auditor** for Fabricca, a p
 - **Framework:** Next.js (App Router, Server Actions)
 - **Database & ORM:** Neon Serverless PostgreSQL (`pgvector`), Drizzle ORM
 - **Primary LLM:** Google Gemini Flash (`FLASH_LITE_31`, `FLASH_LITE_35`, `FLASH_36` via `@google/genai`)
-- **Embedding Motor:** Cloudflare Workers AI (`@cf/baai/bge-m3` — SINGLE source embedding model; no secondary fallbacks allowed)
+- **Embedding Motor:** Cloudflare Workers AI (`@cf/baai/bge-m3` — SINGLE source RAG embedding model; thesis-search uses `intfloat/multilingual-e5-base` (768d) as the only documented exception, see `docs/ARCHITECTURE.md:2`)
 - **Semantic Reranking:** Cohere Rerank API (`rerank-v4.0-pro` — ONLY for reranking)
 - **Object Storage:** Cloudflare R2 / AWS S3 (`@aws-sdk/client-s3`)
 - **Literature & DOI:** OpenAlex API (canonical literature source), Crossref API (DOI resolution)

@@ -1,4 +1,13 @@
 import { z } from "zod";
+import type {
+  RecommendedThesisItem as CoreRecommendedThesisItem,
+  GapAnalysisStructured as CoreGapAnalysisStructured,
+  StrategicRole as CoreStrategicRole,
+  PositioningGlobalStatus as CorePositioningGlobalStatus,
+  PivotOption as CorePivotOption,
+  ClarificationQuestion as CoreClarificationQuestion,
+  OverlappingWork as CoreOverlappingWork,
+} from "@/core/types/jsonb";
 
 /**
  * Zod validation schema for the universal thesis positioning matrix.
@@ -32,57 +41,20 @@ export const strategicRoleEnum = z.enum([
 ]);
 
 export type StrategicRole = z.infer<typeof strategicRoleEnum>;
+// Re-export canonical core type for backwards compatibility
+export type { CoreStrategicRole as StrategicRoleCore };
 
 /** Enum type representing the global positioning / literature gap status. */
-export type PositioningGlobalStatus =
-  "DIRECT_OVERLAP" | "NOVEL_GAP_IDENTIFIED" | "NO_RELATED_LITERATURE";
+export type PositioningGlobalStatus = CorePositioningGlobalStatus;
 
 /** Structure for individual recommended thesis/literature entries in gap analysis reports. */
-export interface RecommendedThesisItem {
-  id?: string;
-  externalThesisId?: string;
-  title: string;
-  author: string;
-  year: number;
-  university: string;
-  publicationType?: "Tez" | "Makale" | "Kitap" | "Kitap Bölümü" | "Rapor";
-  sourceChannel?: "yok" | "openalex" | "semantic_scholar" | "exa";
-  strategicRole?: StrategicRole;
-  literaturePosition?: string;
-  contributionArea: string;
-  relevanceReason: string;
-  doi?: string;
-  thesisType?: string;
-  abstract?: string;
-  url?: string;
-  yokUrl?: string;
-}
+export type RecommendedThesisItem = CoreRecommendedThesisItem;
 
-export interface PivotOption {
-  id: "field_pivot" | "theory_pivot" | "method_pivot";
-  dimension: "SAHA_ORNEKLEM" | "KURAMSAL_CERCEVE" | "YONTEMSEL_DESEN";
-  title: string;
-  description: string;
-  suggestedFocus: string;
-}
+export type PivotOption = CorePivotOption;
 
-export interface ClarificationQuestion {
-  id: string;
-  question: string;
-  category: "scope" | "focus" | "methodology" | "theoretical";
-  contextNote: string;
-}
+export type ClarificationQuestion = CoreClarificationQuestion;
 
-export interface OverlappingWork {
-  title: string;
-  author?: string;
-  year?: number;
-  sourceType: string;
-  reason: string;
-  problemOverlap?: string;
-  theoryOverlap?: string;
-  methodologyOverlap?: string;
-}
+export type OverlappingWork = CoreOverlappingWork;
 
 /** Zod validation schema for the 3 structured gap analysis sections. */
 export const gapAnalysisStructuredSchema = z.object({
@@ -144,3 +116,7 @@ export const gapAnalysisStructuredSchema = z.object({
 
 /** Structured gap analysis type inferred from Zod schema. */
 export type GapAnalysisStructured = z.infer<typeof gapAnalysisStructuredSchema>;
+// Ensure zod-inferred type stays assignable to canonical core type
+export type _GapAnalysisCoreCheck = GapAnalysisStructured extends CoreGapAnalysisStructured
+  ? true
+  : never;

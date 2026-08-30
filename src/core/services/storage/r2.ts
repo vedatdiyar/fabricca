@@ -11,6 +11,8 @@ import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
  *
  * @returns Configured S3 client instance.
  */
+import { buildR2Endpoint } from "@/core/config/endpoints";
+
 function getR2Client(): S3Client {
   const accountId = process.env.R2_ACCOUNT_ID;
   const accessKeyId = process.env.R2_ACCESS_KEY_ID;
@@ -24,7 +26,7 @@ function getR2Client(): S3Client {
 
   return new S3Client({
     region: "auto",
-    endpoint: `https://${accountId}.r2.cloudflarestorage.com`,
+    endpoint: buildR2Endpoint(accountId),
     credentials: {
       accessKeyId,
       secretAccessKey,

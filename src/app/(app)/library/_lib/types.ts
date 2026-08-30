@@ -1,4 +1,10 @@
 import type { ThesisBoxType as BaseThesisBoxType } from "@/lib/box-constants";
+import type {
+  NoteVerificationStatus as CoreNoteVerificationStatus,
+  NoteVerificationData as CoreNoteVerificationData,
+  NoteVerificationIssue as CoreNoteVerificationIssue,
+  ResourceAuditReport as CoreResourceAuditReport,
+} from "@/core/types/jsonb";
 
 /** Box types matching the thesis matrix boxes in the Fabricca system. */
 export type ThesisBoxType = BaseThesisBoxType | "ALL";
@@ -7,46 +13,16 @@ export type ThesisBoxType = BaseThesisBoxType | "ALL";
 export type NoteType = "DIRECT_QUOTE" | "PARAPHRASE" | "PERSONAL_NOTE";
 
 /** Verification status for note grounding and page check. */
-export type NoteVerificationStatus =
-  "UNVERIFIED" | "PENDING" | "VERIFIED" | "WARNING";
+export type NoteVerificationStatus = CoreNoteVerificationStatus;
 
 /** Issue item detected during single note verification. */
-export interface NoteVerificationIssue {
-  type:
-    | "PAGE_MISMATCH"
-    | "VERBATIM_DIFF"
-    | "INTERPRETATION_CONFLICT"
-    | "NOTE_TYPE_MISMATCH"
-    | "FORMAT_WARNING";
-  severity: "LOW" | "MEDIUM" | "HIGH";
-  title: string;
-  description: string;
-  suggestedFix?: string;
-  suggestedPage?: string;
-}
+export type NoteVerificationIssue = CoreNoteVerificationIssue;
 
 /** Detailed verification result stored per note. */
-export interface NoteVerificationData {
-  status: "VERIFIED" | "WARNING";
-  confidence: number;
-  detectedPage?: string;
-  summary: string;
-  issues: NoteVerificationIssue[];
-  academicAdvice?: string;
-  verifiedAt: string;
-}
+export type NoteVerificationData = CoreNoteVerificationData;
 
 /** Holistic audit report generated for a resource's notes and critique. */
-export interface ResourceAuditReport {
-  overallScore: number;
-  statusBadge: "EXCELLENT" | "SOLID" | "NEEDS_ATTENTION";
-  summary: string;
-  strengths: string[];
-  blindSpots: string[];
-  commentaryRisks: string[];
-  thesisAlignmentAdvice: string;
-  evaluatedAt: string;
-}
+export type ResourceAuditReport = CoreResourceAuditReport;
 
 /** A single academic resource item stored in the Library. */
 export interface LibraryResourceItem {

@@ -4,9 +4,9 @@ import {
   HttpError,
   withRetry,
 } from "@/core/services/ai/llm-retry";
+import { HF_E5_ENDPOINT } from "@/core/config/endpoints";
 
-const HF_EMBEDDING_ENDPOINT =
-  "https://router.huggingface.co/hf-inference/models/intfloat/multilingual-e5-base/pipeline/feature-extraction";
+const HF_EMBEDDING_ENDPOINT = HF_E5_ENDPOINT;
 
 const MAX_RETRIES = 3;
 

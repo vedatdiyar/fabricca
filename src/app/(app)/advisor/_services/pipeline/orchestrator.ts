@@ -8,8 +8,6 @@ import {
 } from "./audit-formatter";
 import { streamSocraticAdvisorResponse } from "./socratic-stream";
 
-export { formatAuditFindings };
-
 /** SSE event emission and text streaming interface used by the pipeline orchestrator. */
 export interface PipelineSseWriter {
   send(type: string, payload: Record<string, unknown>): void;

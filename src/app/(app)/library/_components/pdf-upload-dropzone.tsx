@@ -127,7 +127,7 @@ export function PdfUploadDropzone({
             </div>
           ) : (
             <div className="flex flex-col items-center space-y-4">
-              <div className="p-4 rounded-2xl bg-primary/10 border border-primary/20 text-primary shadow-xs transition-transform hover:scale-105">
+              <div className="p-4 rounded-lg bg-primary/10 border border-primary/20 text-primary shadow-xs transition-transform hover:scale-105">
                 <UploadCloud className="size-8" />
               </div>
 

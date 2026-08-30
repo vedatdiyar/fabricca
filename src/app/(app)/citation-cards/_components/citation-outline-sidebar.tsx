@@ -74,7 +74,7 @@ export function CitationOutlineSidebar({
     selectedOutlineId === null && selectedBoxId === null && !unassignedOnly;
 
   return (
-    <Card className="w-full lg:h-[calc(100vh-7.5rem)] p-3.5 rounded-xl border-border/50 bg-card/60 flex flex-col gap-3 select-none shadow-xs">
+    <Card className="w-full lg:h-[calc(100vh-7.5rem)] p-3.5 rounded-lg border-border/50 bg-card/60 flex flex-col gap-3 select-none shadow-xs">
       {/* 1. Global View Switchers (Tüm Fişler / Atanmamış) */}
       <div className="grid grid-cols-2 gap-1.5 p-1 rounded-lg bg-muted/40 border border-border/30 shrink-0">
         <button
@@ -96,15 +96,15 @@ export function CitationOutlineSidebar({
           </span>
         </button>
 
-        <button
+          <button
           type="button"
           onClick={onSelectUnassigned}
           className={cn(
             "flex items-center justify-between px-2.5 py-1.5 rounded-md text-xs font-medium transition-all duration-150 cursor-pointer text-left",
             unassignedOnly
-              ? "bg-amber-500/15 text-amber-500 shadow-xs font-semibold"
+              ? "bg-warning/10 text-warning border border-warning/20 shadow-xs font-semibold"
               : unassignedCount > 0
-                ? "text-amber-500/90 hover:bg-amber-500/10"
+                ? "text-warning hover:bg-warning/10"
                 : "text-muted-foreground hover:text-foreground",
           )}
         >
@@ -116,7 +116,7 @@ export function CitationOutlineSidebar({
             className={cn(
               "font-mono text-[10px] ml-1",
               unassignedCount > 0
-                ? "text-amber-500 font-semibold"
+                ? "text-warning font-semibold"
                 : "text-muted-foreground",
             )}
           >

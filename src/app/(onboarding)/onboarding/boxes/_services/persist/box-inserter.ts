@@ -1,5 +1,8 @@
 import { and, eq, ne } from "drizzle-orm";
+import { db } from "@/core/db";
 import { boxes as boxRows } from "@/core/db/schema";
+
+type TxClient = Parameters<Parameters<typeof db.transaction>[0]>[0];
 
 type ValidBox = {
   title: string;
@@ -22,8 +25,7 @@ type ValidBox = {
  * @param thesisMatrixId - Thesis matrix ID.
  */
 export async function insertBoxesTransaction(
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  tx: any,
+  tx: TxClient,
   validBoxes: ValidBox[],
   thesisMatrixId: number,
 ): Promise<void> {

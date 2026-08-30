@@ -95,7 +95,7 @@ export function CitationListView({
               }
             }}
             className={cn(
-              "group relative flex flex-col gap-2.5 p-3.5 sm:p-4 rounded-xl border bg-card/60 hover:bg-card hover:border-border/80 transition-all duration-150 cursor-pointer shadow-xs",
+              "group relative flex flex-col gap-2.5 p-3.5 sm:p-4 rounded-lg border bg-card/60 hover:bg-card hover:border-border/80 transition-all duration-150 cursor-pointer shadow-xs",
               isSelected
                 ? "border-primary/80 ring-1 ring-primary/20 bg-primary/5"
                 : "border-border/50",
@@ -121,7 +121,7 @@ export function CitationListView({
                     <span className="truncate">{outlineTitle}</span>
                   </span>
                 ) : (
-                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-medium text-amber-500 bg-amber-500/10 border border-amber-500/20 shrink-0">
+                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-medium bg-warning/10 text-warning border border-warning/20 shrink-0">
                     Atanmamış
                   </span>
                 )}

@@ -194,17 +194,17 @@ src/
 │       └── thesis-architecture/     # /thesis-architecture — Mimari Editör
 │   └── api/advisor/route.ts         # Danışman Odası streaming endpoint
 ├── components/
-│   ├── header.tsx                   # Üst/büyük navigasyon
+│   ├── header/                      # Üst navigasyon (header klasörü)
 │   ├── ai-banner.tsx                # Yapay zeka banner
 │   ├── error-display.tsx            # Hata görüntüleme
 │   ├── loading-spinner.tsx          # Yükleme göstergesi
 │   ├── shared/                      # Ortak uygulama bileşenleri (literature-expansion-button vb.)
 │   └── ui/                          # Shadcn UI bileşenleri
 ├── core/
-│   ├── db/                          # Neon DB bağlantısı, 10 tablo şeması, reset.ts ve seed.ts
-│   ├── config/                      # Rate limit konfigürasyonu
+│   ├── db/                          # Neon DB bağlantısı, 15 tablo şeması, reset.ts ve seed.ts
+│   ├── config/                      # Rate limit konfigürasyonu (rate-limits.ts)
 │   ├── providers/                   # QueryProvider, LoadingOverlayProvider
-│   └── services/                    # Ortak çekirdek servisler (ai, search, pdf, storage, box, academic, thesis-search)
+│   └── services/                    # Ortak çekirdek servisler (ai, search, pdf, storage, box, academic, thesis-search, exa, semantic-scholar, timeline)
 ├── lib/
 │   ├── session.ts                   # Cookie tabanlı session yönetimi
 │   ├── constants.ts                 # Model sabitleri
@@ -218,22 +218,27 @@ src/
 
 ## Veri Tabanı Şeması
 
-Neon PostgreSQL üzerinde **10 tablo** (Drizzle ORM, snake_case):
+Neon PostgreSQL üzerinde **15 tablo** (Drizzle ORM, snake_case):
 
-| Tablo           | Açıklama                        | Önemli Alanlar                                                                                   |
-| --------------- | ------------------------------- | ------------------------------------------------------------------------------------------------ |
-| `users`         | Kullanıcı hesapları             | email (unique), password (bcrypt), name, onboardingCompleted                                     |
-| `matrices`      | Çalışma matrisi                 | userId (unique), subjectProblem, theoreticalFramework, primaryMaterial, methodology              |
-| `positioning`   | Konumlandırma raporu            | userId (unique), matrixInput (jsonb), globalStatus (enum), gapAnalysisSummary, recommendedTheses |
-| `boxes`         | Konu kutuları                   | matrixId, parentId, boxType (enum), title, concepts, foundationalQueries (jsonb)                 |
-| `sources`       | Akademik kaynaklar              | boxId, title, authors, doi, openalexId, isRead, pdf* alanları                                    |
-| `notes`         | Kaynak notları (alıntı fişleri) | sourceId, pageNumber, noteType (enum), content, sentToCitationCards                              |
-| `chunks`        | PDF metin parçaları (RAG)       | sourceId, chunkIndex, embedding (vector/1024), searchVector (tsvector)                           |
-| `tasks`         | Kanban görevleri                | userId, boxId (delete → set null), status/priority (enum)                                        |
-| `chat_sessions` | Danışman sohbet oturumları      | userId, title                                                                                    |
-| `chat_messages` | Danışman mesajları              | sessionId, role, content, sources (jsonb), toolCalls (jsonb)                                     |
+| Tablo                | Açıklama                               | Önemli Alanlar                                                                                          |
+| -------------------- | -------------------------------------- | ------------------------------------------------------------------------------------------------------- |
+| `users`              | Kullanıcı hesapları                    | username (unique), password (bcrypt), name, onboardingCompleted                                          |
+| `matrices`           | Çalışma matrisi                        | userId (unique), subjectProblem, theoreticalFramework, primaryMaterial, methodology                     |
+| `positioning`        | Konumlandırma raporu                   | userId, matrixId (unique), globalStatus (enum), gapAnalysisSummary, recommendedTheses                   |
+| `boxes`              | Konu kutuları                          | matrixId, parentId, boxType (enum), title, concepts, semanticQuery                                      |
+| `outlines`           | Tez planı hiyerarşisi                  | matrixId, parentId, title, sortOrder, academicField                                                     |
+| `sources`            | Akademik kaynaklar                     | boxId, title, authors, doi, openalexId, isRead, pdf* alanları, parsedReferences (jsonb)                |
+| `expansions`         | Literatür genişletme geçmişi           | boxId, cycle, previousActiveSeedIds, newActiveSeedIds                                                   |
+| `annotations`        | Kaynak notları (alıntı fişleri)        | sourceId, userId, pageNumber, noteType (enum), content, verificationStatus/Data                         |
+| `outline_annotations`| Bölüm–alıntı eşleşmesi (junction)      | outlineId, annotationId                                                                                  |
+| `outline_sources`    | Bölüm–kaynak eşleşmesi (junction)      | outlineId, sourceId                                                                                      |
+| `critiques`          | Eser kritiği (1:1 kaynak analizi)      | sourceId (unique), researchQuestion, theoreticalFramework, methodology, mainArgument, literatureGap      |
+| `chunks`             | PDF metin parçaları (RAG)              | sourceId, chunkIndex, embedding (vector/1024), searchVector (tsvector), chunkType                      |
+| `tasks`              | Kanban görevleri                       | userId, boxId (delete → set null), sourceId, taskType, status/priority (enum)                          |
+| `sessions`           | Danışman/Ofis oturumları               | userId, outlineId (nullable), title, draftText, studentNote                                            |
+| `messages`           | Oturum mesajları                       | sessionId, role, persona, content, sources (jsonb), toolCalls (jsonb), pipelineData                    |
 
-Kutu (`boxes`) ilişkilerinde `onDelete: "cascade"`; görevlerin `boxId` alanında
+Kutu (`boxes`) ve outline (`outlines`) ilişkilerinde `onDelete: "cascade"`; görevlerin `boxId` alanında
 `onDelete: "set null"` uygulanır.
 
 ---
@@ -251,8 +256,6 @@ Gerekli tüm API anahtarları `.env.local` dosyasında tanımlanır:
 | `COHERE_API_KEY`         | Cohere Rerank API                           |
 | `OPENALEX_API_KEY`       | OpenAlex API (isteğe bağlı)                 |
 | `CROSSREF_CONTACT_EMAIL` | Polite pool e-posta (User-Agent)            |
-| `TURSO_DATABASE_URL`     | Turso LibSQL veritabanı URL'si              |
-| `TURSO_AUTH_TOKEN`       | Turso LibSQL auth token                     |
 | `HUGGINGFACE_API_KEY`    | Hugging Face Serverless Inference API key   |
 | `R2_ACCOUNT_ID`          | Cloudflare R2 hesabı                        |
 | `R2_ACCESS_KEY_ID`       | R2 S3 access key                            |

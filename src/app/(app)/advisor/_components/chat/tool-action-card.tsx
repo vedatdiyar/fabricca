@@ -149,12 +149,12 @@ export function ToolActionCard({
         {/* Status Badge */}
         <div>
           {isPending && (
-            <span className="px-2 py-0.5 rounded-md text-[10px] font-medium bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20">
+            <span className="px-2 py-0.5 rounded-md text-[10px] font-medium bg-warning/10 text-warning border border-warning/20">
               Onay Bekliyor
             </span>
           )}
           {isApproved && (
-            <span className="px-2 py-0.5 rounded-md text-[10px] font-medium bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 flex items-center gap-1">
+            <span className="px-2 py-0.5 rounded-md text-[10px] font-medium bg-success/10 text-success border border-success/20 flex items-center gap-1">
               <Check className="size-3" />
               Uygulandı
             </span>

@@ -45,26 +45,38 @@ export interface RunOfficeReviewOutput {
   sources: RagSearchResultItem[];
 }
 
-/**
- * Loads outline metadata, section-pinned annotations, and general user notes for grounding.
- *
- * @param userId - User ID.
- * @param outlineId - Selected Outline Section ID.
- * @returns Outline info and rendered annotations context.
- */
-async function loadSectionContext(userId: number, outlineId: number) {
-  const [outline] = await db
-    .select({
-      id: outlines.id,
-      title: outlines.title,
-      description: outlines.description,
+type AnnotationRow = {
+  content: string;
+  pageNumber: string;
+  noteType: string;
+  sourceTitle: string;
+  sourceAuthors: string[] | null;
+  sourceYear: number | null;
+};
+
+function buildNotesContext(rows: AnnotationRow[]): string {
+  if (rows.length === 0) return "Kütüphanenizde bu bölüm için henüz alıntı fişi/not bulunmamaktadır.";
+  return rows
+    .slice(0, 25)
+    .map((row) => {
+      const authors = row.sourceAuthors?.join(", ") ?? "Bilinmiyor";
+      const year = row.sourceYear ? ` (${row.sourceYear})` : "";
+      return `- [${row.noteType}] "${row.sourceTitle}"${year} | ${authors} | s. ${row.pageNumber}\n  İçerik: ${row.content}`;
     })
+    .join("\n\n");
+}
+
+async function fetchOutline(outlineId: number) {
+  const [outline] = await db
+    .select({ id: outlines.id, title: outlines.title, description: outlines.description })
     .from(outlines)
     .where(eq(outlines.id, outlineId))
     .limit(1);
+  return outline ?? null;
+}
 
-  // 1. Section pinned annotations
-  const pinnedRows = await db
+async function fetchPinnedAnnotations(userId: number, outlineId: number): Promise<AnnotationRow[]> {
+  return db
     .select({
       content: annotations.content,
       pageNumber: annotations.pageNumber,
@@ -76,58 +88,58 @@ async function loadSectionContext(userId: number, outlineId: number) {
     .from(outlineAnnotations)
     .innerJoin(annotations, eq(outlineAnnotations.annotationId, annotations.id))
     .innerJoin(sources, eq(annotations.sourceId, sources.id))
-    .where(
-      and(
-        eq(outlineAnnotations.outlineId, outlineId),
-        eq(annotations.userId, userId),
-      ),
-    );
+    .where(and(eq(outlineAnnotations.outlineId, outlineId), eq(annotations.userId, userId)));
+}
 
-  // 2. Section pinned source IDs for focused RAG
-  const pinnedSourceRows = await db
+async function fetchPinnedSourceIds(outlineId: number): Promise<number[]> {
+  const rows = await db
     .select({ sourceId: outlineSources.sourceId })
     .from(outlineSources)
     .where(eq(outlineSources.outlineId, outlineId));
+  return rows.map((r) => r.sourceId);
+}
 
-  const pinnedSourceIds = pinnedSourceRows.map((r) => r.sourceId);
+async function fetchRecentAnnotations(userId: number): Promise<AnnotationRow[]> {
+  return db
+    .select({
+      content: annotations.content,
+      pageNumber: annotations.pageNumber,
+      noteType: annotations.noteType,
+      sourceTitle: sources.title,
+      sourceAuthors: sources.authors,
+      sourceYear: sources.publicationYear,
+    })
+    .from(annotations)
+    .innerJoin(sources, eq(annotations.sourceId, sources.id))
+    .where(eq(annotations.userId, userId))
+    .orderBy(desc(annotations.createdAt))
+    .limit(20);
+}
 
-  // 3. Fallback recent user annotations if pinned annotations are sparse
+/**
+ * Loads outline metadata, section-pinned annotations, and general user notes for grounding.
+ *
+ * @param userId - User ID.
+ * @param outlineId - Selected Outline Section ID.
+ * @returns Outline info and rendered annotations context.
+ */
+async function loadSectionContext(userId: number, outlineId: number) {
+  const [outline, pinnedRows, pinnedSourceIds] = await Promise.all([
+    fetchOutline(outlineId),
+    fetchPinnedAnnotations(userId, outlineId),
+    fetchPinnedSourceIds(outlineId),
+  ]);
+
   let allAnnotationRows = pinnedRows;
   if (allAnnotationRows.length < 5) {
-    const recentRows = await db
-      .select({
-        content: annotations.content,
-        pageNumber: annotations.pageNumber,
-        noteType: annotations.noteType,
-        sourceTitle: sources.title,
-        sourceAuthors: sources.authors,
-        sourceYear: sources.publicationYear,
-      })
-      .from(annotations)
-      .innerJoin(sources, eq(annotations.sourceId, sources.id))
-      .where(eq(annotations.userId, userId))
-      .orderBy(desc(annotations.createdAt))
-      .limit(20);
-
+    const recentRows = await fetchRecentAnnotations(userId);
     allAnnotationRows = [...pinnedRows, ...recentRows];
   }
-
-  const notesContext =
-    allAnnotationRows.length === 0
-      ? "Kütüphanenizde bu bölüm için henüz alıntı fişi/not bulunmamaktadır."
-      : allAnnotationRows
-          .slice(0, 25)
-          .map((row) => {
-            const authors = row.sourceAuthors?.join(", ") ?? "Bilinmiyor";
-            const year = row.sourceYear ? ` (${row.sourceYear})` : "";
-            return `- [${row.noteType}] "${row.sourceTitle}"${year} | ${authors} | s. ${row.pageNumber}\n  İçerik: ${row.content}`;
-          })
-          .join("\n\n");
 
   return {
     outline,
     pinnedSourceIds,
-    notesContext,
+    notesContext: buildNotesContext(allAnnotationRows),
     notesCount: allAnnotationRows.length,
   };
 }
@@ -267,7 +279,6 @@ export async function runOfficeReview(
     notesContext,
   };
 
-  // Run all 3 specialized LLM tasks concurrently in parallel
   const [auditRes, diffRes, juryRes] = await Promise.all([
     runCitationAuditTask(promptInput, logger),
     runEditorialPolishTask(promptInput, logger),
@@ -275,7 +286,6 @@ export async function runOfficeReview(
   ]);
 
   const totalDurationMs = Math.round(performance.now() - overallStart);
-
   logger.total("advisor_review", totalDurationMs, {
     service: "advisor",
     data: {
@@ -294,19 +304,33 @@ export async function runOfficeReview(
     draftText,
   };
 
+  const { sessionId } = await persistReviewSession(
+    userId,
+    outlineId,
+    draftText,
+    outline,
+    reviewReport,
+    ragSources,
+  );
+
+  return { sessionId, reviewReport, sources: ragSources };
+}
+
+async function persistReviewSession(
+  userId: number,
+  outlineId: number,
+  draftText: string,
+  outline: { title: string | null } | null | undefined,
+  reviewReport: OfficeReviewReport,
+  ragSources: RagSearchResultItem[],
+): Promise<{ sessionId: number }> {
   const sessionTitle = outline?.title
     ? `Taslak: ${outline.title.slice(0, 35)}...`
     : `Taslak İncelemesi: ${draftText.slice(0, 30)}...`;
 
-  // Persist review in database
   const [createdSession] = await db
     .insert(sessions)
-    .values({
-      userId,
-      outlineId,
-      title: sessionTitle,
-      draftText,
-    })
+    .values({ userId, outlineId, title: sessionTitle, draftText })
     .returning({ id: sessions.id });
 
   const pipelineData: PipelineResultData = {
@@ -327,9 +351,5 @@ export async function runOfficeReview(
     pipelineData,
   });
 
-  return {
-    sessionId: createdSession.id,
-    reviewReport,
-    sources: ragSources,
-  };
+  return { sessionId: createdSession.id };
 }

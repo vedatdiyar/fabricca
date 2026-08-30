@@ -1,6 +1,7 @@
 import { parseOpenAlexMetadataResults } from "./parser";
 import type { RefMetadata } from "../literature-review-papers";
 import { openAlexQueue, fetchWithOpenAlexRetry } from "./openalex-http";
+import { OPENALEX_BASE_URL } from "@/core/config/endpoints";
 
 /**
  * Fetches reference metadata for a batch of OpenAlex work IDs.
@@ -35,7 +36,7 @@ export async function fetchOpenAlexMetadataBatch(
     });
     if (apiKey) params.set("api_key", apiKey);
 
-    const url = `https://api.openalex.org/works?${params.toString().replace(/\+/g, "%20")}`;
+    const url = `${OPENALEX_BASE_URL}/works?${params.toString().replace(/\+/g, "%20")}`;
 
     try {
       const response = (await openAlexQueue.exec(async () =>

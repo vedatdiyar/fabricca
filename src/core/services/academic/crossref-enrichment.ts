@@ -1,4 +1,5 @@
 import { CROSSREF_USER_AGENT } from "@/lib/api-utils";
+import { CROSSREF_BASE_URL, buildCrossrefUrl } from "@/core/config/endpoints";
 import type { Logger } from "@/lib/logger";
 
 export interface EnrichedBibliographicMetadata {
@@ -104,8 +105,7 @@ export async function enrichWithCrossref(
   if (doi && doi.trim().length > 0) {
     try {
       const cleanDoi = doi.trim().replace(/^https?:\/\/doi\.org\//i, "");
-      const res = await fetch(
-        `https://api.crossref.org/works/${encodeURIComponent(cleanDoi)}`,
+      const res = await fetch(buildCrossrefUrl(`/works/${encodeURIComponent(cleanDoi)}`),
         {
           headers: { "User-Agent": CROSSREF_USER_AGENT },
           signal: timeoutSignal,
@@ -145,7 +145,7 @@ export async function enrichWithCrossref(
       authorQuery = `&query.author=${encodeURIComponent(lastName)}`;
     }
 
-    const queryUrl = `https://api.crossref.org/works?query.title=${encodeURIComponent(cleanTitle)}${authorQuery}&rows=3`;
+    const queryUrl = `${CROSSREF_BASE_URL}/works?query.title=${encodeURIComponent(cleanTitle)}${authorQuery}&rows=3`;
     const res = await fetch(queryUrl, {
       headers: { "User-Agent": CROSSREF_USER_AGENT },
       signal: timeoutSignal,

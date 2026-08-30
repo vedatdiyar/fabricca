@@ -61,11 +61,11 @@ export function AiMappingBanner({
   };
 
   return (
-    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2.5 px-3.5 py-2 rounded-lg border border-amber-500/20 bg-amber-500/5 text-foreground animate-in fade-in-50 duration-200">
+    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2.5 px-3.5 py-2 rounded-lg border border-warning/20 bg-warning/10 text-foreground animate-in fade-in-50 duration-200">
       <div className="flex items-center gap-2 text-xs">
-        <AlertCircle className="h-3.5 w-3.5 text-amber-500 shrink-0" />
+        <AlertCircle className="h-3.5 w-3.5 text-warning shrink-0" />
         <span>
-          <strong className="font-semibold text-amber-500">
+          <strong className="font-semibold text-warning">
             {unassignedCount} alıntı fişi
           </strong>{" "}
           henüz bir tez bölümüne yerleştirilmedi.
@@ -76,7 +76,7 @@ export function AiMappingBanner({
         onClick={handleAutoMap}
         disabled={isMapping}
         size="sm"
-        className="gap-1.5 h-7 px-2.5 text-xs font-medium bg-amber-500 text-black hover:bg-amber-400 shrink-0 w-full sm:w-auto cursor-pointer"
+        className="gap-1.5 h-7 px-2.5 text-xs font-medium bg-warning text-warning-foreground hover:bg-warning/90 shrink-0 w-full sm:w-auto cursor-pointer"
       >
         {isMapping ? (
           <>
