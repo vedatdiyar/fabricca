@@ -8,7 +8,7 @@
  * - SEMANTIC_SCHOLAR_LIMITS: Saniyede max 1 istek (60 RPM, concurrency 1)
  * - COHERE_LIMITS: Dakikada max 10 istek (10 RPM)
  * - CLOUDFLARE_EMBEDDINGS_LIMITS: Dakikada max 3.000 istek (3000 RPM)
- * - GEMINI_MODEL_QUOTAS: Flash Lite modeller 15 RPM, Flash modeller 5 RPM
+ * - GEMINI_MODEL_QUOTAS: Flash Lite 15 RPM/500 RPD, Flash 5 RPM/20 RPD (free tier, per key; 3 key toplam 45/1500 ve 15/60)
  */
 import {
   FLASH_LITE_31,
@@ -57,24 +57,25 @@ export const CLOUDFLARE_EMBEDDINGS_LIMITS: RateLimiterOptions = {
   rpm: 3000,
 };
 
-/** Per-model Gemini quota (per key). */
+/** Per-model Gemini quota (per key, free tier). */
 export interface GeminiModelQuota {
   rpm: number;
+  rpd: number;
 }
 
 export const GEMINI_MODEL_QUOTAS: Record<string, GeminiModelQuota> = {
-  [FLASH_LITE_31]: { rpm: 15 },
-  [FLASH_LITE_35]: { rpm: 15 },
-  [FLASH_36]: { rpm: 5 },
-  [FLASH_37]: { rpm: 15 },
+  [FLASH_LITE_31]: { rpm: 15, rpd: 500 },
+  [FLASH_LITE_35]: { rpm: 15, rpd: 500 },
+  [FLASH_36]: { rpm: 5, rpd: 20 },
+  [FLASH_37]: { rpm: 5, rpd: 20 },
 };
 
 /** Primary model -> fallback. */
 export const GEMINI_FALLBACK_CHAINS: Record<string, string | null> = {
   [FLASH_LITE_35]: FLASH_LITE_31,
   [FLASH_LITE_31]: null,
-  [FLASH_36]: null,
-  [FLASH_37]: null,
+  [FLASH_36]: FLASH_LITE_35,
+  [FLASH_37]: FLASH_LITE_35,
 };
 
 /**

@@ -114,7 +114,7 @@ Katkı/Odak Alanları: ${e.contributionAreas.join(", ") || "Yok"}`;
       zodSchema: jurySynthesisResultSchema,
       payloadStage: "positioning_jury_synthesis",
       seed: GEMINI_SEED,
-      thinkingConfig: { thinkingLevel: ThinkingLevel.LOW },
+      thinkingConfig: { thinkingLevel: ThinkingLevel.MEDIUM },
       thesisMatrix: input,
       quiet: true,
     },

@@ -91,69 +91,66 @@ export async function searchAndSiftTheses(
   const searchStart = performance.now();
 
   // Parallel 3-Channel Search Execution
-  const [
-    [yokRes1, yokRes2],
-    [openAlexRes1, openAlexRes2],
-    semanticScholarRes,
-  ] = await Promise.all([
-    // 1. Qdrant YÖK Theses (Empirical + Methodology Queries)
-    (async () => {
-      const t0 = performance.now();
-      const [r1, r2] = await Promise.all([
-        searchTheses(
-          sanitizeSearchQuery(distilledQuery.thesisEmpiricalQuery),
-          logger,
-          { limit: 12, silent: true },
-        ).catch(() => []),
-        searchTheses(
-          sanitizeSearchQuery(distilledQuery.thesisMethodologyQuery),
-          logger,
-          { limit: 12, silent: true },
-        ).catch(() => []),
-      ]);
-      const totalCount = r1.length + r2.length;
-      pipelineRun?.subStep(
-        `YÖK Theses (Qdrant x2 · ${totalCount} candidates)`,
-        performance.now() - t0,
-      );
-      return [r1, r2] as const;
-    })(),
+  const [[yokRes1, yokRes2], [openAlexRes1, openAlexRes2], semanticScholarRes] =
+    await Promise.all([
+      // 1. Qdrant YÖK Theses (Empirical + Methodology Queries)
+      (async () => {
+        const t0 = performance.now();
+        const [r1, r2] = await Promise.all([
+          searchTheses(
+            sanitizeSearchQuery(distilledQuery.thesisEmpiricalQuery),
+            logger,
+            { limit: 12, silent: true },
+          ).catch(() => []),
+          searchTheses(
+            sanitizeSearchQuery(distilledQuery.thesisMethodologyQuery),
+            logger,
+            { limit: 12, silent: true },
+          ).catch(() => []),
+        ]);
+        const totalCount = r1.length + r2.length;
+        pipelineRun?.subStep(
+          `YÖK Theses (Qdrant x2 · ${totalCount} candidates)`,
+          performance.now() - t0,
+        );
+        return [r1, r2] as const;
+      })(),
 
-    // 2. OpenAlex Global Literature (Theoretical + Empirical Semantic Search)
-    (async () => {
-      const t0 = performance.now();
-      const [r1, r2] = await Promise.all([
-        searchOpenAlex(
+      // 2. OpenAlex Global Literature (Theoretical + Empirical Semantic Search)
+      (async () => {
+        const t0 = performance.now();
+        const [r1, r2] = await Promise.all([
+          searchOpenAlex(
+            sanitizeSearchQuery(distilledQuery.globalTheoreticalQuery),
+            8,
+          ).catch(() => []),
+          searchOpenAlex(
+            sanitizeSearchQuery(distilledQuery.globalEmpiricalQuery),
+            8,
+          ).catch(() => []),
+        ]);
+        const totalCount = r1.length + r2.length;
+        pipelineRun?.subStep(
+          `OpenAlex (Global x2 · ${totalCount} papers)`,
+          performance.now() - t0,
+        );
+        return [r1, r2] as const;
+      })(),
+
+      // 3. Semantic Scholar (High Impact / Influential Papers)
+      (async () => {
+        const t0 = performance.now();
+        const res = await searchSemanticScholarPapers(
           sanitizeSearchQuery(distilledQuery.globalTheoreticalQuery),
-          8,
-        ).catch(() => []),
-        searchOpenAlex(
-          sanitizeSearchQuery(distilledQuery.globalEmpiricalQuery),
-          8,
-        ).catch(() => []),
-      ]);
-      const totalCount = r1.length + r2.length;
-      pipelineRun?.subStep(
-        `OpenAlex (Global x2 · ${totalCount} papers)`,
-        performance.now() - t0,
-      );
-      return [r1, r2] as const;
-    })(),
-
-    // 3. Semantic Scholar (High Impact / Influential Papers)
-    (async () => {
-      const t0 = performance.now();
-      const res = await searchSemanticScholarPapers(
-        sanitizeSearchQuery(distilledQuery.globalTheoreticalQuery),
-        10,
-      ).catch(() => []);
-      pipelineRun?.subStep(
-        `Semantic Scholar (${res.length} papers)`,
-        performance.now() - t0,
-      );
-      return res;
-    })(),
-  ]);
+          10,
+        ).catch(() => []);
+        pipelineRun?.subStep(
+          `Semantic Scholar (${res.length} papers)`,
+          performance.now() - t0,
+        );
+        return res;
+      })(),
+    ]);
 
   const candidates: SiftedThesis[] = [];
   const seenTitles = new Set<string>();
@@ -207,9 +204,7 @@ export async function searchAndSiftTheses(
       id: `openalex-${p.openAlexId || Math.random().toString(36).slice(2, 8)}`,
       title,
       author:
-        p.authors && p.authors.length > 0
-          ? p.authors.join(", ")
-          : "Bilinmiyor",
+        p.authors && p.authors.length > 0 ? p.authors.join(", ") : "Bilinmiyor",
       university: p.publisher || "Uluslararası Akademik Yayın",
       year: p.year || new Date().getFullYear(),
       thesisType: pubType,

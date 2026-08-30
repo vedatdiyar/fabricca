@@ -58,7 +58,7 @@ Yukarıdaki tez önerisini ve taranan kanıtları inceleyerek güçlü yönleri 
         auditOutputJsonSchema,
         run.logger,
         {
-          thinkingConfig: { thinkingLevel: ThinkingLevel.LOW },
+          thinkingConfig: { thinkingLevel: ThinkingLevel.MEDIUM },
           zodSchema: auditOutputSchema,
           seed: GEMINI_SEED,
           payloadStage: "proposal_audit_critique",

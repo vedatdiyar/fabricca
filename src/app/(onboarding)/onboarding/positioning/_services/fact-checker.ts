@@ -38,7 +38,8 @@ export async function verifyMatrixFactualClaims(
     .join(" ")
     .slice(0, 300);
 
-  const verificationQuery = `${queryParts} mevzuat kanun tarih güncel rapor`.trim();
+  const verificationQuery =
+    `${queryParts} mevzuat kanun tarih güncel rapor`.trim();
 
   logger?.info("positioning_fact_check_start", {
     service: "positioning",

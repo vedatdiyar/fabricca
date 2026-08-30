@@ -103,7 +103,7 @@ export async function runMatrixRealignmentCascade(
       matrixRealignmentJsonSchema,
       log,
       {
-        thinkingConfig: { thinkingLevel: ThinkingLevel.LOW },
+        thinkingConfig: { thinkingLevel: ThinkingLevel.MEDIUM },
         zodSchema: matrixRealignmentSchema,
         seed: GEMINI_SEED,
         payloadStage: "matrix_realignment_cascade",

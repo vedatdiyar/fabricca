@@ -151,7 +151,7 @@ Yukarıdaki üç kaynağı harmanlayarak, araştırmacının kararlarını ve li
         synthesizedMatrixJsonSchema,
         run.logger,
         {
-          thinkingConfig: { thinkingLevel: ThinkingLevel.LOW },
+          thinkingConfig: { thinkingLevel: ThinkingLevel.MEDIUM },
           zodSchema: synthesizedMatrixSchema,
           seed: GEMINI_SEED,
           payloadStage: "matrix_synthesis",

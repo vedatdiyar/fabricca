@@ -195,7 +195,7 @@ export async function selectWithGemini(
       {
         payloadStage: "backward_expansion_selection",
         zodSchema: selectionResponseSchema,
-        thinkingConfig: { thinkingLevel: ThinkingLevel.LOW },
+        thinkingConfig: { thinkingLevel: ThinkingLevel.MEDIUM },
       },
     );
   } catch {

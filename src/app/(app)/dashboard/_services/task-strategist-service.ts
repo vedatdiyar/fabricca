@@ -3,6 +3,7 @@ import { db } from "@/core/db";
 import { tasks } from "@/core/db/schema";
 import { generateStructuredContent } from "@/core/services/ai/providers/gemini-provider";
 import { FLASH_LITE_35 } from "@/lib/constants";
+import { ThinkingLevel } from "@google/genai";
 import { createFlowId, Logger } from "@/lib/logger";
 import type { JsonSchema } from "@/core/services/ai/llm-types";
 import {
@@ -299,6 +300,7 @@ const STRATEGIST_PROVIDER_OPTIONS = {
   zodSchema: strategistResponseSchema,
   operation: "thesis-strategist-audit",
   payloadStage: "task-strategist",
+  thinkingConfig: { thinkingLevel: ThinkingLevel.MEDIUM },
 } as const;
 
 /**

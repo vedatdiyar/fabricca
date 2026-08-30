@@ -2,7 +2,7 @@
 
 import { getSession, SESSION_ERROR_MSG } from "@/lib/session";
 import { generateGeminiStructuredContent } from "@/core/services/ai";
-import { FLASH_LITE_35, GEMINI_SEED } from "@/lib/constants";
+import { FLASH_37, GEMINI_SEED } from "@/lib/constants";
 import { ThinkingLevel } from "@google/genai";
 import { createFlowId, Logger } from "@/lib/logger";
 import { buildBoxStructurePromptPayload } from "../_prompts/box-structure.prompt";
@@ -48,13 +48,13 @@ export async function runBoxStructureAction(
 
     const structure =
       await generateGeminiStructuredContent<RawBoxStructureResponse>(
-        FLASH_LITE_35,
+        FLASH_37,
         payload.systemInstruction,
         payload.userPrompt,
         boxStructureJsonSchema,
         log,
         {
-          thinkingConfig: { thinkingLevel: ThinkingLevel.LOW },
+          thinkingConfig: { thinkingLevel: ThinkingLevel.HIGH },
           zodSchema: boxStructureSchema,
           seed: GEMINI_SEED,
           thesisMatrix: matrix,

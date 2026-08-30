@@ -69,7 +69,7 @@ export async function runAdvisorToolLoop(
             systemInstruction,
             seed: GEMINI_SEED,
             tools: [{ functionDeclarations: ADVISOR_TOOL_DECLARATIONS }],
-            thinkingConfig: { thinkingLevel: ThinkingLevel.LOW },
+            thinkingConfig: { thinkingLevel: ThinkingLevel.MEDIUM },
             safetySettings: [
               {
                 category: HarmCategory.HARM_CATEGORY_HATE_SPEECH,

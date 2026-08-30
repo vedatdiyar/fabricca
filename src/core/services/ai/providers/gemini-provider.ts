@@ -1,3 +1,4 @@
+import { ThinkingLevel } from "@google/genai";
 import type { Logger } from "@/lib/logger";
 import { getProjectIndex } from "../gemini-key-pool";
 import { dispatchGeminiCall } from "../gemini-scheduler";
@@ -65,6 +66,18 @@ export async function generateStructuredContent<T>(
     });
   }
 
+  // FLASH_37 MINIMAL desteklemez (400) — guard: MINIMAL → LOW yükselt
+  const effectiveThinkingLevel =
+    modelName === "gemini-3.7-flash" && thinkingLevel === ThinkingLevel.MINIMAL
+      ? (() => {
+          logger?.warn("flash_37_minimal_upgraded_to_low", {
+            service: "gemini",
+            data: { payloadStage: callLabel, originalLevel: thinkingLevel },
+          });
+          return ThinkingLevel.LOW;
+        })()
+      : thinkingLevel;
+
   try {
     return await dispatchGeminiCall<T>({
       model: modelName,
@@ -83,14 +96,14 @@ export async function generateStructuredContent<T>(
               projectIndex: projectIndex + 1,
               instructionLength: systemInstruction.length,
               promptLength: prompt.length,
-              thinkingLevel: thinkingLevel ?? undefined,
+              thinkingLevel: effectiveThinkingLevel ?? undefined,
             },
           });
         }
 
         // Gemini 3.x: sadece thinkingLevel iletilir, thinkingBudget ve temperature asla iletilmez.
-        const sanitizedThinkingConfig = options?.thinkingConfig?.thinkingLevel
-          ? { thinkingLevel: options.thinkingConfig.thinkingLevel }
+        const sanitizedThinkingConfig = effectiveThinkingLevel
+          ? { thinkingLevel: effectiveThinkingLevel }
           : undefined;
 
         const payload = {
@@ -235,7 +248,7 @@ export async function generateStructuredContent<T>(
                 projectIndex: projectIndex + 1,
                 crossProjectRotation: true,
                 attempt: attempts,
-                thinkingLevel: thinkingLevel ?? undefined,
+                thinkingLevel: effectiveThinkingLevel ?? undefined,
               },
             });
           }
@@ -257,7 +270,7 @@ export async function generateStructuredContent<T>(
               projectIndex: projectIndex + 1,
               crossProjectRotation: true,
               attempts,
-              thinkingLevel: thinkingLevel ?? undefined,
+              thinkingLevel: effectiveThinkingLevel ?? undefined,
               scenario,
               quotaDetails: quotaDetails ?? undefined,
             },

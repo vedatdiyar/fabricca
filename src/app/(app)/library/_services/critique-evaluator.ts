@@ -189,7 +189,7 @@ Yukarıdaki <context> içeriğini akademik titizlikle analiz et. Araştırmacın
       auditReportJsonSchema,
       logger,
       {
-        thinkingConfig: { thinkingLevel: ThinkingLevel.LOW },
+        thinkingConfig: { thinkingLevel: ThinkingLevel.MEDIUM },
         payloadStage: "resource_audit_evaluation",
         operation: "resource_audit_evaluation",
         zodSchema: auditReportSchema,
