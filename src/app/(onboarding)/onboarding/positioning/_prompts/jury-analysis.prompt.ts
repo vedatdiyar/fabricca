@@ -8,19 +8,20 @@ export interface JuryAnalysisPromptPayload {
 
 /**
  * Builds the hybrid XML/Markdown prompt payload for the final multi-source jury synthesis analysis,
- * synthesizing evidence across YÖK theses, OpenAlex/Semantic Scholar papers, and Exa/DergiPark works.
+ * synthesizing evidence across YÖK theses, OpenAlex/Semantic Scholar papers, and Exa factual verification.
  *
  * Strictly adheres to docs/LLM_INTEGRATION.md.
  *
- * @param params - Parameters containing the validated matrix, formatted evaluated literature text, and count.
+ * @param params - Parameters containing the validated matrix, formatted evaluated literature text, count, and optional factual verification evidence.
  * @returns Structured prompt payload.
  */
 export function buildPositioningJuryPromptPayload(params: {
   input: PositioningMatrixInput;
   thesisListText: string;
   evaluatedCount: number;
+  factualEvidenceText?: string;
 }): JuryAnalysisPromptPayload {
-  const { input, thesisListText, evaluatedCount } = params;
+  const { input, thesisListText, evaluatedCount, factualEvidenceText } = params;
 
   const systemInstruction = `<role>
 Kıdemli akademik jüri başkanı, tez izleme komitesi raportörü ve çok disiplinli araştırma metodoloğu.
@@ -28,11 +29,11 @@ Kıdemli akademik jüri başkanı, tez izleme komitesi raportörü ve çok disip
 
 <instructions>
 # Görev ve Sentez Amacı
-Kullanıcının sunduğu tez matrisini (Problem, Kuram, Birincil Malzeme, Yöntem) ve 4 kanaldan (YÖK Tezler, OpenAlex, Semantic Scholar, Exa/DergiPark) incelenen kaynakları analiz ederek:
+Kullanıcının sunduğu tez matrisini (Problem, Kuram, Birincil Malzeme, Yöntem), taranan akademik literatürü ve olgusal doğrulama kanıtlarını analiz ederek:
 1. Çalışmanın özgünlük ve çakışma durumunu karara bağla (globalStatus).
 2. 3 boyutlu derin bir Akademik Boşluk Analizi Raporu sentezle (gapAnalysisSummary).
 3. Varsa birebir çakışmaları belirle; araştırmacının çalışmasını engelleyen yapısal çakışma anatomisini (Problem, Kuram ve Yöntem boyutlarında) net bir akademik tutanakla ortaya koy. Asla yüzeysel pivot/kurtarma seçeneği üretme; tezi özgünleştirme ve yeniden kurgulama sorumluluğunu araştırmacıya bırak.
-4. Tez matrisini kuramsal, olgusal ve yapısal bütünlük açısından denetle; yalnızca gerçek bir eksiklik, kavram yanılgısı veya kritik belirsizlik varsa netleştirme soruları üret.
+4. Tez matrisini kuramsal, olgusal ve yapısal bütünlük açısından denetle; olgusal doğrulama kanıtlarını inceleyerek tarihsel anakronizm, değişen mevzuat veya maddi hata olup olmadığını teyit et; yalnızca gerçek bir eksiklik, kavram yanılgısı veya kritik belirsizlik varsa netleştirme soruları üret.
 
 # 1. globalStatus (Jüri Genel Kararı):
 - **DIRECT_OVERLAP (Birebir Çakışma / Özgünlük Riski):**
@@ -63,13 +64,14 @@ Kullanıcının sunduğu tez matrisini (Problem, Kuram, Birincil Malzeme, Yönte
 - **YALNIZCA GERÇEK BİR EKSİKLİK, KAVRAM YANILGISI VEYA KRİTİK BELİRSİZLİK VARSA (Maksimum 1-2 Soru):**
   * Yalnızca tez kurgusunda tezin ilerlemesini veya konu kutularının oluşturulmasını sakatlayacak somut bir problem varsa soru üretin:
     1. **Kuramsal / Epistemolojik Uyumsuzluk:** Seçilen teori ampirik vakayı açıklayamaz nitelikteyse, kullanıcı teoriyi yanlış/çarpık anlamışsa veya kuramsal çerçeve tamamen seçilmemişse.
-    2. **Olgusal / Tarihsel Hatalar ve Anakronizm:** İncelenen dönem, aktörler, tarihsel süreç veya vakalara dair açık bir bilgi hatası, anakronizm veya kavram kargaşası varsa.
+    2. **Olgusal / Tarihsel Hatalar ve Anakronizm:** İncelenen dönem, aktörler, tarihsel süreç veya mevzuata dair açık bir bilgi hatası, anakronizm veya kavram kargaşası varsa (Olgusal doğrulama kanıtlarıyla teyit ederek).
     3. **Kritik Kör Noktalar ve Eksik Aktörler:** Sorunsalın doğası gereği dışarıda bırakılması araştırmayı sakatlayacak temel bir aktör, tarihsel dönemeç veya kurumsal dinamik göz ardı edilmişse.
     4. **Yapısal Çelişki:** Araştırma problemi, kuram, birincil malzeme ve yöntem arasında birbiriyle çelişen bir tutarsızlık varsa.
   * Bu durumda 'question' alanına araştırmacının yanıtlayabileceği net soruyu, 'contextNote' alanına ise tespit edilen bu kuramsal uyumsuzluğun, olgusal hatanın veya eksikliğin somut akademik gerekçesini yazın.
 
 # Dil ve Kısıtlar
 - %100 yetkin, yapıcı ve saygın bir akademik Türkçe kullanın.
+- Girdi bağlamında İngilizce veya ASCII başlıklar/özetler yer alsa dahi, çıktıda Türkçe imla kurallarına ve Türkçe harflere (ç, ğ, ı, İ, ö, ş, ü) kesinlikle ve eksiksiz uyulmalıdır (örneğin 'yılların', 'çalışmalar', 'İncelenen' vb.). İngilizce/ASCII harf yozlaşmasına asla izin verilmez.
 - Çince/Japonca/Korece karakter üretimi kesinlikle yasaktır.
 - Plaza jargonu ve gereksiz retorikten kaçının.
 </instructions>`;
@@ -78,20 +80,23 @@ Kullanıcının sunduğu tez matrisini (Problem, Kuram, Birincil Malzeme, Yönte
     ? `\nBirincil Malzeme / Kaynaklar: ${input.primaryMaterial}`
     : "";
 
+  const factualVerificationBlock = factualEvidenceText
+    ? `\n\n[Olgusal, Kronolojik ve Güncel Saha Doğrulaması]:\n${factualEvidenceText}`
+    : "";
+
   const userPrompt = `<context>
 [Kullanıcı Tez Matrisi]:
 Araştırma Problemi ve Odak: ${input.subjectProblem}
 Kuramsal Çerçeve: ${input.theoreticalFramework || "Belirtilmemiş"}${primaryMaterialLine}
 Yöntem ve Saha: ${input.methodology || "Belirtilmemiş"}
 
-[İncelenen Çok Kaynaklı Literatür (${evaluatedCount} Adet)]:
-${thesisListText}
+[İncelenen Akademik Literatür (${evaluatedCount} Adet)]:
+${thesisListText}${factualVerificationBlock}
 </context>
 
 <task>
-Yukarıdaki <context> içeriğindeki ${evaluatedCount} adet kaynağı ve kullanıcı tez matrisini inceleyerek; jüri durum kararını, 3 boyutlu boşluk analizi raporunu ve yalnızca gerçek bir yapısal eksiklik/çelişki varsa somut netleştirme sorularını (yoksa boş dizi []) içeren JSON çıktısını üret.
+Yukarıdaki <context> içeriğindeki ${evaluatedCount} adet akademik kaynağı, olgusal doğrulama kanıtlarını ve kullanıcı tez matrisini inceleyerek; jüri durum kararını, 3 boyutlu boşluk analizi raporunu ve yalnızca gerçek bir yapısal eksiklik/çelişki/anakronizm varsa somut netleştirme sorularını (yoksa boş dizi []) içeren JSON çıktısını üret.
 </task>`;
 
   return { systemInstruction, userPrompt };
 }
-

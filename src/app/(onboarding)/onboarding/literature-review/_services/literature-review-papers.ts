@@ -27,8 +27,11 @@ export interface RefMetadata {
   citedByCount: number;
 }
 
+export type LiteratureSourceChannel =
+  "openalex" | "semantic_scholar" | "exa" | "qdrant";
+
 export interface RawPaper {
-  source: "openalex";
+  source: LiteratureSourceChannel;
   title: string | null;
   abstract?: string | null;
   metadata: string | null;
@@ -39,4 +42,6 @@ export interface RawPaper {
   openAlexId: string | null;
   relevanceScore: number;
   citedByCount?: number;
+  url?: string | null;
+  publicationType?: string | null;
 }

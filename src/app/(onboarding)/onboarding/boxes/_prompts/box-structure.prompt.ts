@@ -52,7 +52,7 @@ export function buildBoxStructurePromptPayload(
 - **Bütünleşik Veri Seti (N=1):** Tüm kaynaklar yalnızca tek bir kurumdan veya tek bir arşiv fonundan geliyorsa tek alt kutu (N=1) kullanılır.
 
 ## Biçimsel ve Dil Standartları
-- **Dinamik Başlıklar:** Başlıklar doğrudan matristeki spesifik kavram, aktör ve olgulara odaklanmalıdır.
+- **Dinamik ve Yalın Başlıklar:** Başlıklar doğrudan matristeki spesifik kavram, aktör ve olgulara odaklanmalıdır. Başlık ve açıklamalarda Türkçe terimlerin yanına parantez içinde yabancı dildeki karşılıkları veya kısaltmaları (örneğin: '(Frame Analysis)', '(DHA)') kesinlikle eklenmemeli; doğrudan duru akademik Türkçe terim kullanılmalıdır.
 - **Açıklamalar:** 100-180 karakter arasında, somut ve bilgilendirici olmalıdır.
 - **Concepts Dizisi:** Sub-box seviyesinde en az 1, en fazla 4 elemandan oluşan somut akademik terimler dizisidir.`,
 
@@ -112,7 +112,7 @@ KADRAN 4: PRIMARY_MATERIAL
     "description": "Söylem-tarihsel yaklaşım ve tematik kodlama çerçevesinin analitik sentezi.",
     "subBoxes": [
       {
-        "title": "Söylem-Tarihsel Yaklaşım (DHA)",
+        "title": "Söylem-Tarihsel Yaklaşım",
         "description": "Siyasi metinlerin tarihsel bağlamında retorik ve söylemsel stratejilerle çözümlenmesi.",
         "concepts": ["Söylem-Tarihsel Yaklaşım", "Söylemsel Stratejiler", "Tarihsel Bağlamsallaştırma"]
       },

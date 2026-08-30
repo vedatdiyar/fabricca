@@ -5,6 +5,7 @@ import type { Logger } from "@/lib/logger";
 import { buildPositioningJuryPromptPayload } from "../_prompts/jury-analysis.prompt";
 import type { EvaluatedThesis } from "./per-thesis-evaluation";
 import type { PositioningMatrixInput } from "./validation";
+import { verifyMatrixFactualClaims } from "./fact-checker";
 import {
   jurySynthesisResultSchema,
   jurySynthesisResultJsonSchema,
@@ -22,6 +23,7 @@ export {
 /**
  * Runs the final synthesis jury LLM over the relevant evaluated theses using FLASH_LITE_35.
  * Assembles the globalStatus, 3-dimensional gapAnalysisSummary, and recommended guiding theses.
+ * Also performs an asynchronous factual/chronological check via Exa to verify empirical claims.
  *
  * @param input - The validated positioning matrix.
  * @param evaluatedTheses - The relevant evaluated theses.
@@ -60,6 +62,21 @@ export async function analyzePositioningJury(
     };
   }
 
+  // Run Exa fact-checking verification in parallel with prompt preparation
+  const factCheckReport = await verifyMatrixFactualClaims(input, logger).catch(
+    () => null,
+  );
+
+  let factualEvidenceText = "";
+  if (factCheckReport && factCheckReport.hasEvidence) {
+    factualEvidenceText = factCheckReport.verifiedEvidence
+      .map(
+        (e) =>
+          `- Kaynak: "${e.title}" (${e.publishedDate ? `Tarih: ${e.publishedDate}` : "Tarih Belirtilmemiş"}):\n  ${e.highlights.join(" ")}`,
+      )
+      .join("\n\n");
+  }
+
   const thesisListText = evaluatedTheses
     .map((ev, idx) => {
       const t = ev.thesis;
@@ -84,6 +101,7 @@ Katkı/Odak Alanları: ${e.contributionAreas.join(", ") || "Yok"}`;
     input,
     thesisListText,
     evaluatedCount: evaluatedTheses.length,
+    factualEvidenceText: factualEvidenceText || undefined,
   });
 
   const synthesis = await generateGeminiStructuredContent<JurySynthesisResult>(

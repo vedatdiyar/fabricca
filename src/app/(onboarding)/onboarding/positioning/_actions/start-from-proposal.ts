@@ -169,9 +169,7 @@ export async function startOnboardingFromProposalAction(
     await run.execute(
       "persist",
       async () => {
-        const matrixId = matrixDbPromise
-          ? await matrixDbPromise
-          : 0;
+        const matrixId = matrixDbPromise ? await matrixDbPromise : 0;
 
         const t0 = performance.now();
         await sanitizeJuryTheses(juryResult, run.logger);

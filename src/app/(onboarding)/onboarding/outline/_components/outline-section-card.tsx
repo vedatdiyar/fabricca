@@ -160,11 +160,6 @@ export function OutlineSectionCard(props: OutlineSectionCardProps) {
                   <h3 className="font-serif text-base font-semibold tracking-tight text-foreground leading-snug">
                     {section.title}
                   </h3>
-                  {hasSubSections && (
-                    <span className="text-[10px] font-medium bg-muted text-muted-foreground px-2 py-1 rounded-full shrink-0">
-                      {subSections.length} alt bölüm
-                    </span>
-                  )}
                 </div>
                 {section.description && (
                   <p className="text-xs text-muted-foreground leading-relaxed mt-1">

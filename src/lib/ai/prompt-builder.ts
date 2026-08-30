@@ -48,7 +48,8 @@ export interface PromptBuilderInput {
  * tier occasionally emits Han characters in Turkish academic outputs.
  */
 const LANGUAGE_GUARD =
-  "**Dil Kilidi:** Tüm çıktı dili kesinlikle yüksek düzey akademik Türkçe olacaktır. " +
+  "**Dil Kilidi ve İmla Kuralları:** Tüm çıktı dili kesinlikle yüksek düzey akademik Türkçe olacaktır. " +
+  "Girdi bağlamında İngilizce veya ASCII başlıklar/özetler yer alsa dahi, çıktıda Türkçe imla kurallarına ve Türkçe harflere (ç, ğ, ı, İ, ö, ş, ü) kesinlikle ve eksiksiz uyulmalıdır. İngilizce/ASCII harf yozlaşmasına (örneğin 'calismalar', 'yillarin', 'Incelenen' gibi) asla izin verilmez. " +
   "Çince, Japonca veya Korece karakter (Han/Kana/Hangul, \\u4E00-\\u9FFF, \\u3040-\\u30FF, \\uAC00-\\uD7AF) üretimi kesinlikle yasaktır. " +
   "Bu yasak JSON anahtarları ve değerleri dahil tüm çıktı için geçerlidir.";
 

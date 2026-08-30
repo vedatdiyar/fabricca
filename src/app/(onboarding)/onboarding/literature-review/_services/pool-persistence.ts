@@ -61,6 +61,7 @@ export async function insertLiteratureBatch(
       publisher: article.publisher ?? null,
       publicationYear: article.publicationYear ?? null,
       authors: article.authors.filter(Boolean) as string[],
+      documentType: article.thesisType || "Makale",
       isRead: false,
     });
   }

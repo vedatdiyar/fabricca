@@ -193,6 +193,9 @@ export async function executePhase3Selection(
         title: art.originalTitle,
         authors: art.originalAuthors,
         publisher: art.publisher,
+        thesisType:
+          art.poolItem.rawPaper.publicationType ||
+          (art.poolItem.rawPaper.source === "qdrant" ? "Tez" : "Makale"),
         publicationYear: art.publicationYear,
         doi: art.doi,
         openalexId: art.openalexId,

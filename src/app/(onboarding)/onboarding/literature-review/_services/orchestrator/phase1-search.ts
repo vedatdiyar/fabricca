@@ -1,11 +1,11 @@
 import { Logger } from "@/lib/logger";
 import type { SubBoxInput, SubBoxItem } from "../literature-review-papers";
-import { searchOpenAlex } from "../openalex/client";
+import { searchMultiChannelForSubBox } from "./multi-channel-search";
 import type { SubBoxResult } from "./types";
 
 /**
- * Executes Phase 1 search across sub-boxes using OpenAlex semantic search.
- * Throws if a sub-box is missing a semanticQuery — no silent skips.
+ * Executes Phase 1 search across sub-boxes using the 4-channel multi-source search engine
+ * (OpenAlex, Semantic Scholar, Exa DergiPark, and Qdrant YÖK Theses).
  *
  * @param activeJobs - The list of box sub-box jobs to search.
  * @param logger - The shared flow logger.
@@ -17,23 +17,15 @@ export async function executePhase1Search(
   logger: Logger,
   checkCancelled?: () => boolean,
 ): Promise<SubBoxResult[]> {
-  logger.info("literature_openalex_search_start", { hidden: true });
+  logger.info("literature_multi_channel_search_start", { hidden: true });
 
   const phase1Results = await Promise.allSettled(
     activeJobs.map(async ({ box, subBox }): Promise<SubBoxResult> => {
-      const query = subBox.semanticQuery?.trim();
-
-      if (!query) {
-        return {
-          boxType: box.boxType ?? "PRIMARY_MATERIAL",
-          subBoxDescription: subBox.description ?? "",
-          subBox,
-          thesisBoxId: subBox.thesisBoxId,
-          rawPapers: [],
-        };
-      }
-
-      const rawPapers = await searchOpenAlex(query, 25, checkCancelled);
+      const rawPapers = await searchMultiChannelForSubBox(
+        subBox,
+        logger,
+        checkCancelled,
+      );
 
       return {
         boxType: box.boxType ?? "PROBLEMATIZATION",
@@ -61,7 +53,10 @@ export async function executePhase1Search(
     }
   }
 
-  logger.info("literature_openalex_search_success", { hidden: true });
+  logger.info("literature_multi_channel_search_success", {
+    hidden: true,
+    data: { processedBoxes: fulfilledResults.length },
+  });
 
   return fulfilledResults;
 }

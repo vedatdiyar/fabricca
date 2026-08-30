@@ -1,7 +1,6 @@
 import { searchTheses } from "@/core/services/thesis-search";
 import { searchOpenAlex } from "@/app/(onboarding)/onboarding/literature-review/_services/openalex/openalex-search";
 import { searchSemanticScholarPapers } from "@/core/services/semantic-scholar/semantic-scholar-search";
-import { searchExa, type ExaSearchResult } from "@/core/services/exa";
 import { rerankWithCohere } from "@/core/services/ai/cohere";
 import type { Logger } from "@/lib/logger";
 import type { PipelineRun } from "@/lib/pipeline-logger";
@@ -30,7 +29,7 @@ export interface SiftedThesis {
   abstract: string;
   url?: string;
   doi?: string;
-  sourceChannel: "yok" | "openalex" | "semantic_scholar" | "exa";
+  sourceChannel: "yok" | "openalex" | "semantic_scholar";
   publicationType: "Tez" | "Makale" | "Kitap" | "Kitap Bölümü" | "Rapor";
   relevanceScore?: number;
 }
@@ -45,9 +44,9 @@ export const MIN_COHERE_RELEVANCE_SCORE = 0.45;
 const MIN_ABSTRACT_LENGTH = 40;
 
 /**
- * 4-Channel Multi-Source Academic Sifting Engine:
- * 1. Generates 6 complementary queries (Qdrant, OpenAlex, Semantic Scholar, Exa) via FLASH_LITE_35.
- * 2. Fetches candidates in parallel from all 4 channels via Promise.all.
+ * 3-Channel Multi-Source Academic Sifting Engine:
+ * 1. Generates complementary queries (Qdrant, OpenAlex, Semantic Scholar) via FLASH_LITE_35.
+ * 2. Fetches candidates in parallel from all 3 academic channels via Promise.all.
  * 3. Normalizes and deduplicates candidates into unified SiftedThesis models.
  * 4. Applies Cohere Rerank v4.0 Pro across the combined candidate pool.
  * 5. Returns sorted candidates ready for batch jury evaluation.
@@ -55,7 +54,7 @@ const MIN_ABSTRACT_LENGTH = 40;
  * @param matrixInput - The validated positioning matrix input.
  * @param logger - Optional structured logger.
  * @param options - Optional limits for topN, candidate retrieval, and parallel query distillation.
- * @returns Sorted candidate literature list across all 4 channels.
+ * @returns Sorted candidate literature list across all 3 academic channels.
  */
 export async function searchAndSiftTheses(
   matrixInput: PositioningMatrixInput,
@@ -91,12 +90,11 @@ export async function searchAndSiftTheses(
 
   const searchStart = performance.now();
 
-  // Parallel 4-Channel Search Execution
+  // Parallel 3-Channel Search Execution
   const [
     [yokRes1, yokRes2],
     [openAlexRes1, openAlexRes2],
     semanticScholarRes,
-    [exaDergiparkRes, exaFieldRes],
   ] = await Promise.all([
     // 1. Qdrant YÖK Theses (Empirical + Methodology Queries)
     (async () => {
@@ -155,28 +153,6 @@ export async function searchAndSiftTheses(
       );
       return res;
     })(),
-
-    // 4. Exa.ai (DergiPark Academic Papers + Field/Policy Context)
-    (async () => {
-      const t0 = performance.now();
-      const [r1, r2] = await Promise.all([
-        searchExa(distilledQuery.dergiparkQuery, {
-          numResults: 6,
-          includeDomains: ["dergipark.org.tr"],
-          silent: true,
-        }).catch(() => [] as ExaSearchResult[]),
-        searchExa(distilledQuery.fieldWebQuery, {
-          numResults: 6,
-          silent: true,
-        }).catch(() => [] as ExaSearchResult[]),
-      ]);
-      const totalCount = r1.length + r2.length;
-      pipelineRun?.subStep(
-        `Exa.ai (DergiPark & Web · ${totalCount} articles)`,
-        performance.now() - t0,
-      );
-      return [r1, r2] as const;
-    })(),
   ]);
 
   const candidates: SiftedThesis[] = [];
@@ -218,23 +194,28 @@ export async function searchAndSiftTheses(
     if (!key || seenTitles.has(key)) continue;
     seenTitles.add(key);
 
-    const authorsStr = (p.authors ?? []).slice(0, 3).join(", ") || "Bilinmiyor";
-    const year = p.year || new Date().getFullYear();
     const abstractStr = p.abstract || "";
-    const pubType = "Makale";
+    const pubType: "Tez" | "Makale" | "Kitap" | "Kitap Bölümü" | "Rapor" =
+      p.publicationType === "Tez" ||
+      p.publicationType === "Kitap" ||
+      p.publicationType === "Kitap Bölümü" ||
+      p.publicationType === "Rapor"
+        ? p.publicationType
+        : "Makale";
 
     candidates.push({
-      id: p.openAlexId
-        ? String(p.openAlexId).replace("https://openalex.org/", "")
-        : `oa-${Math.random().toString(36).slice(2, 8)}`,
+      id: `openalex-${p.openAlexId || Math.random().toString(36).slice(2, 8)}`,
       title,
-      author: authorsStr,
+      author:
+        p.authors && p.authors.length > 0
+          ? p.authors.join(", ")
+          : "Bilinmiyor",
       university: p.publisher || "Uluslararası Akademik Yayın",
-      year,
+      year: p.year || new Date().getFullYear(),
       thesisType: pubType,
       abstract: abstractStr,
       doi: p.doi || undefined,
-      url: p.doi ? `https://doi.org/${p.doi}` : undefined,
+      url: p.url || (p.doi ? `https://doi.org/${p.doi}` : undefined),
       sourceChannel: "openalex",
       publicationType: pubType,
     });
@@ -247,26 +228,20 @@ export async function searchAndSiftTheses(
     if (!key || seenTitles.has(key)) continue;
     seenTitles.add(key);
 
-    const authorsStr =
-      (p.authors ?? [])
-        .map((a) => a.name)
-        .slice(0, 3)
-        .join(", ") || "Bilinmiyor";
-    const year = p.year || new Date().getFullYear();
     const abstractStr = p.abstract || "";
-
-    const s2Type = (p.publicationTypes ?? []).includes("Book")
-      ? "Kitap"
-      : (p.publicationTypes ?? []).includes("BookSection")
-        ? "Kitap Bölümü"
-        : "Makale";
+    const isBook = (p.publicationTypes ?? []).includes("Book");
+    const isSection = (p.publicationTypes ?? []).includes("BookSection");
+    const s2Type = isBook ? "Kitap" : isSection ? "Kitap Bölümü" : "Makale";
 
     candidates.push({
-      id: `s2-${p.paperId}`,
+      id: `s2-${p.paperId || Math.random().toString(36).slice(2, 8)}`,
       title,
-      author: authorsStr,
-      university: p.venue || "Uluslararası Hakemli Dergi",
-      year,
+      author:
+        p.authors && p.authors.length > 0
+          ? p.authors.map((a) => a.name).join(", ")
+          : "Bilinmiyor",
+      university: p.venue || "Uluslararası Akademik Yayın",
+      year: p.year || new Date().getFullYear(),
       thesisType: s2Type,
       abstract: abstractStr,
       doi: p.externalIds?.DOI,
@@ -277,33 +252,6 @@ export async function searchAndSiftTheses(
           : undefined),
       sourceChannel: "semantic_scholar",
       publicationType: s2Type,
-    });
-  }
-
-  // Ingest Exa Results (DergiPark and Web)
-  for (const r of [...exaDergiparkRes, ...exaFieldRes]) {
-    const title = r.title || "";
-    const key = normalizeTitleKey(title);
-    if (!key || seenTitles.has(key)) continue;
-    seenTitles.add(key);
-
-    const text = (r.highlights ?? []).join(" ") || r.title || "";
-    const isDergiPark = (r.url || "").includes("dergipark.org.tr");
-
-    candidates.push({
-      id: `exa-${Math.random().toString(36).slice(2, 8)}`,
-      title,
-      author:
-        r.author || (isDergiPark ? "DergiPark Yazarı" : "Araştırmacı/Kurum"),
-      university: isDergiPark
-        ? "DergiPark Akademik Dergi"
-        : "Saha & Sektörel Rapor",
-      year: new Date().getFullYear(),
-      thesisType: isDergiPark ? "Makale" : "Rapor",
-      abstract: text,
-      url: r.url,
-      sourceChannel: "exa",
-      publicationType: isDergiPark ? "Makale" : "Rapor",
     });
   }
 
@@ -325,7 +273,6 @@ export async function searchAndSiftTheses(
         .length,
       s2Count: candidates.filter((c) => c.sourceChannel === "semantic_scholar")
         .length,
-      exaCount: candidates.filter((c) => c.sourceChannel === "exa").length,
     },
     hidden: true,
   });

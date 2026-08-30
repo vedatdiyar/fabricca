@@ -13,7 +13,6 @@ import {
 } from "../_hooks/use-literature-review";
 import { getBoxTypeLabel } from "@/lib/box-constants";
 
-
 /**
  * Renders a sub-box's transient processing states while the pipeline runs.
  *
