@@ -2,12 +2,13 @@ import {
   isKeyRpdExhausted,
   isKeyRpmCoolingDown,
   getKeyUsageCount,
+  getKeyInFlightCount,
   getNextRoundRobinOffset,
 } from "./scheduler-state";
 
 /**
- * Returns prioritized key indices for dispatching, balanced by least-used metrics
- * with round-robin tie-breaking.
+ * Returns prioritized key indices for dispatching, balanced by active in-flight requests,
+ * least-used historical metrics, and round-robin tie-breaking.
  *
  * @param model - The target Gemini model name.
  * @param pool - The ordered array of configured API key strings.
@@ -42,8 +43,13 @@ export function getBalancedKeyCandidates(
     ...baseIndices.slice(0, rrOffset),
   ];
 
-  // 4. Stable sort by least-used call count
+  // 4. Stable sort: active in-flight requests first, then historical call count
   rotated.sort((a, b) => {
+    const inFlightA = getKeyInFlightCount(pool[a]);
+    const inFlightB = getKeyInFlightCount(pool[b]);
+    if (inFlightA !== inFlightB) {
+      return inFlightA - inFlightB;
+    }
     const usageA = getKeyUsageCount(pool[a]);
     const usageB = getKeyUsageCount(pool[b]);
     return usageA - usageB;

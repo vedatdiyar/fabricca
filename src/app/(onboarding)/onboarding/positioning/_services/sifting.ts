@@ -6,7 +6,10 @@ import { rerankWithCohere } from "@/core/services/ai/cohere";
 import type { Logger } from "@/lib/logger";
 import type { PipelineRun } from "@/lib/pipeline-logger";
 import type { PositioningMatrixInput } from "./validation";
-import { generatePositioningQuery } from "./query-generator";
+import {
+  generatePositioningQuery,
+  type MultiSourcePositioningQuery,
+} from "./query-generator";
 import {
   sanitizeSearchQuery,
   formatThesisToYaml,
@@ -51,7 +54,7 @@ const MIN_ABSTRACT_LENGTH = 40;
  *
  * @param matrixInput - The validated positioning matrix input.
  * @param logger - Optional structured logger.
- * @param options - Optional limits for topN and candidate retrieval.
+ * @param options - Optional limits for topN, candidate retrieval, and parallel query distillation.
  * @returns Sorted candidate literature list across all 4 channels.
  */
 export async function searchAndSiftTheses(
@@ -61,13 +64,17 @@ export async function searchAndSiftTheses(
     topN?: number;
     candidateLimit?: number;
     pipelineRun?: PipelineRun;
+    queryPromise?: Promise<MultiSourcePositioningQuery>;
+    queryStartTime?: number;
   },
 ): Promise<SiftedThesis[]> {
   const topN = options?.topN ?? 20;
   const pipelineRun = options?.pipelineRun;
 
-  const queryGenStart = performance.now();
-  const distilledQuery = await generatePositioningQuery(matrixInput, logger);
+  const queryGenStart = options?.queryStartTime ?? performance.now();
+  const distilledQuery = options?.queryPromise
+    ? await options.queryPromise
+    : await generatePositioningQuery(matrixInput, logger);
 
   pipelineRun?.subStep(
     "Query Distillation (Gemini Flash)",

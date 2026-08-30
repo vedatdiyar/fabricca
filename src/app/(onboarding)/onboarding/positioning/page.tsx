@@ -32,7 +32,7 @@ export default async function OnboardingPositioningPage() {
             <h1 className="font-serif text-xl font-semibold tracking-tight text-foreground">
               Akademik Konumlandırma Raporu
             </h1>
-            <p className="text-sm leading-relaxed text-muted-foreground">
+            <p className="font-sans text-sm font-normal leading-relaxed text-muted-foreground">
               Çalışmanızın odağı, yöntemi ve kapsamı literatürdeki mevcut
               tezlerle karşılaştırılarak özgünlük boşluğunuz analiz edildi.
             </p>

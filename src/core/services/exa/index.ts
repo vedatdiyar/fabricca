@@ -102,14 +102,10 @@ export async function searchExa(
         ? options.includeDomains.join(", ")
         : "web");
 
-    return await log.time(
-      "exa_search",
-      executeFetch,
-      {
-        service: "literature",
-        data: { summary: domainSummary },
-      },
-    );
+    return await log.time("exa_search", executeFetch, {
+      service: "literature",
+      data: { summary: domainSummary },
+    });
   } catch {
     return [];
   }

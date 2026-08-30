@@ -4,10 +4,7 @@ import { generateGeminiStructuredContent } from "@/core/services/ai";
 import type { Logger } from "@/lib/logger";
 import { buildPositioningJuryPromptPayload } from "../_prompts/jury-analysis.prompt";
 import type { EvaluatedThesis } from "./per-thesis-evaluation";
-import type {
-  PositioningMatrixInput,
-  RecommendedThesisItem,
-} from "./validation";
+import type { PositioningMatrixInput } from "./validation";
 import {
   jurySynthesisResultSchema,
   jurySynthesisResultJsonSchema,
@@ -105,98 +102,13 @@ Katkı/Odak Alanları: ${e.contributionAreas.join(", ") || "Yok"}`;
     },
   );
 
-  // Map selected theses into RecommendedThesisItem[] strictly respecting the Jury's natural decision
-  const evalByThesisId = new Map(
-    evaluatedTheses.map((ev) => [String(ev.thesis.id), ev]),
-  );
-
-  let selectedItems: EvaluatedThesis[] = [];
-
-  if (synthesis.selectedThesisIds && synthesis.selectedThesisIds.length > 0) {
-    for (const id of synthesis.selectedThesisIds) {
-      const found = evalByThesisId.get(String(id));
-      if (
-        found &&
-        !selectedItems.some((s) => s.thesis.id === found.thesis.id)
-      ) {
-        selectedItems.push(found);
-      }
-    }
-  }
-
-  // Cap at 8 max recommended sources without artificial padding
-  selectedItems = selectedItems.slice(0, 8);
-
-  const recommendedTheses: RecommendedThesisItem[] = selectedItems.map((ev) => {
-    const t = ev.thesis;
-    const e = ev.evaluation;
-    const pubType = e.publicationType || t.publicationType || "Makale";
-    const isYok = t.sourceChannel === "yok";
-    const yokId = String(t.id).replace("yok-", "");
-
-    return {
-      id: String(t.id),
-      externalThesisId: String(t.id),
-      title: t.title,
-      author: t.author || "Bilinmiyor",
-      year: t.year || new Date().getFullYear(),
-      university: t.university || "Bilinmiyor",
-      publicationType: pubType,
-      sourceChannel: t.sourceChannel,
-      strategicRole: e.strategicRole || "SPECIFIC_FOCUS",
-      literaturePosition: e.literaturePosition,
-      contributionArea:
-        e.contributionAreas.join(", ") || "Literatür İncelemesi",
-      relevanceReason: e.strategicUtility || e.relevanceReasoning || "",
-      thesisType: pubType,
-      abstract: t.abstract,
-      url: t.url,
-      doi: t.doi,
-      yokUrl: isYok
-        ? `https://tez.yok.gov.tr/UlusalTezMerkezi/tezDetay.jsp?id=${yokId}`
-        : undefined,
-    };
-  });
-
   const finalGlobalStatus = overlapping
     ? "DIRECT_OVERLAP"
     : synthesis.globalStatus;
 
-  // Ensure robust fallback for pivotOptions if DIRECT_OVERLAP occurred
-  if (
-    finalGlobalStatus === "DIRECT_OVERLAP" &&
-    (!synthesis.gapAnalysisSummary.pivotOptions ||
-      synthesis.gapAnalysisSummary.pivotOptions.length === 0)
-  ) {
-    synthesis.gapAnalysisSummary.pivotOptions = [
-      {
-        id: "field_pivot",
-        dimension: "SAHA_ORNEKLEM",
-        title: "Saha ve Örneklem Farklılaşması",
-        description:
-          "Emsal çalışmanın incelemediği farklı bir bölgesel bağlam, sektör veya spesifik aktör kümesine odaklanın.",
-        suggestedFocus:
-          "Farklı bir bölgesel veya sektörel örneklem ile özgün ampirik veri üretimi.",
-      },
-      {
-        id: "theory_pivot",
-        dimension: "KURAMSAL_CERCEVE",
-        title: "Kuramsal Paradigma Farklılaşması",
-        description:
-          "Aynı olguyu emsal çalışmanın ana akım modelinden farklı, alternatif bir kuramsal mercekle ele alın.",
-        suggestedFocus:
-          "Alternatif bir kavramsal model ile olgunun farklı bir boyutunu aydınlatma.",
-      },
-      {
-        id: "method_pivot",
-        dimension: "YONTEMSEL_DESEN",
-        title: "Yöntemsel Desen Farklılaşması",
-        description:
-          "Emsal çalışmanın yöntem sınırlarını aşarak nitel derinlemesine mülakat, arşiv veya karma desen kullanın.",
-        suggestedFocus:
-          "Daha derinlikli veya karşılaştırmalı bir araştırma yöntemi kurgulama.",
-      },
-    ];
+  // Gatekeeper Model: Clear any pivot options to prevent superficial quick-fix illusions
+  if (synthesis.gapAnalysisSummary.pivotOptions) {
+    delete synthesis.gapAnalysisSummary.pivotOptions;
   }
 
   // Ensure overlappingWorks list is populated if direct overlap exists
@@ -214,13 +126,19 @@ Katkı/Odak Alanları: ${e.contributionAreas.join(", ") || "Yok"}`;
         sourceType: ev.evaluation.publicationType || ev.thesis.publicationType,
         reason:
           ev.evaluation.relevanceReasoning ||
-          "Aynı konu, kuram veya yöntemsel kapsamda doğrudan örtüşme.",
+          "Aynı konu, kuram veya yöntemsel kapsamda doğrudan örtüşme tespit edilmiştir.",
+        problemOverlap:
+          ev.evaluation.literaturePosition ||
+          "Araştırma sorunsalı ve ampirik problem odağında doğrudan örtüşme.",
+        theoryOverlap: "Benzer kavramsal ve kuramsal modeller benimsenmiştir.",
+        methodologyOverlap:
+          "Benzer veri toplama aracı ve araştırma deseni kullanılmıştır.",
       }));
   }
 
   return {
     globalStatus: finalGlobalStatus,
     gapAnalysisSummary: synthesis.gapAnalysisSummary,
-    recommendedTheses,
+    recommendedTheses: [],
   };
 }

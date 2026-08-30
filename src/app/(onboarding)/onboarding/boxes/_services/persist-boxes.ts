@@ -9,7 +9,6 @@ import { updateTag } from "next/cache";
 import { CACHE_TAGS, revalidateOnboardingPaths } from "@/lib/cache-tags";
 import { type OnboardingActionResult } from "@/lib/types";
 import { fetchThesisMatrix } from "@/app/(onboarding)/onboarding/_services/fetch-actions";
-import { persistRelatedTheses } from "@/app/(onboarding)/onboarding/literature-review/_services/related-theses";
 import { insertBoxesTransaction } from "./persist/box-inserter";
 
 const confirmBoxSchema: z.ZodType<{
@@ -82,8 +81,6 @@ export async function persistBoxesAction(
       await db.transaction(async (tx) => {
         await insertBoxesTransaction(tx, validBoxes, thesisMatrixId);
       });
-
-      await persistRelatedTheses(session.userId);
     });
 
     try {

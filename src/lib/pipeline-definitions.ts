@@ -155,19 +155,19 @@ export const PROPOSAL_POSITIONING_PIPELINE = definePipeline(
   [
     {
       key: "matrix",
-      text: "Tez taslağınız akademik olarak ayrıştırılıyor ve araştırma mimarisi kuruluyor...",
+      text: "Araştırma çerçevesi ve yapısı çözümleniyor...",
     },
     {
       key: "search",
-      text: "4 kanallı literatür taranıyor (YÖK Tez, OpenAlex, Semantic Scholar, DergiPark/Exa)...",
+      text: "İlgili literatür ve benzer çalışmalar taranıyor...",
     },
     {
       key: "jury_review",
-      text: "Aday çalışmalar ve akademik konumlandırma jürisi çalıştırılıyor...",
+      text: "Özgünlük ve konumlandırma değerlendiriliyor...",
     },
     {
       key: "persist",
-      text: "Konumlandırma raporu veritabanına kaydediliyor...",
+      text: "Konumlandırma raporu hazırlanıyor...",
     },
   ],
 );

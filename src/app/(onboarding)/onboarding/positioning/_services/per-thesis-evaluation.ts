@@ -1,6 +1,7 @@
 import { ThinkingLevel } from "@google/genai";
 import { FLASH_LITE_35, GEMINI_SEED } from "@/lib/constants";
 import { generateGeminiStructuredContent } from "@/core/services/ai";
+import { getGeminiKeyPool } from "@/core/services/ai/gemini-key-pool";
 import type { Logger } from "@/lib/logger";
 import { buildPerThesisEvaluationPromptPayload } from "../_prompts/per-thesis-evaluation.prompt";
 import type { PositioningMatrixInput } from "./validation";
@@ -25,6 +26,9 @@ const BATCH_CHUNK_SIZE = 4;
  * Evaluates candidate theses in parallel batches of 4 using FLASH_LITE_35 with LOW thinking.
  * Each thesis is evaluated for relevance, direct overlap (novelty risk), strategic role,
  * literature position, and strategic utility.
+ *
+ * Concurrency is matched to the available API key pool size to prevent bursting a single
+ * key into rate limits or server overload cooldowns.
  *
  * @param matrix - The 3-field positioning matrix.
  * @param theses - The sifted candidate theses from Qdrant & Cohere.
@@ -52,48 +56,56 @@ export async function evaluateThesesInParallel(
     theses.map((t) => [String(t.id), t]),
   );
 
-  // Execute all chunk evaluations in parallel
-  const chunkPromises = chunks.map(async (chunk, chunkIdx) => {
-    const payload = buildPerThesisEvaluationPromptPayload(matrix, chunk);
+  const poolSize = Math.max(1, getGeminiKeyPool().keys.length);
+  const allEvaluations: PerThesisEvaluation[] = [];
 
-    try {
-      const result =
-        await generateGeminiStructuredContent<BatchThesisEvaluationOutput>(
-          FLASH_LITE_35,
-          payload.systemInstruction,
-          payload.userPrompt,
-          batchThesisEvaluationJsonSchema,
-          logger,
-          {
-            zodSchema: batchThesisEvaluationSchema,
-            payloadStage: `per_thesis_eval_chunk_${chunkIdx + 1}`,
-            seed: GEMINI_SEED,
-            thinkingConfig: { thinkingLevel: ThinkingLevel.MEDIUM },
-            thesisMatrix: matrix,
-            quiet: true,
-          },
-        );
+  // Execute chunks in waves matching the key pool size (1 active request per key)
+  for (let i = 0; i < chunks.length; i += poolSize) {
+    const chunkBatch = chunks.slice(i, i + poolSize);
+    const batchResults = await Promise.all(
+      chunkBatch.map(async (chunk, batchOffset) => {
+        const chunkIdx = i + batchOffset;
+        const payload = buildPerThesisEvaluationPromptPayload(matrix, chunk);
 
-      return result.evaluations;
-    } catch (error) {
-      logger?.error("per_thesis_eval_chunk_error", {
-        data: {
-          chunkIdx,
-          chunkCount: chunk.length,
-        },
-        error,
-      });
+        try {
+          const result =
+            await generateGeminiStructuredContent<BatchThesisEvaluationOutput>(
+              FLASH_LITE_35,
+              payload.systemInstruction,
+              payload.userPrompt,
+              batchThesisEvaluationJsonSchema,
+              logger,
+              {
+                zodSchema: batchThesisEvaluationSchema,
+                payloadStage: `per_thesis_eval_chunk_${chunkIdx + 1}`,
+                seed: GEMINI_SEED,
+                thinkingConfig: { thinkingLevel: ThinkingLevel.LOW },
+                thesisMatrix: matrix,
+                quiet: true,
+              },
+            );
 
-      throw new Error(
-        `Aday tez değerlendirme paketi (#${chunkIdx + 1}) işlenirken hata oluştu: ${
-          error instanceof Error ? error.message : String(error)
-        }`,
-      );
-    }
-  });
+          return result.evaluations;
+        } catch (error) {
+          logger?.error("per_thesis_eval_chunk_error", {
+            data: {
+              chunkIdx,
+              chunkCount: chunk.length,
+            },
+            error,
+          });
 
-  const chunkResults = await Promise.all(chunkPromises);
-  const allEvaluations = chunkResults.flat();
+          throw new Error(
+            `Aday tez değerlendirme paketi (#${chunkIdx + 1}) işlenirken hata oluştu: ${
+              error instanceof Error ? error.message : String(error)
+            }`,
+          );
+        }
+      }),
+    );
+
+    allEvaluations.push(...batchResults.flat());
+  }
 
   const evaluatedTheses: EvaluatedThesis[] = [];
   for (const evaluation of allEvaluations) {

@@ -7,7 +7,6 @@ import { matrices } from "@/core/db/schema";
 import { LiteratureReviewContent } from "./_components/literature-review-content";
 import { StartOverButton } from "../_components/start-over-button";
 import { fetchBoxesWithFullShape } from "@/app/(onboarding)/onboarding/_services/fetch-actions";
-import { persistRelatedTheses } from "./_services/related-theses";
 
 /**
  * Renders the literature review onboarding step for the authenticated user.
@@ -25,8 +24,6 @@ export default async function LiteratureReviewPage() {
   if (!matrix) {
     redirect("/onboarding/matrix");
   }
-
-  await persistRelatedTheses(profile.id);
 
   const boxes = await fetchBoxesWithFullShape();
   if (!boxes || boxes.length === 0) {

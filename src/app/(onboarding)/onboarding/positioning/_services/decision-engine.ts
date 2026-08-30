@@ -2,7 +2,6 @@ import { sql } from "drizzle-orm";
 import { db } from "@/core/db";
 import { positioning } from "@/core/db/schema";
 import { invalidateOnboardingStepCache } from "@/lib/cache-tags";
-import type { RecommendedThesisItem } from "./validation";
 import type { JuryAnalysisResult } from "./analysis";
 
 /**
@@ -18,27 +17,6 @@ export async function savePositioningReportTransaction(
   matrixId: number,
   analysisResult: JuryAnalysisResult,
 ) {
-  const formattedRecommendedTheses: RecommendedThesisItem[] =
-    analysisResult.recommendedTheses.map((t) => ({
-      id: String(t.externalThesisId || t.id),
-      externalThesisId: String(t.externalThesisId || t.id),
-      title: t.title,
-      author: t.author,
-      year: t.year,
-      university: t.university,
-      publicationType: t.publicationType,
-      sourceChannel: t.sourceChannel,
-      strategicRole: t.strategicRole,
-      literaturePosition: t.literaturePosition,
-      contributionArea: t.contributionArea,
-      relevanceReason: t.relevanceReason,
-      doi: t.doi,
-      thesisType: t.thesisType,
-      abstract: t.abstract,
-      url: t.url,
-      yokUrl: t.yokUrl,
-    }));
-
   const savedRecord = await db.transaction(async (tx) => {
     const [row] = await tx
       .insert(positioning)
@@ -47,7 +25,7 @@ export async function savePositioningReportTransaction(
         matrixId,
         globalStatus: analysisResult.globalStatus,
         gapAnalysisSummary: analysisResult.gapAnalysisSummary,
-        recommendedTheses: formattedRecommendedTheses,
+        recommendedTheses: [],
         updatedAt: sql`now()`,
       })
       .onConflictDoUpdate({
@@ -55,7 +33,7 @@ export async function savePositioningReportTransaction(
         set: {
           globalStatus: analysisResult.globalStatus,
           gapAnalysisSummary: analysisResult.gapAnalysisSummary,
-          recommendedTheses: formattedRecommendedTheses,
+          recommendedTheses: [],
           updatedAt: sql`now()`,
         },
       })

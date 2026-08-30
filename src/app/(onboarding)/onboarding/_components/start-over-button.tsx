@@ -61,11 +61,11 @@ export function StartOverButton({ className, ...props }: ButtonProps) {
         <Button
           variant="outline"
           size="sm"
-          className={`border-destructive bg-destructive/20 text-destructive-foreground hover:bg-destructive/10 hover:text-destructive-foreground ${className ?? ""}`}
+          className={`h-8 text-xs px-3 rounded-md [&_svg]:size-3.5 border border-destructive/20 bg-destructive/10 text-destructive hover:bg-destructive/10 hover:text-destructive cursor-pointer ${className ?? ""}`}
           {...props}
           disabled={isPending}
         >
-          <RotateCcw className="h-4 w-4 shrink-0" />
+          <RotateCcw className="size-3.5 shrink-0 mr-1.5" />
           <span>Baştan Başla</span>
         </Button>
       </AlertDialogTrigger>

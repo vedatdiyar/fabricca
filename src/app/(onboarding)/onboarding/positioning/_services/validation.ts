@@ -13,6 +13,7 @@ export const positioningMatrixSchema = z.object({
     .string()
     .trim()
     .min(3, "Kuramsal veya kavramsal çerçeve en az 3 karakter olmalıdır."),
+  primaryMaterial: z.string().trim().optional(),
   methodology: z
     .string()
     .trim()
@@ -78,6 +79,9 @@ export interface OverlappingWork {
   year?: number;
   sourceType: string;
   reason: string;
+  problemOverlap?: string;
+  theoryOverlap?: string;
+  methodologyOverlap?: string;
 }
 
 /** Zod validation schema for the 3 structured gap analysis sections. */
@@ -105,6 +109,9 @@ export const gapAnalysisStructuredSchema = z.object({
         year: z.number().optional(),
         sourceType: z.string(),
         reason: z.string(),
+        problemOverlap: z.string().optional(),
+        theoryOverlap: z.string().optional(),
+        methodologyOverlap: z.string().optional(),
       }),
     )
     .optional(),

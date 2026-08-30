@@ -10,11 +10,34 @@ const rpmCooldownKeys = new Map<string, number>();
 /** Total successful call count per API key string, used for least-used balancing. */
 const keyUsageCounts = new Map<string, number>();
 
+/** Active in-flight requests currently executing per API key string. */
+const keyInFlightCounts = new Map<string, number>();
+
 /** Round-robin sequence cursor for fair tie-breaking. */
 let roundRobinCounter = 0;
 
 /** Default cooldown duration for RPM rate limits (60 seconds). */
 export const DEFAULT_RPM_COOLDOWN_MS = 60_000;
+
+/** Increments active in-flight request count for an API key. */
+export function incrementInFlight(apiKey: string): void {
+  keyInFlightCounts.set(apiKey, (keyInFlightCounts.get(apiKey) ?? 0) + 1);
+}
+
+/** Decrements active in-flight request count for an API key. */
+export function decrementInFlight(apiKey: string): void {
+  const current = keyInFlightCounts.get(apiKey) ?? 0;
+  if (current <= 1) {
+    keyInFlightCounts.delete(apiKey);
+  } else {
+    keyInFlightCounts.set(apiKey, current - 1);
+  }
+}
+
+/** Returns the active in-flight request count for an API key. */
+export function getKeyInFlightCount(apiKey: string): number {
+  return keyInFlightCounts.get(apiKey) ?? 0;
+}
 
 /** Checks if a specific key has hit RPD exhaustion for the given model today. */
 export function isKeyRpdExhausted(model: string, apiKey: string): boolean {
@@ -92,5 +115,6 @@ export function resetGeminiScheduler(): void {
   rpdExhaustedKeys.clear();
   rpmCooldownKeys.clear();
   keyUsageCounts.clear();
+  keyInFlightCounts.clear();
   roundRobinCounter = 0;
 }

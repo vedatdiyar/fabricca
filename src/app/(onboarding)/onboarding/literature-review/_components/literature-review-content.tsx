@@ -13,8 +13,6 @@ import {
 } from "../_hooks/use-literature-review";
 import { getBoxTypeLabel } from "@/lib/box-constants";
 
-/** Title of the dedicated related-theses box rendered at the bottom of the grid. */
-const RELATED_THESES_TITLE = "İlgili Tezler";
 
 /**
  * Renders a sub-box's transient processing states while the pipeline runs.
@@ -240,8 +238,7 @@ export function LiteratureReviewContent() {
   } = useLiteratureReview();
 
   const regularBoxes = subBoxes.filter(
-    (box) =>
-      box.boxType !== "RELATED_THESES" && box.title !== RELATED_THESES_TITLE,
+    (box) => box.boxType !== "RELATED_THESES",
   );
 
   if (loading) {
@@ -304,56 +301,6 @@ export function LiteratureReviewContent() {
             </Card>
           );
         })}
-
-        {(() => {
-          const relatedThesesBox = subBoxes.find(
-            (box) =>
-              box.boxType === "RELATED_THESES" ||
-              box.title === RELATED_THESES_TITLE,
-          );
-          const relatedThesesEntry = literaturePool.find(
-            (e) =>
-              e.subBoxTitle === RELATED_THESES_TITLE ||
-              (relatedThesesBox &&
-                (e.subBoxTitle === relatedThesesBox.title ||
-                  e.thesisBoxId === relatedThesesBox.id)),
-          );
-          const relatedArticles = relatedThesesEntry?.articles ?? [];
-
-          if (relatedArticles.length === 0) return null;
-
-          const title = relatedThesesBox?.title ?? RELATED_THESES_TITLE;
-          const description =
-            relatedThesesBox?.description ??
-            "Tez konunuz ve konumlandırmanız ile doğrudan ilişkili, incelenmesi önerilen YÖK ve akademik tez çalışmaları.";
-          const boxType = relatedThesesBox?.boxType ?? "RELATED_THESES";
-
-          return (
-            <Card className="p-5 sm:p-6 space-y-4 rounded-md">
-              <div className="flex items-center gap-2">
-                <h2 className="font-serif text-base font-semibold tracking-tight text-foreground">
-                  {title}
-                </h2>
-                <span className="inline-flex items-center px-2.5 py-0.5 rounded-md text-xs font-medium border bg-primary/10 border-primary/20 text-primary ml-auto">
-                  {getBoxTypeLabel(boxType)}
-                </span>
-              </div>
-              {description && (
-                <p className="font-sans text-sm text-muted-foreground leading-relaxed">
-                  {description}
-                </p>
-              )}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-1">
-                {relatedArticles.map((article, idx) => (
-                  <LiteratureArticleCard
-                    key={`${article.title}-${idx}`}
-                    article={article}
-                  />
-                ))}
-              </div>
-            </Card>
-          );
-        })()}
       </div>
 
       <div className="flex justify-end mt-6 pb-8">

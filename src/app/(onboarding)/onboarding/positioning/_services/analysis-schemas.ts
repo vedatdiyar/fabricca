@@ -153,11 +153,7 @@ export const jurySynthesisResultSchema = z.object({
     "NO_RELATED_LITERATURE",
   ]),
   gapAnalysisSummary: gapAnalysisStructuredSchema,
-  selectedThesisIds: z
-    .array(z.string())
-    .describe(
-      "İncelenen ilgili tezler arasından kılavuz kart olarak seçilen en stratejik 4-8 tezin ID listesi.",
-    ),
+  selectedThesisIds: z.array(z.string()).optional(),
 });
 
 export type JurySynthesisResult = z.infer<typeof jurySynthesisResultSchema>;
@@ -199,40 +195,31 @@ export const jurySynthesisResultJsonSchema: JsonSchema = {
               author: { type: "string" },
               year: { type: "number" },
               sourceType: { type: "string" },
-              reason: { type: "string" },
+              reason: {
+                type: "string",
+                description:
+                  "Genel akademik çakışma gerekçesi ve ret tutanağı özeti.",
+              },
+              problemOverlap: {
+                type: "string",
+                description:
+                  "Problem ve Sorunsal Düzeyinde Çakışma: Emsal çalışmayla kullanıcının araştırma problemi arasındaki birebir örtüşme gerekçesi.",
+              },
+              theoryOverlap: {
+                type: "string",
+                description:
+                  "Kuramsal Çerçeve Düzeyinde Çakışma: Emsal çalışmayla kullanılan kavramsal ve teorik modeller arasındaki benzerlik gerekçesi.",
+              },
+              methodologyOverlap: {
+                type: "string",
+                description:
+                  "Yöntemsel Desen Düzeyinde Çakışma: Emsal çalışmayla veri toplama, saha ve analiz yöntemleri arasındaki çakışma gerekçesi.",
+              },
             },
             required: ["title", "sourceType", "reason"],
           },
           description:
-            "Birebir çakışan veya yüksek özgünlük riski oluşturan emsal çalışma(lar) listesi.",
-        },
-        pivotOptions: {
-          type: "array",
-          items: {
-            type: "object",
-            properties: {
-              id: {
-                type: "string",
-                enum: ["field_pivot", "theory_pivot", "method_pivot"],
-              },
-              dimension: {
-                type: "string",
-                enum: ["SAHA_ORNEKLEM", "KURAMSAL_CERCEVE", "YONTEMSEL_DESEN"],
-              },
-              title: { type: "string" },
-              description: { type: "string" },
-              suggestedFocus: { type: "string" },
-            },
-            required: [
-              "id",
-              "dimension",
-              "title",
-              "description",
-              "suggestedFocus",
-            ],
-          },
-          description:
-            "Yalnızca DIRECT_OVERLAP durumunda araştırmacının çalışmasını kurtaracak 3 somut farklılaşma (pivot) seçeneği.",
+            "Birebir çakışan veya yüksek özgünlük riski oluşturan emsal çalışma(lar) ve yapısal çakışma anatomisi.",
         },
         clarificationQuestions: {
           type: "array",
@@ -250,26 +237,20 @@ export const jurySynthesisResultJsonSchema: JsonSchema = {
             required: ["id", "question", "category", "contextNote"],
           },
           description:
-            "Yalnızca NOVEL_GAP_IDENTIFIED durumunda araştırmanın odağını keskinleştirecek 1-2 odak/kapsam sorusu.",
+            "Yalnızca tez kurgusunda gerçek bir kavramsal/kuramsal uyumsuzluk, olgusal hata, kritik kör nokta veya yapısal çelişki tespit edilmişse üretilen kritik netleştirme soruları (maksimum 1-2). Tez matrisi tutarlı ve sağlamsa bu dizi kesinlikle boş [] olmalıdır.",
         },
       },
       required: ["literatureMapping", "academicGap", "originalContribution"],
       additionalProperties: false,
     },
-    selectedThesisIds: {
-      type: "array",
-      items: { type: "string" },
-      description:
-        "İncelenen ilgili tezler ve yayınlar arasından kılavuz kart olarak seçilen en stratejik 4-8 yayının ID listesi.",
-    },
   },
-  required: ["globalStatus", "gapAnalysisSummary", "selectedThesisIds"],
+  required: ["globalStatus", "gapAnalysisSummary"],
   additionalProperties: false,
 };
 
-/** Full positioning jury analysis result including recommended thesis items. */
+/** Full positioning jury analysis result. */
 export interface JuryAnalysisResult {
   globalStatus: PositioningGlobalStatus;
   gapAnalysisSummary: GapAnalysisStructured;
-  recommendedTheses: RecommendedThesisItem[];
+  recommendedTheses?: RecommendedThesisItem[];
 }

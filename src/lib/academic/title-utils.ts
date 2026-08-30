@@ -1,6 +1,22 @@
+const TURKISH_CHARS_REGEX = /[çğıöşüÇĞİÖŞÜ]/;
+const TURKISH_FUNCTION_WORDS =
+  /\b(ve|veya|ile|bir|üzerine|için|göre|bu|şu|her|dair|hakkında|analizi|incelemesi|araştırması|yaklaşımı|değerlendirmesi|örneği|rolü|etkisi)\b/i;
+const ENGLISH_FUNCTION_WORDS =
+  /\b(the|of|and|in|to|for|with|a|an|on|by|from|at|as|into|through|during|analysis|study|approach|perspective|effects|impact|role|case|evaluation|investigation)\b/i;
+const TURKISH_RELATIONAL_LINKERS =
+  /\b(arasındaki|arasında|alanında|alanındaki|bağlamında|ilişkisi|karşılaştırması|kıyaslaması|mukayesesi|çerçevesinde|açısından)\b/i;
+
+function hasEnglishMarkers(text: string): boolean {
+  return ENGLISH_FUNCTION_WORDS.test(text);
+}
+
+function hasTurkishMarkers(text: string): boolean {
+  return TURKISH_CHARS_REGEX.test(text) || TURKISH_FUNCTION_WORDS.test(text);
+}
+
 /**
  * Intelligently splits a bilingual thesis title (e.g., "Primary Title / Secondary Translated Title")
- * without breaking composite acronyms like "PKK/KCK" or short abbreviation slashes.
+ * without breaking composite acronyms like "PKK/KCK", "XYZ/ABC", or internal comparative phrases.
  *
  * @param rawTitle - Raw thesis title.
  * @returns An object containing mainTitle and optional secondaryTitle.
@@ -25,14 +41,28 @@ export function splitBilingualTitle(rawTitle: string | null | undefined): {
     const words1 = part1.split(/\s+/).filter(Boolean);
     const words2 = part2.split(/\s+/).filter(Boolean);
 
+    // Minimum word and character count guard
     if (
-      words1.length >= 2 &&
-      words2.length >= 2 &&
-      part1.length >= 8 &&
-      part2.length >= 8
+      words1.length < 2 ||
+      words2.length < 2 ||
+      part1.length < 8 ||
+      part2.length < 8
     ) {
-      splitPoints.push(splitIndex);
+      continue;
     }
+
+    // Check if this is a single compound sentence linked by relational postpositions (e.g. "X / Y arasındaki ilişki")
+    const isPart2RelationalLinker = TURKISH_RELATIONAL_LINKERS.test(part2);
+    const isBilingualCrossLanguage =
+      (hasEnglishMarkers(part1) && hasTurkishMarkers(part2)) ||
+      (hasTurkishMarkers(part1) && hasEnglishMarkers(part2));
+
+    if (isPart2RelationalLinker && !isBilingualCrossLanguage) {
+      // Not a bilingual split, but a relational compound title
+      continue;
+    }
+
+    splitPoints.push(splitIndex);
   }
 
   if (splitPoints.length > 0) {

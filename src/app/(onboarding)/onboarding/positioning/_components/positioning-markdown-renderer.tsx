@@ -205,25 +205,25 @@ export function PositioningMarkdownRenderer({
   ];
 
   return (
-    <div className={`w-full space-y-3.5 ${className}`}>
+    <div className={`w-full space-y-3 ${className}`}>
       {sections.map((sec) => {
         const Icon = sec.icon;
         return (
           <div
             key={sec.step}
-            className={`p-4 sm:p-5 rounded-md border transition-all duration-200 space-y-3 ${
+            className={`p-4 rounded-md border transition-colors duration-200 space-y-2 ${
               sec.isHighlight
-                ? "border-primary/20 bg-primary/10 hover:border-primary/40"
+                ? "border-primary/20 bg-primary/10"
                 : "border-border bg-card hover:border-primary/20"
             }`}
           >
             {/* Header: Step Badge + Icon + Title + Role Tag */}
             <div className="flex items-center justify-between gap-3 flex-wrap">
-              <div className="flex items-center gap-2.5">
-                <span className="font-mono text-xs font-semibold px-2 py-0.5 rounded-md border border-primary/20 bg-primary/10 text-primary shrink-0">
+              <div className="flex items-center gap-2">
+                <span className="font-mono text-xs font-medium px-2 py-0.5 rounded-md border border-primary/20 bg-primary/10 text-primary shrink-0">
                   {sec.step}
                 </span>
-                <Icon className="size-4 text-primary shrink-0" />
+                <Icon className="size-3.5 text-primary shrink-0" />
                 <h3 className="font-serif text-sm font-semibold tracking-tight text-foreground">
                   {sec.title}
                 </h3>
@@ -234,7 +234,7 @@ export function PositioningMarkdownRenderer({
             </div>
 
             {/* Content Paragraphs */}
-            <div className="text-sm font-normal leading-relaxed text-foreground space-y-2 font-sans">
+            <div className="text-sm font-normal leading-relaxed text-foreground space-y-1.5 font-sans">
               {sec.content.split("\n\n").map((para) => (
                 <p
                   key={paragraphKey(para)}

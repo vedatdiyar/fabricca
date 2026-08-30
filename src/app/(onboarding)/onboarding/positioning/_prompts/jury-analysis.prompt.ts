@@ -10,6 +10,8 @@ export interface JuryAnalysisPromptPayload {
  * Builds the hybrid XML/Markdown prompt payload for the final multi-source jury synthesis analysis,
  * synthesizing evidence across YÖK theses, OpenAlex/Semantic Scholar papers, and Exa/DergiPark works.
  *
+ * Strictly adheres to docs/LLM_INTEGRATION.md.
+ *
  * @param params - Parameters containing the validated matrix, formatted evaluated literature text, and count.
  * @returns Structured prompt payload.
  */
@@ -26,24 +28,23 @@ Kıdemli akademik jüri başkanı, tez izleme komitesi raportörü ve çok disip
 
 <instructions>
 # Görev ve Sentez Amacı
-Kullanıcının sunduğu tez konusunu/sorunsalını ve 4 kanaldan (YÖK Tezler, OpenAlex, Semantic Scholar, Exa/DergiPark) incelenen kaynakları analiz ederek:
+Kullanıcının sunduğu tez matrisini (Problem, Kuram, Birincil Malzeme, Yöntem) ve 4 kanaldan (YÖK Tezler, OpenAlex, Semantic Scholar, Exa/DergiPark) incelenen kaynakları analiz ederek:
 1. Çalışmanın özgünlük ve çakışma durumunu karara bağla (globalStatus).
 2. 3 boyutlu derin bir Akademik Boşluk Analizi Raporu sentezle (gapAnalysisSummary).
-3. Varsa birebir çakışmaları belirle ve araştırmacıyı kurtaracak 3 somut Farklılaşma (Pivot) seçeneği üret.
-4. Çakışma yoksa ve çalışma özgünse araştırmanın kapsamını netleştirecek 1-2 odak sorusu üret.
-5. Araştırmacıya rehberlik edecek 6-8 adet dengeli kılavuz kaynağın ID'lerini seç (Tezler, Makaleler, Kitaplar).
+3. Varsa birebir çakışmaları belirle; araştırmacının çalışmasını engelleyen yapısal çakışma anatomisini (Problem, Kuram ve Yöntem boyutlarında) net bir akademik tutanakla ortaya koy. Asla yüzeysel pivot/kurtarma seçeneği üretme; tezi özgünleştirme ve yeniden kurgulama sorumluluğunu araştırmacıya bırak.
+4. Tez matrisini kuramsal, olgusal ve yapısal bütünlük açısından denetle; yalnızca gerçek bir eksiklik, kavram yanılgısı veya kritik belirsizlik varsa netleştirme soruları üret.
 
 # 1. globalStatus (Jüri Genel Kararı):
 - **DIRECT_OVERLAP (Birebir Çakışma / Özgünlük Riski):**
-  * Eğer incelenen YÖK tezleri veya yerel literatürde kullanıcının araştırma konusunu, aynı ampirik sahada, aynı dönemde ve aynı yöntemle birebir çalışmış tamamlanmış bir eser varsa BU KARAR VERİLİR.
-  * Bu durumda 'overlappingWorks' alanına çakışan eserin detayları yazılır.
-  * Ve MUTLAKA 'pivotOptions' alanına araştırmacının çalışmasını kurtaracak 3 somut farklılaşma rotası üretilir:
-    1. field_pivot (Saha / Örneklem Farkı): Emsalin bakmadığı farklı bir coğrafya, sektör, kurum veya aktör grubu.
-    2. theory_pivot (Kuramsal Çerçeve Farkı): Emsalin kuramından farklı, alternatif bir kuramsal mercek.
-    3. method_pivot (Yöntemsel Desen Farkı): Emsalin yönteminden farklı (örn. anket yerine derinlemesine mülakat / etnografi) bir yöntem.
+  * Eğer incelenen literatürde kullanıcının araştırma konusunu, aynı ampirik sahada, aynı dönemde veya aynı kuramsal-yöntemsel kurguyla çalışmış tamamlanmış bir eser varsa BU KARAR VERİLİR.
+  * Bu durumda 'overlappingWorks' alanına çakışan eserin detayları ve yapısal çakışma anatomisi eksiksiz yazılır:
+    - 'reason': Genel akademik ret gerekçesi (Tezin neden bu haliyle savunulamayacağı ve tescil edilemeyeceği).
+    - 'problemOverlap': Araştırma sorunsalı ve problem düzeyindeki örtüşme gerekçesi.
+    - 'theoryOverlap': Kuramsal ve kavramsal çerçevedeki çakışma gerekçesi.
+    - 'methodologyOverlap': Yöntemsel desen ve veri toplama/saha düzeyindeki çakışma gerekçesi.
+  * DİKKAT: Yapay veya yüzeysel 'pivotOptions' (farklılaşma seçenekleri) ÜRETME.
 - **NOVEL_GAP_IDENTIFIED (Özgün Katkı / Boşluk Mevcut):**
   * Literatürde benzer eksenlerde çalışmalar olsa da kullanıcının çalışması özgün bir sorunsala, kuramsal senteze veya ampirik boşluğa oturuyorsa verilir.
-  * Bu durumda 'clarificationQuestions' alanına araştırmacının literatür taramasına başlarken işini kolaylaştıracak 1-2 pratik kapsam/odak tercihi sorusu eklenir.
 - **NO_RELATED_LITERATURE (Bakir Alan / Doğrudan Emsal Yok):**
   * Doğrudan örtüşen hiçbir çalışma bulunamadıysa verilir.
 
@@ -52,19 +53,35 @@ Kullanıcının sunduğu tez konusunu/sorunsalını ve 4 kanaldan (YÖK Tezler, 
 - **academicGap:** İncelenen literatürün neleri ele almadığı, hangi boyutları açıkta bıraktığının analizi (Markdown).
 - **originalContribution:** Araştırmacının tezinin bu boşluğu problem, kuram ve yöntem açısından nasıl dolduracağının analizi (Markdown).
 
-# 3. selectedThesisIds (Dengeli Kılavuz Kart Seçimi):
-- İncelenen liste içerisinden araştırmacı için en değerli 6-8 kaynağın ID'lerini seç.
-- Mümkün olduğunca dengeli bir dağılım gözet: 2-3 YÖK Tezi (Yöntem & Emsal) + 3-4 Küresel Makale/Kitap (Kuramsal Öncül) + 1-2 Saha/DergiPark yayını.
+# 3. clarificationQuestions (Kritik Netleştirme ve Tasarım Denetimi):
+- **YAPAY VE OPERASYONEL SORU KESİNLİKLE YASAKTIR:**
+  * Araştırmacı henüz başlangıç aşamasındadır; literatür taraması ve veri analizi adımları henüz yapılmamıştır.
+  * İleride tezin yazımında, arşiv taramasında veya veri analizinde (MAXQDA kodlama kategorileri, alt temalar, operasyonel kod defteri vb.) ampirik olarak ortaya çıkacak detaylar hakkında ASLA soru üretmeyin.
+  * Sırf soru sormuş olmak için keyfi "odak tercihi", "kapsam sorusu" veya "alt dönem tercihi" UYDURMAYIN.
+- **TUTARLILIK VE EKSİKSİZLİK DURUMU:**
+  * Eğer araştırmacının tez matrisi kuramsal, olgusal, ampirik ve yöntemsel olarak tutarlı, dengeli ve eksiksiz kurgulanmışsa, clarificationQuestions dizisi KESİNLİKLE BOŞ DİZİ [] OLMALIDIR. Sağlam bir kurguya yapay soru dayatmayın.
+- **YALNIZCA GERÇEK BİR EKSİKLİK, KAVRAM YANILGISI VEYA KRİTİK BELİRSİZLİK VARSA (Maksimum 1-2 Soru):**
+  * Yalnızca tez kurgusunda tezin ilerlemesini veya konu kutularının oluşturulmasını sakatlayacak somut bir problem varsa soru üretin:
+    1. **Kuramsal / Epistemolojik Uyumsuzluk:** Seçilen teori ampirik vakayı açıklayamaz nitelikteyse, kullanıcı teoriyi yanlış/çarpık anlamışsa veya kuramsal çerçeve tamamen seçilmemişse.
+    2. **Olgusal / Tarihsel Hatalar ve Anakronizm:** İncelenen dönem, aktörler, tarihsel süreç veya vakalara dair açık bir bilgi hatası, anakronizm veya kavram kargaşası varsa.
+    3. **Kritik Kör Noktalar ve Eksik Aktörler:** Sorunsalın doğası gereği dışarıda bırakılması araştırmayı sakatlayacak temel bir aktör, tarihsel dönemeç veya kurumsal dinamik göz ardı edilmişse.
+    4. **Yapısal Çelişki:** Araştırma problemi, kuram, birincil malzeme ve yöntem arasında birbiriyle çelişen bir tutarsızlık varsa.
+  * Bu durumda 'question' alanına araştırmacının yanıtlayabileceği net soruyu, 'contextNote' alanına ise tespit edilen bu kuramsal uyumsuzluğun, olgusal hatanın veya eksikliğin somut akademik gerekçesini yazın.
 
-# Dil ve Üslup
-- Akıcı, yetkin, yapıcı ve saygın bir akademik Türkçe kullanın.
-- Plaza dili veya yapay jargondan kaçının.
+# Dil ve Kısıtlar
+- %100 yetkin, yapıcı ve saygın bir akademik Türkçe kullanın.
+- Çince/Japonca/Korece karakter üretimi kesinlikle yasaktır.
+- Plaza jargonu ve gereksiz retorikten kaçının.
 </instructions>`;
 
+  const primaryMaterialLine = input.primaryMaterial
+    ? `\nBirincil Malzeme / Kaynaklar: ${input.primaryMaterial}`
+    : "";
+
   const userPrompt = `<context>
-[Kullanıcı Tez Konusu ve Sorunsalı]:
+[Kullanıcı Tez Matrisi]:
 Araştırma Problemi ve Odak: ${input.subjectProblem}
-Kuramsal Çerçeve: ${input.theoreticalFramework || "Belirtilmemiş"}
+Kuramsal Çerçeve: ${input.theoreticalFramework || "Belirtilmemiş"}${primaryMaterialLine}
 Yöntem ve Saha: ${input.methodology || "Belirtilmemiş"}
 
 [İncelenen Çok Kaynaklı Literatür (${evaluatedCount} Adet)]:
@@ -72,8 +89,9 @@ ${thesisListText}
 </context>
 
 <task>
-Yukarıdaki <context> içeriğindeki ${evaluatedCount} adet kaynağı ve kullanıcı tezini inceleyerek; jüri durum kararını, 3 boyutlu boşluk analizi raporunu, (varsa çakışma durumunda pivot seçeneklerini, özgünlük durumunda netleştirme sorularını) ve en stratejik kılavuz kaynak ID listesini içeren JSON çıktısını üret.
+Yukarıdaki <context> içeriğindeki ${evaluatedCount} adet kaynağı ve kullanıcı tez matrisini inceleyerek; jüri durum kararını, 3 boyutlu boşluk analizi raporunu ve yalnızca gerçek bir yapısal eksiklik/çelişki varsa somut netleştirme sorularını (yoksa boş dizi []) içeren JSON çıktısını üret.
 </task>`;
 
   return { systemInstruction, userPrompt };
 }
+

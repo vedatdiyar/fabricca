@@ -20,6 +20,8 @@ import {
   markKeyRpdExhausted,
   markKeyRpmCoolingDown,
   recordKeyUsage,
+  incrementInFlight,
+  decrementInFlight,
   getKeyUsageStats,
   resetGeminiScheduler,
 } from "./scheduler-state";
@@ -88,6 +90,7 @@ export async function dispatchGeminiCall<T>(
 
     for (let i = 0; i < keyIndicesToTry.length; i++) {
       const apiKey = pool[keyIndicesToTry[i]];
+      incrementInFlight(apiKey);
       try {
         const result = await params.task({ model, apiKey });
         // Increment usage count for balanced tracking
@@ -141,6 +144,8 @@ export async function dispatchGeminiCall<T>(
         ) {
           throw error;
         }
+      } finally {
+        decrementInFlight(apiKey);
       }
     }
   }

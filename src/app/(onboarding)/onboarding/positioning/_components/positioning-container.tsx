@@ -3,7 +3,6 @@
 import type { Positioning } from "@/core/db/schema";
 import type {
   PositioningGlobalStatus,
-  RecommendedThesisItem,
   GapAnalysisStructured,
 } from "../_services/validation";
 import type { JuryAnalysisResult } from "../_services/analysis";
@@ -36,8 +35,7 @@ export function PositioningContainer({
         academicGap: "",
         originalContribution: "",
       },
-    recommendedTheses:
-      (initialRecord?.recommendedTheses as RecommendedThesisItem[]) ?? [],
+    recommendedTheses: [],
   };
 
   return (
