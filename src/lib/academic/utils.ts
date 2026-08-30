@@ -15,7 +15,6 @@ export {
 } from "./title-utils";
 
 export {
-  toAsciiWord,
   toAsciiAlphanumeric,
   extractSurname,
   formatApaPdfFileName,

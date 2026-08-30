@@ -111,7 +111,7 @@ export function EditSectionModal({
                 }
               }}
               rows={5}
-              className="textarea-academic w-full text-xs"
+              className="w-full text-xs"
             />
           </div>
         </div>

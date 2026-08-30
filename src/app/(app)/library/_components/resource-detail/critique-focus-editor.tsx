@@ -176,7 +176,7 @@ export function CritiqueFocusEditor({
             onKeyDown={handleKeyDown}
             placeholder={currentField.placeholder}
             rows={7}
-            className="textarea-academic min-h-[180px] text-sm leading-relaxed p-3.5 bg-background border-border rounded-md resize-none font-sans focus:border-primary/40 focus:ring-1 focus:ring-primary/20 placeholder:text-muted-foreground/50"
+            className="min-h-[180px] text-sm leading-relaxed p-3.5 resize-none font-sans placeholder:text-muted-foreground/50"
           />
           <div className="flex items-center justify-end text-xs text-muted-foreground/80 px-1 pt-0.5">
             <span className="text-xs font-mono ml-auto">

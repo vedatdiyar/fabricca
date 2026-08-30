@@ -127,7 +127,7 @@ export function SubSectionTreeList({
                     }
                     placeholder="Alt bölüm açıklaması..."
                     rows={2}
-                    className="textarea-academic text-xs"
+                    className="text-xs"
                   />
                   <div className="flex items-center gap-2 pt-1">
                     <Button

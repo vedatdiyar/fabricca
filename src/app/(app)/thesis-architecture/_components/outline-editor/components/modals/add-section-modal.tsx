@@ -120,7 +120,7 @@ export function AddSectionModal({
               }}
               placeholder="Bu bölümde tartışılacak temel argümanları ve problematiği özetleyin..."
               rows={4}
-              className="textarea-academic w-full text-xs"
+              className="w-full text-xs"
             />
           </div>
         </div>

@@ -20,10 +20,6 @@ import {
 } from "@/lib/cache-tags";
 import type { ThesisMatrix } from "@/lib/types";
 import {
-  auditThesisProposal,
-  type ProposalAuditResult,
-} from "./_services/proposal-audit-service";
-import {
   synthesizeFinalMatrix,
   type UserClarificationAnswer,
 } from "./_services/proposal-synthesis-service";
@@ -125,44 +121,6 @@ export async function saveThesisMatrixAction(
     return { success: true };
   } catch {
     return { error: "Tez matrisi veritabanına kaydedilemedi." };
-  }
-}
-
-/**
- * Analyzes the user's raw thesis proposal using Gemini Flash Lite and parallel multi-angle
- * searches (Exa web search, Qdrant YÖK theses, OpenAlex literature), returning the search
- * chips, diagnostic critique, and optional focus/scope questions (if needed).
- *
- * @param proposalText - The raw thesis proposal or draft text.
- * @returns The structured audit result or an error message.
- */
-export async function auditProposalAction(
-  proposalText: string,
-): Promise<{ success: true; result: ProposalAuditResult } | { error: string }> {
-  try {
-    const session = await getSession();
-    if (!session) return { error: SESSION_ERROR_MSG };
-
-    const trimmed = proposalText.trim();
-    if (trimmed.length < 50) {
-      return {
-        error:
-          "Lütfen analiz için en az 50 karakter uzunluğunda bir tez önerisi veya araştırma taslağı girin.",
-      };
-    }
-
-    const result = await auditThesisProposal(trimmed);
-    return { success: true, result };
-  } catch (err) {
-    new Logger(createFlowId()).error("audit_proposal_failed", {
-      service: "matrix",
-      error: err,
-    });
-    const message =
-      err instanceof Error
-        ? err.message
-        : "Tez önerisi incelenirken beklenmeyen bir hata oluştu.";
-    return { error: message };
   }
 }
 

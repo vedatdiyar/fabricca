@@ -313,10 +313,10 @@ export function ProposalStudio({ initialProposal = "" }: ProposalStudioProps) {
             onChange={(e) => setRawProposal(e.target.value)}
             placeholder="Örnek: Bu çalışmada Türkiye'de uzaktan çalışan bilişim çalışanlarının ve dijital göçebelerin emek süreçlerindeki güvencesizleşme dinamiklerini incelemeyi hedefliyorum. Kuramsal olarak Standing'in prekarya yaklaşımı ve Foucault'nun öznellik tartışmalarından yararlanarak, İstanbul ve sahil kentlerinde yaşayan 25 uzaktan bilişimci ile yarı yapılandırılmış derinlemesine mülakatlar yapmayı planlıyorum..."
             rows={13}
-            className="min-h-[280px] border-border text-sm leading-relaxed"
+            className="min-h-[280px] p-3.5 text-sm leading-relaxed"
           />
         ) : (
-          <div className="min-h-[280px] w-full rounded-md border border-border bg-background px-3 py-2.5 overflow-auto">
+          <div className="min-h-[280px] w-full rounded-md border border-border/50 bg-background/40 p-3.5 overflow-auto">
             {rawProposal.trim() ? (
               <ReactMarkdown
                 remarkPlugins={[remarkGfm]}

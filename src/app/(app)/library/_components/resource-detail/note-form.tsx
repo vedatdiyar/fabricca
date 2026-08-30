@@ -196,7 +196,7 @@ export function NoteForm({
             onChange={(e) => setContent(e.target.value)}
             onPaste={handleContentPaste}
             rows={5}
-            className="textarea-academic text-sm leading-relaxed p-3.5 resize-none bg-card/60 hover:bg-card/80 focus:bg-card border-border/60 focus:border-primary/40"
+            className="text-sm leading-relaxed p-3.5 resize-none"
           />
         </div>
 
@@ -216,7 +216,7 @@ export function NoteForm({
             value={comment}
             onChange={(e) => setComment(e.target.value)}
             rows={2}
-            className="textarea-academic text-sm leading-relaxed p-3 resize-none bg-card/60 hover:bg-card/80 focus:bg-card border-border/60 focus:border-primary/40"
+            className="text-sm leading-relaxed p-3 resize-none"
           />
         </div>
 

@@ -59,7 +59,7 @@ export function AssistantInput({
 
   return (
     <div className="border-t border-border bg-card/80 p-3.5 backdrop-blur-sm shrink-0">
-      <div className="flex items-end gap-2 rounded-lg border border-border bg-background p-1.5 pl-3.5 focus-within:border-primary/40 transition-colors shadow-xs">
+      <div className="flex items-end gap-2 rounded-lg border border-border/50 bg-background/40 p-1.5 pl-3.5 hover:border-border hover:bg-background/60 focus-within:bg-background/70 focus-within:border-primary/40 focus-within:ring-1 focus-within:ring-primary/20 transition-all shadow-xs">
         <textarea
           ref={textareaRef}
           value={text}

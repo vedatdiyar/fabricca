@@ -141,7 +141,7 @@ export function AddSubBoxModal({
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               placeholder="Örn: Karşılaştırmalı Anayasa Mahkemesi Kararları Analizi"
-              className="font-sans bg-background border-border rounded-md"
+              className="font-sans"
             />
           </div>
 
@@ -155,7 +155,7 @@ export function AddSubBoxModal({
               onChange={(e) => setDescription(e.target.value)}
               rows={3}
               placeholder="Bu alt konunun araştırma problemiyle ilişkisini ve kapsamını yazın..."
-              className="textarea-academic w-full rounded-md border-border bg-background p-3 font-sans text-xs leading-relaxed text-foreground placeholder:text-muted-foreground"
+              className="w-full p-3 font-sans text-xs leading-relaxed"
             />
           </div>
 

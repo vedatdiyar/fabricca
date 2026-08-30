@@ -102,7 +102,4 @@ export async function persistBoxesAction(
   }
 }
 
-/**
- * Legacy alias for persistBoxesAction.
- */
-export const confirmBoxesAction = persistBoxesAction;
+

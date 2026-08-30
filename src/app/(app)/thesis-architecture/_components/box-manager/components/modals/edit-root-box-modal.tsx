@@ -72,7 +72,7 @@ export function EditRootBoxModal({
             <Input
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              className="font-sans bg-background border-border rounded-md"
+              className="font-sans"
             />
           </div>
 
@@ -84,7 +84,7 @@ export function EditRootBoxModal({
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               rows={4}
-              className="textarea-academic w-full rounded-md border-border bg-background p-3 font-sans text-xs leading-relaxed text-foreground"
+              className="w-full p-3 font-sans text-xs leading-relaxed"
             />
           </div>
         </div>

@@ -91,7 +91,7 @@ export function EditSubBoxModal({
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               placeholder="Örn: 1991-1999 Dönemi Aktörler Arası Hegemonya Mücadelesi"
-              className="font-sans bg-background border-border rounded-md"
+              className="font-sans"
             />
           </div>
 
@@ -105,7 +105,7 @@ export function EditSubBoxModal({
               onChange={(e) => setDescription(e.target.value)}
               rows={4}
               placeholder="Bu alt konunun incelediği teorik veya ampirik sınırları detaylandırın..."
-              className="textarea-academic w-full rounded-md border-border bg-background p-3 font-sans text-xs leading-relaxed text-foreground placeholder:text-muted-foreground"
+              className="w-full p-3 font-sans text-xs leading-relaxed"
             />
           </div>
 

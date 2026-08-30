@@ -12,9 +12,6 @@ export function toAsciiAlphanumeric(str: string): string {
   return normalizeTurkishToAscii(str).replace(/[^a-zA-Z0-9]/g, "");
 }
 
-/** @deprecated Use toAsciiAlphanumeric — alias kept for backward compatibility. */
-export const toAsciiWord = toAsciiAlphanumeric;
-
 /**
  * Extracts the surname from a full name.
  *
@@ -25,7 +22,7 @@ export function extractSurname(fullName: string): string {
   const parts = fullName.split(/\s+/).filter(Boolean);
   if (parts.length === 0) return "Anonim";
   const rawSurname = parts[parts.length - 1];
-  return toAsciiWord(rawSurname) || "Anonim";
+  return toAsciiAlphanumeric(rawSurname) || "Anonim";
 }
 
 /**
@@ -63,7 +60,7 @@ export function formatApaPdfFileName(
     .split(/\s+/)
     .filter((w) => w.length > 0)
     .slice(0, 5)
-    .map(toAsciiWord)
+    .map(toAsciiAlphanumeric)
     .filter(Boolean);
 
   const titlePart = words.length > 0 ? words.join("_") : "Eser";

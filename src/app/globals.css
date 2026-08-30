@@ -144,10 +144,6 @@
     background-color: var(--color-primary);
   }
 
-  .textarea-academic {
-    @apply overflow-y-auto resize-none leading-relaxed text-foreground text-xs font-normal bg-background/40 hover:bg-background/60 focus:bg-background/80 transition-all border border-border/40 hover:border-border focus:border-primary/20;
-  }
-
   button,
   a,
   [role="button"],
