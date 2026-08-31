@@ -112,7 +112,7 @@ export function SubBoxItem({
           {concepts.map((concept, cIdx) => (
             <span
               key={`${concept}-${cIdx}`}
-              className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-secondary/70 text-secondary-foreground font-sans text-[11px] font-medium"
+              className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-secondary/60 text-secondary-foreground font-sans text-[11px] font-medium"
             >
               <Hash className="h-2.5 w-2.5 text-muted-foreground" />
               <span>{concept}</span>

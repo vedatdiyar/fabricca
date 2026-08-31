@@ -29,7 +29,10 @@ function parseInlineMarkdown(text: string): React.ReactNode[] {
     }
     if (part.startsWith("*") && part.endsWith("*")) {
       return (
-        <em key={`em-${idx}-${part}`} className="italic text-foreground">
+        <em
+          key={`em-${idx}-${part}`}
+          className="italic text-muted-foreground font-normal"
+        >
           {part.slice(1, -1)}
         </em>
       );
@@ -38,7 +41,7 @@ function parseInlineMarkdown(text: string): React.ReactNode[] {
       return (
         <code
           key={`code-${idx}-${part}`}
-          className="rounded bg-muted px-2 py-1 font-mono text-xs text-primary"
+          className="font-mono text-xs px-1.5 py-0.5 rounded bg-muted border border-border text-foreground"
         >
           {part.slice(1, -1)}
         </code>
@@ -205,13 +208,13 @@ export function PositioningMarkdownRenderer({
   ];
 
   return (
-    <div className={`w-full space-y-3 ${className}`}>
+    <div className={`w-full space-y-3.5 ${className}`}>
       {sections.map((sec) => {
         const Icon = sec.icon;
         return (
           <div
             key={sec.step}
-            className={`p-4 rounded-md border transition-colors duration-200 space-y-2 ${
+            className={`p-4 rounded-md border transition-all duration-200 space-y-2.5 ${
               sec.isHighlight
                 ? "border-primary/20 bg-primary/10"
                 : "border-border bg-card hover:border-primary/20"
@@ -220,7 +223,13 @@ export function PositioningMarkdownRenderer({
             {/* Header: Step Badge + Icon + Title + Role Tag */}
             <div className="flex items-center justify-between gap-3 flex-wrap">
               <div className="flex items-center gap-2">
-                <span className="font-mono text-xs font-medium px-2 py-0.5 rounded-md border border-primary/20 bg-primary/10 text-primary shrink-0">
+                <span
+                  className={`font-mono text-xs font-medium px-2 py-0.5 rounded-md shrink-0 ${
+                    sec.isHighlight
+                      ? "border border-primary/40 bg-primary text-primary-foreground font-semibold"
+                      : "border border-primary/20 bg-primary/10 text-primary"
+                  }`}
+                >
                   {sec.step}
                 </span>
                 <Icon className="size-3.5 text-primary shrink-0" />
@@ -228,17 +237,23 @@ export function PositioningMarkdownRenderer({
                   {sec.title}
                 </h3>
               </div>
-              <span className="font-sans text-xs font-medium text-secondary-foreground bg-secondary px-2 py-0.5 rounded-md border border-border shrink-0">
+              <span
+                className={`font-sans text-xs font-medium px-2 py-0.5 rounded-md shrink-0 ${
+                  sec.isHighlight
+                    ? "border border-primary/30 bg-primary/10 text-primary"
+                    : "text-secondary-foreground bg-secondary border border-border"
+                }`}
+              >
                 {sec.subtitle}
               </span>
             </div>
 
             {/* Content Paragraphs */}
-            <div className="text-sm font-normal leading-relaxed text-foreground space-y-1.5 font-sans">
+            <div className="text-sm font-normal leading-relaxed text-foreground space-y-2 font-sans">
               {sec.content.split("\n\n").map((para) => (
                 <p
                   key={paragraphKey(para)}
-                  className="text-foreground leading-relaxed"
+                  className="text-foreground leading-relaxed text-justify"
                 >
                   {parseInlineMarkdown(para)}
                 </p>

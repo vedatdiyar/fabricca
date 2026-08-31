@@ -89,7 +89,7 @@ export function CitationChapterTreeItem({
 
           {hasChildren ? (
             isCollapsed ? (
-              <Folder className="size-3.5 text-primary/80 shrink-0 mt-0.5" />
+              <Folder className="size-3.5 text-primary shrink-0 mt-0.5" />
             ) : (
               <FolderOpen className="size-3.5 text-primary shrink-0 mt-0.5" />
             )
@@ -100,7 +100,7 @@ export function CitationChapterTreeItem({
           <span
             className={cn(
               "text-xs leading-snug break-words whitespace-normal flex-1",
-              hasChildren ? "font-semibold text-foreground/90" : "font-medium",
+              hasChildren ? "font-semibold text-foreground" : "font-medium",
             )}
           >
             {chapter.title}
@@ -114,7 +114,7 @@ export function CitationChapterTreeItem({
               ? "text-primary font-bold"
               : chapterTotalCount > 0
                 ? "text-muted-foreground font-medium"
-                : "text-muted-foreground/40",
+                : "text-muted-foreground",
           )}
         >
           {chapterTotalCount}
@@ -152,7 +152,7 @@ export function CitationChapterTreeItem({
                       ? "text-primary font-bold"
                       : subCount > 0
                         ? "text-muted-foreground font-medium"
-                        : "text-muted-foreground/30",
+                        : "text-muted-foreground",
                   )}
                 >
                   {subCount}

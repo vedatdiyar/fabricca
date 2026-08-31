@@ -81,7 +81,7 @@ export function CritiqueFocusEditor({
                 isActive
                   ? "bg-card border-primary/50 text-foreground ring-1 ring-primary/20 shadow-xs"
                   : isFilled
-                    ? "bg-card/40 border-border text-foreground hover:bg-card/70 hover:border-border"
+                    ? "bg-card/40 border-border text-foreground hover:bg-card/60 hover:border-border"
                     : "bg-muted/30 border-border/40 text-muted-foreground hover:bg-card/30 hover:text-foreground",
               )}
             >
@@ -176,9 +176,9 @@ export function CritiqueFocusEditor({
             onKeyDown={handleKeyDown}
             placeholder={currentField.placeholder}
             rows={7}
-            className="min-h-[180px] text-sm leading-relaxed p-3.5 resize-none font-sans placeholder:text-muted-foreground/50"
+            className="min-h-[180px] text-sm leading-relaxed p-3.5 resize-none font-sans placeholder:text-muted-foreground"
           />
-          <div className="flex items-center justify-end text-xs text-muted-foreground/80 px-1 pt-0.5">
+          <div className="flex items-center justify-end text-xs text-muted-foreground px-1 pt-0.5">
             <span className="text-xs font-mono ml-auto">
               {values[currentField.key].length} karakter
             </span>

@@ -201,7 +201,7 @@ export function LiteratureMatrixToolbar({
           variant="outline"
           size="sm"
           onClick={onExportCSV}
-          className="h-8 text-xs gap-1.5 px-3 border-primary/20 bg-primary/5 text-primary hover:bg-primary/10"
+          className="h-8 text-xs gap-1.5 px-3 border-primary/20 bg-primary/10 text-primary hover:bg-primary/10"
         >
           <Download className="size-3.5" />
           <span>CSV İndir</span>

@@ -22,7 +22,10 @@ export function buildHistoryPayload(
  * @param content - Trimmed user input.
  * @returns Optimistic message.
  */
-export function buildOptimisticUserMessage(sessionId: number, content: string): Message {
+export function buildOptimisticUserMessage(
+  sessionId: number,
+  content: string,
+): Message {
   return {
     id: Date.now(),
     sessionId,

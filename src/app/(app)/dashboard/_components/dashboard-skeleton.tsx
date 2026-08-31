@@ -98,7 +98,7 @@ export function DashboardSkeleton() {
           {Array.from({ length: 3 }).map((_, columnIndex) => (
             <div
               key={`dash-col-skel-${columnIndex}`}
-              className="flex min-h-[360px] flex-col gap-4 rounded-md border border-border/60 bg-muted/15 p-4"
+              className="flex min-h-[360px] flex-col gap-4 rounded-md border border-border/60 bg-muted/20 p-4"
             >
               <div className="flex items-center justify-between border-b border-border/40 pb-3">
                 <div className="flex items-center gap-2">
@@ -114,7 +114,7 @@ export function DashboardSkeleton() {
                     className="rounded-md border border-border/60 bg-card p-3.5 space-y-2.5"
                   >
                     <Skeleton className="h-4 w-1/3 bg-border/20 rounded" />
-                    <Skeleton className="h-3.5 w-4/5" />
+                    <Skeleton className="h-3.5 w-4/10" />
                   </div>
                 ))}
               </div>

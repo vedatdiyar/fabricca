@@ -68,12 +68,12 @@ export async function searchSemanticScholarPapers(
     sanitized,
   )}&limit=${limit}&fields=${fields}`;
 
-  const executeFetch = async (useKey: boolean): Promise<Response | null> => {
+  const executeFetch = async (): Promise<Response | null> => {
     const headers: Record<string, string> = {
       "Content-Type": "application/json",
     };
 
-    if (useKey && process.env.SEMANTIC_SCHOLAR_API_KEY) {
+    if (process.env.SEMANTIC_SCHOLAR_API_KEY) {
       headers["x-api-key"] = process.env.SEMANTIC_SCHOLAR_API_KEY;
     }
 
@@ -95,22 +95,14 @@ export async function searchSemanticScholarPapers(
   };
 
   try {
-    const executeQueued = (useKey: boolean): Promise<Response | null> =>
-      s2SearchQueue.exec(() =>
-        withRetry(() => executeFetch(useKey), {
-          maxRetries: 1,
-          baseDelay: 1200,
-          isRetryable: (err) =>
-            err instanceof Error && err.message === S2_RETRYABLE,
-        }),
-      );
-
-    let response = await executeQueued(true);
-
-    if (!response) {
-      // Retry once unauthenticated if 403 or API key issue occurred
-      response = await executeQueued(false);
-    }
+    const response = await s2SearchQueue.exec(() =>
+      withRetry(() => executeFetch(), {
+        maxRetries: 3,
+        baseDelay: 1500,
+        isRetryable: (err) =>
+          err instanceof Error && err.message === S2_RETRYABLE,
+      }),
+    );
 
     if (!response) return [];
 

@@ -13,9 +13,7 @@ export type StrategicRole =
   | "ALTERNATIVE_PERSPECTIVE";
 
 export type PositioningGlobalStatus =
-  | "DIRECT_OVERLAP"
-  | "NOVEL_GAP_IDENTIFIED"
-  | "NO_RELATED_LITERATURE";
+  "DIRECT_OVERLAP" | "NOVEL_GAP_IDENTIFIED" | "NO_RELATED_LITERATURE";
 
 export interface RecommendedThesisItem {
   id?: string;
@@ -109,9 +107,7 @@ export interface PipelineResult {
 }
 
 export type JuryCritiqueCategory =
-  | "LOGIC_LEAP"
-  | "UNBACKED_CLAIM"
-  | "METHODOLOGICAL_GAP";
+  "LOGIC_LEAP" | "UNBACKED_CLAIM" | "METHODOLOGICAL_GAP";
 
 export interface JuryCritique {
   id: string;
@@ -146,11 +142,7 @@ export interface OfficeReviewReport {
 
 export interface PipelineResultData {
   stage:
-    | "audit"
-    | "socratic"
-    | "redaction"
-    | "office_review"
-    | "office_defense";
+    "audit" | "socratic" | "redaction" | "office_review" | "office_defense";
   cycle?: number;
   originalDraft?: string;
   outlineId?: number;
@@ -182,10 +174,7 @@ export interface PipelineResultData {
 
 // ── Library verification (was src/app/(app)/library/_lib/types.ts) ──
 export type NoteVerificationStatus =
-  | "UNVERIFIED"
-  | "PENDING"
-  | "VERIFIED"
-  | "WARNING";
+  "UNVERIFIED" | "PENDING" | "VERIFIED" | "WARNING";
 
 export interface NoteVerificationIssue {
   type:

@@ -140,7 +140,7 @@ export function EditSubBoxModal({
                   </Badge>
                 ))
               ) : (
-                <span className="text-xs text-muted-foreground/60 italic">
+                <span className="text-xs text-muted-foreground italic">
                   Henüz kavram etiketi eklenmedi.
                 </span>
               )}

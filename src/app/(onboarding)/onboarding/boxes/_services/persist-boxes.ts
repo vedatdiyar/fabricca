@@ -101,5 +101,3 @@ export async function persistBoxesAction(
     return { error: "Konu kutuları veritabanına kaydedilemedi." };
   }
 }
-
-

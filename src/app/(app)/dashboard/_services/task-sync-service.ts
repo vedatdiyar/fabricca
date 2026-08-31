@@ -43,7 +43,10 @@ export function sanitizeTaskTitle(title: string): string {
  * @param context - Aggregated academic state.
  * @returns True when the task should be completed.
  */
-function isReadingTaskSatisfied(task: Task, context: AcademicTaskContext): boolean {
+function isReadingTaskSatisfied(
+  task: Task,
+  context: AcademicTaskContext,
+): boolean {
   if (!task.sourceId) return false;
   const src = context.sources.find((s) => s.id === task.sourceId);
   return !!src && src.isRead;
@@ -56,7 +59,10 @@ function isReadingTaskSatisfied(task: Task, context: AcademicTaskContext): boole
  * @param context - Aggregated academic state.
  * @returns True when the task should be completed.
  */
-function isNoteTakingTaskSatisfied(task: Task, context: AcademicTaskContext): boolean {
+function isNoteTakingTaskSatisfied(
+  task: Task,
+  context: AcademicTaskContext,
+): boolean {
   if (!task.sourceId) return false;
   return context.annotations.some((a) => a.sourceId === task.sourceId);
 }
@@ -68,9 +74,14 @@ function isNoteTakingTaskSatisfied(task: Task, context: AcademicTaskContext): bo
  * @param context - Aggregated academic state.
  * @returns True when the task should be completed.
  */
-function isCardSortingTaskSatisfied(task: Task, context: AcademicTaskContext): boolean {
+function isCardSortingTaskSatisfied(
+  task: Task,
+  context: AcademicTaskContext,
+): boolean {
   if (!task.boxId) return false;
-  const boxSourceIds = context.sources.filter((s) => s.boxId === task.boxId).map((s) => s.id);
+  const boxSourceIds = context.sources
+    .filter((s) => s.boxId === task.boxId)
+    .map((s) => s.id);
   const boxCards = context.annotations.filter(
     (a) => boxSourceIds.includes(a.sourceId) && a.sentToCitationCards,
   );
@@ -85,7 +96,10 @@ function isCardSortingTaskSatisfied(task: Task, context: AcademicTaskContext): b
  * @param context - Aggregated academic state.
  * @returns True when the task should be completed.
  */
-function isBoxGapTaskSatisfied(task: Task, context: AcademicTaskContext): boolean {
+function isBoxGapTaskSatisfied(
+  task: Task,
+  context: AcademicTaskContext,
+): boolean {
   if (!task.boxId) return false;
   return context.sources.some((s) => s.boxId === task.boxId);
 }
@@ -129,7 +143,10 @@ export async function autoCompleteTasks(
     if (!t.isAutomated || t.status === "DONE") continue;
     if (!shouldTaskComplete(t, context)) continue;
 
-    await db.update(tasks).set({ status: "DONE", updatedAt: new Date() }).where(eq(tasks.id, t.id));
+    await db
+      .update(tasks)
+      .set({ status: "DONE", updatedAt: new Date() })
+      .where(eq(tasks.id, t.id));
     t.status = "DONE";
     autoCompletedCount++;
   }
@@ -173,7 +190,10 @@ function generateReadingCandidates(
     if (src.isRead || activeReadingSourceIds.has(src.id)) continue;
     const box = boxMap.get(src.boxId);
     if (!box || !isPillarKey(box.boxType, candidatesByPillar)) continue;
-    const { authorDisplay, yearDisplay } = formatAuthorDisplay(src.authors, src.publicationYear);
+    const { authorDisplay, yearDisplay } = formatAuthorDisplay(
+      src.authors,
+      src.publicationYear,
+    );
     candidatesByPillar[box.boxType!]!.push({
       taskType: "READING",
       title: `${authorDisplay}${yearDisplay} eserini incele ve fişle`,
@@ -202,7 +222,10 @@ function generateNoteTakingCandidates(
     if (hasNotes) continue;
     const box = boxMap.get(src.boxId);
     if (!box || !isPillarKey(box.boxType, candidatesByPillar)) continue;
-    const { authorDisplay, yearDisplay } = formatAuthorDisplay(src.authors, src.publicationYear);
+    const { authorDisplay, yearDisplay } = formatAuthorDisplay(
+      src.authors,
+      src.publicationYear,
+    );
     candidatesByPillar[box.boxType!]!.push({
       taskType: "NOTE_TAKING",
       title: `${authorDisplay}${yearDisplay} kaynağından alıntı fişi çıkar`,
@@ -226,11 +249,20 @@ function generateSortingCandidates(
 ): void {
   for (const box of context.boxes) {
     if (activeSortingBoxIds.has(box.id)) continue;
-    const boxSourceIds = context.sources.filter((s) => s.boxId === box.id).map((s) => s.id);
+    const boxSourceIds = context.sources
+      .filter((s) => s.boxId === box.id)
+      .map((s) => s.id);
     const unsortedCards = context.annotations.filter(
-      (a) => boxSourceIds.includes(a.sourceId) && a.sentToCitationCards && !context.linkedAnnotationIds.has(a.id),
+      (a) =>
+        boxSourceIds.includes(a.sourceId) &&
+        a.sentToCitationCards &&
+        !context.linkedAnnotationIds.has(a.id),
     );
-    if (unsortedCards.length === 0 || !isPillarKey(box.boxType, candidatesByPillar)) continue;
+    if (
+      unsortedCards.length === 0 ||
+      !isPillarKey(box.boxType, candidatesByPillar)
+    )
+      continue;
     candidatesByPillar[box.boxType!]!.push({
       taskType: "CARD_SORTING",
       title: `"${box.title}" kutusundaki ${unsortedCards.length} fişi tez planına bağla`,
@@ -257,7 +289,11 @@ function generateGapCandidates(
   for (const box of context.boxes) {
     if (activeBoxGapIds.has(box.id)) continue;
     const boxSources = context.sources.filter((s) => s.boxId === box.id);
-    if (boxSources.length !== 0 || !isPillarKey(box.boxType, candidatesByPillar)) continue;
+    if (
+      boxSources.length !== 0 ||
+      !isPillarKey(box.boxType, candidatesByPillar)
+    )
+      continue;
     candidatesByPillar[box.boxType!]!.push({
       taskType: "BOX_GAP",
       title: `"${box.title}" teması için literatür tara`,
@@ -301,19 +337,49 @@ export function generateCandidateTasks(
   });
 
   const activeReadingSourceIds = new Set<number>(
-    context.tasks.filter((t) => t.sourceId !== null && t.status !== "DONE").map((t) => t.sourceId as number),
+    context.tasks
+      .filter((t) => t.sourceId !== null && t.status !== "DONE")
+      .map((t) => t.sourceId as number),
   );
   const activeBoxGapIds = new Set<number>(
-    context.tasks.filter((t) => t.taskType === "BOX_GAP" && t.boxId !== null && t.status !== "DONE").map((t) => t.boxId as number),
+    context.tasks
+      .filter(
+        (t) =>
+          t.taskType === "BOX_GAP" && t.boxId !== null && t.status !== "DONE",
+      )
+      .map((t) => t.boxId as number),
   );
   const activeSortingBoxIds = new Set<number>(
-    context.tasks.filter((t) => t.taskType === "CARD_SORTING" && t.boxId !== null && t.status !== "DONE").map((t) => t.boxId as number),
+    context.tasks
+      .filter(
+        (t) =>
+          t.taskType === "CARD_SORTING" &&
+          t.boxId !== null &&
+          t.status !== "DONE",
+      )
+      .map((t) => t.boxId as number),
   );
 
-  generateReadingCandidates(context, boxMap, candidatesByPillar, activeReadingSourceIds, timeline.isLiteratureFrozen);
-  generateNoteTakingCandidates(context, boxMap, candidatesByPillar, activeReadingSourceIds);
+  generateReadingCandidates(
+    context,
+    boxMap,
+    candidatesByPillar,
+    activeReadingSourceIds,
+    timeline.isLiteratureFrozen,
+  );
+  generateNoteTakingCandidates(
+    context,
+    boxMap,
+    candidatesByPillar,
+    activeReadingSourceIds,
+  );
   generateSortingCandidates(context, candidatesByPillar, activeSortingBoxIds);
-  generateGapCandidates(context, candidatesByPillar, activeBoxGapIds, timeline.isLiteratureFrozen);
+  generateGapCandidates(
+    context,
+    candidatesByPillar,
+    activeBoxGapIds,
+    timeline.isLiteratureFrozen,
+  );
 
   return candidatesByPillar;
 }

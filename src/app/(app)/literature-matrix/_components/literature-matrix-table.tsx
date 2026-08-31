@@ -43,7 +43,7 @@ export const MATRIX_COLUMNS: ColumnDef[] = [
  */
 function ReadOnlyCell({ value }: { value: string | null }) {
   return (
-    <div className="min-h-[48px] rounded-md p-2 text-sm leading-relaxed text-foreground/90 line-clamp-3 whitespace-pre-line">
+    <div className="min-h-[48px] rounded-md p-2 text-sm leading-relaxed text-foreground line-clamp-3 whitespace-pre-line">
       {value && value.trim().length > 0 ? (
         value
       ) : (
@@ -82,7 +82,7 @@ export function LiteratureMatrixTable({
   if (rows.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center rounded-lg border border-dashed border-border p-12 text-center bg-card">
-        <FileSpreadsheet className="size-8 text-muted-foreground/50 mb-3" />
+        <FileSpreadsheet className="size-8 text-muted-foreground mb-3" />
         <h3 className="font-serif text-sm font-semibold tracking-tight text-foreground">
           Eşleşen Kaynak Bulunamadı
         </h3>
@@ -230,7 +230,7 @@ export function LiteratureMatrixTable({
                   {row.boxTitle ? (
                     <Badge
                       variant="outline"
-                      className="text-xs font-medium border-primary/20 bg-primary/5 text-primary max-w-[200px] whitespace-normal text-left py-1 px-2.5 leading-normal inline-block"
+                      className="text-xs font-medium border-primary/20 bg-primary/10 text-primary max-w-[200px] whitespace-normal text-left py-1 px-2.5 leading-normal inline-block"
                     >
                       {row.boxTitle}
                     </Badge>

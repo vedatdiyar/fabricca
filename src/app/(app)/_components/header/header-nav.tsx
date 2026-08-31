@@ -77,14 +77,14 @@ export function HeaderNav() {
   const isAdvisorActive = pathname.startsWith("/advisor");
 
   return (
-    <nav className="hidden items-center gap-1 rounded-full border border-border/50 bg-card/70 p-1 shadow-xs backdrop-blur-sm md:flex">
+    <nav className="hidden items-center gap-1 rounded-full border border-border/50 bg-card/60 p-1 shadow-xs backdrop-blur-sm md:flex">
       {/* 1. Genel Özet */}
       <Link
         href="/dashboard"
         className={cn(
           "flex h-8 items-center gap-1.5 rounded-full px-3 text-xs font-medium transition-all duration-150 select-none",
           pathname === "/dashboard"
-            ? "bg-accent text-accent-foreground font-semibold border border-primary/25 shadow-xs"
+            ? "bg-accent text-accent-foreground font-semibold border border-primary/20 shadow-xs"
             : "text-muted-foreground hover:text-foreground hover:bg-accent/30",
         )}
       >
@@ -98,7 +98,7 @@ export function HeaderNav() {
           className={cn(
             "flex h-8 items-center gap-1.5 rounded-full px-3 text-xs font-medium transition-all duration-150 select-none cursor-pointer",
             isThesisActive
-              ? "bg-accent text-accent-foreground font-semibold border border-primary/25 shadow-xs"
+              ? "bg-accent text-accent-foreground font-semibold border border-primary/20 shadow-xs"
               : "text-muted-foreground hover:text-foreground hover:bg-accent/30",
           )}
         >
@@ -132,7 +132,7 @@ export function HeaderNav() {
           className={cn(
             "flex h-8 items-center gap-1.5 rounded-full px-3 text-xs font-medium transition-all duration-150 select-none cursor-pointer",
             isLiteratureActive
-              ? "bg-accent text-accent-foreground font-semibold border border-primary/25 shadow-xs"
+              ? "bg-accent text-accent-foreground font-semibold border border-primary/20 shadow-xs"
               : "text-muted-foreground hover:text-foreground hover:bg-accent/30",
           )}
         >
@@ -166,7 +166,7 @@ export function HeaderNav() {
           className={cn(
             "flex h-8 items-center gap-1.5 rounded-full px-3 text-xs font-medium transition-all duration-150 select-none cursor-pointer",
             isAdvisorActive
-              ? "bg-accent text-accent-foreground font-semibold border border-primary/25 shadow-xs"
+              ? "bg-accent text-accent-foreground font-semibold border border-primary/20 shadow-xs"
               : "text-muted-foreground hover:text-foreground hover:bg-accent/30",
           )}
         >

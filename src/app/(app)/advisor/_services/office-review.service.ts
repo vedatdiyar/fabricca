@@ -55,7 +55,8 @@ type AnnotationRow = {
 };
 
 function buildNotesContext(rows: AnnotationRow[]): string {
-  if (rows.length === 0) return "Kütüphanenizde bu bölüm için henüz alıntı fişi/not bulunmamaktadır.";
+  if (rows.length === 0)
+    return "Kütüphanenizde bu bölüm için henüz alıntı fişi/not bulunmamaktadır.";
   return rows
     .slice(0, 25)
     .map((row) => {
@@ -68,14 +69,21 @@ function buildNotesContext(rows: AnnotationRow[]): string {
 
 async function fetchOutline(outlineId: number) {
   const [outline] = await db
-    .select({ id: outlines.id, title: outlines.title, description: outlines.description })
+    .select({
+      id: outlines.id,
+      title: outlines.title,
+      description: outlines.description,
+    })
     .from(outlines)
     .where(eq(outlines.id, outlineId))
     .limit(1);
   return outline ?? null;
 }
 
-async function fetchPinnedAnnotations(userId: number, outlineId: number): Promise<AnnotationRow[]> {
+async function fetchPinnedAnnotations(
+  userId: number,
+  outlineId: number,
+): Promise<AnnotationRow[]> {
   return db
     .select({
       content: annotations.content,
@@ -88,7 +96,12 @@ async function fetchPinnedAnnotations(userId: number, outlineId: number): Promis
     .from(outlineAnnotations)
     .innerJoin(annotations, eq(outlineAnnotations.annotationId, annotations.id))
     .innerJoin(sources, eq(annotations.sourceId, sources.id))
-    .where(and(eq(outlineAnnotations.outlineId, outlineId), eq(annotations.userId, userId)));
+    .where(
+      and(
+        eq(outlineAnnotations.outlineId, outlineId),
+        eq(annotations.userId, userId),
+      ),
+    );
 }
 
 async function fetchPinnedSourceIds(outlineId: number): Promise<number[]> {
@@ -99,7 +112,9 @@ async function fetchPinnedSourceIds(outlineId: number): Promise<number[]> {
   return rows.map((r) => r.sourceId);
 }
 
-async function fetchRecentAnnotations(userId: number): Promise<AnnotationRow[]> {
+async function fetchRecentAnnotations(
+  userId: number,
+): Promise<AnnotationRow[]> {
   return db
     .select({
       content: annotations.content,

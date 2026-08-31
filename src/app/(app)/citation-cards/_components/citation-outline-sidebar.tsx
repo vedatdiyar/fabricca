@@ -88,7 +88,7 @@ export function CitationOutlineSidebar({
           )}
         >
           <div className="flex items-center gap-1.5 truncate">
-            <Layers className="size-3.5 shrink-0 text-primary/80" />
+            <Layers className="size-3.5 shrink-0 text-primary" />
             <span className="truncate">Tümü</span>
           </div>
           <span className="font-mono text-[10px] text-muted-foreground ml-1">
@@ -96,7 +96,7 @@ export function CitationOutlineSidebar({
           </span>
         </button>
 
-          <button
+        <button
           type="button"
           onClick={onSelectUnassigned}
           className={cn(

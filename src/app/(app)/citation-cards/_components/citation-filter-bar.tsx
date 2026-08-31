@@ -93,7 +93,7 @@ export function CitationFilterBar({
           placeholder="Fiş içeriği, yazar, eser veya sayfa ara..."
           value={filters.searchQuery}
           onChange={(e) => onFilterChange("searchQuery", e.target.value)}
-          className="pl-8 pr-8 text-xs h-8 bg-background/80 border-border/40 rounded-lg placeholder:text-muted-foreground/60"
+          className="pl-8 pr-8 text-xs h-8 bg-background/80 border-border/40 rounded-lg placeholder:text-muted-foreground"
         />
         {filters.searchQuery && (
           <button
@@ -131,7 +131,7 @@ export function CitationFilterBar({
                   "font-mono text-[10px] ml-0.5",
                   isActive
                     ? "text-primary font-bold"
-                    : "text-muted-foreground/60",
+                    : "text-muted-foreground",
                 )}
               >
                 {tab.count}

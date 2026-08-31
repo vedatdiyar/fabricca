@@ -117,7 +117,7 @@ export function AcademicTimelineBar({
                       key={phase.phaseNumber}
                       className={`relative flex flex-col p-2.5 rounded-md border text-xs transition-all ${
                         isCurrent
-                          ? "border-primary/60 bg-primary/5 shadow-2xs"
+                          ? "border-primary/60 bg-primary/10 shadow-2xs"
                           : isDone
                             ? "border-border/40 bg-muted/10 opacity-75"
                             : "border-border/40 bg-card/40 opacity-60"

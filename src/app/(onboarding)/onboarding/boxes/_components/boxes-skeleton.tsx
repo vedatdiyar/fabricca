@@ -15,7 +15,7 @@ export function BoxesSkeleton() {
         <div className="space-y-2">
           <Skeleton className="h-4 w-64" />
           <Skeleton className="h-3 w-full bg-border/20" />
-          <Skeleton className="h-3 w-4/5 bg-border/20" />
+          <Skeleton className="h-3 w-4/10 bg-border/20" />
         </div>
       </div>
 

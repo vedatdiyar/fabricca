@@ -73,11 +73,11 @@ export function UserMenu({
         type="button"
         onClick={() => setIsOpen((prev) => !prev)}
         className={cn(
-          "flex h-8 items-center gap-2 rounded-full border border-border/50 bg-card/70 px-2.5 py-1 transition-all hover:bg-accent/30 hover:border-border",
+          "flex h-8 items-center gap-2 rounded-full border border-border/50 bg-card/60 px-2.5 py-1 transition-all hover:bg-accent/30 hover:border-border",
           isOpen && "bg-accent/50 border-primary/30",
         )}
       >
-        <div className="flex h-5.5 w-5.5 items-center justify-center rounded-full bg-primary/15 text-primary font-mono text-[10px] font-semibold border border-primary/20 shrink-0">
+        <div className="flex h-5.5 w-5.5 items-center justify-center rounded-full bg-primary/20 text-primary font-mono text-[10px] font-semibold border border-primary/20 shrink-0">
           {initials || <User className="h-3 w-3" />}
         </div>
 

@@ -169,7 +169,7 @@ export function CitationCardView(props: CitationCardViewProps) {
 
       {/* Researcher's Commentary / Şerh (If exists) */}
       {card.comment && (
-        <div className="rounded-md border border-primary/20 bg-primary/5 p-3.5 space-y-1.5">
+        <div className="rounded-md border border-primary/20 bg-primary/10 p-3.5 space-y-1.5">
           <div className="flex items-center gap-1.5 text-primary text-xs font-medium">
             <MessageSquareQuote className="h-3.5 w-3.5 shrink-0" />
             <span>Araştırmacı Düşüncesi / Şerh</span>

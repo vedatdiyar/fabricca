@@ -142,7 +142,7 @@ export function CitationCard(props: CitationCardProps) {
       className={cn(
         "cursor-pointer rounded-lg p-3.5 transition-all duration-200 border bg-card/60 hover:bg-card hover:border-border/80 flex flex-col justify-between group select-none w-full gap-2.5 relative overflow-hidden shadow-xs",
         isSelected
-          ? "border-primary/80 ring-1 ring-primary/20 bg-primary/5"
+          ? "border-primary/80 ring-1 ring-primary/20 bg-primary/10"
           : "border-border/50",
       )}
     >
@@ -239,15 +239,15 @@ export function CitationCard(props: CitationCardProps) {
       {/* 2. Main Quote Body with Note Type Intro */}
       <CardContent className="p-0 flex-1 space-y-2">
         {/* Note Type Subtle Tag */}
-        <div className="flex items-center gap-1 text-[11px] font-medium text-muted-foreground/80">
-          <NoteIcon className="size-3 text-primary/80 shrink-0" />
+        <div className="flex items-center gap-1 text-[11px] font-medium text-muted-foreground">
+          <NoteIcon className="size-3 text-primary shrink-0" />
           <span>{noteConfig.label}</span>
         </div>
 
         {/* Quote Content (Refined, proportional academic typography) */}
         <p
           className={cn(
-            "text-[12.5px] leading-relaxed line-clamp-4 select-text text-foreground/90",
+            "text-[12.5px] leading-relaxed line-clamp-4 select-text text-foreground",
             noteConfig.quoteClass,
           )}
         >
@@ -259,9 +259,9 @@ export function CitationCard(props: CitationCardProps) {
         {/* 3. Commentary / Şerh (Discreet, compact margin note) */}
         {card.comment && (
           <div className="flex items-start gap-1.5 rounded-md border-l-2 border-border/80 bg-muted/20 px-2 py-1 text-muted-foreground">
-            <MessageSquareQuote className="size-3 text-muted-foreground/60 shrink-0 mt-0.5" />
-            <p className="text-[11px] leading-snug whitespace-pre-wrap line-clamp-2 select-text font-sans text-muted-foreground/90">
-              <span className="font-semibold text-[10px] uppercase tracking-wider text-foreground/80 mr-1">
+            <MessageSquareQuote className="size-3 text-muted-foreground shrink-0 mt-0.5" />
+            <p className="text-[11px] leading-snug whitespace-pre-wrap line-clamp-2 select-text font-sans text-muted-foreground">
+              <span className="font-semibold text-[10px] uppercase tracking-wider text-foreground mr-1">
                 Şerh:
               </span>
               {card.comment}
@@ -281,12 +281,12 @@ export function CitationCard(props: CitationCardProps) {
             title={`Konu Kutusu: ${card.boxTitle}`}
           />
           <div className="text-[11px] text-muted-foreground truncate leading-tight">
-            <strong className="text-foreground/90 font-medium">
+            <strong className="text-foreground font-medium">
               {authorsDisplay} ({card.sourceYear})
             </strong>
-            <span className="mx-1 text-muted-foreground/40">—</span>
+            <span className="mx-1 text-muted-foreground">—</span>
             <span
-              className="italic text-muted-foreground/80"
+              className="italic text-muted-foreground"
               title={card.sourceTitle}
             >
               {card.sourceTitle}

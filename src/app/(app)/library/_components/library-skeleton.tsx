@@ -40,7 +40,7 @@ export function LibrarySkeleton() {
                 key={`lib-item-skel-${index}`}
                 className="space-y-2 rounded-md border border-border bg-background p-3"
               >
-                <Skeleton className="h-3.5 w-4/5" />
+                <Skeleton className="h-3.5 w-4/10" />
                 <Skeleton className="h-3 w-1/2 bg-border/20" />
                 <Skeleton className="h-4 w-10 rounded-md bg-border/20" />
               </div>

@@ -142,11 +142,11 @@ export function BoxCard({
           {/* Reading List Items */}
           {totalArticles === 0 ? (
             <div className="flex flex-1 flex-col items-center justify-center py-8 px-4 rounded-md border border-dashed border-border/40 bg-secondary/10 text-center min-h-[180px]">
-              <Library className="h-8 w-8 text-muted-foreground/40 mb-2" />
+              <Library className="h-8 w-8 text-muted-foreground mb-2" />
               <p className="text-xs text-muted-foreground font-medium">
                 İlgili kutuda henüz okunacak materyal bulunmamaktadır.
               </p>
-              <p className="text-[10px] text-muted-foreground/70 mt-1">
+              <p className="text-[10px] text-muted-foreground mt-1">
                 Kütüphane üzerinden yeni eserler ekleyebilir veya literatür
                 genişletmeyi başlatabilirsiniz.
               </p>
@@ -198,7 +198,7 @@ export function BoxCard({
                       {article.year && article.year > 0 ? (
                         <>
                           <span className="text-border">•</span>
-                          <span className="shrink-0 font-mono text-[11px] text-muted-foreground/80">
+                          <span className="shrink-0 font-mono text-[11px] text-muted-foreground">
                             {article.year}
                           </span>
                         </>

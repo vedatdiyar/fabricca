@@ -106,7 +106,7 @@ export function OutlineSectionCard(props: OutlineSectionCardProps) {
             }`}
           >
             <span
-              className="cursor-grab active:cursor-grabbing text-muted-foreground/40 hover:text-muted-foreground p-0.5 rounded transition-colors"
+              className="cursor-grab active:cursor-grabbing text-muted-foreground hover:text-muted-foreground p-0.5 rounded transition-colors"
               title="Bölümü Taşı"
             >
               <GripVertical className="size-4" />

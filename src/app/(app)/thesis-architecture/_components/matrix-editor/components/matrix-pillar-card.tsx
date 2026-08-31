@@ -104,7 +104,7 @@ export function MatrixPillarCard({
             onKeyDown={(e) =>
               (e.key === "Enter" || e.key === " ") && onEdit(card.key)
             }
-            className="flex flex-1 cursor-pointer flex-col items-center justify-center rounded-md border border-dashed border-border/60 bg-muted/5 p-8 text-center hover:border-primary/40 hover:bg-muted/15 transition-colors min-h-[280px] space-y-2 group"
+            className="flex flex-1 cursor-pointer flex-col items-center justify-center rounded-md border border-dashed border-border/60 bg-muted/10 p-8 text-center hover:border-primary/40 hover:bg-muted/20 transition-colors min-h-[280px] space-y-2 group"
           >
             <div className="flex h-10 w-10 items-center justify-center rounded-full bg-muted/30 text-muted-foreground group-hover:text-primary transition-colors">
               <FileText className="h-5 w-5" />

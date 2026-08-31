@@ -173,7 +173,7 @@ export function ToolActionCard({
       </div>
 
       {/* Body: Explanation */}
-      <div className="py-2 text-xs text-foreground/90 leading-relaxed font-sans">
+      <div className="py-2 text-xs text-foreground leading-relaxed font-sans">
         {toolCall.explanation}
       </div>
 
@@ -196,7 +196,7 @@ export function ToolActionCard({
           </button>
 
           {isDetailsExpanded && (
-            <div className="mt-1.5 p-2 rounded-md bg-muted/40 border border-border/50 font-mono text-[11px] space-y-1 overflow-x-auto text-foreground/80">
+            <div className="mt-1.5 p-2 rounded-md bg-muted/40 border border-border/50 font-mono text-[11px] space-y-1 overflow-x-auto text-foreground">
               {Object.entries(toolCall.args).map(([key, val]) => (
                 <div key={key} className="flex gap-2">
                   <span className="text-muted-foreground">{key}:</span>

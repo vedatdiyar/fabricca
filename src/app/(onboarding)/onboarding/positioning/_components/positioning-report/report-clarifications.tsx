@@ -54,7 +54,7 @@ export function ReportClarifications({
               {idx + 1}. {q.question}
             </Label>
             {q.contextNote && (
-              <p className="text-xs text-muted-foreground/85 italic">
+              <p className="text-xs text-muted-foreground italic">
                 {q.contextNote}
               </p>
             )}

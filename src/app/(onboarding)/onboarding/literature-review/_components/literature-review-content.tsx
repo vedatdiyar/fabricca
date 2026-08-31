@@ -42,7 +42,7 @@ function SubBoxQuery({
 
   if (status === "error") {
     return (
-      <div className="p-4 text-center border border-destructive/20 rounded-md bg-destructive/5 space-y-1.5">
+      <div className="p-4 text-center border border-destructive/20 rounded-md bg-destructive/10 space-y-1.5">
         <AlertCircle className="size-5 text-destructive mx-auto" />
         <p className="text-xs text-destructive font-medium">Tarama hatası</p>
         <p className="font-sans text-xs text-muted-foreground">

@@ -167,7 +167,7 @@ export function ResourceDetail({
                       : "bg-muted text-muted-foreground border-border/50"
                   }`}
                 >
-                  {completedCritiqueCount}/5
+                  {completedCritiqueCount}/10
                 </span>
               </button>
 

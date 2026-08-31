@@ -240,7 +240,7 @@ export function SidebarWorkList({
                       ) : (
                         <span
                           title="Okunacak"
-                          className="flex items-center text-muted-foreground/40"
+                          className="flex items-center text-muted-foreground"
                         >
                           <Circle className="h-3.5 w-3.5" />
                         </span>

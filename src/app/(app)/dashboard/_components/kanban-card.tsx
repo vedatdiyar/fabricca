@@ -43,7 +43,7 @@ export const KanbanCard = memo(function KanbanCard({
       onDragStart={(e) => onDragStart(e, task.id)}
       onDragEnd={onDragEnd}
       className={cn(
-        "group relative rounded-lg border border-border/70 bg-card p-3.5 transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-sm cursor-grab active:cursor-grabbing select-none",
+        "group relative rounded-lg border border-border/60 bg-card p-3.5 transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-sm cursor-grab active:cursor-grabbing select-none",
         isCompleted && "opacity-75 bg-muted/30",
       )}
     >
@@ -119,7 +119,7 @@ export const KanbanCard = memo(function KanbanCard({
                 <Trash2 className="h-3 w-3" />
               </button>
             </div>
-            <GripVertical className="h-3.5 w-3.5 text-muted-foreground/40 group-hover:text-muted-foreground transition-colors shrink-0" />
+            <GripVertical className="h-3.5 w-3.5 text-muted-foreground group-hover:text-muted-foreground transition-colors shrink-0" />
           </div>
         </div>
 
@@ -146,7 +146,7 @@ export const KanbanCard = memo(function KanbanCard({
         {/* Card Footer: Topic Box Title */}
         {task.boxTitle && (
           <div className="pt-2 border-t border-border/40 flex items-center gap-1.5 text-muted-foreground">
-            <FolderKanban className="h-3 w-3 text-primary/80 shrink-0" />
+            <FolderKanban className="h-3 w-3 text-primary shrink-0" />
             <span
               className="font-sans text-[11px] font-medium text-muted-foreground leading-normal truncate"
               title={task.boxTitle}

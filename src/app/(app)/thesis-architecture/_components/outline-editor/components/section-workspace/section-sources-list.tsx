@@ -220,7 +220,7 @@ export function SectionSourcesList({
             ))}
           </div>
         ) : (
-          <div className="py-10 text-center space-y-3 border border-dashed border-border/60 rounded-lg bg-muted/5 p-6">
+          <div className="py-10 text-center space-y-3 border border-dashed border-border/60 rounded-lg bg-muted/10 p-6">
             <Quote className="h-8 w-8 text-muted-foreground mx-auto opacity-50" />
             <div className="space-y-1.5 max-w-md mx-auto">
               <p className="font-serif text-sm font-semibold text-foreground">

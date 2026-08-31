@@ -29,7 +29,7 @@ const matrixComponents: Components = {
     <li className="text-sm leading-relaxed text-foreground">{children}</li>
   ),
   blockquote: ({ children }) => (
-    <blockquote className="border-l-2 border-primary/30 bg-primary/5 py-1.5 px-3 my-2 rounded-r-md text-sm text-foreground">
+    <blockquote className="border-l-2 border-primary/30 bg-primary/10 py-1.5 px-3 my-2 rounded-r-md text-sm text-foreground">
       {children}
     </blockquote>
   ),

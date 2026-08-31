@@ -75,7 +75,10 @@ function resolvePublicationYear(
   return sourceYear ?? null;
 }
 
-function resolveOptional<T>(overrideVal: T | undefined, sourceVal: T | null | undefined): T | undefined {
+function resolveOptional<T>(
+  overrideVal: T | undefined,
+  sourceVal: T | null | undefined,
+): T | undefined {
   if (overrideVal !== undefined) return overrideVal;
   return sourceVal ?? undefined;
 }
@@ -153,11 +156,22 @@ export function mapSourceToResource(
     boxType,
     ...subBoxMeta,
     title: resolveTitle(overrides.title, source.title),
-    authors: formatResourceAuthors({ authors: rawAuthors, publisher: rawPublisher, boxType }),
-    containerTitle: resolveOptional(overrides.containerTitle, source.containerTitle),
+    authors: formatResourceAuthors({
+      authors: rawAuthors,
+      publisher: rawPublisher,
+      boxType,
+    }),
+    containerTitle: resolveOptional(
+      overrides.containerTitle,
+      source.containerTitle,
+    ),
     documentType: resolveOptional(overrides.documentType, source.documentType),
     publisher: resolvePublisher(rawPublisher),
-    publicationYear: resolvePublicationYear(overrides.publicationYear, source.publicationYear, hasYearOverride),
+    publicationYear: resolvePublicationYear(
+      overrides.publicationYear,
+      source.publicationYear,
+      hasYearOverride,
+    ),
     doi: resolveOptional(overrides.doi, source.doi),
     openalexId: source.openalexId ?? undefined,
     isRead: resolveIsRead(overrides.isRead, source.isRead),

@@ -33,7 +33,7 @@ export function SubBoxList({
         onKeyDown={(e) =>
           (e.key === "Enter" || e.key === " ") && onAddSubBox?.()
         }
-        className="flex flex-1 cursor-pointer flex-col items-center justify-center rounded-lg border border-dashed border-border/60 bg-card/30 p-6 text-center hover:border-primary/40 hover:bg-card/70 transition-colors min-h-[130px] space-y-2 group"
+        className="flex flex-1 cursor-pointer flex-col items-center justify-center rounded-lg border border-dashed border-border/60 bg-card/30 p-6 text-center hover:border-primary/40 hover:bg-card/60 transition-colors min-h-[130px] space-y-2 group"
       >
         <div className="flex h-7 w-7 items-center justify-center rounded-full bg-secondary text-muted-foreground group-hover:text-primary transition-colors">
           <Plus className="h-3.5 w-3.5" />

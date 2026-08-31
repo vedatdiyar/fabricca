@@ -130,7 +130,7 @@ export function OutlineTreeExplorer({
 
                   {/* Sub-sections tree nesting */}
                   {subItems.length > 0 && (
-                    <div className="ml-4 space-y-1 border-l-2 border-primary/25 pl-2.5 pt-0.5">
+                    <div className="ml-4 space-y-1 border-l-2 border-primary/20 pl-2.5 pt-0.5">
                       {subItems.map((sub, subIdx) => (
                         <OutlineSubItem
                           key={sub.id}

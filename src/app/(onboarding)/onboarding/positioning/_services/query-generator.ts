@@ -33,6 +33,11 @@ export const multiSourcePositioningQuerySchema = z.object({
     .describe(
       "Benzer uluslararası vakalar, ampirik araştırmalar ve olgusal tartışmalar için İngilizce sorgu.",
     ),
+  semanticScholarQuery: z
+    .string()
+    .describe(
+      "Semantic Scholar için 3-6 kelimelik, araştırmanın en temel kuramsal ve olgusal kavramlarını birleştiren odaklı İngilizce akademik sorgu.",
+    ),
   dergiparkQuery: z
     .string()
     .describe(
@@ -78,6 +83,11 @@ export const multiSourcePositioningQueryJsonSchema: JsonSchema = {
       description:
         "Benzer uluslararası vakalar, ampirik araştırmalar ve olgusal tartışmalar için İngilizce sorgu.",
     },
+    semanticScholarQuery: {
+      type: "string",
+      description:
+        "Semantic Scholar için 3-6 kelimelik, araştırmanın en temel kuramsal ve olgusal kavramlarını birleştiren odaklı İngilizce akademik sorgu.",
+    },
     dergiparkQuery: {
       type: "string",
       description:
@@ -100,6 +110,7 @@ export const multiSourcePositioningQueryJsonSchema: JsonSchema = {
     "thesisMethodologyQuery",
     "globalTheoreticalQuery",
     "globalEmpiricalQuery",
+    "semanticScholarQuery",
     "dergiparkQuery",
     "fieldWebQuery",
     "substantiveKeywords",
@@ -108,7 +119,7 @@ export const multiSourcePositioningQueryJsonSchema: JsonSchema = {
 };
 
 /**
- * Generates 6 complementary multi-channel search queries from the thesis matrix or proposal.
+ * Generates 7 complementary multi-channel search queries from the thesis matrix or proposal.
  *
  * @param matrix - The input containing subjectProblem and optional theoretical/methodological context.
  * @param logger - Optional logger for observability.
@@ -147,6 +158,7 @@ export async function generatePositioningQuery(
       thesisMethodologyQuery: fallbackSlice,
       globalTheoreticalQuery: fallbackSlice,
       globalEmpiricalQuery: fallbackSlice,
+      semanticScholarQuery: fallbackSlice.slice(0, 100),
       dergiparkQuery: `DergiPark ${fallbackSlice}`,
       fieldWebQuery: fallbackSlice,
       substantiveKeywords: [],

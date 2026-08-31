@@ -105,7 +105,8 @@ export async function enrichWithCrossref(
   if (doi && doi.trim().length > 0) {
     try {
       const cleanDoi = doi.trim().replace(/^https?:\/\/doi\.org\//i, "");
-      const res = await fetch(buildCrossrefUrl(`/works/${encodeURIComponent(cleanDoi)}`),
+      const res = await fetch(
+        buildCrossrefUrl(`/works/${encodeURIComponent(cleanDoi)}`),
         {
           headers: { "User-Agent": CROSSREF_USER_AGENT },
           signal: timeoutSignal,

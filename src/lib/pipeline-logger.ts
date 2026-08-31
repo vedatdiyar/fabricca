@@ -217,6 +217,7 @@ export class PipelineRun {
             status: "SUCCESS",
           }),
         );
+        console.log();
       } else {
         const eventBase = `${this.definition.id}_${key}`;
         this.logger.success(`${eventBase}_success`, {
@@ -253,6 +254,7 @@ export class PipelineRun {
             error: err,
           }),
         );
+        console.log();
       } else {
         const eventBase = `${this.definition.id}_${key}`;
         this.logger.failed(`${eventBase}_failed`, {

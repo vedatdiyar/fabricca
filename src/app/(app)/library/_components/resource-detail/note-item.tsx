@@ -106,7 +106,7 @@ export function NoteItem({
           {linkedOutline && (
             <Badge
               variant="outline"
-              className="text-[11px] font-medium border-primary/30 bg-primary/5 text-primary flex items-center gap-1 max-w-[200px] truncate"
+              className="text-[11px] font-medium border-primary/30 bg-primary/10 text-primary flex items-center gap-1 max-w-[200px] truncate"
               title={linkedOutline.title}
             >
               <FolderTree className="h-3 w-3 shrink-0" />
@@ -140,7 +140,7 @@ export function NoteItem({
             <button
               type="button"
               onClick={() => setIsIssuesExpanded(!isIssuesExpanded)}
-              className="flex items-center gap-1 text-xs font-medium text-warning bg-warning/10 hover:bg-warning/15 border border-warning/20 px-2 py-0.5 rounded transition-all cursor-pointer"
+              className="flex items-center gap-1 text-xs font-medium text-warning bg-warning/10 hover:bg-warning/20 border border-warning/20 px-2 py-0.5 rounded transition-all cursor-pointer"
             >
               <AlertTriangle className="h-3 w-3 text-warning" />
               <span>Olası Uyuşmazlık</span>
@@ -158,7 +158,7 @@ export function NoteItem({
         </div>
       </div>
 
-      <p className="font-sans text-sm text-foreground/90 leading-relaxed whitespace-pre-wrap">
+      <p className="font-sans text-sm text-foreground leading-relaxed whitespace-pre-wrap">
         {note.content}
       </p>
 
@@ -169,7 +169,7 @@ export function NoteItem({
             <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
               Kişisel Yorum / Şerh
             </p>
-            <p className="text-xs text-foreground/80 leading-relaxed whitespace-pre-wrap">
+            <p className="text-xs text-foreground leading-relaxed whitespace-pre-wrap">
               {note.comment}
             </p>
           </div>

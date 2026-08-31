@@ -117,6 +117,5 @@ export const gapAnalysisStructuredSchema = z.object({
 /** Structured gap analysis type inferred from Zod schema. */
 export type GapAnalysisStructured = z.infer<typeof gapAnalysisStructuredSchema>;
 // Ensure zod-inferred type stays assignable to canonical core type
-export type _GapAnalysisCoreCheck = GapAnalysisStructured extends CoreGapAnalysisStructured
-  ? true
-  : never;
+export type _GapAnalysisCoreCheck =
+  GapAnalysisStructured extends CoreGapAnalysisStructured ? true : never;

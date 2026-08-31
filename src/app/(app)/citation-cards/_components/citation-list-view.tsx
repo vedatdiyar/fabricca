@@ -97,7 +97,7 @@ export function CitationListView({
             className={cn(
               "group relative flex flex-col gap-2.5 p-3.5 sm:p-4 rounded-lg border bg-card/60 hover:bg-card hover:border-border/80 transition-all duration-150 cursor-pointer shadow-xs",
               isSelected
-                ? "border-primary/80 ring-1 ring-primary/20 bg-primary/5"
+                ? "border-primary/80 ring-1 ring-primary/20 bg-primary/10"
                 : "border-border/50",
             )}
           >
@@ -106,7 +106,7 @@ export function CitationListView({
               {/* Left Badges */}
               <div className="flex items-center gap-1.5 min-w-0 flex-1">
                 {/* Note Type Pill */}
-                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-medium bg-muted/60 text-foreground/80 border border-border/50 shrink-0">
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-medium bg-muted/60 text-foreground border border-border/50 shrink-0">
                   <NoteIcon className="size-3 text-primary shrink-0" />
                   <span>{noteConfig.label}</span>
                 </span>
@@ -198,7 +198,7 @@ export function CitationListView({
             {/* 2. Main Quote Text */}
             <p
               className={cn(
-                "text-[12.5px] leading-relaxed text-foreground/90 select-text font-normal",
+                "text-[12.5px] leading-relaxed text-foreground select-text font-normal",
                 noteConfig.quoteClass,
               )}
             >
@@ -210,9 +210,9 @@ export function CitationListView({
             {/* 3. Commentary / Şerh (if present) */}
             {card.comment && (
               <div className="flex items-start gap-1.5 rounded-md bg-muted/20 px-2.5 py-1.5 text-muted-foreground border border-border/30">
-                <MessageSquareQuote className="size-3 text-muted-foreground/60 shrink-0 mt-0.5" />
-                <p className="text-[11px] leading-snug whitespace-pre-wrap select-text font-sans text-muted-foreground/90">
-                  <span className="font-semibold text-[10px] uppercase tracking-wider text-foreground/80 mr-1">
+                <MessageSquareQuote className="size-3 text-muted-foreground shrink-0 mt-0.5" />
+                <p className="text-[11px] leading-snug whitespace-pre-wrap select-text font-sans text-muted-foreground">
+                  <span className="font-semibold text-[10px] uppercase tracking-wider text-foreground mr-1">
                     Şerh:
                   </span>
                   {card.comment}
@@ -231,12 +231,12 @@ export function CitationListView({
                   title={`Konu Kutusu: ${card.boxTitle}`}
                 />
                 <div className="text-[11px] text-muted-foreground truncate leading-tight">
-                  <strong className="text-foreground/90 font-medium">
+                  <strong className="text-foreground font-medium">
                     {authorsDisplay} ({card.sourceYear})
                   </strong>
-                  <span className="mx-1 text-muted-foreground/40">—</span>
+                  <span className="mx-1 text-muted-foreground">—</span>
                   <span
-                    className="italic text-muted-foreground/80"
+                    className="italic text-muted-foreground"
                     title={card.sourceTitle}
                   >
                     {card.sourceTitle}

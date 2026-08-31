@@ -37,44 +37,46 @@
 
 :root {
   /* --- Derin Zümrüt Zemin ve Yüksek Kontrastlı Yazı --- */
-  --background: #0b100e; /* Lacivert değil! Çok derin, asil bir zümrüt-siyah. Kontrastı muazzam tutar */
-  --foreground: #eef5f2; /* Temiz, parlayan nane-beyazı ana metin */
+  --background: oklch(0.167 0.009 169); /* Derin, asil zümrüt-siyah (#0b100e) */
+  --foreground: oklch(0.897 0.009 169); /* Editoryal mat zümrüt-kemiği (#d8dfdc) */
 
-  /* --- Kart Yapıları (Zeminden yeşil tonuyla bıçak gibi ayrışan kartlar) --- */
-  --card: #121a17; /* Arka planla kontrastı kusursuz kuran koyu zümrüt kart rengi */
-  --card-foreground: #ffffff;
+  /* --- Kart Yapıları (Zeminden yeşil tonuyla ayrışan kartlar) --- */
+  --card: oklch(0.209 0.013 170); /* Koyu zümrüt kart rengi (#121a17) */
+  --card-foreground: oklch(1 0 0); /* Saf beyaz metin (#ffffff) */
 
-  --popover: #0e1412;
-  --popover-foreground: #eef5f2;
+  --popover: oklch(0.184 0.01 173); /* (#0e1412) */
+  --popover-foreground: oklch(0.897 0.009 169);
 
   /* --- Gerçek Zümrüt Yeşili (Primary) --- */
-  --primary: #10b981; /* Ödün vermediğimiz, ekranda aslanlar gibi parlayan net zümrüt yeşili */
-  --primary-foreground: #0b100e; /* Yeşil butonların üzerindeki okunaklı koyu yazı */
+  --primary: oklch(0.696 0.149 162.48); /* Ödün vermeyen net zümrüt yeşili (#10b981) */
+  --primary-foreground: oklch(0.167 0.009 169); /* Yeşil buton üzeri koyu yazı (#0b100e) */
 
-  --secondary: #1a2622; /* Ara katmanlar için doygun yeşil-gri */
-  --secondary-foreground: #cbd5e1;
+  --secondary: oklch(0.256 0.018 172); /* Ara katman yeşil-gri (#1a2622) — secondary buton zemini */
+  --secondary-foreground: oklch(0.869 0.02 253); /* (#cbd5e1) */
 
-  --accent: #1a2622;
-  --accent-foreground: #34d399; /* Detaylar için daha açık nane yeşili */
+  --accent: oklch(0.285 0.02 172); /* Hover/focus vurgu zemini (#1f2e29) — secondary'den +0.03 lightness ayrışır */
+  --accent-foreground: oklch(0.773 0.154 163); /* Detay nane yeşili (#34d399) */
 
-  --muted: #121a17;
-  --muted-foreground: #8fa39b;
+  --muted: oklch(0.235 0.015 170); /* Pasif yüzey / TabsList zemini (#16201c) — card'dan +0.026 ayrışır */
+  --muted-foreground: oklch(0.697 0.025 170); /* (#8fa39b) */
 
   /* --- Durum Renkleri --- */
-  --destructive: #ef4444;
-  --destructive-foreground: #ffffff;
+  --destructive: oklch(0.637 0.208 25.33); /* (#ef4444) */
+  --destructive-foreground: oklch(1 0 0);
 
-  --success: #10b981;
-  --success-foreground: #ffffff;
-  --warning: #fbbf24;
-  --warning-foreground: #0b100e;
-  --info: #3b82f6;
-  --info-foreground: #ffffff;
+  --success: oklch(0.696 0.149 162.48); /* alias: --primary (#10b981) — zümrüt başarı = primary */
+  --success-foreground: oklch(1 0 0);
+
+  --warning: oklch(0.837 0.164 84.43); /* (#fbbf24) */
+  --warning-foreground: oklch(0.167 0.009 169);
+
+  --info: oklch(0.623 0.188 259.81); /* (#3b82f6) */
+  --info-foreground: oklch(1 0 0);
 
   /* --- Keskin Sınırlar --- */
-  --border: #24362f; /* Yeşilin tonlarında, kartları jilet gibi ayıran ara çizgi */
-  --input: #3e5a4f; /* Form girdilerinin açık renk, kristal netliğinde sınır çizgisi */
-  --ring: #10b981;
+  --border: oklch(0.315 0.027 169); /* Zümrüt alt tonlu keskin ayırıcı sınır (#24362f) */
+  --input: oklch(0.442 0.038 168); /* Form girdileri sınır çizgisi (#3e5a4f) */
+  --ring: oklch(0.696 0.149 162.48); /* (#10b981) */
 }
 
 @layer base {
@@ -112,18 +114,6 @@
     font-family: var(--font-mono);
     @apply text-xs;
   }
-  .badge-brand {
-    font-family: var(--font-logo);
-  }
-  .academic-reading-zone {
-    @apply text-sm leading-relaxed tracking-normal;
-  }
-  .header-nav-item {
-    @apply flex items-center px-3 py-1.5 text-xs font-medium;
-  }
-  .bottom-nav-item {
-    @apply flex flex-col items-center gap-1.5 px-3 py-1 text-xs font-medium transition-colors;
-  }
   /* Küresel Modern Scrollbar */
   * {
     scrollbar-width: thin;
@@ -151,16 +141,27 @@
   [role="link"] {
     cursor: pointer;
   }
+}
 
-  /* Global Error Display Styles */
+@layer utilities {
+  .badge-brand {
+    font-family: var(--font-logo);
+  }
+  .academic-reading-zone {
+    @apply text-sm leading-relaxed tracking-normal;
+  }
+  .header-nav-item {
+    @apply flex items-center px-3 py-1.5 text-xs font-medium;
+  }
+  .bottom-nav-item {
+    @apply flex flex-col items-center gap-1.5 px-3 py-1 text-xs font-medium transition-colors;
+  }
   .error-display-container {
     @apply flex min-h-screen w-full flex-col items-center justify-center bg-background p-6;
   }
-
   .error-display-content {
     @apply flex flex-col items-center justify-center text-center space-y-6 max-w-md w-full;
   }
-
   .error-display-icon-wrapper {
     @apply flex items-center justify-center w-12 h-12 rounded-full border;
   }

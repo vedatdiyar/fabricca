@@ -108,7 +108,7 @@ export function AddSubBoxModal({
                     className={cn(
                       "flex items-center gap-2.5 p-2.5 rounded-md border text-left cursor-pointer transition-all",
                       isSelected
-                        ? "border-primary bg-primary/5 text-foreground shadow-2xs ring-1 ring-primary/30"
+                        ? "border-primary bg-primary/10 text-foreground shadow-2xs ring-1 ring-primary/30"
                         : "border-border/60 bg-muted/10 text-muted-foreground hover:bg-muted/20 hover:border-border",
                     )}
                   >
@@ -190,7 +190,7 @@ export function AddSubBoxModal({
                   </Badge>
                 ))
               ) : (
-                <span className="text-xs text-muted-foreground/60 italic">
+                <span className="text-xs text-muted-foreground italic">
                   Henüz kavram etiketi eklenmedi.
                 </span>
               )}

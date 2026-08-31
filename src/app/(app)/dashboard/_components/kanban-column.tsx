@@ -54,8 +54,8 @@ export function KanbanColumn({
       className={cn(
         "flex flex-col gap-4 rounded-md border p-4 min-h-[360px] transition-all duration-200",
         isDragActive
-          ? "border-primary/40 bg-primary/5 ring-1 ring-primary/20 scale-[1.01]"
-          : "border-border/60 bg-muted/15",
+          ? "border-primary/40 bg-primary/10 ring-1 ring-primary/20 scale-[1.01]"
+          : "border-border/60 bg-muted/20",
       )}
     >
       {/* Column Header */}
@@ -91,7 +91,7 @@ export function KanbanColumn({
             <p className="text-xs text-muted-foreground font-medium">
               Bu aşamada görev bulunmuyor.
             </p>
-            <p className="text-[10px] text-muted-foreground/70 mt-1">
+            <p className="text-[10px] text-muted-foreground mt-1">
               {column.id === "TODO"
                 ? "Yukarıdaki butondan yeni bir araştırma adımı ekleyebilirsiniz."
                 : "Görevleri buraya sürükleyip bırakabilirsiniz."}

@@ -15,7 +15,7 @@ export function LiteratureReviewSkeleton() {
         <div className="space-y-2">
           <Skeleton className="h-4 w-64" />
           <Skeleton className="h-3 w-full bg-border/20" />
-          <Skeleton className="h-3 w-4/5 bg-border/20" />
+          <Skeleton className="h-3 w-4/10 bg-border/20" />
         </div>
       </div>
 
@@ -46,7 +46,7 @@ export function LiteratureReviewSkeleton() {
                     key={`lit-rev-card-skel-${cardIndex}`}
                     className="rounded-md border border-border/40 bg-card/60 p-4 space-y-2"
                   >
-                    <Skeleton className="h-4 w-4/5" />
+                    <Skeleton className="h-4 w-4/10" />
                     <Skeleton className="h-3.5 w-1/2 bg-border/20" />
                   </div>
                 ))}

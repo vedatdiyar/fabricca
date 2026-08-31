@@ -42,7 +42,9 @@ export interface RawQuadrants {
  * @param apiResponse - The 4-quadrant nested JSON object from Gemini
  * @returns A flat GeminiThesisBox array
  */
-export function mapToProductionShape(apiResponse: RawQuadrants): GeminiThesisBox[] {
+export function mapToProductionShape(
+  apiResponse: RawQuadrants,
+): GeminiThesisBox[] {
   const result: GeminiThesisBox[] = [];
   for (const [category, boxType] of Object.entries(QUADRANT_MAPPING)) {
     const cat = apiResponse[category as keyof RawQuadrants];
@@ -77,7 +79,9 @@ export function mapToProductionShape(apiResponse: RawQuadrants): GeminiThesisBox
  * @param rows - Raw box rows from the database.
  * @returns Production-shaped boxes sorted by canonical box type order.
  */
-export function rowsToGeminiBoxes(rows: (typeof boxes.$inferSelect)[]): GeminiThesisBox[] {
+export function rowsToGeminiBoxes(
+  rows: (typeof boxes.$inferSelect)[],
+): GeminiThesisBox[] {
   const parentRows = rows.filter((r) => r.parentId === null);
   const subBoxMap = new Map<number, GeminiThesisBox[]>();
   for (const r of rows) {

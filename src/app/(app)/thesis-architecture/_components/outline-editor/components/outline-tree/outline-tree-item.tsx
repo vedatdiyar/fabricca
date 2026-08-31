@@ -49,7 +49,7 @@ export function OutlineTreeItem({
       }`}
     >
       <div className="flex items-start gap-2.5 min-w-0 flex-1 pr-1">
-        <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-primary/15 text-primary border border-primary/20 text-xs font-bold font-mono">
+        <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-primary/20 text-primary border border-primary/20 text-xs font-bold font-mono">
           {index + 1}
         </span>
         <div className="space-y-1 min-w-0 flex-1">
@@ -97,7 +97,7 @@ export function OutlineTreeItem({
           className={`h-4 w-4 transition-transform ${
             isSelected
               ? "text-primary translate-x-0.5"
-              : "text-muted-foreground/60"
+              : "text-muted-foreground"
           }`}
         />
       </div>

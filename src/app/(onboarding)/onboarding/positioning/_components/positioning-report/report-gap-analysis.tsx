@@ -15,11 +15,16 @@ export function ReportGapAnalysis({
   gapAnalysisSummary,
 }: ReportGapAnalysisProps) {
   return (
-    <div className="space-y-3">
+    <div className="space-y-3.5">
       <div className="flex flex-col space-y-1">
-        <h2 className="font-serif text-base font-semibold tracking-tight text-foreground">
-          Akademik Boşluk Analizi ve Çok Kanallı Literatür Sentezi
-        </h2>
+        <div className="flex items-center justify-between">
+          <h2 className="font-serif text-base font-semibold tracking-tight text-foreground">
+            Akademik Boşluk Analizi ve Çok Kanallı Literatür Sentezi
+          </h2>
+          <span className="font-mono text-xs text-muted-foreground">
+            3 Boyutlu Sentez
+          </span>
+        </div>
         <p className="text-sm leading-relaxed text-muted-foreground">
           Çalışmanızın literatürdeki konumu, tespit edilen boşluklar ve özgün
           katkısı aşağıda 3 stratejik boyutta sentezlenmiştir.

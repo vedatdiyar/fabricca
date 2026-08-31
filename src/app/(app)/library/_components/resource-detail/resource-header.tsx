@@ -216,7 +216,7 @@ export function ResourceHeader({
           {/* 4. PDF Durumu */}
           {resource.pdfStatus === "READY" && (
             <div
-              className="flex h-7 w-7 items-center justify-center rounded text-muted-foreground/70"
+              className="flex h-7 w-7 items-center justify-center rounded text-muted-foreground"
               title="PDF Yüklendi"
             >
               <FileText className="h-3.5 w-3.5" />
@@ -234,8 +234,8 @@ export function ResourceHeader({
       <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1 text-xs text-muted-foreground">
         {resource.authors.length > 0 && (
           <div className="flex items-center gap-1">
-            <span className="font-medium text-foreground/80">Yazar:</span>
-            <span className="text-foreground/95">
+            <span className="font-medium text-foreground">Yazar:</span>
+            <span className="text-foreground">
               {resource.authors.join(", ")}
             </span>
           </div>
@@ -243,12 +243,12 @@ export function ResourceHeader({
 
         {sourceVenue && (
           <>
-            <span className="text-muted-foreground/40 font-bold select-none">
+            <span className="text-muted-foreground font-bold select-none">
               •
             </span>
             <div className="flex items-center gap-1">
-              <span className="font-medium text-foreground/80">Yayıncı:</span>
-              <span className="text-foreground/90">
+              <span className="font-medium text-foreground">Yayıncı:</span>
+              <span className="text-foreground">
                 {sourceVenue}
                 {resource.publicationYear
                   ? ` (${resource.publicationYear})`
@@ -260,11 +260,11 @@ export function ResourceHeader({
 
         {!sourceVenue && resource.publicationYear && (
           <>
-            <span className="text-muted-foreground/40 font-bold select-none">
+            <span className="text-muted-foreground font-bold select-none">
               •
             </span>
             <div className="flex items-center gap-1">
-              <span className="font-medium text-foreground/80">Yıl:</span>
+              <span className="font-medium text-foreground">Yıl:</span>
               <span>{resource.publicationYear}</span>
             </div>
           </>
@@ -272,11 +272,11 @@ export function ResourceHeader({
 
         {resource.doi && (
           <>
-            <span className="text-muted-foreground/40 font-bold select-none">
+            <span className="text-muted-foreground font-bold select-none">
               •
             </span>
             <div className="flex items-center gap-1">
-              <span className="font-medium text-foreground/80">DOI:</span>
+              <span className="font-medium text-foreground">DOI:</span>
               <a
                 href={`https://doi.org/${resource.doi}`}
                 target="_blank"

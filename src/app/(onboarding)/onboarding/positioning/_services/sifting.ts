@@ -96,11 +96,8 @@ export async function searchAndSiftTheses(
     logger,
     pipelineRun,
   );
-  const [[yokRes1, yokRes2], [openAlexRes1, openAlexRes2], semanticScholarRes] = [
-    yokResults,
-    openAlexResults,
-    s2Results,
-  ] as const;
+  const [[yokRes1, yokRes2], [openAlexRes1, openAlexRes2], semanticScholarRes] =
+    [yokResults, openAlexResults, s2Results] as const;
 
   const candidates: SiftedThesis[] = [];
   const seenTitles = new Set<string>();
@@ -222,7 +219,14 @@ export async function searchAndSiftTheses(
 
   if (validCandidates.length === 0) return [];
 
-  return rerankCandidates(validCandidates, distilledQuery, matrixInput, logger, pipelineRun, topN);
+  return rerankCandidates(
+    validCandidates,
+    distilledQuery,
+    matrixInput,
+    logger,
+    pipelineRun,
+    topN,
+  );
 }
 
 // ── Channel fetchers ──
@@ -234,22 +238,39 @@ async function fetchQdrantChannel(
 ) {
   const t0 = performance.now();
   const [r1, r2] = await Promise.all([
-    searchTheses(sanitizeSearchQuery(distilledQuery.thesisEmpiricalQuery), logger, {
-      limit: 12,
-      silent: true,
-    }).catch((err) => {
-      logger?.warn("sifting_qdrant_channel_error", { service: "thesis-search", error: err });
+    searchTheses(
+      sanitizeSearchQuery(distilledQuery.thesisEmpiricalQuery),
+      logger,
+      {
+        limit: 12,
+        silent: true,
+      },
+    ).catch((err) => {
+      logger?.warn("sifting_qdrant_channel_error", {
+        service: "thesis-search",
+        error: err,
+      });
       return [];
     }),
-    searchTheses(sanitizeSearchQuery(distilledQuery.thesisMethodologyQuery), logger, {
-      limit: 12,
-      silent: true,
-    }).catch((err) => {
-      logger?.warn("sifting_qdrant_channel_error", { service: "thesis-search", error: err });
+    searchTheses(
+      sanitizeSearchQuery(distilledQuery.thesisMethodologyQuery),
+      logger,
+      {
+        limit: 12,
+        silent: true,
+      },
+    ).catch((err) => {
+      logger?.warn("sifting_qdrant_channel_error", {
+        service: "thesis-search",
+        error: err,
+      });
       return [];
     }),
   ]);
-  pipelineRun?.subStep(`YÖK Theses (Qdrant x2 · ${r1.length + r2.length} candidates)`, performance.now() - t0);
+  pipelineRun?.subStep(
+    `YÖK Theses (Qdrant x2 · ${r1.length + r2.length} candidates)`,
+    performance.now() - t0,
+  );
   return [r1, r2] as const;
 }
 
@@ -260,16 +281,31 @@ async function fetchOpenAlexChannel(
 ) {
   const t0 = performance.now();
   const [r1, r2] = await Promise.all([
-    searchOpenAlex(sanitizeSearchQuery(distilledQuery.globalTheoreticalQuery), 8).catch((err) => {
-      logger?.warn("sifting_openalex_channel_error", { service: "openalex", error: err });
+    searchOpenAlex(
+      sanitizeSearchQuery(distilledQuery.globalTheoreticalQuery),
+      8,
+    ).catch((err) => {
+      logger?.warn("sifting_openalex_channel_error", {
+        service: "openalex",
+        error: err,
+      });
       return [];
     }),
-    searchOpenAlex(sanitizeSearchQuery(distilledQuery.globalEmpiricalQuery), 8).catch((err) => {
-      logger?.warn("sifting_openalex_channel_error", { service: "openalex", error: err });
+    searchOpenAlex(
+      sanitizeSearchQuery(distilledQuery.globalEmpiricalQuery),
+      8,
+    ).catch((err) => {
+      logger?.warn("sifting_openalex_channel_error", {
+        service: "openalex",
+        error: err,
+      });
       return [];
     }),
   ]);
-  pipelineRun?.subStep(`OpenAlex (Global x2 · ${r1.length + r2.length} papers)`, performance.now() - t0);
+  pipelineRun?.subStep(
+    `OpenAlex (Global x2 · ${r1.length + r2.length} papers)`,
+    performance.now() - t0,
+  );
   return [r1, r2] as const;
 }
 
@@ -279,14 +315,23 @@ async function fetchSemanticScholarChannel(
   pipelineRun: PipelineRun | undefined,
 ) {
   const t0 = performance.now();
+  const query =
+    distilledQuery.semanticScholarQuery ||
+    distilledQuery.globalTheoreticalQuery;
   const res = await searchSemanticScholarPapers(
-    sanitizeSearchQuery(distilledQuery.globalTheoreticalQuery),
+    sanitizeSearchQuery(query),
     10,
   ).catch((err) => {
-      logger?.warn("sifting_s2_channel_error", { service: "thesis-search", error: err });
-      return [];
+    logger?.warn("sifting_s2_channel_error", {
+      service: "thesis-search",
+      error: err,
     });
-  pipelineRun?.subStep(`Semantic Scholar (${res.length} papers)`, performance.now() - t0);
+    return [];
+  });
+  pipelineRun?.subStep(
+    `Semantic Scholar (${res.length} papers)`,
+    performance.now() - t0,
+  );
   return res;
 }
 
@@ -340,8 +385,12 @@ async function rerankCandidates(
       return 0;
     });
 
-    const confident = scoredTheses.filter((t) => (t.relevanceScore ?? 0) >= MIN_COHERE_RELEVANCE_SCORE);
-    const finalSelected = (confident.length >= 6 ? confident : scoredTheses).slice(0, topN);
+    const confident = scoredTheses.filter(
+      (t) => (t.relevanceScore ?? 0) >= MIN_COHERE_RELEVANCE_SCORE,
+    );
+    const finalSelected = (
+      confident.length >= 6 ? confident : scoredTheses
+    ).slice(0, topN);
     return finalSelected;
   } catch (err) {
     logger?.warn("cohere_rerank_fallback_to_raw", { error: err });

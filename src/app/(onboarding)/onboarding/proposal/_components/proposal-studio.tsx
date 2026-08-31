@@ -91,7 +91,7 @@ const proposalPreviewComponents: Components = {
       }
     }
     return (
-      <p className="text-sm leading-relaxed text-foreground/90 mb-3.5 last:mb-0">
+      <p className="text-sm leading-relaxed text-foreground mb-3.5 last:mb-0">
         {children}
       </p>
     );
@@ -100,28 +100,28 @@ const proposalPreviewComponents: Components = {
     <strong className="font-semibold text-foreground">{children}</strong>
   ),
   em: ({ children }) => (
-    <em className="italic text-foreground/80">{children}</em>
+    <em className="italic text-foreground">{children}</em>
   ),
   ul: ({ children }) => (
-    <ul className="list-disc pl-5 space-y-1.5 my-3 text-sm text-foreground/90">
+    <ul className="list-disc pl-5 space-y-1.5 my-3 text-sm text-foreground">
       {children}
     </ul>
   ),
   ol: ({ children }) => (
-    <ol className="list-decimal pl-5 space-y-1.5 my-3 text-sm text-foreground/90">
+    <ol className="list-decimal pl-5 space-y-1.5 my-3 text-sm text-foreground">
       {children}
     </ol>
   ),
   li: ({ children }) => (
-    <li className="text-sm leading-relaxed text-foreground/90">{children}</li>
+    <li className="text-sm leading-relaxed text-foreground">{children}</li>
   ),
   blockquote: ({ children }) => (
-    <blockquote className="border-l-2 border-primary/40 bg-primary/5 py-2 px-3.5 my-3 rounded-r-md text-sm italic text-foreground/90">
+    <blockquote className="border-l-2 border-primary/40 bg-primary/10 py-2 px-3.5 my-3 rounded-r-md text-sm italic text-foreground">
       {children}
     </blockquote>
   ),
   table: ({ children }) => (
-    <div className="overflow-x-auto my-4 rounded-md border border-border/70 bg-card/40">
+    <div className="overflow-x-auto my-4 rounded-md border border-border/60 bg-card/40">
       <table className="w-full text-xs border-collapse divide-y divide-border/60">
         {children}
       </table>
@@ -133,12 +133,12 @@ const proposalPreviewComponents: Components = {
     </thead>
   ),
   th: ({ children }) => (
-    <th className="text-left px-3.5 py-2.5 font-medium border-b border-border/70 text-foreground/80">
+    <th className="text-left px-3.5 py-2.5 font-medium border-b border-border/60 text-foreground">
       {children}
     </th>
   ),
   td: ({ children }) => (
-    <td className="px-3.5 py-2.5 border-b border-border/40 text-foreground/90 leading-normal align-top">
+    <td className="px-3.5 py-2.5 border-b border-border/40 text-foreground leading-normal align-top">
       {children}
     </td>
   ),
@@ -153,7 +153,7 @@ const proposalPreviewComponents: Components = {
       href={href}
       target="_blank"
       rel="noopener noreferrer"
-      className="text-primary underline underline-offset-2 hover:text-primary/80 transition-colors"
+      className="text-primary underline underline-offset-2 hover:text-primary transition-colors"
     >
       {children}
     </a>
@@ -265,7 +265,7 @@ export function ProposalStudio({ initialProposal = "" }: ProposalStudioProps) {
     <div className="w-full space-y-4">
       <Card className="flex flex-col rounded-lg border border-border bg-card shadow-sm overflow-hidden">
         {/* Studio Header */}
-        <div className="p-4 sm:p-5 border-b border-border/70 bg-card/60">
+        <div className="p-4 sm:p-5 border-b border-border/60 bg-card/60">
           <div className="flex items-center justify-between gap-3 flex-wrap">
             <div className="flex items-center gap-2.5">
               <span className="flex items-center justify-center size-5 rounded bg-primary/10 text-primary font-mono text-xs font-semibold">
@@ -324,7 +324,7 @@ export function ProposalStudio({ initialProposal = "" }: ProposalStudioProps) {
                     }
                   }}
                   placeholder="Tezinizin konusunu, merak ettiğiniz problemi veya araştırma taslağınızı buraya yazın ya da kopyaladığınız metni yapıştırın..."
-                  className="w-full min-h-[400px] h-full bg-transparent text-sm leading-relaxed font-sans text-foreground placeholder:text-muted-foreground/50 border-0 outline-none resize-none focus:outline-none focus:ring-0 p-0 m-0"
+                  className="w-full min-h-[400px] h-full bg-transparent text-sm leading-relaxed font-sans text-foreground placeholder:text-muted-foreground border-0 outline-none resize-none focus:outline-none focus:ring-0 p-0 m-0"
                   autoFocus
                 />
               ) : (
@@ -346,7 +346,7 @@ export function ProposalStudio({ initialProposal = "" }: ProposalStudioProps) {
         </div>
 
         {/* Studio Permanent Footer Bar */}
-        <div className="flex items-center justify-between px-4 sm:px-6 py-3 border-t border-border/70 bg-card/90">
+        <div className="flex items-center justify-between px-4 sm:px-6 py-3 border-t border-border/60 bg-card/90">
           <div className="flex items-center gap-3">
             <span className="inline-flex items-center gap-1.5 font-mono text-xs text-muted-foreground">
               <span className="font-semibold text-foreground">
@@ -360,7 +360,7 @@ export function ProposalStudio({ initialProposal = "" }: ProposalStudioProps) {
               </span>
             )}
             {hasProposal && hasMinWords && (
-              <span className="hidden sm:inline-block text-xs text-muted-foreground/60">
+              <span className="hidden sm:inline-block text-xs text-muted-foreground">
                 • {rawProposal.trim().length.toLocaleString("tr-TR")} karakter
               </span>
             )}
@@ -369,7 +369,12 @@ export function ProposalStudio({ initialProposal = "" }: ProposalStudioProps) {
           <Button
             type="button"
             onClick={handleStartAnalysis}
-            disabled={!hasProposal || !hasMinWords || rawProposal.trim().length < 50 || isAuditing}
+            disabled={
+              !hasProposal ||
+              !hasMinWords ||
+              rawProposal.trim().length < 50 ||
+              isAuditing
+            }
             size="default"
             className="cursor-pointer font-medium"
           >
@@ -381,7 +386,3 @@ export function ProposalStudio({ initialProposal = "" }: ProposalStudioProps) {
     </div>
   );
 }
-
-
-
-

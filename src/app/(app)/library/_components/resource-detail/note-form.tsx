@@ -232,7 +232,7 @@ export function NoteForm({
               value={selectedOutlineId}
               onValueChange={setSelectedOutlineId}
             >
-              <SelectTrigger className="h-8 text-xs bg-card/70 border-border/60">
+              <SelectTrigger className="h-8 text-xs bg-card/60 border-border/60">
                 <SelectValue placeholder="Bölüm Seçin (Opsiyonel)" />
               </SelectTrigger>
               <SelectContent className="max-h-64">
@@ -255,7 +255,7 @@ export function NoteForm({
               placeholder="Örn: 15 veya 15-17"
               value={pageNumber}
               onChange={(e) => setPageNumber(e.target.value)}
-              className="h-8 text-xs bg-card/70 border-border/60"
+              className="h-8 text-xs bg-card/60 border-border/60"
             />
           </div>
 
@@ -276,7 +276,7 @@ export function NoteForm({
                     onClick={() => setNoteType(type)}
                     className={
                       isActive
-                        ? "flex-1 py-1 text-[11px] font-semibold rounded bg-card text-foreground border border-border/70 shadow-xs text-center truncate"
+                        ? "flex-1 py-1 text-[11px] font-semibold rounded bg-card text-foreground border border-border/60 shadow-xs text-center truncate"
                         : "flex-1 py-1 text-[11px] text-muted-foreground hover:text-foreground text-center truncate"
                     }
                   >

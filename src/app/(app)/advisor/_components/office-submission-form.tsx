@@ -193,11 +193,11 @@ export function OfficeSubmissionForm({
                             className="my-1 border-b border-border/40 pb-1 last:border-b-0 last:pb-0"
                           >
                             <SelectLabel className="text-xs font-semibold text-muted-foreground flex items-center gap-1.5 px-2.5 py-1 bg-muted/40 rounded-xs select-none">
-                              <Folder className="size-3.5 text-primary/80 shrink-0" />
+                              <Folder className="size-3.5 text-primary shrink-0" />
                               <span className="truncate">
                                 {group.parent.title}
                               </span>
-                              <span className="text-xs text-muted-foreground/70 font-normal ml-auto shrink-0">
+                              <span className="text-xs text-muted-foreground font-normal ml-auto shrink-0">
                                 (Ana Bölüm)
                               </span>
                             </SelectLabel>
@@ -209,7 +209,7 @@ export function OfficeSubmissionForm({
                                 className="text-xs py-2 pl-4 cursor-pointer"
                               >
                                 <div className="flex items-center gap-2">
-                                  <span className="text-primary/70 text-xs">
+                                  <span className="text-primary text-xs">
                                     ↳
                                   </span>
                                   <BookOpen className="size-3.5 text-primary shrink-0" />

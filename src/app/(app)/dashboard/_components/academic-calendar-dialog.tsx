@@ -97,7 +97,7 @@ export function AcademicCalendarDialog({
                 onClick={() => setDegree("MASTER")}
                 className={`flex flex-col items-start p-3 rounded-lg border text-left transition-all ${
                   degree === "MASTER"
-                    ? "border-primary bg-primary/5 text-foreground"
+                    ? "border-primary bg-primary/10 text-foreground"
                     : "border-border/60 bg-muted/20 text-muted-foreground hover:border-border"
                 }`}
               >
@@ -114,7 +114,7 @@ export function AcademicCalendarDialog({
                 onClick={() => setDegree("DOCTORATE")}
                 className={`flex flex-col items-start p-3 rounded-lg border text-left transition-all ${
                   degree === "DOCTORATE"
-                    ? "border-primary bg-primary/5 text-foreground"
+                    ? "border-primary bg-primary/10 text-foreground"
                     : "border-border/60 bg-muted/20 text-muted-foreground hover:border-border"
                 }`}
               >

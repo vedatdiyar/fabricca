@@ -39,7 +39,7 @@ export function OutlineSkeleton() {
                 <Skeleton className="size-7 shrink-0 rounded-full" />
                 <div className="flex-1 space-y-2">
                   <Skeleton className="h-5 w-2/3" />
-                  <Skeleton className="h-3 w-4/5" />
+                  <Skeleton className="h-3 w-4/10" />
                 </div>
               </div>
               <div className="flex gap-1">

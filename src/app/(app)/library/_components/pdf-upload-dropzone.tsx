@@ -86,7 +86,7 @@ export function PdfUploadDropzone({
       <Card
         className={`flex-1 flex flex-col justify-center items-center border border-dashed transition-all relative overflow-hidden ${
           isDragOver
-            ? "border-primary bg-primary/5 shadow-inner"
+            ? "border-primary bg-primary/10 shadow-inner"
             : "border-border/80 bg-muted/10 hover:bg-muted/20 hover:border-border"
         }`}
         onDragOver={(e) => {
@@ -165,7 +165,7 @@ export function PdfUploadDropzone({
                   <FileText className="h-4 w-4 text-primary" />
                   Cihazdan PDF Seç
                 </Button>
-                <span className="text-[11px] text-muted-foreground/70 font-mono">
+                <span className="text-[11px] text-muted-foreground font-mono">
                   Maksimum 25 MB • Yalnızca PDF formatı
                 </span>
               </div>

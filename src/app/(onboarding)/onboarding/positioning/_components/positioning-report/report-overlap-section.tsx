@@ -23,7 +23,7 @@ export function ReportOverlapSection({
   const overlappingWorks = gapSummary?.overlappingWorks ?? [];
 
   return (
-    <div className="space-y-4 rounded-lg border border-destructive/30 bg-destructive/5 p-5">
+    <div className="space-y-4 rounded-lg border border-destructive/30 bg-destructive/10 p-5">
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 pb-3 border-b border-destructive/20">
         <div className="flex items-center gap-2">
           <AlertTriangle className="size-4 text-destructive shrink-0" />
@@ -63,7 +63,7 @@ export function ReportOverlapSection({
                       {mainTitle}
                     </h4>
                     {secondaryTitle && (
-                      <p className="font-serif text-xs italic text-muted-foreground/80 leading-relaxed">
+                      <p className="font-serif text-xs italic text-muted-foreground leading-relaxed">
                         {secondaryTitle}
                       </p>
                     )}
@@ -122,7 +122,7 @@ export function ReportOverlapSection({
                 </div>
 
                 {work.reason && (
-                  <div className="p-2.5 rounded-md bg-destructive/5 border border-destructive/15 text-xs text-foreground space-y-0.5">
+                  <div className="p-2.5 rounded-md bg-destructive/10 border border-destructive/20 text-xs text-foreground space-y-0.5">
                     <span className="font-semibold text-destructive block">
                       Jüri Ret Tutanağı Özeti:
                     </span>

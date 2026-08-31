@@ -34,7 +34,7 @@ export function QuadrantMetricsStrip({
         </div>
 
         <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-secondary/50 text-muted-foreground font-sans">
-          <Library className="h-3.5 w-3.5 text-primary/80" />
+          <Library className="h-3.5 w-3.5 text-primary" />
           <span className="font-mono font-medium text-foreground">
             {totalMetrics.totalSources}
           </span>

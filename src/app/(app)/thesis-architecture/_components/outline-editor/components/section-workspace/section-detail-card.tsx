@@ -100,7 +100,7 @@ export function SectionDetailCard({
         </div>
 
         {/* Scope & Description Block (Full Width) */}
-        <div className="w-full rounded-md border border-border/40 bg-muted/15 p-3.5 text-xs sm:text-sm text-foreground/90 leading-relaxed font-sans">
+        <div className="w-full rounded-md border border-border/40 bg-muted/20 p-3.5 text-xs sm:text-sm text-foreground leading-relaxed font-sans">
           {outline.description ? (
             <p className="whitespace-pre-line">{outline.description}</p>
           ) : (

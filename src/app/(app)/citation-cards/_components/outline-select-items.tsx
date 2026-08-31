@@ -63,7 +63,7 @@ export function OutlineSelectItems({
             <SelectGroup key={chapter.id} className="space-y-0.5 my-1">
               {/* Parent Chapter rendered as non-selectable Category/Group Label */}
               <SelectLabel className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider px-2 py-1.5 flex items-center gap-1.5 select-none bg-muted/20 rounded-xs">
-                <Folder className="h-3 w-3 text-primary/70 shrink-0" />
+                <Folder className="h-3 w-3 text-primary shrink-0" />
                 <span className="truncate">{chapter.title}</span>
               </SelectLabel>
 
@@ -75,7 +75,7 @@ export function OutlineSelectItems({
                   className="text-xs py-1.5 pl-6 text-foreground hover:bg-muted/50 rounded-sm cursor-pointer"
                 >
                   <div className="flex items-center gap-2 min-w-0">
-                    <CornerDownRight className="h-3 w-3 text-muted-foreground/70 shrink-0" />
+                    <CornerDownRight className="h-3 w-3 text-muted-foreground shrink-0" />
                     <span className="truncate">{sub.title}</span>
                   </div>
                 </SelectItem>
@@ -112,7 +112,7 @@ export function OutlineSelectItems({
             className="text-xs py-1.5 pl-4 text-muted-foreground hover:text-foreground"
           >
             <div className="flex items-center gap-2 min-w-0">
-              <CornerDownRight className="h-3 w-3 text-muted-foreground/60 shrink-0" />
+              <CornerDownRight className="h-3 w-3 text-muted-foreground shrink-0" />
               <span className="truncate">{orphan.title}</span>
             </div>
           </SelectItem>
