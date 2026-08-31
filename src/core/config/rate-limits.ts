@@ -74,8 +74,8 @@ export const GEMINI_MODEL_QUOTAS: Record<string, GeminiModelQuota> = {
 export const GEMINI_FALLBACK_CHAINS: Record<string, string | null> = {
   [FLASH_LITE_35]: FLASH_LITE_31,
   [FLASH_LITE_31]: null,
-  [FLASH_36]: FLASH_LITE_35,
-  [FLASH_37]: FLASH_LITE_35,
+  [FLASH_36]: null,
+  [FLASH_37]: FLASH_36,
 };
 
 /**
