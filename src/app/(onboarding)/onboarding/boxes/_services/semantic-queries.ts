@@ -99,7 +99,7 @@ export async function generateSemanticQueriesAction(
           zodSchema: bulkSemanticQuerySchema,
           seed: GEMINI_SEED,
           payloadStage: "semantic_query_generation",
-          quiet: true,
+          quiet: false,
         },
       );
 
@@ -111,7 +111,6 @@ export async function generateSemanticQueriesAction(
     log.info("semantic_query_generation_success", {
       service: "boxes",
       durationMs: Math.round(performance.now() - startTime),
-      hidden: true,
       data: { queryCount: queries.size },
     });
 

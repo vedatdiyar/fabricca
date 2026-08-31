@@ -76,6 +76,23 @@ export function isServerOverloadError(error: unknown): boolean {
 }
 
 /**
+ * Determines whether an error was caused by a client-side or gateway timeout.
+ *
+ * @param error - The error to inspect.
+ * @returns True when the error indicates a timeout.
+ */
+export function isTimeoutError(error: unknown): boolean {
+  if (!(error instanceof Error)) return false;
+  if (error.name === "TimeoutError") return true;
+  const msg = error.message.toLowerCase();
+  return (
+    msg.includes("timed out") ||
+    msg.includes("timeout") ||
+    msg.includes("deadline exceeded")
+  );
+}
+
+/**
  * Classifies any error into a user-facing scenario (quota, network, or system).
  *
  * @param error - The error value to classify.

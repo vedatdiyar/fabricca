@@ -93,18 +93,6 @@ export function createGeminiRetryPolicy(
           return true;
         }
 
-        const isOverload =
-          isServerOverloadError(error) ||
-          ("status" in error &&
-            ((error as { status: string }).status === "UNAVAILABLE" ||
-              (error as { status: string }).status === "RESOURCE_EXHAUSTED")) ||
-          ("code" in error &&
-            ((error as { code: number }).code === 503 ||
-              (error as { code: number }).code === 429)) ||
-          error.message.includes("high demand") ||
-          error.message.includes("503") ||
-          error.message.includes("UNAVAILABLE");
-
         if (
           error.message.includes("language guard violated") ||
           error.message.includes("disallowed CJK characters")
@@ -112,13 +100,22 @@ export function createGeminiRetryPolicy(
           return true;
         }
 
+        const isOverload =
+          isServerOverloadError(error) ||
+          ("status" in error &&
+            ((error as { status: string }).status === "UNAVAILABLE" ||
+              (error as { status: string }).status === "RESOURCE_EXHAUSTED")) ||
+          ("code" in error &&
+            (error as { code: number }).code === 503) ||
+          error.message.includes("high demand") ||
+          error.message.includes("503") ||
+          error.message.includes("UNAVAILABLE");
+
         if (isOverload) {
-          // If multiple keys exist in the pool, avoid stalling for 3 consecutive timeouts
-          // on the same key. Allow 1 retry on the current key, then failover on attempt >= 2.
-          if (getGeminiKeyPool().keys.length > 1 && attempt >= 2) {
-            return false;
-          }
-          return true;
+          // Server overload (503 / high demand) affects model capacity.
+          // Fail fast immediately on the first attempt so dispatchGeminiCall can failover
+          // to the configured fallback model (e.g. gemini-3.6-flash) without stalling.
+          return false;
         }
       }
       return false;

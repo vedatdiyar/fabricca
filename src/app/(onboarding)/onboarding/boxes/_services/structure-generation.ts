@@ -36,7 +36,6 @@ export async function runBoxStructureAction(
 
     log.info("box_structure_generation_start", {
       service: "boxes",
-      hidden: true,
     });
 
     const payload = buildBoxStructurePromptPayload({
@@ -59,14 +58,13 @@ export async function runBoxStructureAction(
           seed: GEMINI_SEED,
           thesisMatrix: matrix,
           payloadStage: "box_structure_generation",
-          quiet: true,
+          quiet: false,
         },
       );
 
     log.info("box_structure_generation_success", {
       service: "boxes",
       durationMs: Math.round(performance.now() - startTime),
-      hidden: true,
     });
 
     return { success: true, structure };

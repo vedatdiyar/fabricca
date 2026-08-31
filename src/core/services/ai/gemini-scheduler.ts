@@ -19,6 +19,7 @@ import {
   isRateLimitError,
   isRpdError,
   isServerOverloadError,
+  isTimeoutError,
 } from "./llm-errors";
 import {
   markKeyRpdExhausted,
@@ -32,6 +33,36 @@ import {
 import { getBalancedKeyCandidates } from "./candidate-selector";
 
 export { getKeyUsageStats, resetGeminiScheduler };
+
+/** Client timeout in milliseconds for the primary model when a fallback model exists (45s). */
+export const GEMINI_PRIMARY_MODEL_TIMEOUT_MS = 45_000;
+
+/**
+ * Wraps a promise with a timeout deadline in milliseconds.
+ *
+ * @param promise - The promise to await.
+ * @param timeoutMs - Maximum allowed duration in milliseconds.
+ * @param timeoutErrorMsg - Error message to throw if timeout expires.
+ * @returns The resolved value of the promise.
+ */
+function withPromiseTimeout<T>(
+  promise: Promise<T>,
+  timeoutMs: number,
+  timeoutErrorMsg: string,
+): Promise<T> {
+  let timer: NodeJS.Timeout | null = null;
+  const timeoutPromise = new Promise<never>((_, reject) => {
+    timer = setTimeout(() => {
+      const err = new Error(timeoutErrorMsg);
+      err.name = "TimeoutError";
+      reject(err);
+    }, timeoutMs);
+  });
+
+  return Promise.race([promise, timeoutPromise]).finally(() => {
+    if (timer) clearTimeout(timer);
+  });
+}
 
 /** The `(model, apiKey)` pair a Gemini call is dispatched on. */
 export interface GeminiTarget {
@@ -98,7 +129,16 @@ export async function dispatchGeminiCall<T>(
       const apiKey = pool[keyIndicesToTry[i]];
       incrementInFlight(apiKey);
       try {
-        const result = await params.task({ model, apiKey });
+        const isPrimaryWithFallback = model !== models[models.length - 1];
+        const taskPromise = params.task({ model, apiKey });
+        const result = isPrimaryWithFallback
+          ? await withPromiseTimeout(
+              taskPromise,
+              GEMINI_PRIMARY_MODEL_TIMEOUT_MS,
+              `Model ${model} request exceeded client timeout (${GEMINI_PRIMARY_MODEL_TIMEOUT_MS / 1000}s)`,
+            )
+          : await taskPromise;
+
         // Increment usage count for balanced tracking
         recordKeyUsage(apiKey);
         return result;
@@ -110,11 +150,14 @@ export async function dispatchGeminiCall<T>(
           markKeyRpmCoolingDown(model, apiKey);
         }
 
-        // 503 / High demand overload is a model-level capacity constraint affecting all keys.
+        const isOverload = isServerOverloadError(error);
+        const isTimeout = isTimeoutError(error);
+
+        // 503 / High demand overload or 45s Timeout is a model-level capacity constraint affecting all keys.
         // If a fallback model is configured, immediately failover to the next model without
         // spinning through all other keys on the overloaded model.
         if (
-          isServerOverloadError(error) &&
+          (isOverload || isTimeout) &&
           model !== models[models.length - 1]
         ) {
           const nextModel = models[models.indexOf(model) + 1];
@@ -122,10 +165,12 @@ export async function dispatchGeminiCall<T>(
             service: "gemini",
             status: "RETRY",
             data: {
-              summary: `(model ${model} overloaded [503/high-demand], falling back to ${nextModel})`,
+              summary: isTimeout
+                ? `(model ${model} timed out after ${GEMINI_PRIMARY_MODEL_TIMEOUT_MS / 1000}s, falling back to ${nextModel})`
+                : `(model ${model} overloaded [503/high-demand], falling back to ${nextModel})`,
               fromModel: model,
               toModel: nextModel,
-              reason: "server_overload",
+              reason: isTimeout ? "client_timeout" : "server_overload",
             },
           });
           break;

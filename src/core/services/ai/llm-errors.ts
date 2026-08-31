@@ -4,6 +4,7 @@ import {
   isRateLimitError,
   isRpdError,
   isServerOverloadError,
+  isTimeoutError,
   classifyError,
 } from "./error-classifier";
 import {
@@ -21,6 +22,7 @@ export {
   isRateLimitError,
   isRpdError,
   isServerOverloadError,
+  isTimeoutError,
   classifyError,
   extractRetryDelayMs,
   extractQuotaDetails,

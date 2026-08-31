@@ -15,10 +15,17 @@ interface StageRecord {
   error?: string;
 }
 
+interface ActiveStage {
+  key: string;
+  index: number;
+  badgePrinted: boolean;
+}
+
 interface FlowRecord {
   definitionId: string;
   createdAt: number;
   headerPrinted: boolean;
+  activeStage?: ActiveStage;
   stages: Map<string, StageRecord>;
 }
 
@@ -162,9 +169,24 @@ export class PipelineRun {
   ): void {
     this.printHeader();
     if (this.devMode) {
+      const active = this.record.activeStage;
+      let stageIndex: number | undefined = undefined;
+      let stageTotal: number | undefined = undefined;
+      let stageKey: string | undefined = undefined;
+
+      if (active && !active.badgePrinted) {
+        stageIndex = active.index + 1;
+        stageTotal = this.definition.stages.length;
+        stageKey = active.key;
+        active.badgePrinted = true;
+      }
+
       console.log(
         formatStageLine({
-          isSubStep: true,
+          stageIndex,
+          stageTotal,
+          stageKey,
+          isSubStep: stageIndex === undefined,
           description,
           durationMs: Math.round(durationMs),
           status,
@@ -195,6 +217,12 @@ export class PipelineRun {
     const stageDesc = options?.description ?? defaultDescriptionForKey(key);
     const startedAt = performance.now();
 
+    this.record.activeStage = {
+      key,
+      index,
+      badgePrinted: false,
+    };
+
     try {
       const result = await fn();
       const durationMs = Math.round(performance.now() - startedAt);
@@ -207,11 +235,14 @@ export class PipelineRun {
       });
 
       if (this.devMode) {
+        const active = this.record.activeStage;
+        const badgePrinted = active?.badgePrinted ?? false;
         console.log(
           formatStageLine({
-            stageIndex: index + 1,
-            stageTotal: total,
-            stageKey: key,
+            stageIndex: badgePrinted ? undefined : index + 1,
+            stageTotal: badgePrinted ? undefined : total,
+            stageKey: badgePrinted ? undefined : key,
+            isSubStep: badgePrinted,
             description: stageDesc,
             durationMs,
             status: "SUCCESS",
@@ -243,11 +274,14 @@ export class PipelineRun {
       });
 
       if (this.devMode) {
+        const active = this.record.activeStage;
+        const badgePrinted = active?.badgePrinted ?? false;
         console.log(
           formatStageLine({
-            stageIndex: index + 1,
-            stageTotal: total,
-            stageKey: key,
+            stageIndex: badgePrinted ? undefined : index + 1,
+            stageTotal: badgePrinted ? undefined : total,
+            stageKey: badgePrinted ? undefined : key,
+            isSubStep: badgePrinted,
             description: stageDesc,
             durationMs,
             status: "FAILED",
@@ -269,6 +303,8 @@ export class PipelineRun {
         });
       }
       throw err;
+    } finally {
+      this.record.activeStage = undefined;
     }
   }
 
