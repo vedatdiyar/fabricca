@@ -30,26 +30,7 @@ export function buildPdfParserPromptPayload(
    - Ensure all Turkish characters (ç, ğ, ı, ö, ş, ü, İ) are normalized and preserved without corruption.`,
 
     outputFormat:
-      "Return structured JSON with a 'metadata' object adhering strictly to the provided document metadata schema.",
-
-    examples: `<example>
-<input>
-Alternatif Politika, Cilt. 5, Sayı. 1, 45-68, Nisan 2013
-YEREL YÖNETİŞİMDE KATILIMCI DEMOKRASİ VE ŞEFFAFLIK PRATİKLERİ
-Ahmet YILMAZ
-</input>
-<output>
-{
-  "metadata": {
-    "title": "Yerel Yönetişimde Katılımcı Demokrasi ve Şeffaflık Pratikleri",
-    "authors": ["Ahmet Yılmaz"],
-    "containerTitle": "Alternatif Politika",
-    "publicationYear": 2013,
-    "publisher": "Alternatif Politika"
-  }
-}
-</output>
-</example>`,
+      "Return structured JSON with a 'metadata' object adhering strictly to the provided document metadata schema. Schema: {\"metadata\": {\"title\": string|null, \"authors\": string[], \"containerTitle\": string|null, \"publicationYear\": number|null, \"publisher\": string|null}}",
 
     inputContext: firstPagesText,
 
@@ -84,38 +65,7 @@ export function buildPdfReferencesPromptPayload(
    - Parse each reference into explicit fields: raw, documentType, title, containerTitle, authors, year, publisher, and publisherPlace.`,
 
     outputFormat:
-      "Return structured JSON with a 'references' array adhering strictly to the provided schema.",
-
-    examples: `<example>
-<input>
-Jordan, A. (2010). Environmental Policy in the European Union. London: Routledge.
-Mol, A. (2008). Environmental Governance in a Globalizing World. Cambridge: Cambridge University Press.
-</input>
-<output>
-{
-  "references": [
-    {
-      "raw": "Jordan, A. (2010). Environmental Policy in the European Union. London: Routledge.",
-      "documentType": "book",
-      "title": "Environmental Policy in the European Union",
-      "authors": ["Andrew Jordan"],
-      "year": 2010,
-      "publisher": "Routledge",
-      "publisherPlace": "London"
-    },
-    {
-      "raw": "Mol, A. (2008). Environmental Governance in a Globalizing World. Cambridge: Cambridge University Press.",
-      "documentType": "book",
-      "title": "Environmental Governance in a Globalizing World",
-      "authors": ["Arthur Mol"],
-      "year": 2008,
-      "publisher": "Cambridge University Press",
-      "publisherPlace": "Cambridge"
-    }
-  ]
-}
-</output>
-</example>`,
+      "Return structured JSON with a 'references' array adhering strictly to the provided schema. Schema: {\"references\": [{\"raw\": string, \"documentType\": string, \"title\": string, \"authors\": string[], \"year\": number|null, \"publisher\": string|null, \"publisherPlace\": string|null}]}",
 
     inputContext: bibliographyText,
 

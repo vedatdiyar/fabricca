@@ -59,7 +59,7 @@ export function buildBoxStructurePromptPayload(
 ## Katı Sadakat ve Dış Bilgi Yasağı (Strict Grounding & Negative Constraints)
 - Yalnızca ilgili kadran girdisinde açıkça sağlanan kavram, düşünür, aktör, yöntem ve malzemelerden alt kutu (sub-box), başlık ve kavramlar (concepts) türetin.
 - Girdide adı geçmeyen hiçbir teorik ekolü, düşünürü, olguyu veya kavramı KESİNLİKLE dışarıdan eklemeyin / uydurmayın.
-- Pre-training bilginizdeki genel geçer kavramları veya örneklerdeki (examples) terimleri girdide yoksa ASLA çıktıya dahil etmeyin.`,
+ - Pre-training bilginizdeki genel geçer kavramları girdide yoksa ASLA çıktıya dahil etmeyin.`,
 
     workflowSteps: `1. Matristeki her kadranı bağımsız olarak incele.
 2. Vaka aktörlerinin etkileşimine göre alt kutu sayısını belirle (N=1 veya N>=2).
@@ -68,80 +68,6 @@ export function buildBoxStructurePromptPayload(
 
     outputFormat:
       "Çıktı, sağlanan JSON şemasına harfiyen uyan saf JSON nesnesidir.",
-
-    examples: `<example>
-<input>
-KADRAN 1: SUBJECT_PROBLEM
-İlgili Matris Alanı: 1990'lar Türkiye'sinde yerel yönetimlerin neoliberal yeniden yapılanması ve kentsel rant pratiklerini büyükşehir belediyeleri üzerinden inceler.
-
-KADRAN 2: THEORETICAL_FRAMEWORK
-İlgili Matris Alanı: David Harvey'nin neoliberalizm kuramı, sermaye birikim modelleri ve kentsel mekânın metalaşması yaklaşımı.
-
-KADRAN 3: METHODOLOGY
-İlgili Matris Alanı: Nitel politika analizi ve belediye meclis kararlarının tematik kodlama şeması ile içerik analizi.
-
-KADRAN 4: PRIMARY_MATERIAL
-İlgili Matris Alanı: Büyükşehir Belediye Meclisi Tutanakları, Resmî Gazete İmar Tebliğleri ve Sayıştay Denetim Raporları arşivi.
-</input>
-<output>
-{
-  "subjectProblem": {
-    "title": "Yerel Yönetimlerde Neoliberal Dönüşüm",
-    "description": "1990'lar Türkiye'sinde büyükşehir belediyelerinin kurumsal ve mekânsal dönüşümü.",
-    "subBoxes": [
-      {
-        "title": "Büyükşehir Belediyeleri ve Kentsel Rant",
-        "description": "1990'larda yerel yönetimlerin piyasalaşma pratikleri ve kentsel rant dinamikleri.",
-        "concepts": ["Yerel Yönetimler", "Kentsel Rant", "Büyükşehir Belediyeleri", "Neoliberal Politikalar"]
-      }
-    ]
-  },
-  "theoreticalFramework": {
-    "title": "Neoliberalizm ve Kentsel Mekân Kuramı",
-    "description": "David Harvey'nin mekân üretimi ve sermaye birikim kuramsal çerçevesi.",
-    "subBoxes": [
-      {
-        "title": "David Harvey ve Mekânın Metalaşması",
-        "description": "Sermaye birikimi süreçlerinde kentsel mekânın metalaşması ve rant üretimi teorisi.",
-        "concepts": ["David Harvey", "Sermaye Birikimi", "Mekân Üretimi", "Metalaşma"]
-      }
-    ]
-  },
-  "methodology": {
-    "title": "Nitel Politika ve İçerik Analizi",
-    "description": "Politika belgeleri ve meclis kararlarının tematik kodlama ile incelenmesi.",
-    "subBoxes": [
-      {
-        "title": "Nitel Politika Analizi",
-        "description": "Yerel yönetim mevzuatı ve kamusal politika metinlerinin nitel çözümlenmesi.",
-        "concepts": ["Politika Analizi", "Mevzuat Analizi", "Kamusal Kararlar"]
-      },
-      {
-        "title": "Tematik Kodlama ve İçerik Analizi",
-        "description": "Belediye meclis tutanaklarının sistematik tematik kategorilere göre kodlanması.",
-        "concepts": ["Tematik Kodlama", "İçerik Analizi", "Karar Tipolojisi"]
-      }
-    ]
-  },
-  "primaryMaterial": {
-    "title": "Belediye Tutanakları ve Denetim Raporları",
-    "description": "Belediye meclis zabıtları, Resmî Gazete tebliğleri ve Sayıştay raporları külliyatı.",
-    "subBoxes": [
-      {
-        "title": "Belediye Meclis Tutanakları",
-        "description": "Büyükşehir belediyelerinin 1990'lar boyunca aldığı meclis kararları ve zabıtlar.",
-        "concepts": ["Meclis Tutanakları", "Belediye Zabıtları", "İmar Kararları"]
-      },
-      {
-        "title": "Resmî Tebliğler ve Sayıştay Raporları",
-        "description": "İmar mevzuatı tebliğleri ve Sayıştay denetim raporlarından oluşan resmî arşiv.",
-        "concepts": ["Resmî Gazete", "Sayıştay Raporları", "İmar Tebliğleri", "Mevzuat Arşivi"]
-      }
-    ]
-  }
-}
-</output>
-</example>`,
 
     inputContext: `Aşağıda araştırmacının Tez Konumlandırma Matrisi sunulmuştur:
 

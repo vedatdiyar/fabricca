@@ -121,34 +121,7 @@ ${c.comment ? `- Araştırmacı Notu: "${c.comment}"` : ""}`,
 4. Güven puanı ve tek cümlelik akademik gerekçe ile JSON formatında yanıtla.`,
 
     outputFormat:
-      "Yanıt yalnızca belirtilen JSON şemasına harfiyen uyan saf JSON nesnesi olmalıdır.",
-
-    examples: `<example>
-<input>
-Tez İskeleti:
-- [ID: 101] "1. Giriş: Araştırmanın Problemi ve Amacı"
-- [ID: 102] "2.1. Neoliberal Devlet ve Kentsel Mekânın Metalaşması"
-- [ID: 103] "3.2. Belediye Meclis Kararlarının Ampirik Analizi"
-
-Fişler:
-[Fiş ID: 55]
-- Kutu: Kuramsal Çerçeve (THEORETICAL_FRAMEWORK)
-- Kaynak: "The Limits to Capital" (David Harvey)
-- Alıntı: "Kentsel mekân sermaye krizlerini soğurmak için kullanılır."
-</input>
-<output>
-{
-  "mappings": [
-    {
-      "annotationId": 55,
-      "suggestedOutlineId": 102,
-      "confidenceScore": 0.95,
-      "rationale": "Bu alıntı, 2.1 alt başlığındaki sermaye birikimi ve kentsel rant teorisini doğrudan desteklemektedir."
-    }
-  ]
-}
-</output>
-</example>`,
+      "Yanıt yalnızca belirtilen JSON şemasına harfiyen uyan saf JSON nesnesi olmalıdır. Şema: {\"mappings\": [{\"annotationId\": number, \"suggestedOutlineId\": number, \"confidenceScore\": number, \"rationale\": string}]}",
 
     inputContext: `### TEZ MATRİSİ:
 - Problem: ${matrix.subjectProblem}

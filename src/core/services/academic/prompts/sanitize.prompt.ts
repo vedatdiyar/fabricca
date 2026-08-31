@@ -33,34 +33,7 @@ export function buildSanitizePromptPayload(
 - **Karakter Temizliği:** Başlık sonlarındaki dipnot veya asterisk (*) işaretlerini temizleyin.`,
 
     outputFormat:
-      "Girdideki nesnelerin sırasını bozmadan standardize edilmiş `title` ve `author` alanlarını içeren JSON nesnesi döndürün.",
-
-    examples: `<example>
-<input>
-[{"title": "the role of nato in post-cold war era (vol i)", "author": "prof. dr. ahmet yilmaz"}]
-</input>
-<output>
-[{"title": "The Role of NATO in Post-Cold War Era (Vol I)", "author": "Prof. Dr. Ahmet Yılmaz"}]
-</output>
-</example>
-
-<example>
-<input>
-[{"title": "turkiye de kamu yonetiminde dijital donusum ve e-devlet uygulamalarinin kamu hizmeti kalitesine etkisi", "author": "doç. dr. mehmet demir"}]
-</input>
-<output>
-[{"title": "Türkiye'de Kamu Yönetiminde Dijital Dönüşüm ve E-Devlet Uygulamalarının Kamu Hizmeti Kalitesine Etkisi", "author": "Doç. Dr. Mehmet Demir"}]
-</output>
-</example>
-
-<example>
-<input>
-[{"title": "14. textual analysis and discourse studies", "author": "sandra halperin, oliver heath"}]
-</input>
-<output>
-[{"title": "Textual Analysis and Discourse Studies", "author": "Sandra Halperin, Oliver Heath"}]
-</output>
-</example>`,
+      "Girdideki nesnelerin sırasını bozmadan standardize edilmiş `title` ve `author` alanlarını içeren JSON nesnesi döndürün. Şema: [{\"title\": string, \"author\": string}]",
 
     inputContext: `Aşağıdaki dizide yer alan nesnelerin title ve author alanlarını kurallara uygun biçimde düzenleyin:\n\n${JSON.stringify(
       items,

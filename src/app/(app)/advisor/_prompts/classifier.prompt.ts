@@ -31,52 +31,7 @@ export function buildClassifierPromptPayload(
 3. **mode:** Eğer kullanıcı mesajı denetlenip kritik tartışılacak paragraf/taslak metni (özellikle İngilizce tez pasajı) ise PIPELINE; bağımsız doğrudan bir soru veya işlem ise DIRECT seçilir.`,
 
     outputFormat:
-      "Çıktı, persona, reasoning, isActionQuery ve mode alanlarını içeren JSON nesnesidir.",
-
-    examples: `<example>
-<input>
-=== KULLANICININ SON MESAJI ===
-Tezimin kuramsal çerçevesini Pierre Bourdieu'nün habitus, alan kuramı ve sembolik iktidar kavram seti olarak güncelleyelim.
-</input>
-<output>
-{
-  "persona": "TEZ_ASSISTANT",
-  "reasoning": "Kullanıcı tez matrisindeki kuramsal çerçeveyi yeni bir kuram setiyle güncelleme işlemi talep etmektedir.",
-  "isActionQuery": true,
-  "mode": "DIRECT"
-}
-</output>
-</example>
-
-<example>
-<input>
-=== KULLANICININ SON MESAJI ===
-Douglas North'un kurumsal değişim teorisi ile Bourdieu'nün habitus kavramını sentezlemeyi düşünüyorum, bu teorik olarak nasıl savunulabilir?
-</input>
-<output>
-{
-  "persona": "SOCRATIC_ADVISOR",
-  "reasoning": "Kullanıcı kuramsal bir sentez fikri ve hipotez savunusu hakkında derinlemesine akademik rehberlik istemektedir.",
-  "isActionQuery": false,
-  "mode": "DIRECT"
-}
-</output>
-</example>
-
-<example>
-<input>
-=== KULLANICININ SON MESAJI ===
-Kütüphaneme 'Dijital Diplomasi' etiketli yeni bir alt kutu ekler misin?
-</input>
-<output>
-{
-  "persona": "TEZ_ASSISTANT",
-  "reasoning": "Kullanıcı doğrudan veritabanına yeni bir alt kutu ekleme işlemi talep etmektedir.",
-  "isActionQuery": true,
-  "mode": "DIRECT"
-}
-</output>
-</example>`,
+      "Çıktı, persona, reasoning, isActionQuery ve mode alanlarını içeren JSON nesnesidir. Şema: {\"persona\": \"SOCRATIC_ADVISOR\"|\"TEZ_ASSISTANT\", \"reasoning\": string, \"isActionQuery\": boolean, \"mode\": \"DIRECT\"|\"PIPELINE\"}",
 
     inputContext: `${historyText ? `### SOHBET GEÇMİŞİ:\n${historyText}\n\n` : ""}### KULLANICININ SON MESAJI:\n${userQuery}`,
 

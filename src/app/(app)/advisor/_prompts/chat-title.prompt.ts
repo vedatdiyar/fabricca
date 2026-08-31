@@ -19,29 +19,8 @@ export function buildChatTitlePromptPayload(userQuery: string): PromptPayload {
     rulesAndConstraints: `1. Konu başlığını doğrudan 3-5 kelimelik yalın Türkçe isim tamlaması olarak yaz.
 2. Yalnızca başlık metnini döndür (noktalama, tırnak veya açıklama içermeksizin).`,
 
-    outputFormat: "Çıktı, 'title' alanını içeren saf JSON nesnesidir.",
-
-    examples: `<example>
-<input>
-Pierre Bourdieu'nün kültürel sermaye ve habitus yaklaşımını tezimin 2. bölümünde nasıl konumlandırabilirim?
-</input>
-<output>
-{
-  "title": "Bourdieu Kültürel Sermaye Yaklaşımı"
-}
-</output>
-</example>
-
-<example>
-<input>
-Söylem-tarihsel analizde kodlama şeması oluştururken kategori sistemini nasıl kurmalıyım?
-</input>
-<output>
-{
-  "title": "Söylem Analizi Kodlama Metodolojisi"
-}
-</output>
-</example>`,
+    outputFormat:
+      "Çıktı, 'title' alanını içeren saf JSON nesnesidir. Şema: {\"title\": string (3-5 kelimelik Türkçe başlık)}",
 
     inputContext: `Kullanıcı Sorusu: ${userQuery}`,
 

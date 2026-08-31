@@ -40,34 +40,10 @@ export function buildStage1AuditPromptPayload(
 4. Taslaktaki olgusal iddiaların kaynak içeriğiyle tutarlılığını kontrol et.
 5. Bulguları önem sırasına göre sırala.`,
 
-    outputFormat: `- Çıktı, Türkçe akademik dilde yazılmış yapılandırılmış bir JSON nesnesidir.
+    outputFormat: `- Çıktı, Türkçe akademik dilde yazılmış yapılandırılmış bir JSON nesnesidir. Şema: {"summary": string, "hasCriticalIssues": boolean, "findings": [{"severity": "CRITICAL"|"WARNING"|"NOTE", "claim": string, "message": string}]}
 - "severity" alanı "CRITICAL", "WARNING" veya "NOTE" değerlerini alabilir.
 - Doğrulanmamış/alıntılanamayan iddialar için "hasCriticalIssues" değeri true olmalıdır.
 - Bulgu mesajları kısa, net ve doğrudan yazılmalıdır (ör. "Sayfa 12'deki alıntı s. 14-15 aralığında yer almaktadır.").`,
-
-    examples: `<example>
-<input>
-=== TASLAK PARAGRAF METNİ ===
-Yılmaz (2018, s. 45), kamu yönetiminde dijitalleşmenin merkezi denetimi tamamen ortadan kaldırdığını ve yetki devrini mutlaklaştırdığını öne sürer.
-
-=== KÜTÜPHANE KAYNAK BAĞLAMI ===
-- "Dijital Kamu Yönetimi ve Bürokrasi" (2018) | Ahmet Yılmaz | ss. 40-70
-  İçerik: Yilmaz emphasizes that digitalization reshapes administrative oversight without eliminating centralized coordination, establishing hybrid control mechanisms.
-</input>
-<output>
-{
-  "summary": "Taslakta Yılmaz (2018) referansı ile ilgili olgusal çelişki tespit edildi.",
-  "hasCriticalIssues": true,
-  "findings": [
-    {
-      "severity": "CRITICAL",
-      "claim": "Dijitalleşmenin merkezi denetimi tamamen ortadan kaldırdığı iddiası",
-      "message": "Yılmaz (2018, ss. 40-70) dijitalleşmenin merkezi denetimi kaldırmadığını, hibrit kontrol mekanizmaları yaratarak merkezileşmeyi farklı bir formda sürdürdüğünü belirtmektedir. Bu iddia kaynak metinle doğrudan çelişmektedir."
-    }
-  ]
-}
-</output>
-</example>`,
 
     inputContext: `### TASLAK PARAGRAF METNİ:
 ${draftText}

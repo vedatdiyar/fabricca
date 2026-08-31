@@ -9,10 +9,10 @@ function buildQuadrantSpecificInstruction(boxType: string): string {
       return `\n\n═══════════════════════════════════════════════════════════════════════════════\nKUTU TÜRE ÖZGÜ DEĞERLENDİRME REHBERİ — VAKA / KONU KUTUSU (SUBJECT_PROBLEM)\n═══════════════════════════════════════════════════════════════════════════════\n\nAmaç: Bu kutu tezin doğrudan incelediği ampirik vakaya, spesifik tarihsel döneme ve aktörlere odaklanır.\n\n## KABUL KRİTERİ\nTezin kapsadığı tarihsel dönemi ve vaka alanını doğrudan işleyen ampirik monografiler, saha araştırmaları ve vaka analizleri yüksek puan (80-95+) almalıdır.\n\n## DEĞERLENDİRME VE ELEME KRİTERLERİ\n1. Tezin kapsadığı olgusal/tarihsel dönemin DIŞINDAKİ başka bir döneme veya olaya odaklanan çalışmalar düşük puanlandırılmalıdır.\n2. Soyut, genel ve zamansız teorik/kuramsal eserler ve metodoloji el kitapları Vaka/Konu Kutusu için ayrı tutulmalıdır.`;
 
     case "THEORETICAL_FRAMEWORK":
-      return `\n\n═══════════════════════════════════════════════════════════════════════════════\nKUTU TÜRE ÖZGÜ DEĞERLENDİRME REHBERİ — TEORİK ÇERÇEVE KUTUSU (THEORETICAL_FRAMEWORK)\n═══════════════════════════════════════════════════════════════════════════════\n\nAmaç: Bu kutu tezin ampirik vakasını anlamlandırmada kullanılan soyut kuramlar, teorik kavramlar ve modellemelere odaklanır.\n\n## KABUL KRİTERİ\nİlgili kuramcıların birincil kuramsal metinleri ve bu teorileri tartışan literatür yüksek puan almalıdır.`;
+      return `\n\n═══════════════════════════════════════════════════════════════════════════════\nKUTU TÜRE ÖZGÜ DEĞERLENDİRME REHBERİ — TEORİK ÇERÇEVE KUTUSU (THEORETICAL_FRAMEWORK)\n═══════════════════════════════════════════════════════════════════════════════\n\nAmaç: Bu kutu tezin ampirik vakasını anlamlandırmada kullanılan soyut kuramlar, teorik kavramlar ve spesifik modellemelere odaklanır.\n\n## KABUL KRİTERİ\n1. **Spesifik Model ve Mekanizma Uyumu:** Alt kutu başlığında ve açıklamasında (\`subBoxTitle\`, \`description\`) tanımlanan spesifik kuramsal modele, kavramsal mekanizmaya veya belirtilen kuramcının doğrudan bu özgül modeline odaklanan eserler yüksek puan (80-100) almalıdır.\n2. **Kavramsal Derinlik:** İlgili kuramı doğrudan tartışan, geliştiren veya operasyonelleştiren temel birincil kuramsal metinler ve monografiler kabul edilmelidir.\n\n## DEĞERLENDİRME VE ELEME KRİTERLERİ\n1. **Kavramsal Teğetsellik / Yüzeysellik:** Kutuda belirtilen spesifik kuramsal mekanizmaya odaklanmayan; yalnızca kuramcının genel felsefesini, biyografisini veya şemsiye teorisini yüzeysel/genel geçer tartışan metinleri düşük puanla (0-40 puan) veya ele (\`isRelevant: false\`).\n2. Kutunun kuramsal çerçevesiyle ilgisiz genel felsefi veya disiplinlerarası tartışmaları ele.`;
 
     case "METHODOLOGY":
-      return `\n\n═══════════════════════════════════════════════════════════════════════════════\nKUTU TÜRE ÖZGÜ DEĞERLENDİRME REHBERİ — YÖNTEM KUTUSU (METHODOLOGY)\n═══════════════════════════════════════════════════════════════════════════════\n\nAmaç: Bu kutu tezin benimsediği araştırma deseni, veri toplama ve analiz tekniklerine yönelik metodolojik eserlere odaklanır.\n\n## KABUL KRİTERİ\n1. **Metodolojik Uyum:** Eserin sunduğu veya uyguladığı analiz yöntemi, alt kutu açıklamasında (description) tanımlanan araştırma deseni ve yöntemsel yaklaşımla doğrudan örtüşmelidir (80-100 puan).\n2. **Emsal Uygulama:** Kutu açıklamasında belirtilen yöntemin benzer araştırma alanlarına başarıyla uygulandığı emsal çalışmalar kabul edilebilir (60-79 puan).\n\n## DEĞERLENDİRME VE ELEME KRİTERLERİ\n1. **Yöntemsel Uyuşmazlık:** Alt kutu açıklamasında tanımlanan metodolojik yaklaşımdan sapan veya zıt bir analitik tasarım benimseyen çalışmaları düşük puanla (0-40 puan).\n2. Soyut genel felsefi tartışmalar veya yöntemsel kılavuz niteliği taşımayan kuramsal metinleri Yöntem Kutusu için ayrı tut.`;
+      return `\n\n═══════════════════════════════════════════════════════════════════════════════\nKUTU TÜRE ÖZGÜ DEĞERLENDİRME REHBERİ — YÖNTEM KUTUSU (METHODOLOGY)\n═══════════════════════════════════════════════════════════════════════════════\n\nAmaç: Bu kutu tezin benimsediği araştırma deseni, veri toplama ve analiz tekniklerine yönelik metodolojik eserlere odaklanır.\n\n## KABUL KRİTERİ\n1. **Metodolojik Uyum:** Eserin sunduğu veya uyguladığı analiz yöntemi, alt kutu açıklamasında (\`description\`) ve başlığında tanımlanan araştırma deseni ve yöntemsel yaklaşımla doğrudan örtüşmelidir (80-100 puan).\n2. **Emsal Uygulama:** Kutu açıklamasında belirtilen yöntemin benzer araştırma alanlarına başarıyla uygulandığı emsal metodolojik çalışmalar kabul edilebilir (60-79 puan).\n\n## DEĞERLENDİRME VE ELEME KRİTERLERİ\n1. **Yöntemsel Uyuşmazlık:** Alt kutu açıklamasında tanımlanan metodolojik yaklaşımdan sapan veya alakasız bir analitik tasarım benimseyen çalışmaları düşük puanla (0-40 puan).\n2. Soyut genel felsefi tartışmalar veya yöntemsel kılavuz niteliği taşımayan kuramsal metinleri Yöntem Kutusu için ayrı tut.`;
 
     case "PRIMARY_MATERIAL":
       return `\n\n═══════════════════════════════════════════════════════════════════════════════\nKUTU TÜRE ÖZGÜ DEĞERLENDİRME REHBERİ — BİRİNCİL MATERYAL KUTUSU (PRIMARY_MATERIAL)\n═══════════════════════════════════════════════════════════════════════════════\n\nAmaç: Bu kutu tezin doğrudan analiz ettiği birincil kaynaklara, belgesel arşivlere veya kanun/karar külliyatına odaklanır.`;
@@ -65,61 +65,17 @@ export function buildJuryPromptPayload(
 3. **Özet Derinliği ve Tohum Gücü (Seed Worthiness):** Eserin özeti (abstract) çalışmanın kuramsal/metodolojik iddiasını veya ampirik bulgularını açıkça yansıtmalıdır. Özeti olmayan veya içi boş tanıtım cümlelerinden ibaret olan çalışmaları tohum olmaya uygun görme (düşük puan ver veya ele).
 4. **Çok Kanallı Akademik Eşitlik:** Ulusal tezleri (YÖK), hakemli dergi makalelerini (DergiPark) ve uluslararası yayınları (OpenAlex, Semantic Scholar) alt kutu bağlamına uygunlukları açısından tamamen eşit akademik standartta ve liyakatle değerlendir.
 5. **Bütünsel Örtüşme ve Alan/Ölçek Uyumu:** Soyut kavram benzerliklerine aldanma. Eserin incelediği olgu ve ölçek tezin ve alt kutunun araştırma çerçevesiyle uyumlu olmalıdır. Örneğin makro-tarihsel kurumsal süreçleri inceleyen bir tez için anlık sokak protestolarındaki mikro-etkileşim duygu modellerini veya genel uluslararası ilişkiler dünya düzeni teorilerini teğetsel/uygunsuz olarak ele.
-6. **Metodolojik ve Epistemolojik Tutarlılık:** Yöntem kutusunda, tezin benimsediği araştırma deseniyle (nitel tarihsel-söylemsel analiz, çerçeveleme kodlaması vb.) taban tabana zıt olan katı nicel modelleri (örn. CMP frekans sayımı ve salience modelleri) yöntemsel uyuşmazlık nedeniyle düşük puanlandır veya ele.
+6. **Metodolojik ve Epistemolojik Tutarlılık:** Yöntem kutusunda, alt kutu açıklamasında ve tez matrisinde belirtilen araştırma deseni, veri toplama ve analiz yaklaşımıyla uyuşmayan veya bu yaklaşımdan kökten sapan yöntemleri yöntemsel uyuşmazlık nedeniyle düşük puanlandır veya ele.
 7. **Dönemsel Uygunluk:** Tezin ve kutunun kapsadığı tarihsel/olgusal dönemin dışındaki başka bir döneme veya olaya odaklanan çalışmalar düşük puanlandırılmalıdır.
 8. **Temel Monografiler:** Tezin kapsadığı tarihsel dönemi ve vaka alanını doğrudan işleyen kapsayıcı temel monografilere ve saha araştırmalarına yüksek relevans puanı (80-95+) ver.${quadrantBlock}`,
 
-    outputFormat: `Her değerlendirme için aşağıdaki alanları içeren JSON nesneleri dizisi döndürün:
+    outputFormat: `Her değerlendirme için aşağıdaki alanları içeren JSON nesneleri dizisi döndürün. Şema: {"evaluations": [{"thesisBoxId": number, "subBoxTitle": string, "articleTitle": string, "isRelevant": boolean, "relevanceScore": number, "reasoning": string}]}:
 - thesisBoxId: (girdide verilen box id)
 - subBoxTitle: (girdide verilen sub box başlığı)
 - articleTitle: makale başlığı (girdide verilen başlığı eksiksiz ve aynen yaz, asla boş bırakma; ANCAK başlık CJK karakter içeriyorsa asla kopyalama — yerine "[CJK başlık — dil filtresi]" yaz, böylece LANGUAGE_GUARD ihlali oluşmaz)
 - isRelevant: boolean
 - relevanceScore: 0-100 arası tam sayı
 - reasoning: Türkçe 1 cümlelik gerekçe`,
-
-    examples: `<example>
-<input>
-Tez Konusu: Gelişmekte olan ülkelerde yenilenebilir enerji dönüşümü ve yerel yönetişim dinamikleri
-Kutu Bağlamı:
-- Kutu ID: [Box 1]
-- Kutu Türü: SUBJECT_PROBLEM
-- Kutu Başlığı: "Yerel Enerji Kooperatifleri ve Katılımcı Karar Alma"
-- Kutu Açıklaması: "Enerji kooperatiflerinin yerel kalkınma ve kamu politikalarındaki dönüştürücü rolü."
-
-Makaleler:
-Makale 1: "Community Energy Initiatives and Local Governance Dynamics in Transition Economies"
-Authors: Elena Rostova
-Abstract: Examines the development and regulatory hurdles of citizen-led energy cooperatives in emerging markets.
-
-Makale 2: "Agricultural Policies and Cotton Production in South America"
-Authors: John Doe
-Abstract: Analyzes soybean and cotton export economics in Brazil during the 1990s.
-</input>
-<output>
-{
-  "evaluations": [
-    {
-      "thesisBoxId": 1,
-      "subBoxTitle": "Yerel Enerji Kooperatifleri ve Katılımcı Karar Alma",
-      "articleTitle": "Community Energy Initiatives and Local Governance Dynamics in Transition Economies",
-      "openAlexId": null,
-      "isRelevant": true,
-      "relevanceScore": 92,
-      "reasoning": "Tezin ve alt kutunun odaklandığı enerji kooperatifleri ve yerel yönetişim konusunu doğrudan ve kapsamlı bir biçimde incelemektedir."
-    },
-    {
-      "thesisBoxId": 1,
-      "subBoxTitle": "Yerel Enerji Kooperatifleri ve Katılımcı Karar Alma",
-      "articleTitle": "Agricultural Policies and Cotton Production in South America",
-      "openAlexId": null,
-      "isRelevant": false,
-      "relevanceScore": 0,
-      "reasoning": "Makalenin konusu ve araştırma alanı tez ve alt kutu bağlamıyla tamamen ilgisizdir."
-    }
-  ]
-}
-</output>
-</example>`,
 
     inputContext: `### Tez Konusu (Subject Problem):
 ${thesisSubject}

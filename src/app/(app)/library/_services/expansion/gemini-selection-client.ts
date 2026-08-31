@@ -120,33 +120,7 @@ ${payload.suspiciousCandidates
    - If fewer candidates exist than the target count, select all confirmed candidates.`,
 
     outputFormat:
-      "Output strict JSON adhering to the schema without markdown formatting or conversational filler.",
-
-    examples: `<example>
-<input>
-### Tez Bağlamı:
-Avrupa Birliği uyum sürecinde Türkiye'de çevre politikaları ve yerel çevre yönetişimi.
-
-### Mevcut Kütüphane Kaynakları (1 Adet):
-- "Environmental Governance and Policy Implementation in the European Union" [Arthur Mol]
-
-### Doğrulanmış Aday Kaynaklar:
-[0] "European Environmental Policy and National Adaptation" — Andrew Jordan (cited by 4 seed papers)
-[1] "Local Environmental Politics and Sustainability in Candidate Countries" — Maria Börzel (cited by 3 seed papers)
-
-### Şüpheli Çift Kayıtlar:
-[SUSPICIOUS_0]
-  Aday Başlık: "Environmental Governance in the EU (Revised Edition)" — Arthur Mol
-  Eşleşen Mevcut Başlık: "Environmental Governance and Policy Implementation in the European Union"
-</input>
-<output>
-{
-  "selectedIndices": [0, 1],
-  "suspiciousDuplicates": ["Environmental Governance in the EU (Revised Edition)"],
-  "suspiciousClear": []
-}
-</output>
-</example>`,
+      "Output strict JSON adhering to the schema without markdown formatting or conversational filler. Schema: {\"selectedIndices\": number[], \"suspiciousDuplicates\": string[], \"suspiciousClear\": string[]}",
 
     inputContext: `### Tez Bağlamı (Thesis Context):
 ${payload.thesisContext}

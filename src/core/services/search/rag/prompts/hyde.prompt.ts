@@ -22,35 +22,8 @@ export function buildHyDePromptPayload(query: string): PromptPayload {
 3. Extract key academic terminology in the target language.
 4. Generate a concise 2-3 sentence hypothetical academic document snippet in the target language matching the style of peer-reviewed literature.`,
 
-    outputFormat: "Output MUST strictly follow the required JSON schema.",
-
-    examples: `<example>
-<input>
-Kullanıcı Arama Sorgusu: "Siyasal iletişimde yapay zeka tabanlı kamuoyu analizi ve algı yönetimi"
-</input>
-<output>
-{
-  "detectedLanguage": "tr",
-  "targetTranslation": "Artificial intelligence-based public opinion analysis and perception management in political communication",
-  "targetKeywords": ["political communication", "artificial intelligence", "public opinion analysis", "perception management", "computational propaganda", "digital election campaigns"],
-  "hypotheticalSnippet": "Contemporary political communication increasingly incorporates machine learning and sentiment analysis to monitor voter behavior in real-time. Automated text classification models enable political actors to identify emerging issue salience and strategically tailor campaign messaging to distinct demographic segments."
-}
-</output>
-</example>
-
-<example>
-<input>
-Kullanıcı Arama Sorgusu: "David Harvey urban accumulation and neoliberal governance"
-</input>
-<output>
-{
-  "detectedLanguage": "en",
-  "targetTranslation": "David Harvey kentsel sermaye birikimi ve neoliberal yönetişim",
-  "targetKeywords": ["David Harvey", "kentsel birikim", "neoliberalizm", "mekân üretimi", "yerel yönetimler", "kentsel rant"],
-  "hypotheticalSnippet": "David Harvey'nin mekân üretimi ve sermayenin kentsel alana kayması kuramı, neoliberal dönemde yerel yönetimlerin girişimci bir karaktere bürünüşünü açıklamaktadır. Kentsel mekân, kamusal hizmet alanından ziyade sermaye birikiminin ve rant transferinin temel taşıyıcısı haline gelmiştir."
-}
-</output>
-</example>`,
+    outputFormat:
+      "Output MUST strictly follow the required JSON schema. Schema: {\"detectedLanguage\": string, \"targetTranslation\": string, \"targetKeywords\": string[], \"hypotheticalSnippet\": string}",
 
     inputContext: `Kullanıcı Arama Sorgusu (User Search Query): "${query}"`,
 

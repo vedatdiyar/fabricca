@@ -5,7 +5,7 @@
 
 export interface PromptPayload {
   /**
-   * Static system instructions, role, rules, workflow steps, output format, and few-shot examples.
+   * Static system instructions, role, rules, workflow steps, and output format.
    * Placed first in LLM calls to optimize Implicit Caching.
    */
   systemInstruction: string;
@@ -35,9 +35,6 @@ export interface PromptBuilderInput {
   /** Optional step-by-step decision workflow (# İşlem Adımları within <instructions>). */
   workflowSteps?: string;
 
-  /** Optional intra-disciplinary few-shot examples (<examples> block with <example><input>...</input><output>...</output></example>). */
-  examples?: string;
-
   /** Optional customized task trigger (<task> block). Defaults to standard trigger. */
   taskTrigger?: string;
 }
@@ -55,7 +52,7 @@ const LANGUAGE_GUARD =
 
 /**
  * Builds a standardized, type-safe PromptPayload following the Hybrid XML and Markdown
- * encapsulation rules defined in docs/LLM_INTEGRATION.md Section 4:
+ * encapsulation rules defined in docs/LLM_INTEGRATION.md Section 4 (Zero-Shot):
  *
  * <role>
  * [Role and Persona]
@@ -71,13 +68,6 @@ const LANGUAGE_GUARD =
  * # Çıktı Biçimi
  * ...
  * </instructions>
- *
- * <examples> (opsiyonel)
- * <example>
- * <input>...</input>
- * <output>...</output>
- * </example>
- * </examples>
  *
  * userPrompt:
  * <context>
@@ -108,20 +98,6 @@ export function buildPromptPayload(input: PromptBuilderInput): PromptPayload {
     `<role>\n${input.roleAndExpertise.trim()}\n</role>`,
     `<instructions>\n${instructionSections.join("\n\n")}\n</instructions>`,
   ];
-
-  if (input.examples?.trim()) {
-    const trimmedExamples = input.examples.trim();
-    if (
-      trimmedExamples.startsWith("<examples>") &&
-      trimmedExamples.endsWith("</examples>")
-    ) {
-      systemInstructionParts.push(trimmedExamples);
-    } else {
-      systemInstructionParts.push(
-        `<examples>\n${trimmedExamples}\n</examples>`,
-      );
-    }
-  }
 
   const systemInstruction = systemInstructionParts.join("\n\n");
 
