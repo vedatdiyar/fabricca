@@ -78,10 +78,25 @@ export const GEMINI_FALLBACK_CHAINS: Record<string, string | null> = {
   [FLASH_37]: FLASH_36,
 };
 
-/**
- * Operations permitted to fall back to a weaker Gemini model.
- */
-export const GEMINI_FALLBACK_OPERATIONS = ["pdf_read", "sanitize"] as const;
+export const GEMINI_FALLBACK_OPERATIONS = [
+  "pdf_read",
+  "sanitize",
+  "literature_sanitization",
+  "literature_targeted_sanitization",
+  "box_structure_generation",
+  "semantic_queries",
+  "semantic_query_generation",
+  "batch_jury",
+  "literature_single_box_jury",
+  "proposal_synthesis",
+  "matrix_synthesis",
+  "initial_matrix_synthesis",
+  "outline_generation",
+  "thesis_evaluation",
+  "positioning_jury_synthesis",
+  "positioning_query_generation",
+  "card_outline_auto_mapping",
+] as const;
 
 export type GeminiFallbackOperation =
   (typeof GEMINI_FALLBACK_OPERATIONS)[number];

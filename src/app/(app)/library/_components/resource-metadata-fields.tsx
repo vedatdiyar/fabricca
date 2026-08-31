@@ -2,6 +2,13 @@
 
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import type { EditResourceFormFields } from "../_hooks/use-edit-resource-form";
 
 interface ResourceMetadataFieldsProps {
@@ -60,23 +67,23 @@ export function ResourceMetadataFields({
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div className="space-y-2">
-          <Label htmlFor="edit-doc-type" className="text-xs font-semibold">
-            Eser Türü
-          </Label>
-          <select
-            id="edit-doc-type"
-            aria-label="Eser Türü"
-            value={fields.documentType}
-            onChange={(e) => onFieldChange("documentType", e.target.value)}
-            className="flex h-8 w-full rounded-md border border-input bg-background px-2.5 py-1 text-xs shadow-xs transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary"
+          <Label className="text-xs font-semibold">Eser Türü</Label>
+          <Select
+            value={fields.documentType || "_auto"}
+            onValueChange={(v) => onFieldChange("documentType", v === "_auto" ? "" : v)}
           >
-            <option value="">Otomatik / Belirtilmemiş</option>
-            <option value="journal-article">Makale (Dergi)</option>
-            <option value="book-chapter">Kitap Bölümü</option>
-            <option value="book">Müstakil Kitap</option>
-            <option value="thesis">Tez (Yüksek Lisans / Doktora)</option>
-            <option value="report">Rapor / Çalışma Metni</option>
-          </select>
+            <SelectTrigger className="h-8 text-xs bg-background">
+              <SelectValue placeholder="Eser Türü" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="_auto">Otomatik / Belirtilmemiş</SelectItem>
+              <SelectItem value="journal-article">Makale (Dergi)</SelectItem>
+              <SelectItem value="book-chapter">Kitap Bölümü</SelectItem>
+              <SelectItem value="book">Müstakil Kitap</SelectItem>
+              <SelectItem value="thesis">Tez (Yüksek Lisans / Doktora)</SelectItem>
+              <SelectItem value="report">Rapor / Çalışma Metni</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
 
         <div className="space-y-2">

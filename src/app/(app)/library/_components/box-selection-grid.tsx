@@ -2,6 +2,14 @@
 
 import { Sparkles } from "lucide-react";
 import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { cn } from "@/lib/utils";
 import type { LibraryParentBoxOption } from "../box-actions";
 
 interface BoxSelectionGridProps {
@@ -48,8 +56,18 @@ export function BoxSelectionGrid({
 
   const parentButtonClass = (isSelected: boolean) =>
     variant === "add"
-      ? `px-3 py-2 text-xs rounded-md border text-left ${isSelected ? "font-semibold border-primary/20 bg-accent/20 text-foreground" : "font-medium border-border bg-background text-muted-foreground hover:bg-muted"}`
-      : `text-left text-xs transition-all ${isSelected ? "p-2 rounded-md border-2 border-primary bg-primary/10 font-semibold text-foreground" : "p-2 rounded-md border border-border/40 bg-background hover:bg-muted/20 font-normal text-muted-foreground"}`;
+      ? cn(
+          "px-3 py-2 text-xs rounded-md border text-left",
+          isSelected
+            ? "font-semibold border-primary/20 bg-accent/20 text-foreground"
+            : "font-medium border-border bg-background text-muted-foreground hover:bg-muted",
+        )
+      : cn(
+          "text-left text-xs transition-all p-2 rounded-md border",
+          isSelected
+            ? "border-2 border-primary bg-primary/10 font-semibold text-foreground"
+            : "border border-border/40 bg-background hover:bg-muted/20 font-normal text-muted-foreground",
+        );
 
   return (
     <>
@@ -62,9 +80,7 @@ export function BoxSelectionGrid({
         </div>
       )}
 
-      <div
-        className={`grid grid-cols-2 gap-2 ${variant === "add" ? "pt-1" : ""}`}
-      >
+      <div className={cn("grid grid-cols-2 gap-2", variant === "add" && "pt-1")}>
         {parentBoxes.map((parent) => {
           const isSelected = selectedParentId === parent.id;
           return (
@@ -86,22 +102,21 @@ export function BoxSelectionGrid({
           <Label className="text-xs font-medium text-muted-foreground">
             Alt Konu Kutusu:
           </Label>
-          <select
-            value={selectedSubBoxId ?? ""}
-            aria-label="Alt Konu Kutusu"
-            onChange={(e) =>
-              onSubBoxChange(
-                e.target.value ? parseInt(e.target.value, 10) : null,
-              )
-            }
-            className="w-full h-8 rounded-md border border-border bg-background px-2.5 py-1 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-primary cursor-pointer"
+          <Select
+            value={selectedSubBoxId ? String(selectedSubBoxId) : ""}
+            onValueChange={(v) => onSubBoxChange(v ? parseInt(v, 10) : null)}
           >
-            {selectedParent.children.map((sub) => (
-              <option key={sub.id} value={sub.id}>
-                {sub.title}
-              </option>
-            ))}
-          </select>
+            <SelectTrigger className="h-8 text-xs bg-background">
+              <SelectValue placeholder="Alt kutu seçin" />
+            </SelectTrigger>
+            <SelectContent>
+              {selectedParent.children.map((sub) => (
+                <SelectItem key={sub.id} value={String(sub.id)}>
+                  {sub.title}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
       )}
     </>

@@ -5,6 +5,7 @@ import { FolderKanban, BookOpen, CheckSquare, Sparkles } from "lucide-react";
 import type { Box, Source } from "@/core/db/schema";
 import type { TaskRow } from "../_lib/schemas";
 import { Card, CardContent } from "@/components/ui/card";
+import { Separator } from "@/components/ui/separator";
 import { BoxCard } from "./box-card";
 import { KanbanBoard } from "./kanban-board";
 import { AcademicTimelineBar } from "./academic-timeline-bar";
@@ -223,7 +224,7 @@ export function DashboardContent({
       </section>
 
       {/* Section Divider */}
-      <div className="border-t border-border/40 my-8" />
+      <Separator className="my-8 bg-border/40" />
 
       {/* Section 2: Kanban Board */}
       <section className="space-y-6">

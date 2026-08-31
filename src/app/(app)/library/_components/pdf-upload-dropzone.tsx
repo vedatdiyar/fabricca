@@ -12,6 +12,7 @@ import {
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { LoadingSpinner } from "@/components/shared/loading-spinner";
+import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 
 interface PdfUploadDropzoneProps {
@@ -80,15 +81,14 @@ export function PdfUploadDropzone({
   };
 
   return (
-    <div
-      className={`flex flex-1 min-h-0 flex-col justify-between gap-4 ${className}`}
-    >
+    <div className={cn("flex flex-1 min-h-0 flex-col justify-between gap-4", className)}>
       <Card
-        className={`flex-1 flex flex-col justify-center items-center border border-dashed transition-all relative overflow-hidden ${
+        className={cn(
+          "flex-1 flex flex-col justify-center items-center border border-dashed transition-all relative overflow-hidden",
           isDragOver
             ? "border-primary bg-primary/10 shadow-inner"
-            : "border-border/80 bg-muted/10 hover:bg-muted/20 hover:border-border"
-        }`}
+            : "border-border/80 bg-muted/10 hover:bg-muted/20 hover:border-border",
+        )}
         onDragOver={(e) => {
           e.preventDefault();
           setIsDragOver(true);

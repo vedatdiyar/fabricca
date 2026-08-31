@@ -102,7 +102,7 @@ function OutlineEditor({
             </span>
           ) : (
             <span className="flex items-center gap-2">
-              Onayla ve Literatür Tarama Adımına Geç
+              Literatür Taramasına Geç
               <ArrowRight className="size-4" />
             </span>
           )}

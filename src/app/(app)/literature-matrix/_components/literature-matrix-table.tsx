@@ -122,7 +122,7 @@ export function LiteratureMatrixTable({
                 onKeyDown={(e) =>
                   (e.key === "Enter" || e.key === " ") && onSortChange("title")
                 }
-                className="sticky left-0 z-20 cursor-pointer bg-muted/95 backdrop-blur-md p-3.5 min-w-[300px] max-w-[340px] transition-colors hover:text-foreground border-r border-border/60 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.3)] text-left"
+                className="sticky left-0 z-20 cursor-pointer bg-muted/95 backdrop-blur-md p-3.5 min-w-[300px] max-w-[340px] transition-colors hover:text-foreground border-r border-border/60 shadow-[2px_0_5px_-2px_var(--border)] text-left"
               >
                 <div className="flex items-center justify-start gap-1">
                   <span>Kaynak & Künye</span>
@@ -183,7 +183,7 @@ export function LiteratureMatrixTable({
             >
               {/* Sticky Column: Title & Citation metadata */}
               {isColVisible("title") && (
-                <td className="sticky left-0 z-10 bg-card group-hover:bg-muted/90 p-3.5 align-middle text-left min-w-[300px] max-w-[340px] border-r border-border/60 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.3)]">
+                <td className="sticky left-0 z-10 bg-card group-hover:bg-muted/90 p-3.5 align-middle text-left min-w-[300px] max-w-[340px] border-r border-border/60 shadow-[2px_0_5px_-2px_var(--border)]">
                   <div className="flex flex-col items-start justify-center text-left space-y-1.5">
                     <div className="flex items-start justify-between gap-1.5 w-full text-left">
                       <span className="font-semibold text-foreground text-sm line-clamp-2 leading-snug text-left">

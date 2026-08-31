@@ -1,3 +1,4 @@
+import "server-only";
 import { GoogleGenAI } from "@google/genai";
 import { getGeminiKeyPool } from "../gemini-key-pool";
 

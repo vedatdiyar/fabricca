@@ -140,17 +140,15 @@ export function OutlineSectionCard(props: OutlineSectionCardProps) {
                   <Button
                     size="sm"
                     onClick={handleSaveSectionEdit}
-                    className="h-7 text-xs gap-1"
                   >
-                    <Check className="size-3" /> Kaydet
+                    <Check className="size-3.5" /> Kaydet
                   </Button>
                   <Button
                     size="sm"
                     variant="ghost"
                     onClick={handleCancelSectionEdit}
-                    className="h-7 text-xs gap-1"
                   >
-                    <X className="size-3" /> İptal
+                    <X className="size-3.5" /> İptal
                   </Button>
                 </div>
               </div>
@@ -178,17 +176,17 @@ export function OutlineSectionCard(props: OutlineSectionCardProps) {
               variant="ghost"
               size="icon"
               onClick={() => updateCardState({ isEditingSection: true })}
-              className="size-7 text-muted-foreground hover:text-foreground"
+              className="text-muted-foreground hover:text-foreground"
               title="Bölümü Düzenle"
             >
-              <Pencil className="size-3.5" />
+              <Pencil className="size-4" />
             </Button>
 
             <Button
               variant="ghost"
               size="icon"
               onClick={handleAddSubSection}
-              className="size-7 text-primary hover:bg-primary/10"
+              className="text-primary hover:bg-primary/10"
               title="Alt Bölüm Ekle"
             >
               <Plus className="size-4" />
@@ -198,17 +196,17 @@ export function OutlineSectionCard(props: OutlineSectionCardProps) {
               variant="ghost"
               size="icon"
               onClick={onDeleteSection}
-              className="size-7 text-destructive hover:bg-destructive/10"
+              className="text-destructive hover:bg-destructive/10"
               title="Bölümü Sil"
             >
-              <Trash2 className="size-3.5" />
+              <Trash2 className="size-4" />
             </Button>
 
             <Button
               variant="ghost"
               size="icon"
               onClick={onToggleExpand}
-              className="size-7 text-muted-foreground hover:text-foreground"
+              className="text-muted-foreground hover:text-foreground"
             >
               {isExpanded ? (
                 <ChevronUp className="size-4" />

@@ -11,6 +11,8 @@ import {
 } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Separator } from "@/components/ui/separator";
+import { cn } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Loader2, Check, Hash, X, Sparkles } from "lucide-react";
@@ -63,9 +65,9 @@ export function EditSubBoxModal({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl max-h-[90vh] flex flex-col p-6 gap-4 bg-card border-border">
-        <DialogHeader className="space-y-1 pb-3 border-b border-border/40">
+        <DialogHeader className="space-y-1 pb-1">
           <div className="flex items-center gap-2">
-            <Badge variant="outline" className={`border ${badgeColor}`}>
+            <Badge variant="outline" className={cn("border", badgeColor)}>
               {shortLabel}
             </Badge>
             <span className="text-xs text-muted-foreground font-sans">
@@ -80,6 +82,7 @@ export function EditSubBoxModal({
             etiketlerini güncelleyin.
           </DialogDescription>
         </DialogHeader>
+        <Separator className="bg-border/40" />
 
         <div className="flex-1 overflow-y-auto space-y-4 pr-1">
           {/* Title Input */}
@@ -189,7 +192,8 @@ export function EditSubBoxModal({
           </div>
         </div>
 
-        <DialogFooter className="flex items-center justify-between pt-3 border-t border-border/40 sm:justify-between">
+        <Separator className="bg-border/40" />
+        <DialogFooter className="flex items-center justify-between pt-1 sm:justify-between">
           <Button
             variant="ghost"
             size="sm"

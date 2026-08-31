@@ -123,7 +123,7 @@ export async function generateStructuredContent<T>(
 ): Promise<T> {
   const thinkingLevel = options?.thinkingConfig?.thinkingLevel;
   const callLabel = options?.payloadStage ?? "gemini";
-  const operation = options?.operation;
+  const operation = options?.operation ?? options?.payloadStage;
   const maxRetries = 3;
 
   const thesisMatrix = options?.thesisMatrix || null;

@@ -48,7 +48,7 @@ export function OnboardingGlobalLoader() {
                       isCompleted
                         ? "w-full bg-primary"
                         : isActive
-                          ? "w-full bg-gradient-to-r from-primary via-primary/60 to-primary animate-pulse"
+                          ? "w-full bg-gradient-to-r from-primary via-primary/20 to-primary animate-pulse"
                           : "w-0"
                     }`}
                   />

@@ -3,6 +3,7 @@
 import React from "react";
 import { BookOpen, CheckCircle2, FileText, Layers } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
+import { cn } from "@/lib/utils";
 import type { MatrixStats } from "../_lib/types";
 
 interface LiteratureMatrixStatsProps {
@@ -70,7 +71,10 @@ export function LiteratureMatrixStats({ stats }: LiteratureMatrixStatsProps) {
                 </p>
               </div>
               <div
-                className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-md border ${item.colorClass}`}
+                className={cn(
+                  "flex h-8 w-8 shrink-0 items-center justify-center rounded-md border",
+                  item.colorClass,
+                )}
               >
                 <Icon className="size-3.5" />
               </div>

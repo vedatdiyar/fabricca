@@ -63,9 +63,19 @@ export async function getLiteratureMatrixData() {
     const boxIds = userBoxes.map((b) => b.id);
     const boxMap = new Map(userBoxes.map((b) => [b.id, b]));
 
-    // 3. Fetch sources for user boxes
+    // 3. Fetch sources for user boxes — egress-optimized: exclude heavy parsedReferences jsonb (10-100KB per row)
     const rawSources = await db
-      .select()
+      .select({
+        id: sources.id,
+        boxId: sources.boxId,
+        title: sources.title,
+        authors: sources.authors,
+        publicationYear: sources.publicationYear,
+        publisher: sources.publisher,
+        doi: sources.doi,
+        isRead: sources.isRead,
+        pdfStatus: sources.pdfStatus,
+      })
       .from(sources)
       .where(sql`${sources.boxId} IN ${boxIds}`);
 
@@ -81,9 +91,17 @@ export async function getLiteratureMatrixData() {
 
     const sourceIds = rawSources.map((s) => s.id);
 
-    // 4. Fetch critiques for user sources
+    // 4. Fetch critiques for user sources — only matrix-relevant fields, exclude aiEvaluation jsonb
     const rawCritiques = await db
-      .select()
+      .select({
+        id: critiques.id,
+        sourceId: critiques.sourceId,
+        researchQuestion: critiques.researchQuestion,
+        theoreticalFramework: critiques.theoreticalFramework,
+        methodology: critiques.methodology,
+        mainArgument: critiques.mainArgument,
+        literatureGap: critiques.literatureGap,
+      })
       .from(critiques)
       .where(sql`${critiques.sourceId} IN ${sourceIds}`);
 

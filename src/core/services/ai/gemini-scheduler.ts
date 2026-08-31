@@ -15,7 +15,11 @@ import {
 } from "@/core/config/rate-limits";
 import { DailyQuotaExceededError } from "@/lib/rate-limiter";
 import { getGeminiKeyPool } from "./gemini-key-pool";
-import { isRateLimitError, isRpdError } from "./llm-errors";
+import {
+  isRateLimitError,
+  isRpdError,
+  isServerOverloadError,
+} from "./llm-errors";
 import {
   markKeyRpdExhausted,
   markKeyRpmCoolingDown,
@@ -71,8 +75,10 @@ export async function dispatchGeminiCall<T>(
   }
 
   const allowFallback =
-    params.operation !== undefined &&
-    GEMINI_FALLBACK_OPERATIONS.some((op) => op === params.operation);
+    params.operation !== undefined
+      ? GEMINI_FALLBACK_OPERATIONS.some((op) => op === params.operation) ||
+        Boolean(GEMINI_FALLBACK_CHAINS[params.model])
+      : Boolean(GEMINI_FALLBACK_CHAINS[params.model]);
   const fallback = allowFallback
     ? (GEMINI_FALLBACK_CHAINS[params.model] ?? null)
     : null;
@@ -102,6 +108,27 @@ export async function dispatchGeminiCall<T>(
           markKeyRpdExhausted(model, apiKey);
         } else if (isRateLimitError(error)) {
           markKeyRpmCoolingDown(model, apiKey);
+        }
+
+        // 503 / High demand overload is a model-level capacity constraint affecting all keys.
+        // If a fallback model is configured, immediately failover to the next model without
+        // spinning through all other keys on the overloaded model.
+        if (
+          isServerOverloadError(error) &&
+          model !== models[models.length - 1]
+        ) {
+          const nextModel = models[models.indexOf(model) + 1];
+          params.logger?.info("gemini_model_fallback_retry", {
+            service: "gemini",
+            status: "RETRY",
+            data: {
+              summary: `(model ${model} overloaded [503/high-demand], falling back to ${nextModel})`,
+              fromModel: model,
+              toModel: nextModel,
+              reason: "server_overload",
+            },
+          });
+          break;
         }
 
         if (i < keyIndicesToTry.length - 1) {

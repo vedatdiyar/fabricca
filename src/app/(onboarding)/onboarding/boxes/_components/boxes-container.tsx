@@ -94,7 +94,7 @@ export function BoxesContainer() {
             </span>
           ) : (
             <span className="flex items-center gap-2">
-              Onayla ve Tez Planı Adımına Geç
+              Tez Planına Geç
               <ArrowRight className="size-4" />
             </span>
           )}

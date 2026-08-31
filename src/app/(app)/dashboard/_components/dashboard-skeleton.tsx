@@ -1,4 +1,5 @@
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
 
 /**
@@ -56,7 +57,7 @@ export function DashboardSkeleton() {
                 <Skeleton className="h-2 w-full rounded-full bg-border/20 mt-2" />
               </CardHeader>
               <CardContent className="flex-1 p-5 pt-0">
-                <div className="my-3 border-t border-border/40" />
+                <Separator className="my-3 bg-border/40" />
                 <div className="flex items-center justify-between mb-3">
                   <Skeleton className="h-3.5 w-24 bg-border/20" />
                   <Skeleton className="h-4 w-12 rounded-full bg-border/20" />
@@ -82,7 +83,7 @@ export function DashboardSkeleton() {
       </section>
 
       {/* Section Divider */}
-      <div className="my-8 border-t border-border/40" />
+      <Separator className="my-8 bg-border/40" />
 
       {/* Kanban Board Section Skeleton */}
       <section className="space-y-6">

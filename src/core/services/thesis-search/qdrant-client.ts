@@ -1,3 +1,4 @@
+import "server-only";
 import { QdrantClient } from "@qdrant/js-client-rest";
 
 /** Global singleton Qdrant client instance. */

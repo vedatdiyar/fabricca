@@ -10,6 +10,8 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Separator } from "@/components/ui/separator";
+import { cn } from "@/lib/utils";
 import { Textarea } from "@/components/ui/textarea";
 import { HelpCircle, Copy, Loader2, Check } from "lucide-react";
 import type { MatrixCardDef } from "../../constants/matrix-cards";
@@ -57,11 +59,11 @@ export function EditMatrixColumnModal({
       }}
     >
       <DialogContent className="max-w-3xl max-h-[90vh] flex flex-col p-6 gap-4 bg-card border-border">
-        <DialogHeader className="space-y-1.5 pb-3 border-b border-border/40">
+        <DialogHeader className="space-y-1.5 pb-1">
           <div className="flex items-center gap-2">
             <Badge
               variant="outline"
-              className={`text-[10px] font-semibold px-2 py-0.5 border ${card.badgeColor}`}
+              className={cn("text-[10px] font-semibold px-2 py-0.5 border", card.badgeColor)}
             >
               {card.badgeLabel}
             </Badge>
@@ -76,6 +78,7 @@ export function EditMatrixColumnModal({
             {card.description}
           </DialogDescription>
         </DialogHeader>
+        <Separator className="bg-border/40" />
 
         {/* Guide questions in modal */}
         <div className="rounded-md border border-border/40 bg-muted/20 p-3 space-y-1.5">
@@ -117,7 +120,8 @@ export function EditMatrixColumnModal({
           </div>
         </div>
 
-        <DialogFooter className="flex items-center justify-between pt-3 border-t border-border/40 sm:justify-between">
+        <Separator className="bg-border/40" />
+        <DialogFooter className="flex items-center justify-between pt-1 sm:justify-between">
           <Button
             variant="ghost"
             size="sm"

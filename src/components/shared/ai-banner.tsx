@@ -2,6 +2,8 @@
 
 import type { LucideIcon } from "lucide-react";
 import { Sparkles } from "lucide-react";
+import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
+import { cn } from "@/lib/utils";
 
 interface AIBannerProps {
   variant?: "info" | "success" | "warning";
@@ -9,12 +11,6 @@ interface AIBannerProps {
   title: string;
   description: string;
 }
-
-const variantStyles: Record<string, string> = {
-  info: "border-primary/20 bg-primary/10",
-  success: "border-success/20 bg-success/10",
-  warning: "border-warning/20 bg-warning/10",
-};
 
 const iconColors: Record<string, string> = {
   info: "text-primary",
@@ -39,16 +35,17 @@ export function AIBanner({
   description,
 }: AIBannerProps) {
   return (
-    <div
-      className={`flex items-start gap-3 rounded-md border ${variantStyles[variant]} px-4 py-3 w-full animate-in fade-in slide-in-from-top-2 duration-300`}
+    <Alert
+      variant={variant}
+      className="px-4 py-3 w-full animate-in fade-in slide-in-from-top-2 duration-300"
     >
-      <Icon className={`mt-1 h-4 w-4 shrink-0 ${iconColors[variant]}`} />
+      <Icon className={cn("mt-0.5 h-4 w-4 shrink-0", iconColors[variant])} />
       <div className="space-y-2">
-        <p className="text-sm font-semibold text-foreground">{title}</p>
-        <p className="text-xs leading-relaxed text-muted-foreground">
+        <AlertTitle className="text-sm font-semibold text-foreground">{title}</AlertTitle>
+        <AlertDescription className="text-xs leading-relaxed text-muted-foreground">
           {description}
-        </p>
+        </AlertDescription>
       </div>
-    </div>
+    </Alert>
   );
 }

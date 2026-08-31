@@ -1,8 +1,7 @@
 "use client";
 
-import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
 import { BookOpen, Plus } from "lucide-react";
+import { EmptyState } from "@/components/shared/empty-state";
 
 interface OutlineEmptyStateProps {
   onAddRoot: () => void;
@@ -16,26 +15,12 @@ interface OutlineEmptyStateProps {
  */
 export function OutlineEmptyState({ onAddRoot }: OutlineEmptyStateProps) {
   return (
-    <Card className="flex flex-col items-center justify-center p-12 text-center border-dashed border-border bg-card">
-      <div className="flex h-12 w-12 items-center justify-center rounded-full bg-muted/40 text-muted-foreground mb-4">
-        <BookOpen className="h-6 w-6" />
-      </div>
-      <h2 className="font-serif text-base font-semibold tracking-tight text-foreground mb-1">
-        Henüz Tez Bölüm Planı Oluşturulmadı
-      </h2>
-      <p className="font-sans text-sm text-muted-foreground max-w-md mb-6">
-        Tez matrisinize ve araştırma eksenlerinize uygun olarak ana bölümler ve
-        alt başlıklar ekleyerek tezinizin iskeletini oluşturun.
-      </p>
-      <Button
-        size="sm"
-        onClick={onAddRoot}
-        className="gap-2 bg-primary text-primary-foreground hover:bg-primary/90"
-      >
-        <Plus className="size-3.5" />
-        <span>İlk Ana Bölümü Ekle</span>
-      </Button>
-    </Card>
+    <EmptyState
+      icon={BookOpen}
+      title="Henüz Tez Bölüm Planı Oluşturulmadı"
+      description="Tez matrisinize ve araştırma eksenlerinize uygun olarak ana bölümler ve alt başlıklar ekleyerek tezinizin iskeletini oluşturun."
+      actions={[{ label: "İlk Ana Bölümü Ekle", onClick: onAddRoot, icon: Plus }]}
+    />
   );
 }
 
@@ -44,15 +29,11 @@ export function OutlineEmptyState({ onAddRoot }: OutlineEmptyStateProps) {
  */
 export function NoSectionSelectedState() {
   return (
-    <Card className="flex flex-col items-center justify-center p-12 text-center border-dashed border-border bg-card min-h-[350px]">
-      <BookOpen className="size-8 text-muted-foreground mb-3" />
-      <h3 className="font-serif text-sm font-semibold text-foreground mb-1">
-        Bölüm Detaylarını Görüntüleyin
-      </h3>
-      <p className="text-xs text-muted-foreground max-w-sm">
-        Detaylarını incelemek ve bağlı okuma kaynaklarını yönetmek için soldaki
-        Bölüm İskeletinden bir bölüm seçin.
-      </p>
-    </Card>
+    <EmptyState
+      icon={BookOpen}
+      title="Bölüm Detaylarını Görüntüleyin"
+      description="Detaylarını incelemek ve bağlı okuma kaynaklarını yönetmek için soldaki Bölüm İskeletinden bir bölüm seçin."
+      className="min-h-[350px]"
+    />
   );
 }

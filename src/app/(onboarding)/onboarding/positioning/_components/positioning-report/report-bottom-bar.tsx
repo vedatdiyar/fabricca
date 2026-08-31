@@ -31,30 +31,28 @@ export function ReportBottomBar({
     <div className="flex justify-between items-center pt-4 pb-8 border-t border-border/40">
       <Button
         variant="outline"
-        size="sm"
+        size="default"
         onClick={() => router.push("/onboarding/proposal")}
         disabled={confirming}
-        className="h-8 text-xs px-3 rounded-md [&_svg]:size-3.5 cursor-pointer"
       >
-        <RefreshCw className="size-3.5 mr-1.5" />
+        <RefreshCw className="size-4 mr-2" />
         Taslağı Düzenle
       </Button>
 
       <Button
         onClick={onConfirm}
         disabled={confirming}
-        size="sm"
-        className="h-8 text-xs px-3 rounded-md [&_svg]:size-3.5 cursor-pointer"
+        size="lg"
       >
         {confirming ? (
-          <span className="flex items-center justify-center gap-1.5">
-            <Loader2 className="size-3.5 animate-spin" />
+          <span className="flex items-center justify-center gap-2">
+            <Loader2 className="size-4 animate-spin" />
             Konu Kutuları Hazırlanıyor...
           </span>
         ) : (
-          <span className="flex items-center gap-1.5">
-            Konumlandırmayı Onayla ve Konu Kutularını Oluştur
-            <ArrowRight className="size-3.5" />
+          <span className="flex items-center gap-2">
+            Konumlandırmayı Onayla
+            <ArrowRight className="size-4" />
           </span>
         )}
       </Button>

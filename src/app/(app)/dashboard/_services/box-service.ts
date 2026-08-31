@@ -24,10 +24,24 @@ export interface UserBoxDataWithResources extends UserBoxData {
 export async function getUsersMatrixAndBoxes(
   userId: number,
 ): Promise<{ data: UserBoxData } | { error: string }> {
-  const [matrix] = await db
-    .select()
+  // Exclude heavy jsonb (auditResult, advisorMessages, rawProposal) — not needed for box hierarchy
+  const [matrixRow] = await db
+    .select({
+      id: matrices.id,
+      userId: matrices.userId,
+      thesisDegree: matrices.thesisDegree,
+      targetCompletionDate: matrices.targetCompletionDate,
+      weeklyTargetHours: matrices.weeklyTargetHours,
+      subjectProblem: matrices.subjectProblem,
+      theoreticalFramework: matrices.theoreticalFramework,
+      primaryMaterial: matrices.primaryMaterial,
+      methodology: matrices.methodology,
+      createdAt: matrices.createdAt,
+      updatedAt: matrices.updatedAt,
+    })
     .from(matrices)
     .where(eq(matrices.userId, userId));
+  const matrix = matrixRow as unknown as typeof matrices.$inferSelect | undefined;
 
   if (!matrix) {
     return { error: "Thesis matrix not found." };
@@ -84,10 +98,25 @@ export async function getUsersMatrixAndBoxesWithResources(
   if (allBoxRows.length > 0) {
     const allBoxIds = allBoxRows.map((b) => b.id);
 
-    resources = await db
-      .select()
+    // Exclude heavy parsedReferences (10-100KB per row) — only fields needed for dashboard listing
+    const projected = await db
+      .select({
+        id: sources.id,
+        boxId: sources.boxId,
+        title: sources.title,
+        authors: sources.authors,
+        publisher: sources.publisher,
+        isRead: sources.isRead,
+        pdfStatus: sources.pdfStatus,
+        publicationYear: sources.publicationYear,
+        doi: sources.doi,
+        createdAt: sources.createdAt,
+        updatedAt: sources.updatedAt,
+      })
       .from(sources)
       .where(inArray(sources.boxId, allBoxIds));
+    // Cast to full Source type — excluded heavy columns (parsedReferences, containerTitle etc.) are not used in dashboard
+    resources = projected as unknown as (typeof sources.$inferSelect)[];
   }
 
   return {

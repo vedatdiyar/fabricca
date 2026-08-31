@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import { useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import type { ButtonProps } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -61,7 +62,10 @@ export function StartOverButton({ className, ...props }: ButtonProps) {
         <Button
           variant="outline"
           size="sm"
-          className={`h-8 text-xs px-3 rounded-md [&_svg]:size-3.5 border border-destructive/20 bg-destructive/10 text-destructive hover:bg-destructive/10 hover:text-destructive cursor-pointer ${className ?? ""}`}
+          className={cn(
+            "border-destructive/20 bg-destructive/10 text-destructive hover:bg-destructive/10 hover:text-destructive",
+            className,
+          )}
           {...props}
           disabled={isPending}
         >

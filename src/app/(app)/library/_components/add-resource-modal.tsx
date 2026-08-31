@@ -10,6 +10,8 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
+import { Separator } from "@/components/ui/separator";
+import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { useBoxHierarchySelection } from "../_hooks/use-box-hierarchy-selection";
 import { AddResourceBoxSelector } from "./add-resource-box-selector";
@@ -127,7 +129,7 @@ export function AddResourceModal({
         onEscapeKeyDown={(e) => isSubmitting && e.preventDefault()}
         onInteractOutside={(e) => isSubmitting && e.preventDefault()}
       >
-        <DialogHeader className="space-y-1 border-b border-border pb-4">
+        <DialogHeader className="space-y-1 pb-1">
           <div className="flex items-center gap-2">
             <div className="p-2 rounded-md bg-primary/10 border border-primary/20 text-primary">
               <Sparkles className="size-3.5" />
@@ -137,6 +139,7 @@ export function AddResourceModal({
             Yeni Akademik PDF Yükle
           </DialogTitle>
         </DialogHeader>
+        <Separator />
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <AddResourceBoxSelector
@@ -162,11 +165,12 @@ export function AddResourceModal({
                     key={child.id}
                     disabled={isSubmitting}
                     onClick={() => setSubBoxId(child.id)}
-                    className={
+                    className={cn(
+                      "px-3 py-2 text-xs rounded-md border text-left",
                       selectedSubBoxId === child.id
-                        ? "px-3 py-2 text-xs font-semibold rounded-md border border-primary/20 bg-accent/20 text-foreground text-left"
-                        : "px-3 py-2 text-xs font-medium rounded-md border border-border bg-background text-muted-foreground hover:bg-muted text-left"
-                    }
+                        ? "font-semibold border-primary/20 bg-accent/20 text-foreground"
+                        : "font-medium border-border bg-background text-muted-foreground hover:bg-muted",
+                    )}
                   >
                     {child.title}
                   </button>
@@ -187,7 +191,8 @@ export function AddResourceModal({
             />
           </div>
 
-          <div className="flex items-center justify-end gap-2 pt-2 border-t border-border">
+          <Separator />
+          <div className="flex items-center justify-end gap-2 pt-2">
             <Button
               type="button"
               variant="outline"

@@ -4,6 +4,7 @@ import { Plus, Pencil, Trash2, Check, X, GripVertical } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { cn } from "@/lib/utils";
 import type {
   OutlineSubSectionData,
   OutlineCardState,
@@ -64,9 +65,9 @@ export function SubSectionTreeList({
             variant="ghost"
             size="sm"
             onClick={onAddSubSection}
-            className="text-xs h-7 gap-1 text-primary hover:bg-primary/10 shrink-0"
+            className="text-primary hover:bg-primary/10 shrink-0"
           >
-            <Plus className="size-3" /> Alt Bölüm Ekle
+            <Plus className="size-3.5" /> Alt Bölüm Ekle
           </Button>
         </div>
       ) : (
@@ -93,20 +94,17 @@ export function SubSectionTreeList({
                 e.stopPropagation();
                 onSubDrop(subIdx);
               }}
-              onDragEnd={(e) => {
-                e.stopPropagation();
+              onDragEnd={() => {
                 onUpdateCardState({
                   draggedSubIdx: null,
                   dragOverSubIdx: null,
                 });
               }}
-              className={`group/sub relative rounded-md border bg-muted/40 p-3 transition-colors ${
-                isSubDragging ? "opacity-40 border-primary" : "border-border/40"
-              } ${
-                isSubDragOver
-                  ? "border-primary ring-1 ring-primary/20"
-                  : "hover:border-primary/20"
-              }`}
+              className={cn(
+                "group/sub relative rounded-md border border-border/60 bg-card/40 p-2.5 transition-all text-xs",
+                isSubDragging && "opacity-40 border-dashed border-primary",
+                isSubDragOver && "border-primary bg-primary/5",
+              )}
             >
               {isSubEditing ? (
                 <div className="space-y-2">
@@ -116,7 +114,8 @@ export function SubSectionTreeList({
                       onUpdateCardState({ subEditTitle: e.target.value })
                     }
                     placeholder="Alt bölüm başlığı..."
-                    className="text-xs font-semibold"
+                    className="text-xs h-8"
+                    autoFocus
                   />
                   <Textarea
                     value={subEditDescription}
@@ -134,9 +133,8 @@ export function SubSectionTreeList({
                       variant="default"
                       size="sm"
                       onClick={() => onSaveSubEdit(subIdx)}
-                      className="text-xs h-6 px-2 gap-1"
                     >
-                      <Check className="size-3" /> Kaydet
+                      <Check className="size-3.5" /> Kaydet
                     </Button>
                     <Button
                       variant="ghost"
@@ -144,9 +142,8 @@ export function SubSectionTreeList({
                       onClick={() =>
                         onUpdateCardState({ editingSubIndex: null })
                       }
-                      className="text-xs h-6 px-2 gap-1"
                     >
-                      <X className="size-3" /> İptal
+                      <X className="size-3.5" /> İptal
                     </Button>
                   </div>
                 </div>
@@ -182,19 +179,19 @@ export function SubSectionTreeList({
                       variant="ghost"
                       size="icon"
                       onClick={() => onStartSubEdit(subIdx)}
-                      className="size-6 text-muted-foreground hover:text-foreground"
+                      className="text-muted-foreground hover:text-foreground"
                       title="Düzenle"
                     >
-                      <Pencil className="size-3" />
+                      <Pencil className="size-3.5" />
                     </Button>
                     <Button
                       variant="ghost"
                       size="icon"
                       onClick={() => onDeleteSubSection(subIdx)}
-                      className="size-6 text-destructive hover:bg-destructive/10"
+                      className="text-destructive hover:bg-destructive/10"
                       title="Sil"
                     >
-                      <Trash2 className="size-3" />
+                      <Trash2 className="size-3.5" />
                     </Button>
                   </div>
                 </div>

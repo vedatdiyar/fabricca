@@ -3,6 +3,7 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { Check, RotateCcw, Loader2, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Progress } from "@/components/ui/progress";
 import { useCritiqueDraft } from "../../_hooks/use-critique-draft";
 import {
   toCritiqueFieldValues,
@@ -121,12 +122,7 @@ export function CritiqueSection({
             </span>
           </div>
 
-          <div className="hidden sm:flex items-center gap-1.5 w-24 h-2 bg-muted rounded-full overflow-hidden border border-border/50">
-            <div
-              className="h-full bg-primary transition-all duration-300 rounded-full"
-              style={{ width: `${progressPercentage}%` }}
-            />
-          </div>
+          <Progress value={progressPercentage} className="hidden sm:flex w-24 h-2 bg-muted border border-border/50" />
         </div>
 
         {/* Right: Auto-save status & Evaluate Action */}

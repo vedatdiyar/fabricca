@@ -10,6 +10,8 @@ import {
   Lightbulb,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { Alert } from "@/components/ui/alert";
+import { Separator } from "@/components/ui/separator";
 import type { ResourceAuditReport } from "../../_lib/types";
 
 interface CritiqueAuditPanelProps {
@@ -33,7 +35,7 @@ export function CritiqueAuditPanel({ auditReport }: CritiqueAuditPanelProps) {
   return (
     <div className="rounded-lg border border-border bg-card p-4 sm:p-5 space-y-4 shadow-xs">
       {/* Header Bar */}
-      <div className="flex items-center justify-between gap-2 border-b border-border/40 pb-3">
+      <div className="flex items-center justify-between gap-2">
         <div className="flex items-center gap-2">
           <ShieldCheck className="size-4 text-primary" />
           <h3 className="font-serif text-sm font-semibold tracking-tight text-foreground">
@@ -65,6 +67,7 @@ export function CritiqueAuditPanel({ auditReport }: CritiqueAuditPanelProps) {
           )}
         </button>
       </div>
+      <Separator className="bg-border/40" />
 
       {isOpen && (
         <div className="space-y-4 pt-1">
@@ -76,9 +79,9 @@ export function CritiqueAuditPanel({ auditReport }: CritiqueAuditPanelProps) {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
             {/* Strengths */}
             {strengths.length > 0 && (
-              <div className="rounded-md border border-primary/20 bg-primary/10 p-3.5 space-y-2">
-                <div className="flex items-center gap-1.5 text-primary font-semibold text-xs">
-                  <Check className="size-3.5 text-primary" />
+              <Alert variant="success" className="p-3.5 space-y-2 flex-col items-stretch">
+                <div className="flex items-center gap-1.5 font-semibold text-xs">
+                  <Check className="size-3.5" />
                   <span>Güçlü Yakalanan Boyutlar</span>
                 </div>
                 <ul className="space-y-1.5 text-xs text-foreground leading-relaxed font-sans">
@@ -87,19 +90,19 @@ export function CritiqueAuditPanel({ auditReport }: CritiqueAuditPanelProps) {
                       key={`strength-${i}-${str.slice(0, 32)}`}
                       className="flex items-start gap-1.5"
                     >
-                      <span className="text-primary select-none">•</span>
+                      <span className="select-none">•</span>
                       <span>{str}</span>
                     </li>
                   ))}
                 </ul>
-              </div>
+              </Alert>
             )}
 
             {/* Blind spots */}
             {blindSpots.length > 0 && (
-              <div className="rounded-md border border-warning/20 bg-warning/10 p-3.5 space-y-2">
-                <div className="flex items-center gap-1.5 text-warning font-semibold text-xs">
-                  <AlertTriangle className="size-3.5 text-warning" />
+              <Alert variant="warning" className="p-3.5 space-y-2 flex-col items-stretch">
+                <div className="flex items-center gap-1.5 font-semibold text-xs">
+                  <AlertTriangle className="size-3.5" />
                   <span>Gözden Kaçan / Eksik Noktalar</span>
                 </div>
                 <ul className="space-y-1.5 text-xs text-foreground leading-relaxed font-sans">
@@ -108,20 +111,20 @@ export function CritiqueAuditPanel({ auditReport }: CritiqueAuditPanelProps) {
                       key={`spot-${i}-${spot.slice(0, 32)}`}
                       className="flex items-start gap-1.5"
                     >
-                      <span className="text-warning select-none">•</span>
+                      <span className="select-none">•</span>
                       <span>{spot}</span>
                     </li>
                   ))}
                 </ul>
-              </div>
+              </Alert>
             )}
           </div>
 
           {/* Commentary risks */}
           {commentaryRisks.length > 0 && (
-            <div className="rounded-md border border-warning/20 border-l-2 border-l-warning bg-warning/10 p-3.5 space-y-1.5">
-              <div className="flex items-center gap-1.5 text-warning font-semibold text-xs">
-                <AlertTriangle className="size-3.5 text-warning" />
+            <Alert variant="warning" className="p-3.5 space-y-1.5 flex-col items-stretch border-l-2 border-l-warning">
+              <div className="flex items-center gap-1.5 font-semibold text-xs">
+                <AlertTriangle className="size-3.5" />
                 <span>Şerh ve Yorum Uyarısı</span>
               </div>
               <ul className="space-y-1 text-xs text-foreground leading-relaxed font-sans">
@@ -130,25 +133,25 @@ export function CritiqueAuditPanel({ auditReport }: CritiqueAuditPanelProps) {
                     key={`risk-${i}-${risk.slice(0, 32)}`}
                     className="flex items-start gap-1.5"
                   >
-                    <span className="text-warning select-none">•</span>
+                    <span className="select-none">•</span>
                     <span>{risk}</span>
                   </li>
                 ))}
               </ul>
-            </div>
+            </Alert>
           )}
 
           {/* Thesis Alignment Advice */}
           {auditReport.thesisAlignmentAdvice && (
-            <div className="rounded-md border border-primary/20 border-l-2 border-l-primary bg-primary/10 p-3.5 space-y-1.5">
-              <div className="flex items-center gap-1.5 text-primary font-semibold text-xs">
-                <Lightbulb className="size-3.5 text-primary" />
+            <Alert variant="info" className="p-3.5 space-y-1.5 flex-col items-stretch border-l-2 border-l-primary">
+              <div className="flex items-center gap-1.5 font-semibold text-xs">
+                <Lightbulb className="size-3.5" />
                 <span>Tez Probleminizle Eklemlenme Tavsiyesi</span>
               </div>
               <p className="text-xs text-foreground leading-relaxed font-sans">
                 {auditReport.thesisAlignmentAdvice}
               </p>
-            </div>
+            </Alert>
           )}
         </div>
       )}

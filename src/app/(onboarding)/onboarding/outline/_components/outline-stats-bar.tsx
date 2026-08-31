@@ -59,10 +59,10 @@ export function OutlineStatsBar({
           size="sm"
           onClick={onRegenerate}
           disabled={isRegenerating}
-          className="text-xs gap-1 h-7 px-2 border-primary/20 text-primary hover:bg-primary/10"
+          className="border-primary/20 text-primary hover:bg-primary/10"
         >
           <Sparkles
-            className={`size-3 ${isRegenerating ? "animate-spin" : ""}`}
+            className={`size-3.5 ${isRegenerating ? "animate-spin" : ""}`}
           />
           {isRegenerating ? "Yeniden Üretiliyor..." : "Yeniden Üret"}
         </Button>
@@ -71,9 +71,8 @@ export function OutlineStatsBar({
           variant="default"
           size="sm"
           onClick={onAddSection}
-          className="text-xs gap-1 h-7 px-2"
         >
-          <Plus className="size-3" />
+          <Plus className="size-3.5" />
           Yeni Bölüm Ekle
         </Button>
       </div>

@@ -12,6 +12,9 @@ import {
   CardContent,
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Progress } from "@/components/ui/progress";
+import { Separator } from "@/components/ui/separator";
+import { cn } from "@/lib/utils";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -72,7 +75,7 @@ export function BoxCard({
           <div className="flex items-center justify-between gap-3">
             <Badge
               variant="outline"
-              className={`shrink-0 border px-2.5 py-0.5 text-xs font-medium ${badgeConfig.className}`}
+              className={cn("shrink-0 border px-2.5 py-0.5 text-xs font-medium", badgeConfig.className)}
             >
               {badgeConfig.label}
             </Badge>
@@ -115,17 +118,12 @@ export function BoxCard({
                 {`${readArticles} / ${totalArticles} Eser (%${readPercent})`}
               </span>
             </div>
-            <div className="h-1.5 w-full overflow-hidden rounded-full bg-secondary">
-              <div
-                className="h-full bg-primary transition-all duration-500 rounded-full"
-                style={{ width: `${readPercent}%` }}
-              />
-            </div>
+            <Progress value={readPercent} className="h-1.5" />
           </div>
         </CardHeader>
 
         <CardContent className="flex flex-col flex-1 p-5 pt-0">
-          <div className="border-t border-border/40 my-3" />
+          <Separator className="my-3 bg-border/40" />
 
           {/* Sub-header: Okuma Listesi */}
           <div className="flex items-center justify-between mb-3">

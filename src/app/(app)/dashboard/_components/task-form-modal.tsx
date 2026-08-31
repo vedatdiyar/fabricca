@@ -12,6 +12,14 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Separator } from "@/components/ui/separator";
 import type { Box, TaskType } from "@/core/db/schema";
 
 interface TaskFormModalProps {
@@ -136,75 +144,65 @@ export function TaskFormModal({
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="space-y-1.5">
-              <Label
-                htmlFor="taskFormType"
-                className="font-sans text-xs font-medium text-muted-foreground"
-              >
+              <Label className="font-sans text-xs font-medium text-muted-foreground">
                 Görev Türü
               </Label>
-              <select
-                id="taskFormType"
-                value={taskType}
-                onChange={(e) => setTaskType(e.target.value as TaskType)}
-                className="flex h-8 w-full rounded-md border border-input bg-background px-2.5 py-1 text-xs text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary focus-visible:border-primary transition-colors cursor-pointer"
-                aria-label="Görev Türü"
-              >
-                <option value="ADVISOR_REQUEST">Danışman Talebi</option>
-                <option value="MANUAL">Kişisel Hedef</option>
-                <option value="READING">Kaynak Okuma</option>
-                <option value="NOTE_TAKING">Not & Alıntı</option>
-                <option value="CARD_SORTING">Fiş Tasnifi</option>
-                <option value="BOX_GAP">Literatür Tarama</option>
-              </select>
+              <Select value={taskType} onValueChange={(v) => setTaskType(v as TaskType)}>
+                <SelectTrigger className="h-8 text-xs bg-background">
+                  <SelectValue placeholder="Görev Türü" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="ADVISOR_REQUEST">Danışman Talebi</SelectItem>
+                  <SelectItem value="MANUAL">Kişisel Hedef</SelectItem>
+                  <SelectItem value="READING">Kaynak Okuma</SelectItem>
+                  <SelectItem value="NOTE_TAKING">Not & Alıntı</SelectItem>
+                  <SelectItem value="CARD_SORTING">Fiş Tasnifi</SelectItem>
+                  <SelectItem value="BOX_GAP">Literatür Tarama</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
 
             <div className="space-y-1.5">
-              <Label
-                htmlFor="taskFormPriority"
-                className="font-sans text-xs font-medium text-muted-foreground"
-              >
+              <Label className="font-sans text-xs font-medium text-muted-foreground">
                 Öncelik Derecesi
               </Label>
-              <select
-                id="taskFormPriority"
+              <Select
                 value={priority}
-                onChange={(e) =>
-                  setPriority(e.target.value as "HIGH" | "MEDIUM" | "LOW")
-                }
-                className="flex h-8 w-full rounded-md border border-input bg-background px-2.5 py-1 text-xs text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary focus-visible:border-primary transition-colors cursor-pointer"
-                aria-label="Öncelik Derecesi"
+                onValueChange={(v) => setPriority(v as "HIGH" | "MEDIUM" | "LOW")}
               >
-                <option value="HIGH">Yüksek Öncelik</option>
-                <option value="MEDIUM">Orta Öncelik</option>
-                <option value="LOW">Düşük Öncelik</option>
-              </select>
+                <SelectTrigger className="h-8 text-xs bg-background">
+                  <SelectValue placeholder="Öncelik" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="HIGH">Yüksek Öncelik</SelectItem>
+                  <SelectItem value="MEDIUM">Orta Öncelik</SelectItem>
+                  <SelectItem value="LOW">Düşük Öncelik</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
           </div>
 
           <div className="space-y-1.5">
-            <Label
-              htmlFor="taskFormBoxSelect"
-              className="font-sans text-xs font-medium text-muted-foreground"
-            >
+            <Label className="font-sans text-xs font-medium text-muted-foreground">
               İlişkili Konu Kutusu
             </Label>
-            <select
-              id="taskFormBoxSelect"
-              value={boxId}
-              onChange={(e) => setBoxId(e.target.value)}
-              className="flex h-8 w-full rounded-md border border-input bg-background px-2.5 py-1 text-xs text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary focus-visible:border-primary transition-colors cursor-pointer"
-              aria-label="İlişkili Konu Kutusu"
-            >
-              <option value="">Genel / Bağlantısız</option>
-              {boxes.map((box) => (
-                <option key={box.id} value={box.id}>
-                  {box.title}
-                </option>
-              ))}
-            </select>
+            <Select value={boxId || "_none"} onValueChange={(v) => setBoxId(v === "_none" ? "" : v)}>
+              <SelectTrigger className="h-8 text-xs bg-background">
+                <SelectValue placeholder="Genel / Bağlantısız" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="_none">Genel / Bağlantısız</SelectItem>
+                {boxes.map((box) => (
+                  <SelectItem key={box.id} value={String(box.id)}>
+                    {box.title}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
 
-          <div className="flex justify-end gap-2.5 pt-3 border-t border-border/40">
+          <Separator className="bg-border/40" />
+          <div className="flex justify-end gap-2.5 pt-1">
             <Button type="button" variant="ghost" onClick={handleClose}>
               İptal
             </Button>

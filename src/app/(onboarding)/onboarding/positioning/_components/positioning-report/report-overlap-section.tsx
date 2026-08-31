@@ -158,10 +158,9 @@ export function ReportOverlapSection({
           </span>
           <Button
             onClick={() => router.push("/onboarding/proposal")}
-            size="sm"
-            className="h-8 text-xs font-medium px-4 rounded-md cursor-pointer"
+            size="default"
           >
-            <RefreshCw className="size-3.5 mr-1.5" />
+            <RefreshCw className="size-4 mr-2" />
             Taslağı Yeniden Düzenle
           </Button>
         </div>

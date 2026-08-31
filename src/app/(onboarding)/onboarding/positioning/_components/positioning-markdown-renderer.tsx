@@ -1,5 +1,6 @@
 import React from "react";
 import { Compass, ScanEye, Sparkles } from "lucide-react";
+import { cn } from "@/lib/utils";
 import type { GapAnalysisStructured } from "@/app/(onboarding)/onboarding/positioning/_services/validation";
 
 interface PositioningMarkdownRendererProps {
@@ -208,27 +209,29 @@ export function PositioningMarkdownRenderer({
   ];
 
   return (
-    <div className={`w-full space-y-3.5 ${className}`}>
+    <div className={cn("w-full space-y-3.5", className)}>
       {sections.map((sec) => {
         const Icon = sec.icon;
         return (
           <div
             key={sec.step}
-            className={`p-4 rounded-md border transition-all duration-200 space-y-2.5 ${
+            className={cn(
+              "p-4 rounded-md border transition-all duration-200 space-y-2.5",
               sec.isHighlight
                 ? "border-primary/20 bg-primary/10"
-                : "border-border bg-card hover:border-primary/20"
-            }`}
+                : "border-border bg-card hover:border-primary/20",
+            )}
           >
             {/* Header: Step Badge + Icon + Title + Role Tag */}
             <div className="flex items-center justify-between gap-3 flex-wrap">
               <div className="flex items-center gap-2">
                 <span
-                  className={`font-mono text-xs font-medium px-2 py-0.5 rounded-md shrink-0 ${
+                  className={cn(
+                    "font-mono text-xs font-medium px-2 py-0.5 rounded-md shrink-0",
                     sec.isHighlight
                       ? "border border-primary/40 bg-primary text-primary-foreground font-semibold"
-                      : "border border-primary/20 bg-primary/10 text-primary"
-                  }`}
+                      : "border border-primary/20 bg-primary/10 text-primary",
+                  )}
                 >
                   {sec.step}
                 </span>
@@ -238,11 +241,12 @@ export function PositioningMarkdownRenderer({
                 </h3>
               </div>
               <span
-                className={`font-sans text-xs font-medium px-2 py-0.5 rounded-md shrink-0 ${
+                className={cn(
+                  "font-sans text-xs font-medium px-2 py-0.5 rounded-md shrink-0",
                   sec.isHighlight
                     ? "border border-primary/30 bg-primary/10 text-primary"
-                    : "text-secondary-foreground bg-secondary border border-border"
-                }`}
+                    : "text-secondary-foreground bg-secondary border border-border",
+                )}
               >
                 {sec.subtitle}
               </span>

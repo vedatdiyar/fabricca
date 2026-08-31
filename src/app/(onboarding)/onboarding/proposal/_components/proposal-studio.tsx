@@ -4,11 +4,10 @@ import React, { useState, useDeferredValue } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { useQueryClient } from "@tanstack/react-query";
-import { Sparkles, FileText, Search, RotateCcw } from "lucide-react";
+import { FileText, Search, RotateCcw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Card } from "@/components/ui/card";
-import { AIBanner } from "@/components/shared/ai-banner";
 import { useLoadingOverlay } from "@/core/providers/loading-overlay-provider";
 import {
   PROPOSAL_POSITIONING_STEPS,
@@ -286,9 +285,8 @@ export function ProposalStudio({ initialProposal = "" }: ProposalStudioProps) {
                   setRawProposal("");
                   setIsEditing(true);
                 }}
-                className="h-7 text-xs px-2.5 text-muted-foreground hover:text-foreground cursor-pointer"
               >
-                <RotateCcw className="size-3 mr-1.5" />
+                <RotateCcw className="size-3.5 mr-1.5" />
                 Temizle
               </Button>
             )}
@@ -375,10 +373,9 @@ export function ProposalStudio({ initialProposal = "" }: ProposalStudioProps) {
               rawProposal.trim().length < 50 ||
               isAuditing
             }
-            size="default"
-            className="cursor-pointer font-medium"
+            size="lg"
           >
-            <Search className="size-3.5 mr-2" />
+            <Search className="size-4 mr-2" />
             Raporu Oluştur
           </Button>
         </div>
