@@ -54,7 +54,12 @@ export function buildBoxStructurePromptPayload(
 ## Biçimsel ve Dil Standartları
 - **Dinamik ve Yalın Başlıklar:** Başlıklar doğrudan matristeki spesifik kavram, aktör ve olgulara odaklanmalıdır. Başlık ve açıklamalarda Türkçe terimlerin yanına parantez içinde yabancı dildeki karşılıkları veya kısaltmaları (örneğin: '(Frame Analysis)', '(DHA)') kesinlikle eklenmemeli; doğrudan duru akademik Türkçe terim kullanılmalıdır.
 - **Açıklamalar:** 100-180 karakter arasında, somut ve bilgilendirici olmalıdır.
-- **Concepts Dizisi:** Sub-box seviyesinde en az 1, en fazla 4 elemandan oluşan somut akademik terimler dizisidir.`,
+- **Concepts Dizisi:** Sub-box seviyesinde en az 1, en fazla 4 elemandan oluşan somut akademik terimler dizisidir.
+
+## Katı Sadakat ve Dış Bilgi Yasağı (Strict Grounding & Negative Constraints)
+- Yalnızca ilgili kadran girdisinde açıkça sağlanan kavram, düşünür, aktör, yöntem ve malzemelerden alt kutu (sub-box), başlık ve kavramlar (concepts) türetin.
+- Girdide adı geçmeyen hiçbir teorik ekolü, düşünürü, olguyu veya kavramı KESİNLİKLE dışarıdan eklemeyin / uydurmayın.
+- Pre-training bilginizdeki genel geçer kavramları veya örneklerdeki (examples) terimleri girdide yoksa ASLA çıktıya dahil etmeyin.`,
 
     workflowSteps: `1. Matristeki her kadranı bağımsız olarak incele.
 2. Vaka aktörlerinin etkileşimine göre alt kutu sayısını belirle (N=1 veya N>=2).
@@ -67,75 +72,70 @@ export function buildBoxStructurePromptPayload(
     examples: `<example>
 <input>
 KADRAN 1: SUBJECT_PROBLEM
-İlgili Matris Alanı: 1991-1999 döneminde Kürt siyasal hareketinin taleplerindeki niteliksel dönüşümü manevra savaşından mevzi savaşına geçiş bağlamında PKK ve legal partiler (HEP-DEP-HADEP) üzerinden inceler.
+İlgili Matris Alanı: 1990'lar Türkiye'sinde yerel yönetimlerin neoliberal yeniden yapılanması ve kentsel rant pratiklerini büyükşehir belediyeleri üzerinden inceler.
 
 KADRAN 2: THEORETICAL_FRAMEWORK
-İlgili Matris Alanı: Antonio Gramsci'nin hegemonya, mevzi savaşı ve pasif devrim kuramı; Ernesto Laclau ve Chantal Mouffe'un radikal demokrasi ve söylemsel hegemonya yaklaşımı.
+İlgili Matris Alanı: David Harvey'nin neoliberalizm kuramı, sermaye birikim modelleri ve kentsel mekânın metalaşması yaklaşımı.
 
 KADRAN 3: METHODOLOGY
-İlgili Matris Alanı: Söylem-tarihsel yaklaşım (DHA) ve nitel içerik analizi ile sistematik kodlama şeması.
+İlgili Matris Alanı: Nitel politika analizi ve belediye meclis kararlarının tematik kodlama şeması ile içerik analizi.
 
 KADRAN 4: PRIMARY_MATERIAL
-İlgili Matris Alanı: HEP, DEP ve HADEP parti programları, seçim bildirgeleri, meclis grup tutanakları ve dönemin periyodik yayınları.
+İlgili Matris Alanı: Büyükşehir Belediye Meclisi Tutanakları, Resmî Gazete İmar Tebliğleri ve Sayıştay Denetim Raporları arşivi.
 </input>
 <output>
 {
   "subjectProblem": {
-    "title": "Kürt Siyasal Hareketinin Söylemsel Dönüşümü",
-    "description": "1991-1999 döneminde PKK ve legal Kürt partilerinin talep ve strateji dönüşümü.",
+    "title": "Yerel Yönetimlerde Neoliberal Dönüşüm",
+    "description": "1990'lar Türkiye'sinde büyükşehir belediyelerinin kurumsal ve mekânsal dönüşümü.",
     "subBoxes": [
       {
-        "title": "Yasal ve Silahlı Hat Etkileşimi (1991-1999)",
-        "description": "1990'lar boyunca HEP-DEP-HADEP çizgisi ile silahlı hareketin stratejik etkileşimi ve söylemsel evrimi.",
-        "concepts": ["Kürt Siyasal Hareketi", "HEP-DEP-HADEP", "1991-1999 Dönemi", "Söylemsel Dönüşüm"]
+        "title": "Büyükşehir Belediyeleri ve Kentsel Rant",
+        "description": "1990'larda yerel yönetimlerin piyasalaşma pratikleri ve kentsel rant dinamikleri.",
+        "concepts": ["Yerel Yönetimler", "Kentsel Rant", "Büyükşehir Belediyeleri", "Neoliberal Politikalar"]
       }
     ]
   },
   "theoreticalFramework": {
-    "title": "Hegemonya ve Söylem Kuramları",
-    "description": "Gramsciyen hegemonya ve post-Marksist söylemsel radikal demokrasi yaklaşımları.",
+    "title": "Neoliberalizm ve Kentsel Mekân Kuramı",
+    "description": "David Harvey'nin mekân üretimi ve sermaye birikim kuramsal çerçevesi.",
     "subBoxes": [
       {
-        "title": "Gramsciyen Hegemonya ve Mevzi Savaşı",
-        "description": "Antonio Gramsci'nin hegemonya, karşı-hegemonya, mevzi savaşı ve pasif devrim kuramsal çerçevesi.",
-        "concepts": ["Hegemonya", "Mevzi Savaşı", "Karşı-Hegemonya", "Pasif Devrim"]
-      },
-      {
-        "title": "Laclau ve Mouffe'un Söylemsel Hegemonya Kuramı",
-        "description": "Radikal demokrasi, söylemsel eklemlenme ve kimlik inşası kuramsal modeli.",
-        "concepts": ["Radikal Demokrasi", "Söylemsel Eklemlenme", "Hegemonik Mücadele"]
+        "title": "David Harvey ve Mekânın Metalaşması",
+        "description": "Sermaye birikimi süreçlerinde kentsel mekânın metalaşması ve rant üretimi teorisi.",
+        "concepts": ["David Harvey", "Sermaye Birikimi", "Mekân Üretimi", "Metalaşma"]
       }
     ]
   },
   "methodology": {
-    "title": "Nitel Söylem ve İçerik Analizi",
-    "description": "Söylem-tarihsel yaklaşım ve tematik kodlama çerçevesinin analitik sentezi.",
+    "title": "Nitel Politika ve İçerik Analizi",
+    "description": "Politika belgeleri ve meclis kararlarının tematik kodlama ile incelenmesi.",
     "subBoxes": [
       {
-        "title": "Söylem-Tarihsel Yaklaşım",
-        "description": "Siyasi metinlerin tarihsel bağlamında retorik ve söylemsel stratejilerle çözümlenmesi.",
-        "concepts": ["Söylem-Tarihsel Yaklaşım", "Söylemsel Stratejiler", "Tarihsel Bağlamsallaştırma"]
+        "title": "Nitel Politika Analizi",
+        "description": "Yerel yönetim mevzuatı ve kamusal politika metinlerinin nitel çözümlenmesi.",
+        "concepts": ["Politika Analizi", "Mevzuat Analizi", "Kamusal Kararlar"]
       },
       {
-        "title": "Nitel Kodlama Şeması ve Matris Analizi",
-        "description": "Metinler arası tematik kategorilerin ve talep tipolojilerinin sistematik kodlanması.",
-        "concepts": ["Nitel İçerik Analizi", "Kodlama Şeması", "Talep Tipolojisi", "Matris Analizi"]
+        "title": "Tematik Kodlama ve İçerik Analizi",
+        "description": "Belediye meclis tutanaklarının sistematik tematik kategorilere göre kodlanması.",
+        "concepts": ["Tematik Kodlama", "İçerik Analizi", "Karar Tipolojisi"]
       }
     ]
   },
   "primaryMaterial": {
-    "title": "Parti Belgeleri ve Tutanaklar Arşivi",
-    "description": "1990'lı yıllara ait resmî parti yayınları, bildirgeler ve meclis zabıtları.",
+    "title": "Belediye Tutanakları ve Denetim Raporları",
+    "description": "Belediye meclis zabıtları, Resmî Gazete tebliğleri ve Sayıştay raporları külliyatı.",
     "subBoxes": [
       {
-        "title": "Yasal Parti Belgeleri ve Bildirgeler",
-        "description": "HEP, DEP ve HADEP kongre kararları, parti programları ve seçim bildirgeleri koleksiyonu.",
-        "concepts": ["Parti Programları", "Seçim Bildirgeleri", "Kongre Kararları", "Siyasal Metinler"]
+        "title": "Belediye Meclis Tutanakları",
+        "description": "Büyükşehir belediyelerinin 1990'lar boyunca aldığı meclis kararları ve zabıtlar.",
+        "concepts": ["Meclis Tutanakları", "Belediye Zabıtları", "İmar Kararları"]
       },
       {
-        "title": "TBMM Tutanakları ve Meclis Zabıtları",
-        "description": "1990'lar boyunca partili milletvekillerinin genel kurul ve komisyon tutanakları külliyatı.",
-        "concepts": ["TBMM Tutanakları", "Meclis Zabıtları", "Grup Konuşmaları", "Parlamento Arşivi"]
+        "title": "Resmî Tebliğler ve Sayıştay Raporları",
+        "description": "İmar mevzuatı tebliğleri ve Sayıştay denetim raporlarından oluşan resmî arşiv.",
+        "concepts": ["Resmî Gazete", "Sayıştay Raporları", "İmar Tebliğleri", "Mevzuat Arşivi"]
       }
     ]
   }

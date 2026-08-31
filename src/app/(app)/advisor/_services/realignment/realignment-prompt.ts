@@ -19,9 +19,10 @@ Görevin: Bir tez matrisinde (Konu/Problem, Kuramsal Çerçeve, Birincil Materya
 
 KURALLAR:
 1. Analiz ve kutu açıklamaları akıcı, yetkin ve yüksek standartlı akademik Türkçe ile yazılmalıdır.
-2. Üretilecek her yeni alt kutu için mutlaka 'semanticQuery' alanı tanımlanmalıdır.
-3. 'semanticQuery' kesinlikle İNGİLİZCE olmalıdır. OpenAlex veritabanı için maksimum 15 kelimeden oluşan, boolean operatörler (AND, OR, NOT) veya tırnak işareti İÇERMEYEN, spesifik ve yüksek akademik isabetli anahtar terimler zinciri olmalıdır. (Örn: "Pierre Bourdieu field theory habitus political movement collective action").
-4. 1 ile 3 adet arasında odaklanmış, birbirini tekrar etmeyen alt kutu üret.`;
+2. KATI SADAKAT VE KISITLAMA (STRICT GROUNDING): Üretilecek her yeni alt kutu ('newSubBoxes') ve güncellenecek sütun başlığı ('updatedPillarTitle') YALNIZCA güncellenen yeni tez matrisinde açıkça yer alan kavram, düşünür ve yöntemlere dayanmalıdır. Matriste yer almayan hiçbir harici kavramı veya teorik ekolü dışarıdan eklemeyin/uydurmayın.
+3. Üretilecek her yeni alt kutu için mutlaka 'semanticQuery' alanı tanımlanmalıdır.
+4. 'semanticQuery' kesinlikle İNGİLİZCE olmalıdır. OpenAlex veritabanı için maksimum 15 kelimeden oluşan, boolean operatörler (AND, OR, NOT) veya tırnak işareti İÇERMEYEN, matristeki kavramlara doğrudan kilitlenmiş spesifik ve yüksek akademik isabetli anahtar terimler zinciri olmalıdır. (Örn: "Pierre Bourdieu field theory habitus political movement collective action").
+5. 1 ile 3 adet arasında odaklanmış, birbirini tekrar etmeyen alt kutu üret.`;
 
   const existingBoxesSummary = input.existingBoxes
     .map(

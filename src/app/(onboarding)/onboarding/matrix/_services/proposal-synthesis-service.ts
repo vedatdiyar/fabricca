@@ -182,15 +182,19 @@ export async function synthesizeInitialMatrixFromProposal(
 ): Promise<ThesisMatrix> {
   const systemInstruction = `<role>
 Kıdemli Tez Danışmanı ve Araştırma Metodoloğu.
-Göreviniz: Araştırmacının sunduğu ham tez önerisi veya taslak metnini analiz ederek 4 temel araştırma kadranına (Problem, Kuramsal Çerçeve, Veri/Malzeme, Metodoloji) ayrıştırmaktır.
+Göreviniz: Araştırmacının sunduğu ham tez önerisi metnini analiz ederek YALNIZCA araştırmacının tezinde benimsediği ve açıkça belirttiği unsurları 4 temel araştırma kadranına (Problem, Kuramsal Çerçeve, Veri/Malzeme, Metodoloji) ayrıştırmaktır.
 </role>
 
 <instructions>
 1. subjectProblem: Araştırma Problemi, Aktörler ve Odak (yoğun akademik paragraf).
-2. theoreticalFramework: Teorik ve Kavramsal Çerçeve (dayandığı kuramlar ve kavramlar).
-3. primaryMaterial: Veri Kaynağı / Birincil Malzeme (arşiv, saha, metin külliyatı).
-4. methodology: Metodoloji ve Yöntem (veri toplama ve analiz yaklaşımı).
-Metinde açıkça belirtilmeyen kısımlar varsa, konunun doğasına uygun enstitü standartlarında akademik bir öneri çerçevesi inşa edin.
+2. theoreticalFramework: Teorik ve Kavramsal Çerçeve (YALNIZCA araştırmacının tezin omurgası olarak benimsediği kuramlar, düşünürler ve analitik kavramlar).
+3. primaryMaterial: Veri Kaynağı / Birincil Malzeme (metinde belirtilen arşiv, belge veya veri kümesi).
+4. methodology: Metodoloji ve Yöntem (araştırmacının uygulayacağı analiz ve okuma şeması).
+
+# KATI SADAKAT VE KISITLAMA KURALLARI (ZORUNLU):
+- Yalnızca metinde doğrudan yer alan kuramları, düşünürleri ve kavramları aktarın.
+- Metinde açıkça belirtilmeyen hiçbir kuramsal unsuru, ekolü veya harici kavramı KESİNLİKLE dışarıdan eklemeyin / inşa etmeyin.
+- İkincil literatür özetinde geçen veya başkalarına ait eleştirilen kavramları, yazar kendi tezinin kuramsal omurgası olarak benimsemediyse kuramsal çerçeveye dahil etmeyin.
 </instructions>`;
 
   const prompt = `<proposal>\n${proposalText.slice(0, 10000)}\n</proposal>\nYukarıdaki tez taslağından 4 kadranlı akademik tez matrisini üret.`;

@@ -45,7 +45,12 @@ export function buildOutlineGenerationPromptPayload(
 ## 4. Başlık ve İfade Standartları
 - **Sadelik ve Hiyerarşik Netlik:** Başlıklar makale özeti veya uzun cümleler yerine kısa, analitik ve akademik kavramlara odaklı olmalıdır.
 - **Dil:** Tüm başlıklar ve açıklamalar akıcı ve yüksek düzey akademik Türkçe ile yazılmalıdır.
-- **Açıklamalar (description):** Her ana ve alt bölüm için 1-2 cümlelik öz, net akademik açıklamalar yazılmalıdır.`,
+- **Açıklamalar (description):** Her ana ve alt bölüm için 1-2 cümlelik öz, net akademik açıklamalar yazılmalıdır.
+
+## 5. Katı Sadakat ve Dış Kavram Yasağı (Strict Grounding & Negative Constraints)
+- KESİNLİKLE matriste adı geçmeyen hiçbir düşünürü, teorik modeli, kavramı veya alt başlığı dışarıdan eklemeyin / uydurmayın.
+- Yalnızca matriste açıkça yer alan analitik kavramlar, ampirik aktörler ve düşünürler üzerinden alt başlıklar türetin.
+- Matriste bulunmayan genel geçer kavramları (örneğin matriste yoksa 'tarihsel blok', 'organik aydın', 'pasif devrim' gibi harici teorik terimleri) pre-training bilginizden çekip plana ASLA DAHİL ETMEYİN.`,
 
     workflowSteps: `1. Araştırma problemi ve kuramsal çerçeveden hareketle tezin bilim dalını (academicField) belirleyin.
 2. Türkiye lisansüstü tez geleneğine uygun olarak: Giriş (yöntem/materyal alt başlıkları dahil) + 3 Ana Gövde Bölümü + Sonuç ve Değerlendirme mimarisini kurun.
@@ -164,6 +169,6 @@ ${matrix.primaryMaterial || "Belirtilmemiş"}
 ${matrix.methodology}`,
 
     taskTrigger:
-      "Yukarıdaki <context> içeriğindeki tez matrisi verilerini analiz ederek Türkiye lisansüstü tez standartlarına tam uyumlu, sade ve akıcı bir taslak tez planını <instructions> kurallarına göre JSON formatında üret.",
+      "Yukarıdaki <context> içeriğindeki tez matrisi verilerini analiz ederek Türkiye lisansüstü tez standartlarına tam uyumlu, sade, akıcı ve KATI SADAKAT (Strict Grounding) kurallarına harfiyen uyan bir taslak tez planını <instructions> kurallarına göre JSON formatında üret.",
   });
 }
