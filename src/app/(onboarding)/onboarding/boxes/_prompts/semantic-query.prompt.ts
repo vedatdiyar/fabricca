@@ -75,13 +75,13 @@ Anahtar Kavramlar (Concepts): [${conceptsText}]`;
 <input>
 Box Türü: METHODOLOGY
 Sub-Box Başlığı: "Tarihsel ve Söylemsel Kodlama"
-Açıklama: "Birincil siyasal kaynakların talep tipolojisi ve kodlama şeması ile nitel söylem analizi."
+Açıklama: "Birincil kurumsal politika kaynaklarının talep tipolojisi ve kodlama şeması ile nitel söylem analizi."
 Anahtar Kavramlar: [Söylem Analizi, Talep Tipolojisi, Kodlama Şeması, Tarihsel İnşa]
 </input>
 <output>
 {
   "subBoxTitle": "Tarihsel ve Söylemsel Kodlama",
-  "semanticQuery": "Qualitative discourse-historical approach and qualitative content analysis of political texts using systematic coding frames, category systems, and demand typologies."
+  "semanticQuery": "Qualitative discourse-historical approach and qualitative content analysis of policy texts using systematic coding frames, category systems, and demand typologies."
 }
 </output>
 </example>
@@ -89,14 +89,14 @@ Anahtar Kavramlar: [Söylem Analizi, Talep Tipolojisi, Kodlama Şeması, Tarihse
 <example>
 <input>
 Box Türü: THEORETICAL_FRAMEWORK
-Sub-Box Başlığı: "Gramsciyen Hegemonya ve Mevzi Savaşı"
-Açıklama: "Antonio Gramsci'nin hegemonya, karşı-hegemonya ve mevzi savaşı kuramı."
-Anahtar Kavramlar: [Hegemonya, Mevzi Savaşı, Karşı-Hegemonya]
+Sub-Box Başlığı: "Kurumsal Teori ve Yol Bağımlılığı"
+Açıklama: "Tarihsel kurumsalcılık, yol bağımlılığı ve kurumsal kilitlenme kuramsal modeli."
+Anahtar Kavramlar: [Tarihsel Kurumsalcılık, Yol Bağımlılığı, Kurumsal Değişim]
 </input>
 <output>
 {
-  "subBoxTitle": "Gramsciyen Hegemonya ve Mevzi Savaşı",
-  "semanticQuery": "Antonio Gramsci hegemony counter-hegemony war of position and passive revolution in political theory and state power."
+  "subBoxTitle": "Kurumsal Teori ve Yol Bağımlılığı",
+  "semanticQuery": "Historical institutionalism path dependency critical junctures institutional change and lock-in mechanisms in public policy and governance."
 }
 </output>
 </example>
@@ -104,14 +104,14 @@ Anahtar Kavramlar: [Hegemonya, Mevzi Savaşı, Karşı-Hegemonya]
 <example>
 <input>
 Box Türü: SUBJECT_PROBLEM
-Sub-Box Başlığı: "Yasal Kürt Siyaseti ve HEP-HADEP Çizgisi"
-Açıklama: "1990'lı yıllarda yasal Kürt partilerinin siyasal söylemleri ve talepleri."
-Anahtar Kavramlar: [HEP, HADEP, Kürt Hareketi]
+Sub-Box Başlığı: "Yenilenebilir Enerji Politikaları ve Yerel Yönetişim"
+Açıklama: "Gelişmekte olan ülkelerde yerel paydaşların yenilenebilir enerjiye geçiş dinamikleri."
+Anahtar Kavramlar: [Yenilenebilir Enerji, Yerel Yönetişim, Paydaş Katılımı]
 </input>
 <output>
 {
-  "subBoxTitle": "Yasal Kürt Siyaseti ve HEP-HADEP Çizgisi",
-  "semanticQuery": "Kurdish political movement in Turkey HEP DEP HADEP parliamentary politics discourse and legal party mobilization during the 1990s."
+  "subBoxTitle": "Yenilenebilir Enerji Politikaları ve Yerel Yönetişim",
+  "semanticQuery": "Renewable energy policy transition local governance citizen participation stakeholder mobilization and sustainable regional development in emerging economies."
 }
 </output>
 </example>`,

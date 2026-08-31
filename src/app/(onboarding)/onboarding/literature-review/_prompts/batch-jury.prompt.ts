@@ -79,17 +79,17 @@ export function buildJuryPromptPayload(
 
     examples: `<example>
 <input>
-Tez Konusu: 1991-1999 döneminde Kürt siyasal hareketinin taleplerindeki niteliksel dönüşümü
+Tez Konusu: Gelişmekte olan ülkelerde yenilenebilir enerji dönüşümü ve yerel yönetişim dinamikleri
 Kutu Bağlamı:
 - Kutu ID: [Box 1]
 - Kutu Türü: SUBJECT_PROBLEM
-- Kutu Başlığı: "Yasal Kürt Partileri ve Meclis Siyaseti"
-- Kutu Açıklaması: "1990'larda HEP, DEP ve HADEP çizgisinin meclis içi ve dışı siyasal söylemleri."
+- Kutu Başlığı: "Yerel Enerji Kooperatifleri ve Katılımcı Karar Alma"
+- Kutu Açıklaması: "Enerji kooperatiflerinin yerel kalkınma ve kamu politikalarındaki dönüştürücü rolü."
 
 Makaleler:
-Makale 1: "The Kurdish Political Movement in Turkey (1990-2000): From HEP to DEHAP"
-Authors: Cengiz Gunes
-Abstract: Examines the mobilization and discourse of pro-Kurdish political parties in 1990s Turkey.
+Makale 1: "Community Energy Initiatives and Local Governance Dynamics in Transition Economies"
+Authors: Elena Rostova
+Abstract: Examines the development and regulatory hurdles of citizen-led energy cooperatives in emerging markets.
 
 Makale 2: "Agricultural Policies and Cotton Production in South America"
 Authors: John Doe
@@ -100,16 +100,16 @@ Abstract: Analyzes soybean and cotton export economics in Brazil during the 1990
   "evaluations": [
     {
       "thesisBoxId": 1,
-      "subBoxTitle": "Yasal Kürt Partileri ve Meclis Siyaseti",
-      "articleTitle": "The Kurdish Political Movement in Turkey (1990-2000): From HEP to DEHAP",
+      "subBoxTitle": "Yerel Enerji Kooperatifleri ve Katılımcı Karar Alma",
+      "articleTitle": "Community Energy Initiatives and Local Governance Dynamics in Transition Economies",
       "openAlexId": null,
       "isRelevant": true,
       "relevanceScore": 92,
-      "reasoning": "Tezin ve alt kutunun odaklandığı 1990'lar yasal Kürt partileri ve meclis siyaseti konusunu doğrudan ve kapsamlı bir biçimde incelemektedir."
+      "reasoning": "Tezin ve alt kutunun odaklandığı enerji kooperatifleri ve yerel yönetişim konusunu doğrudan ve kapsamlı bir biçimde incelemektedir."
     },
     {
       "thesisBoxId": 1,
-      "subBoxTitle": "Yasal Kürt Partileri ve Meclis Siyaseti",
+      "subBoxTitle": "Yerel Enerji Kooperatifleri ve Katılımcı Karar Alma",
       "articleTitle": "Agricultural Policies and Cotton Production in South America",
       "openAlexId": null,
       "isRelevant": false,

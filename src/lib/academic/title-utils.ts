@@ -16,7 +16,7 @@ function hasTurkishMarkers(text: string): boolean {
 
 /**
  * Intelligently splits a bilingual thesis title (e.g., "Primary Title / Secondary Translated Title")
- * without breaking composite acronyms like "PKK/KCK", "XYZ/ABC", or internal comparative phrases.
+ * without breaking composite acronyms like "NATO/EU", "XYZ/ABC", or internal comparative phrases.
  *
  * @param rawTitle - Raw thesis title.
  * @returns An object containing mainTitle and optional secondaryTitle.

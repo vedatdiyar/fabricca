@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
-import { eq } from "drizzle-orm";
+import { and, eq, ne } from "drizzle-orm";
 import { db } from "@/core/db";
 import {
   matrices,
@@ -62,18 +62,23 @@ export default async function OnboardingPage() {
     .limit(1);
 
   if (!outlineRow) {
-    redirect("/onboarding/outline");
+    redirect("/onboarding/boxes");
   }
 
   const [lit] = await db
     .select({ id: sources.id })
     .from(sources)
     .innerJoin(boxes, eq(sources.boxId, boxes.id))
-    .where(eq(boxes.matrixId, matrix.id))
+    .where(
+      and(
+        eq(boxes.matrixId, matrix.id),
+        ne(boxes.boxType, "RELATED_THESES"),
+      ),
+    )
     .limit(1);
 
   if (!lit) {
-    redirect("/onboarding/literature-review");
+    redirect("/onboarding/outline");
   }
 
   redirect("/onboarding/literature-review");

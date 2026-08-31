@@ -26,14 +26,14 @@ export function buildHyDePromptPayload(query: string): PromptPayload {
 
     examples: `<example>
 <input>
-Kullanıcı Arama Sorgusu: "Kürt siyasal hareketinin 1990'lardaki söylemsel dönüşümü ve mevzi savaşı"
+Kullanıcı Arama Sorgusu: "Siyasal iletişimde yapay zeka tabanlı kamuoyu analizi ve algı yönetimi"
 </input>
 <output>
 {
   "detectedLanguage": "tr",
-  "targetTranslation": "Discursive transformation of the Kurdish political movement and war of position in the 1990s",
-  "targetKeywords": ["Kurdish political movement", "discursive transformation", "war of position", "Gramsci", "hegemony", "1990s Turkey"],
-  "hypotheticalSnippet": "During the 1990s, the Kurdish political movement in Turkey transitioned from direct confrontational strategies to a Gramscian war of position within the legal parliamentary domain. Pro-Kurdish legal parties such as HEP, DEP, and HADEP articulated discursive demands centered on cultural rights, democratic recognition, and constitutional citizenship."
+  "targetTranslation": "Artificial intelligence-based public opinion analysis and perception management in political communication",
+  "targetKeywords": ["political communication", "artificial intelligence", "public opinion analysis", "perception management", "computational propaganda", "digital election campaigns"],
+  "hypotheticalSnippet": "Contemporary political communication increasingly incorporates machine learning and sentiment analysis to monitor voter behavior in real-time. Automated text classification models enable political actors to identify emerging issue salience and strategically tailor campaign messaging to distinct demographic segments."
 }
 </output>
 </example>

@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, useCallback, useEffect, useRef } from "react";
+import { useMemo, useState, useCallback, useRef } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import type { GeminiThesisBox, LiteraturePoolEntry } from "@/lib/types";
@@ -144,38 +144,6 @@ export function useLiteratureReview(): UseLiteratureReviewResult {
       setProcessing(false);
     }
   }, [processing, subBoxes, queryClient]);
-
-  useEffect(() => {
-    if (loading || processing || hasTriggeredRef.current) return;
-
-    const regularBoxes = subBoxes.filter(
-      (b) => b.boxType !== "PRIMARY_MATERIAL" && b.boxType !== "RELATED_THESES",
-    );
-
-    if (regularBoxes.length === 0) return;
-
-    const hasMissingLiterature = regularBoxes.some((box) => {
-      const children = box.subBoxes ?? [];
-      if (children.length > 0) {
-        return children.some(
-          (child) =>
-            !literaturePool.some(
-              (e) => e.subBoxTitle === child.title && e.articles.length > 0,
-            ),
-        );
-      }
-      return !literaturePool.some(
-        (e) => e.subBoxTitle === box.title && e.articles.length > 0,
-      );
-    });
-
-    if (hasMissingLiterature) {
-      hasTriggeredRef.current = true;
-      setTimeout(() => {
-        void runPipeline();
-      }, 0);
-    }
-  }, [loading, processing, subBoxes, literaturePool, runPipeline]);
 
   const retryReview = useCallback(async () => {
     hasTriggeredRef.current = true;

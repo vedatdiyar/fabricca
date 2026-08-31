@@ -99,7 +99,7 @@ export function AddSectionModal({
             <Input
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              placeholder="Örn: 2.1. Hegemonya ve Karşı-Hegemonya Kavramı"
+              placeholder="Örn: 2.1. Kuramsal Yaklaşımlar ve Temel Kavramsal Çerçeve"
               className="text-xs"
             />
           </div>

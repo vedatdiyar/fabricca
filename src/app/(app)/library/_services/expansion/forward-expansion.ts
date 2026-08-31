@@ -137,7 +137,7 @@ export async function executeForwardExpansion(
 
   const searchQueryText = box?.semanticQuery
     ? box.semanticQuery.substring(0, 150)
-    : "Kurdish political movement Turkey";
+    : thesisContextQuery.substring(0, 150) || "academic research literature";
 
   const [openAlexCandidates, s2Candidates] = await Promise.all([
     fetchOpenAlexForwardCitations(openAlexSeedQuery, searchQueryText, 50),

@@ -30,7 +30,7 @@ export function parseRunningHeadNumber(
     const value = parseInt(m[1], 10);
     if (isYear(value)) continue;
     const isTrailing = text.slice(m.index! + m[1].length).trim() === "";
-    // Trailing page numbers ("The Kurdish question 121") are the dominant form;
+    // Trailing page numbers ("Chapter Title 121") are the dominant form;
     // fall back to any non-year run when no trailing candidate exists.
     if (isTrailing) {
       best = value;

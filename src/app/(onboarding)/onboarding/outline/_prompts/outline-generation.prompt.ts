@@ -50,7 +50,7 @@ export function buildOutlineGenerationPromptPayload(
 ## 5. Katı Sadakat ve Dış Kavram Yasağı (Strict Grounding & Negative Constraints)
 - KESİNLİKLE matriste adı geçmeyen hiçbir düşünürü, teorik modeli, kavramı veya alt başlığı dışarıdan eklemeyin / uydurmayın.
 - Yalnızca matriste açıkça yer alan analitik kavramlar, ampirik aktörler ve düşünürler üzerinden alt başlıklar türetin.
-- Matriste bulunmayan genel geçer kavramları (örneğin matriste yoksa 'tarihsel blok', 'organik aydın', 'pasif devrim' gibi harici teorik terimleri) pre-training bilginizden çekip plana ASLA DAHİL ETMEYİN.`,
+- Matriste bulunmayan genel geçer kavramları veya harici teorik ekolleri pre-training bilginizden çekip plana ASLA DAHİL ETMEYİN.`,
 
     workflowSteps: `1. Araştırma problemi ve kuramsal çerçeveden hareketle tezin bilim dalını (academicField) belirleyin.
 2. Türkiye lisansüstü tez geleneğine uygun olarak: Giriş (yöntem/materyal alt başlıkları dahil) + 3 Ana Gövde Bölümü + Sonuç ve Değerlendirme mimarisini kurun.

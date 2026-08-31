@@ -93,7 +93,7 @@ export function EditSubBoxModal({
             <Input
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              placeholder="Örn: 1991-1999 Dönemi Aktörler Arası Hegemonya Mücadelesi"
+              placeholder="Örn: 1990'lar Dönemi Kurumsal Politika ve Söylem Mücadelesi"
               className="font-sans"
             />
           </div>
@@ -157,7 +157,7 @@ export function EditSubBoxModal({
                   value={inputValue}
                   onChange={(e) => setInputValue(e.target.value)}
                   onKeyDown={handleInputKeyDown}
-                  placeholder="Yeni kavram ekle (Örn: Manevra Savaşı, Talep Tipolojisi)..."
+                  placeholder="Yeni kavram ekle (Örn: Politika Transferi, Talep Tipolojisi)..."
                   className="pl-8 h-8 text-xs font-sans bg-background border-border rounded-md"
                 />
               </div>
@@ -182,7 +182,7 @@ export function EditSubBoxModal({
             <Input
               value={semanticQuery}
               onChange={(e) => setSemanticQuery(e.target.value)}
-              placeholder="Örn: Gramsci hegemony counter-hegemony war of position state actor strategies"
+              placeholder="Örn: institutional change path dependency governance actor strategies"
               className="font-sans text-xs bg-background border-border rounded-md"
             />
             <p className="text-[10px] font-sans text-muted-foreground">

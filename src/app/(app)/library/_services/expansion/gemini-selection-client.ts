@@ -125,24 +125,24 @@ ${payload.suspiciousCandidates
     examples: `<example>
 <input>
 ### Tez Bağlamı:
-Kürt siyasal hareketinin 1990'lar meclis ve yasal parti söylemleri.
+Avrupa Birliği uyum sürecinde Türkiye'de çevre politikaları ve yerel çevre yönetişimi.
 
 ### Mevcut Kütüphane Kaynakları (1 Adet):
-- "The Kurdish Nationalist Movement: Opportunity, Mobilization and Identity" [David Romano]
+- "Environmental Governance and Policy Implementation in the European Union" [Arthur Mol]
 
 ### Doğrulanmış Aday Kaynaklar:
-[0] "The Kurdish National Movement in Turkey: From Protest to Resistance" — Cengiz Gunes (cited by 4 seed papers)
-[1] "Kurdish Political Mobilization in Turkey" — Nicole Watts (cited by 3 seed papers)
+[0] "European Environmental Policy and National Adaptation" — Andrew Jordan (cited by 4 seed papers)
+[1] "Local Environmental Politics and Sustainability in Candidate Countries" — Maria Börzel (cited by 3 seed papers)
 
 ### Şüpheli Çift Kayıtlar:
 [SUSPICIOUS_0]
-  Aday Başlık: "The Kurdish Nationalist Movement (2006 Edition)" — David Romano
-  Eşleşen Mevcut Başlık: "The Kurdish Nationalist Movement: Opportunity, Mobilization and Identity"
+  Aday Başlık: "Environmental Governance in the EU (Revised Edition)" — Arthur Mol
+  Eşleşen Mevcut Başlık: "Environmental Governance and Policy Implementation in the European Union"
 </input>
 <output>
 {
   "selectedIndices": [0, 1],
-  "suspiciousDuplicates": ["The Kurdish Nationalist Movement (2006 Edition)"],
+  "suspiciousDuplicates": ["Environmental Governance in the EU (Revised Edition)"],
   "suspiciousClear": []
 }
 </output>

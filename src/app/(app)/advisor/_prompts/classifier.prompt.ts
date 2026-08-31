@@ -51,7 +51,7 @@ Tezimin kuramsal çerçevesini Pierre Bourdieu'nün habitus, alan kuramı ve sem
 <example>
 <input>
 === KULLANICININ SON MESAJI ===
-David Romano'nun etnik mobilizasyon modeli ile Gramsci'nin hegemonya yaklaşımını birleştirmeyi düşünüyorum, bu teorik olarak nasıl savunulabilir?
+Douglas North'un kurumsal değişim teorisi ile Bourdieu'nün habitus kavramını sentezlemeyi düşünüyorum, bu teorik olarak nasıl savunulabilir?
 </input>
 <output>
 {
@@ -66,7 +66,7 @@ David Romano'nun etnik mobilizasyon modeli ile Gramsci'nin hegemonya yaklaşım�
 <example>
 <input>
 === KULLANICININ SON MESAJI ===
-Kütüphaneme 'Kürt Hareketi' etiketli yeni bir alt kutu ekler misin?
+Kütüphaneme 'Dijital Diplomasi' etiketli yeni bir alt kutu ekler misin?
 </input>
 <output>
 {

@@ -32,7 +32,7 @@ export function buildStage1AuditPromptPayload(
 3. Kaynak, yıl veya sayfa numarası yanlışsa doğru değeri bulgu mesajında belirt.
 4. **Sayfa Aralığı Doğrulama:** "ss. 119-151" gibi bir sayfa aralığı taşıyan kaynak, o aralıktaki tüm sayfaları kapsar. Aralık içi sayfaları geçerli kabul et; yalnızca aralık dışı referansları raporla.
 5. **Hitap Kuralı:** Kullanıcıya doğrudan "Sen" veya "Siz" şeklinde muhatap ol ("Taslağında belirttiğin...", "Metninde geçen...").
-6. **Dahili İndeks ve Chunk Numarası Yasağı:** Sistem tarafından arka planda sağlanan kaynak parçası numaralarını veya dahili indeksleri (ör. 'Kaynak #1', 'Parça #2', '[Chunk 1]') KESİNLİKLE raporda kullanıcıya gösterme veya metne dahil etme. Kaynak referansı verirken yalnızca eserin yazarını, yayın yılını ve ilgili sayfa/sayfa aralığını kullan (Örn: 'Akkaya (2020, ss. 3-4)' veya 'Ahmet Hamdi Akkaya\\'nın 2020 tarihli çalışmasında...').`,
+6. **Dahili İndeks ve Chunk Numarası Yasağı:** Sistem tarafından arka planda sağlanan kaynak parçası numaralarını veya dahili indeksleri (ör. 'Kaynak #1', 'Parça #2', '[Chunk 1]') KESİNLİKLE raporda kullanıcıya gösterme veya metne dahil etme. Kaynak referansı verirken yalnızca eserin yazarını, yayın yılını ve ilgili sayfa/sayfa aralığını kullan (Örn: 'Yılmaz (2020, ss. 3-4)' veya 'Ahmet Yılmaz\\'ın 2020 tarihli çalışmasında...').`,
 
     workflowSteps: `1. Taslaktaki her [Yazar, Yıl, s. X] / [Yazar, Yıl, ss. X-Y] alıntısını ayrıştır.
 2. Alıntılanan yazar/çalışmanın bağlamda mevcudiyetini kontrol et.
@@ -48,21 +48,21 @@ export function buildStage1AuditPromptPayload(
     examples: `<example>
 <input>
 === TASLAK PARAGRAF METNİ ===
-David Romano (2006, s. 45), Kürt hareketinin 1990'larda tamamen silahlı stratejiden vazgeçtiğini ve sadece sivil itaatsizliğe odaklandığını iddia eder.
+Yılmaz (2018, s. 45), kamu yönetiminde dijitalleşmenin merkezi denetimi tamamen ortadan kaldırdığını ve yetki devrini mutlaklaştırdığını öne sürer.
 
 === KÜTÜPHANE KAYNAK BAĞLAMI ===
-- "The Kurdish Nationalist Movement: Opportunity, Mobilization and Identity" (2006) | David Romano | ss. 40-70
-  İçerik: Romano notes that during the mid-1990s, the movement adopted dual strategies combining armed resistance in rural zones with political mobilization in urban legal spheres.
+- "Dijital Kamu Yönetimi ve Bürokrasi" (2018) | Ahmet Yılmaz | ss. 40-70
+  İçerik: Yilmaz emphasizes that digitalization reshapes administrative oversight without eliminating centralized coordination, establishing hybrid control mechanisms.
 </input>
 <output>
 {
-  "summary": "Taslakta Romano (2006) referansı ile ilgili olgusal çelişki tespit edildi.",
+  "summary": "Taslakta Yılmaz (2018) referansı ile ilgili olgusal çelişki tespit edildi.",
   "hasCriticalIssues": true,
   "findings": [
     {
       "severity": "CRITICAL",
-      "claim": "Kürt hareketinin 1990'larda tamamen silahlı stratejiden vazgeçtiği iddiası",
-      "message": "Romano (2006, ss. 40-70) hareketin silahlı mücadeleyi bıraktığını değil, kırsal silahlı direniş ile kentsel yasal siyaseti eş zamanlı yürüten ikili bir strateji izlediğini belirtmektedir. Bu iddia kaynak metinle doğrudan çelişmektedir."
+      "claim": "Dijitalleşmenin merkezi denetimi tamamen ortadan kaldırdığı iddiası",
+      "message": "Yılmaz (2018, ss. 40-70) dijitalleşmenin merkezi denetimi kaldırmadığını, hibrit kontrol mekanizmaları yaratarak merkezileşmeyi farklı bir formda sürdürdüğünü belirtmektedir. Bu iddia kaynak metinle doğrudan çelişmektedir."
     }
   ]
 }

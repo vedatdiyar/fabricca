@@ -34,17 +34,17 @@ export function buildPdfParserPromptPayload(
 
     examples: `<example>
 <input>
-Alternatif Politika, Cilt. 2, Sayı. 2, 175-194, October 2010
-AYRILIKÇI KÜRT HAREKETİNİN TARİHSEL DİNAMİKLERİNE KISA BİR BAKIŞ
-Maya ARAKON
+Alternatif Politika, Cilt. 5, Sayı. 1, 45-68, Nisan 2013
+YEREL YÖNETİŞİMDE KATILIMCI DEMOKRASİ VE ŞEFFAFLIK PRATİKLERİ
+Ahmet YILMAZ
 </input>
 <output>
 {
   "metadata": {
-    "title": "Ayrılıkçı Kürt Hareketinin Tarihsel Dinamiklerine Kısa Bir Bakış",
-    "authors": ["Maya Arakon"],
+    "title": "Yerel Yönetişimde Katılımcı Demokrasi ve Şeffaflık Pratikleri",
+    "authors": ["Ahmet Yılmaz"],
     "containerTitle": "Alternatif Politika",
-    "publicationYear": 2010,
+    "publicationYear": 2013,
     "publisher": "Alternatif Politika"
   }
 }
@@ -88,27 +88,27 @@ export function buildPdfReferencesPromptPayload(
 
     examples: `<example>
 <input>
-Gunes, C. (2012). The Kurdish National Movement in Turkey: From Protest to Resistance. London: Routledge.
-Romano, D. (2006). The Kurdish Nationalist Movement. Cambridge: Cambridge University Press.
+Jordan, A. (2010). Environmental Policy in the European Union. London: Routledge.
+Mol, A. (2008). Environmental Governance in a Globalizing World. Cambridge: Cambridge University Press.
 </input>
 <output>
 {
   "references": [
     {
-      "raw": "Gunes, C. (2012). The Kurdish National Movement in Turkey: From Protest to Resistance. London: Routledge.",
+      "raw": "Jordan, A. (2010). Environmental Policy in the European Union. London: Routledge.",
       "documentType": "book",
-      "title": "The Kurdish National Movement in Turkey: From Protest to Resistance",
-      "authors": ["Cengiz Gunes"],
-      "year": 2012,
+      "title": "Environmental Policy in the European Union",
+      "authors": ["Andrew Jordan"],
+      "year": 2010,
       "publisher": "Routledge",
       "publisherPlace": "London"
     },
     {
-      "raw": "Romano, D. (2006). The Kurdish Nationalist Movement. Cambridge: Cambridge University Press.",
+      "raw": "Mol, A. (2008). Environmental Governance in a Globalizing World. Cambridge: Cambridge University Press.",
       "documentType": "book",
-      "title": "The Kurdish Nationalist Movement",
-      "authors": ["David Romano"],
-      "year": 2006,
+      "title": "Environmental Governance in a Globalizing World",
+      "authors": ["Arthur Mol"],
+      "year": 2008,
       "publisher": "Cambridge University Press",
       "publisherPlace": "Cambridge"
     }

@@ -23,11 +23,11 @@ export function buildChatTitlePromptPayload(userQuery: string): PromptPayload {
 
     examples: `<example>
 <input>
-David Romano'nun etnisite ve fırsat yapıları yaklaşımını tezimin 2. bölümünde nasıl konumlandırabilirim?
+Pierre Bourdieu'nün kültürel sermaye ve habitus yaklaşımını tezimin 2. bölümünde nasıl konumlandırabilirim?
 </input>
 <output>
 {
-  "title": "David Romano Etnisite Yaklaşımı"
+  "title": "Bourdieu Kültürel Sermaye Yaklaşımı"
 }
 </output>
 </example>
