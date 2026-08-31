@@ -1,12 +1,11 @@
 "use client";
 
-import React, { useState, useCallback, useRef, useDeferredValue } from "react";
+import React, { useState, useDeferredValue } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { useQueryClient } from "@tanstack/react-query";
-import { Sparkles, FileText, Search, Pencil, Eye } from "lucide-react";
+import { Sparkles, FileText, Search, RotateCcw } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Card } from "@/components/ui/card";
 import { AIBanner } from "@/components/shared/ai-banner";
@@ -24,25 +23,34 @@ interface ProposalStudioProps {
   initialProposal?: string;
 }
 
+/**
+ * Counts words accurately by splitting on consecutive whitespace characters.
+ *
+ * @param text - Plain text input string.
+ * @returns Number of words.
+ */
+function countWords(text: string): number {
+  const trimmed = text.trim();
+  if (!trimmed) return 0;
+  return trimmed.split(/\s+/).length;
+}
+
 const proposalPreviewComponents: Components = {
   h1: ({ children }) => (
-    <h1 className="font-serif text-xl font-semibold tracking-tight leading-tight text-foreground mt-3 mb-1.5 first:mt-0">
+    <h1 className="font-serif text-xl font-semibold tracking-tight leading-snug text-foreground mt-6 mb-3 first:mt-0 pb-2 border-b border-input">
       {children}
     </h1>
   ),
   h2: ({ children }) => (
-    <h2 className="font-serif text-base font-semibold tracking-tight text-foreground mt-3 mb-1 pt-2 border-t border-foreground/10 first:mt-0 first:pt-0 first:border-t-0">
+    <h2 className="font-serif text-base font-semibold tracking-tight text-foreground mt-6 mb-2.5 pt-3 border-t border-input first:mt-0 first:pt-0 first:border-t-0">
       {children}
     </h2>
   ),
   h3: ({ children }) => (
-    <h3 className="font-serif text-sm font-semibold tracking-tight text-foreground mt-3 mb-1 first:mt-0">
+    <h3 className="font-serif text-sm font-semibold tracking-tight text-foreground mt-5 mb-2 first:mt-0">
       {children}
     </h3>
   ),
-  // Editorial hierarchy fix:
-  // **Primary Sources** / **Secondary Sources** gibi tek kalın paragraf → h3
-  // *Örgütsel Belgeler* / *Legal Parti Belgeleri* gibi tek italik paragraf → h4
   p: ({ children }) => {
     const arr = React.Children.toArray(children);
     if (arr.length === 1 && React.isValidElement(arr[0])) {
@@ -64,18 +72,18 @@ const proposalPreviewComponents: Components = {
           : undefined) ??
         (typeof el.type === "string" ? el.type : undefined);
       const isShortHeading =
-        text.length > 0 && text.length < 80 && !text.includes("  ");
+        text.length > 0 && text.length < 90 && !text.includes("  ");
       if (isShortHeading) {
         if (tagName === "strong") {
           return (
-            <h3 className="font-serif text-sm font-semibold tracking-tight text-foreground mt-3 mb-1">
+            <h3 className="font-serif text-sm font-semibold tracking-tight text-foreground mt-5 mb-2">
               {text}
             </h3>
           );
         }
         if (tagName === "em") {
           return (
-            <h4 className="font-sans text-xs font-semibold uppercase tracking-wide text-muted-foreground mt-2.5 mb-1">
+            <h4 className="font-sans text-xs font-semibold uppercase tracking-wider text-muted-foreground mt-4 mb-1.5">
               {text}
             </h4>
           );
@@ -83,7 +91,7 @@ const proposalPreviewComponents: Components = {
       }
     }
     return (
-      <p className="text-sm leading-relaxed text-foreground mb-2 last:mb-0">
+      <p className="text-sm leading-relaxed text-foreground/90 mb-3.5 last:mb-0">
         {children}
       </p>
     );
@@ -91,42 +99,52 @@ const proposalPreviewComponents: Components = {
   strong: ({ children }) => (
     <strong className="font-semibold text-foreground">{children}</strong>
   ),
-  em: ({ children }) => <em className="italic text-foreground">{children}</em>,
+  em: ({ children }) => (
+    <em className="italic text-foreground/80">{children}</em>
+  ),
   ul: ({ children }) => (
-    <ul className="list-disc pl-5 space-y-1 my-2 text-sm text-foreground">
+    <ul className="list-disc pl-5 space-y-1.5 my-3 text-sm text-foreground/90">
       {children}
     </ul>
   ),
   ol: ({ children }) => (
-    <ol className="list-decimal pl-5 space-y-1 my-2 text-sm text-foreground">
+    <ol className="list-decimal pl-5 space-y-1.5 my-3 text-sm text-foreground/90">
       {children}
     </ol>
   ),
   li: ({ children }) => (
-    <li className="text-sm leading-relaxed text-foreground">{children}</li>
+    <li className="text-sm leading-relaxed text-foreground/90">{children}</li>
   ),
   blockquote: ({ children }) => (
-    <blockquote className="border-l-2 border-primary/30 bg-primary/5 py-1.5 px-3 my-2 rounded-r-md text-sm text-foreground">
+    <blockquote className="border-l-2 border-primary/40 bg-primary/5 py-2 px-3.5 my-3 rounded-r-md text-sm italic text-foreground/90">
       {children}
     </blockquote>
   ),
   table: ({ children }) => (
-    <div className="overflow-x-auto my-2 rounded-md border border-border">
-      <table className="w-full text-xs border-collapse">{children}</table>
+    <div className="overflow-x-auto my-4 rounded-md border border-border/70 bg-card/40">
+      <table className="w-full text-xs border-collapse divide-y divide-border/60">
+        {children}
+      </table>
     </div>
   ),
-  thead: ({ children }) => <thead className="bg-muted/40">{children}</thead>,
+  thead: ({ children }) => (
+    <thead className="bg-muted/50 text-foreground font-medium text-xs">
+      {children}
+    </thead>
+  ),
   th: ({ children }) => (
-    <th className="text-left p-2 font-medium border-b border-border">
+    <th className="text-left px-3.5 py-2.5 font-medium border-b border-border/70 text-foreground/80">
       {children}
     </th>
   ),
   td: ({ children }) => (
-    <td className="p-2 border-b border-border/60">{children}</td>
+    <td className="px-3.5 py-2.5 border-b border-border/40 text-foreground/90 leading-normal align-top">
+      {children}
+    </td>
   ),
-  hr: () => <hr className="my-3 border-border/20" />,
+  hr: () => <hr className="my-5 border-input" />,
   code: ({ children }) => (
-    <code className="font-mono text-xs px-1 py-0.5 rounded bg-muted border border-border text-foreground">
+    <code className="font-mono text-xs px-1.5 py-0.5 rounded bg-muted border border-border text-foreground">
       {children}
     </code>
   ),
@@ -135,7 +153,7 @@ const proposalPreviewComponents: Components = {
       href={href}
       target="_blank"
       rel="noopener noreferrer"
-      className="text-primary underline underline-offset-2"
+      className="text-primary underline underline-offset-2 hover:text-primary/80 transition-colors"
     >
       {children}
     </a>
@@ -143,7 +161,10 @@ const proposalPreviewComponents: Components = {
 };
 
 /**
- * Onboarding Step 1: Proposal intake and launchpad for the 4-channel academic positioning jury.
+ * Onboarding Step 1: Proposal Studio.
+ * Seamless, distraction-free document surface.
+ * When typing/editing: zero-border clean writing area.
+ * When rendered: beautiful academic paper with Serif typography and styled tables.
  *
  * @param props - Initial proposal text if previously saved.
  * @returns The rendered ProposalStudio.
@@ -154,20 +175,19 @@ export function ProposalStudio({ initialProposal = "" }: ProposalStudioProps) {
   const { showLoading, hideLoading, updateLoadingStep } = useLoadingOverlay();
 
   const [rawProposal, setRawProposal] = useState(initialProposal);
+  const [isEditing, setIsEditing] = useState(!initialProposal.trim());
   const [isAuditing, setIsAuditing] = useState(false);
-  const [activeTab, setActiveTab] = useState<"write" | "preview">("write");
 
   const deferredProposal = useDeferredValue(rawProposal);
+  const wordCount = countWords(rawProposal);
+  const hasProposal = rawProposal.trim().length > 0;
+  const hasMinWords = wordCount >= 10;
 
-  const auditTimerRef1 = useRef<NodeJS.Timeout | null>(null);
-  const auditTimerRef2 = useRef<NodeJS.Timeout | null>(null);
-  const auditTimerRef3 = useRef<NodeJS.Timeout | null>(null);
-
-  const handleStartAnalysis = useCallback(async () => {
+  const handleStartAnalysis = async () => {
     const trimmed = rawProposal.trim();
     if (trimmed.length < 50) {
       toast.error(
-        "Lütfen analiz için en az 50 karakter uzunluğunda bir tez taslağı veya öneri metni girin.",
+        "Lütfen analiz için en az 50 karakter ve yeterli kelime uzunluğunda bir tez taslağı girin.",
       );
       return;
     }
@@ -187,19 +207,19 @@ export function ProposalStudio({ initialProposal = "" }: ProposalStudioProps) {
 
     let isFinished = false;
 
-    auditTimerRef1.current = setTimeout(() => {
+    const timer1 = setTimeout(() => {
       if (isFinished) return;
       updateLoadingStep(0, "completed");
       updateLoadingStep(1, "active");
     }, 1800);
 
-    auditTimerRef2.current = setTimeout(() => {
+    const timer2 = setTimeout(() => {
       if (isFinished) return;
       updateLoadingStep(1, "completed");
       updateLoadingStep(2, "active");
     }, 4800);
 
-    auditTimerRef3.current = setTimeout(() => {
+    const timer3 = setTimeout(() => {
       if (isFinished) return;
       updateLoadingStep(2, "completed");
       updateLoadingStep(3, "active");
@@ -208,9 +228,9 @@ export function ProposalStudio({ initialProposal = "" }: ProposalStudioProps) {
     try {
       const res = await startOnboardingFromProposalAction(trimmed);
       isFinished = true;
-      if (auditTimerRef1.current) clearTimeout(auditTimerRef1.current);
-      if (auditTimerRef2.current) clearTimeout(auditTimerRef2.current);
-      if (auditTimerRef3.current) clearTimeout(auditTimerRef3.current);
+      clearTimeout(timer1);
+      clearTimeout(timer2);
+      clearTimeout(timer3);
 
       if ("error" in res) {
         hideLoading();
@@ -231,128 +251,129 @@ export function ProposalStudio({ initialProposal = "" }: ProposalStudioProps) {
       router.push("/onboarding/positioning");
     } catch {
       isFinished = true;
-      if (auditTimerRef1.current) clearTimeout(auditTimerRef1.current);
-      if (auditTimerRef2.current) clearTimeout(auditTimerRef2.current);
-      if (auditTimerRef3.current) clearTimeout(auditTimerRef3.current);
+      clearTimeout(timer1);
+      clearTimeout(timer2);
+      clearTimeout(timer3);
       hideLoading();
       toast.error("Tez önerisi incelenirken beklenmeyen bir hata oluştu.");
     } finally {
       setIsAuditing(false);
     }
-  }, [
-    hideLoading,
-    queryClient,
-    rawProposal,
-    router,
-    showLoading,
-    updateLoadingStep,
-  ]);
+  };
 
   return (
     <div className="w-full space-y-4">
-      <AIBanner
-        icon={Sparkles}
-        variant="info"
-        title="Akademik Konumlandırma"
-        description="Taslağınız literatürle karşılaştırılır, özgünlük boşluğunuz ve konumunuz belirlenir."
-      />
-
-      <Card className="p-5 sm:p-6 space-y-4 rounded-md border border-border bg-card">
-        <div className="flex flex-col space-y-1">
+      <Card className="flex flex-col rounded-lg border border-border bg-card shadow-sm overflow-hidden">
+        {/* Studio Header */}
+        <div className="p-4 sm:p-5 border-b border-border/70 bg-card/60">
           <div className="flex items-center justify-between gap-3 flex-wrap">
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2.5">
               <span className="flex items-center justify-center size-5 rounded bg-primary/10 text-primary font-mono text-xs font-semibold">
                 01
               </span>
               <FileText className="size-4 text-muted-foreground shrink-0" />
-              <Label
-                htmlFor="rawProposal"
-                className="font-serif text-sm font-semibold text-foreground"
-              >
-                Tez Taslağı, Araştırma Problemi veya Öneri Metni
+              <Label className="font-serif text-sm font-semibold text-foreground tracking-tight">
+                Tez Taslağı & Araştırma Metni
               </Label>
             </div>
-            <div className="flex items-center gap-1 rounded-md bg-muted p-1 shrink-0">
-              <button
+
+            {hasProposal && (
+              <Button
                 type="button"
-                onClick={() => setActiveTab("write")}
-                className={`inline-flex items-center gap-1.5 rounded-sm px-3 py-1.5 text-xs font-medium transition-colors ${
-                  activeTab === "write"
-                    ? "bg-primary text-primary-foreground shadow-xs"
-                    : "text-muted-foreground hover:text-foreground"
-                }`}
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  setRawProposal("");
+                  setIsEditing(true);
+                }}
+                className="h-7 text-xs px-2.5 text-muted-foreground hover:text-foreground cursor-pointer"
               >
-                <Pencil className="size-3.5" />
-                Yaz
-              </button>
-              <button
-                type="button"
-                onClick={() => setActiveTab("preview")}
-                className={`inline-flex items-center gap-1.5 rounded-sm px-3 py-1.5 text-xs font-medium transition-colors ${
-                  activeTab === "preview"
-                    ? "bg-primary text-primary-foreground shadow-xs"
-                    : "text-muted-foreground hover:text-foreground"
-                }`}
-              >
-                <Eye className="size-3.5" />
-                Önizleme
-              </button>
-            </div>
+                <RotateCcw className="size-3 mr-1.5" />
+                Temizle
+              </Button>
+            )}
           </div>
-          <p className="font-sans text-xs text-muted-foreground leading-relaxed pl-7">
-            Herhangi bir biçimlendirme kuralına bağlı kalmadan; çalışmanızın
-            konusunu, merak ettiğiniz problemi, kuramsal yaklaşımınızı veya veri
-            kaynaklarınızı içeren metni buraya aktarın.
+
+          <p className="font-sans text-xs text-muted-foreground leading-relaxed pl-7.5 mt-1">
+            {hasProposal && !isEditing
+              ? "Taslağınız döküman görünümünde. Düzenlemek için dökümana tıklayabilirsiniz."
+              : "Tez konunuzu doğrudan yazabilir veya ChatGPT, Claude, Word'den kopyalayıp yapıştırabilirsiniz."}
           </p>
         </div>
 
-        {activeTab === "write" ? (
-          <Textarea
-            id="rawProposal"
-            value={rawProposal}
-            onChange={(e) => setRawProposal(e.target.value)}
-            placeholder="Örnek: Bu çalışmada Türkiye'de uzaktan çalışan bilişim çalışanlarının ve dijital göçebelerin emek süreçlerindeki güvencesizleşme dinamiklerini incelemeyi hedefliyorum. Kuramsal olarak Standing'in prekarya yaklaşımı ve Foucault'nun öznellik tartışmalarından yararlanarak, İstanbul ve sahil kentlerinde yaşayan 25 uzaktan bilişimci ile yarı yapılandırılmış derinlemesine mülakatlar yapmayı planlıyorum..."
-            rows={13}
-            className="min-h-[280px] p-3.5 text-sm leading-relaxed"
-          />
-        ) : (
-          <div className="min-h-[280px] w-full rounded-md border border-border/50 bg-background/40 p-3.5 overflow-auto">
-            {rawProposal.trim() ? (
-              <ReactMarkdown
-                remarkPlugins={[remarkGfm]}
-                components={proposalPreviewComponents}
-              >
-                {deferredProposal}
-              </ReactMarkdown>
-            ) : (
-              <p className="text-sm text-muted-foreground/60">
-                Önizleme için önce Yaz sekmesine metin girin veya yapıştırın.
-              </p>
-            )}
-          </div>
-        )}
-
-        <div className="flex items-center justify-between pt-2">
-          <div className="flex items-center gap-3">
-            <span className="font-mono text-xs text-muted-foreground">
-              {rawProposal.trim().length} karakter
-            </span>
-            {rawProposal.trim().length > 0 &&
-              rawProposal.trim().length < 50 && (
-                <span className="text-xs text-warning font-medium">
-                  (Analiz için en az 50 karakter gereklidir)
-                </span>
+        {/* Studio Content Area (Pure Paper Viewport) */}
+        <div className="relative flex-1">
+          <div className="h-[calc(100vh-340px)] min-h-[460px] max-h-[680px] w-full overflow-y-auto">
+            <div className="max-w-3xl mx-auto px-6 sm:px-12 py-8 text-foreground min-h-full">
+              {isEditing || !hasProposal ? (
+                <textarea
+                  id="proposal-input"
+                  value={rawProposal}
+                  onChange={(e) => setRawProposal(e.target.value)}
+                  onBlur={() => {
+                    if (rawProposal.trim()) {
+                      setIsEditing(false);
+                    }
+                  }}
+                  onPaste={(e) => {
+                    const pasted = e.clipboardData.getData("text");
+                    if (pasted.trim().length > 60) {
+                      setTimeout(() => {
+                        setIsEditing(false);
+                      }, 50);
+                    }
+                  }}
+                  placeholder="Tezinizin konusunu, merak ettiğiniz problemi veya araştırma taslağınızı buraya yazın ya da kopyaladığınız metni yapıştırın..."
+                  className="w-full min-h-[400px] h-full bg-transparent text-sm leading-relaxed font-sans text-foreground placeholder:text-muted-foreground/50 border-0 outline-none resize-none focus:outline-none focus:ring-0 p-0 m-0"
+                  autoFocus
+                />
+              ) : (
+                <div
+                  onClick={() => setIsEditing(true)}
+                  className="cursor-text min-h-[400px] group transition-opacity"
+                  title="Düzenlemek için tıklayın"
+                >
+                  <ReactMarkdown
+                    remarkPlugins={[remarkGfm]}
+                    components={proposalPreviewComponents}
+                  >
+                    {deferredProposal}
+                  </ReactMarkdown>
+                </div>
               )}
+            </div>
+          </div>
+        </div>
+
+        {/* Studio Permanent Footer Bar */}
+        <div className="flex items-center justify-between px-4 sm:px-6 py-3 border-t border-border/70 bg-card/90">
+          <div className="flex items-center gap-3">
+            <span className="inline-flex items-center gap-1.5 font-mono text-xs text-muted-foreground">
+              <span className="font-semibold text-foreground">
+                {wordCount.toLocaleString("tr-TR")}
+              </span>
+              kelime
+            </span>
+            {hasProposal && !hasMinWords && (
+              <span className="text-xs text-warning font-medium">
+                (Analiz için en az 10 kelimelik bir taslak gereklidir)
+              </span>
+            )}
+            {hasProposal && hasMinWords && (
+              <span className="hidden sm:inline-block text-xs text-muted-foreground/60">
+                • {rawProposal.trim().length.toLocaleString("tr-TR")} karakter
+              </span>
+            )}
           </div>
 
           <Button
             type="button"
             onClick={handleStartAnalysis}
-            disabled={rawProposal.trim().length < 50 || isAuditing}
-            size="lg"
-            className="cursor-pointer"
+            disabled={!hasProposal || !hasMinWords || rawProposal.trim().length < 50 || isAuditing}
+            size="default"
+            className="cursor-pointer font-medium"
           >
-            <Search className="size-4 mr-2" />
+            <Search className="size-3.5 mr-2" />
             Raporu Oluştur
           </Button>
         </div>
@@ -360,3 +381,7 @@ export function ProposalStudio({ initialProposal = "" }: ProposalStudioProps) {
     </div>
   );
 }
+
+
+
+
