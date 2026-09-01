@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useDeferredValue } from "react";
+import React, { useState, useDeferredValue, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { useQueryClient } from "@tanstack/react-query";
@@ -174,6 +174,16 @@ export function ProposalStudio({ initialProposal = "" }: ProposalStudioProps) {
   const [rawProposal, setRawProposal] = useState(initialProposal);
   const [isEditing, setIsEditing] = useState(!initialProposal.trim());
   const [isAuditing, setIsAuditing] = useState(false);
+  const proposalInputRef = useRef<HTMLTextAreaElement>(null);
+  const isFirstRenderRef = useRef(true);
+
+  useEffect(() => {
+    if (isFirstRenderRef.current) {
+      isFirstRenderRef.current = false;
+      return;
+    }
+    if (isEditing) proposalInputRef.current?.focus();
+  }, [isEditing]);
 
   const deferredProposal = useDeferredValue(rawProposal);
   const wordCount = countWords(rawProposal);
@@ -303,6 +313,7 @@ export function ProposalStudio({ initialProposal = "" }: ProposalStudioProps) {
             <div className="max-w-3xl mx-auto px-6 sm:px-12 py-8 text-foreground min-h-full">
               {isEditing || !hasProposal ? (
                 <textarea
+                  ref={proposalInputRef}
                   id="proposal-input"
                   value={rawProposal}
                   onChange={(e) => setRawProposal(e.target.value)}
@@ -320,13 +331,22 @@ export function ProposalStudio({ initialProposal = "" }: ProposalStudioProps) {
                     }
                   }}
                   placeholder="Tezinizin konusunu, merak ettiğiniz problemi veya araştırma taslağınızı buraya yazın ya da kopyaladığınız metni yapıştırın..."
+                  aria-label="Tez taslağı ve araştırma metni"
                   className="w-full min-h-[400px] h-full bg-transparent text-sm leading-relaxed font-sans text-foreground placeholder:text-muted-foreground border-0 outline-none resize-none focus:outline-none focus:ring-0 p-0 m-0"
-                  autoFocus
                 />
               ) : (
                 <div
+                  role="button"
+                  tabIndex={0}
+                  aria-label="Taslağı düzenlemek için tıklayın"
                   onClick={() => setIsEditing(true)}
-                  className="cursor-text min-h-[400px] group transition-opacity"
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      e.preventDefault();
+                      setIsEditing(true);
+                    }
+                  }}
+                  className="cursor-text min-h-[400px] group transition-opacity focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 rounded-md"
                   title="Düzenlemek için tıklayın"
                 >
                   <ReactMarkdown

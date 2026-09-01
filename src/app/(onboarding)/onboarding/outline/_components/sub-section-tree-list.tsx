@@ -115,7 +115,10 @@ export function SubSectionTreeList({
                     }
                     placeholder="Alt bölüm başlığı..."
                     className="text-xs h-8"
-                    autoFocus
+                    aria-label="Alt bölüm başlığı"
+                    ref={(el) => {
+                      if (el && isSubEditing) el.focus();
+                    }}
                   />
                   <Textarea
                     value={subEditDescription}

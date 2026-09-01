@@ -20,6 +20,8 @@ import {
   isRpdError,
   isServerOverloadError,
   isTimeoutError,
+  extractQuotaDetails,
+  extractRetryDelayMs,
 } from "./llm-errors";
 import {
   markKeyRpdExhausted,
@@ -144,10 +146,19 @@ export async function dispatchGeminiCall<T>(
         return result;
       } catch (error) {
         const currentKeyIdx = keyIndicesToTry[i];
-        if (isRpdError(error)) {
+        const quotaDetails = extractQuotaDetails(error);
+        const retryDelayMs = extractRetryDelayMs(error);
+        const quotaKind: "rpd_daily" | "rpm_per_minute" | "unknown" =
+          isRpdError(error)
+            ? "rpd_daily"
+            : isRateLimitError(error)
+              ? "rpm_per_minute"
+              : "unknown";
+
+        if (quotaKind === "rpd_daily") {
           markKeyRpdExhausted(model, apiKey);
-        } else if (isRateLimitError(error)) {
-          markKeyRpmCoolingDown(model, apiKey);
+        } else if (quotaKind === "rpm_per_minute") {
+          markKeyRpmCoolingDown(model, apiKey, retryDelayMs ?? undefined);
         }
 
         const isOverload = isServerOverloadError(error);
@@ -175,15 +186,30 @@ export async function dispatchGeminiCall<T>(
 
         if (i < keyIndicesToTry.length - 1) {
           const nextKeyIdx = keyIndicesToTry[i + 1];
+          const quotaLabel =
+            quotaKind === "rpd_daily"
+              ? "GUNLUK kota (RPD) — Pacific midnight reset"
+              : quotaKind === "rpm_per_minute"
+                ? `DAKIKALIK limit (RPM) — retryDelay ${retryDelayMs ? `${Math.round(retryDelayMs / 1000)}s` : "60s (varsayilan)"}`
+                : "bilinmeyen 429";
           params.logger?.info("gemini_key_rotate_retry", {
             service: "gemini",
             status: "RETRY",
             data: {
-              summary: `(key ${currentKeyIdx + 1} failed, rotating to key ${nextKeyIdx + 1}/${pool.length})`,
+              summary: `(key ${currentKeyIdx + 1} failed [${quotaKind}] → ${quotaLabel}, rotating to key ${nextKeyIdx + 1}/${pool.length})`,
               fromKey: currentKeyIdx + 1,
               toKey: nextKeyIdx + 1,
               totalKeys: pool.length,
               model,
+              quotaKind,
+              quotaLabel,
+              quotaMetric: quotaDetails?.quotaMetric,
+              quotaId: quotaDetails?.quotaId,
+              retryDelayMs: retryDelayMs ?? undefined,
+              errorMessage:
+                error instanceof Error
+                  ? error.message.slice(0, 300)
+                  : String(error).slice(0, 300),
             },
           });
           continue;

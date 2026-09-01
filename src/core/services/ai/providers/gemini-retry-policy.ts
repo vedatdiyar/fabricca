@@ -76,7 +76,7 @@ export function createGeminiRetryPolicy(
       }
       return defaultDelay;
     },
-    isRetryable: (error, _attempt = 1) => {
+    isRetryable: (error) => {
       if (error instanceof Error) {
         // If it's an RPD (Daily Quota) error, do not retry on the same key;
         // let dispatchGeminiCall immediately switch to the next API key!
