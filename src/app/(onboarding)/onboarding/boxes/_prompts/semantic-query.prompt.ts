@@ -47,32 +47,39 @@ Anahtar Kavramlar (Concepts): [${conceptsText}]`;
 
   return buildPromptPayload({
     roleAndExpertise:
-      "Siz, tüm akademik disiplinlerdeki tez çalışmaları için OpenAlex `search.semantic` arama motoruna özel yüksek kaliteli, disiplin içi kanonik kavramlarla donatılmış ve odaklanmış İngilizce akademik arama sorguları üreten kıdemli bir bilgi bilimi ve araştırma metodolojisi uzmanısınız.",
+      "Siz, tüm akademik disiplinlerdeki lisansüstü tez çalışmaları için hem OpenAlex'in GTE-Large-EN vektör motoruna hem de Semantic Scholar'ın akademik arama motoruna özel yüksek kaliteli, hedeflenmiş ve disiplinlerarası kanonik İngilizce arama sorguları üreten kıdemli bir bilgi bilimi ve araştırma metodolojisi uzmanısınız.",
 
     primaryTask:
-      "Size verilen Genel Tez Matrisini, ilgili Alt Kutuyu (Sub-Box) ve Alt Kutuya ait Anahtar Kavramları (`concepts`) analiz ederek; OpenAlex'in GTE-Large-EN vektör modeline doğrudan beslenecek 150-250 karakterlik son derece yoğun, doğal akademik dilde İngilizce arama sorguları üretin.",
+      "Size verilen Genel Tez Matrisini, ilgili Alt Kutuyu (Sub-Box) ve Alt Kutuya ait Anahtar Kavramları (`concepts`) analiz ederek; her alt kutu için eşzamanlı olarak iki farklı arama sorgusu üretin: (1) OpenAlex GTE-Large-EN vektör modeli için zengin ve yoğun bir akademik araştırma paragrafı (`openAlexQuery`), (2) Semantic Scholar arama motoru için odaklanmış anahtar kelime/terim öbeği sorgusu (`semanticScholarQuery`).",
 
-    rulesAndConstraints: `1. **Sıkı Çapalama ve Sıfır Uydurma (Strict Grounding & Zero Extrapolation)**:
-   - Yalnızca ve yalnızca kutu başlığında (\`title\`), açıklamasında (\`description\`) ve anahtar kavramlarında (\`concepts\`) açıkça yer alan kuramsal modelleri, kuramcıları, araştırma yöntemlerini veya ampirik aktörleri kullanın.
-   - Girdide açıkça yer almayan hiçbir genel teorik jargonu, yan teoriyi, soyut şemsiye kavramları veya genel geçer akademik süs kelimelerini kesinlikle sorguya eklemeyin.
-2. **Akademik Karşılık Dönüşümü (Scholarly Mapping)**: Terimleri uluslararası literatürde kabul görmüş kanonik akademik İngilizce karşılıklarına dönüştürün.
+    rulesAndConstraints: `1. **Bütünsel Tez Matrisi ve Alt Kutu Çapalaması (Holistic Matrix & Sub-Box Grounding)**:
+   - İlgili alt kutunun ait olduğu kadranın Genel Tez Matrisindeki detaylarından, alt kutu başlığından (\`title\`), açıklamasından (\`description\`) ve anahtar kavramlarından (\`concepts\`) yararlanın.
+   - Tezin ve kutunun incelediği spesifik kuramcıları, kuramsal modelleri, araştırma yöntemlerini, ampirik aktörleri, coğrafyayı ve tarihsel/olgusal dönem sınırlarını doğrudan sorguya dahil edin.
+2. **Akademik Karşılık ve Kanonik Literatür Eşlemesi (Scholarly Mapping & Canonical Keywords)**:
+   - Terimleri uluslararası literatürde kabul görmüş kanonik akademik İngilizce karşılıklarına dönüştürün.
+   - İlgili araştırma alanının uluslararası indeksli literatürde taranmasını sağlayacak temel kavramsal anahtarları ekleyin.
 3. **Kutu Türü İzolasyonu ve Odaklanma**:
-   - **SUBJECT_PROBLEM**: Yalnızca tezin incelediği ampirik vakaya, aktörlere, spesifik döneme ve coğrafyaya odaklanın. Soyut kuramsal terimleri ve yöntem adlarını hariç tutun.
-   - **THEORETICAL_FRAMEWORK**: Kutu başlığı ve açıklamasındaki spesifik kuramsal modele, operasyonel mekanizmaya ve belirtilen kuramcıların isimlerine odaklanın. Genel şemsiye kavramlarla sorguyu seyreltmeyin. Ampirik vaka aktörlerini hariç tutun.
-   - **METHODOLOGY**: Tezin ve alt kutunun benimsediği araştırma desenine ve analiz yöntemine (nitel, nicel, karma yöntem, ekonometrik, deneysel vb.) tam sadık kalın. Yalnızca ilgili yöntemin metodolojik literatürünü hedefleyin; vaka aktörlerini hariç tutun.
+   - **SUBJECT_PROBLEM**: Yalnızca tezin incelediği ampirik vakaya, aktörlere, kurumlara, spesifik tarihsel döneme ve coğrafyaya odaklanın. Soyut kuramsal terimleri ve yöntem adlarını hariç tutun.
+   - **THEORETICAL_FRAMEWORK**: Kutu başlığı, açıklaması ve Genel Tez Matrisindeki spesifik kuramsal modele, kavramsal mekanizmaya ve belirtilen kuramcıların isimlerine odaklanın. Ampirik vaka aktörlerini hariç tutun.
+   - **METHODOLOGY**: Tezin ve alt kutunun benimsediği araştırma desenine, veri toplama ve analiz protokollerine (söylem analizi, ekonometri, arşiv taraması, nitel/nicel vb.) odaklanın. Yalnızca ilgili yöntemin metodolojik literatürünü hedefleyin; ampirik vaka aktörlerini hariç tutun.
    - **PRIMARY_MATERIAL**: Boş string (\`""\`) döndürün.
-4. **Sözdizimi ve Format Kuralları**: Arama sorgularını tırnak işareti ve mantıksal boolean operatörleri (AND/OR/NOT) içermeyen, en fazla 5-8 anahtar kelimelik yalın ve yüksek kesinlikli İngilizce arama sorguları olarak kurgulayın.`,
+4. **OpenAlex Sorgu Kuralı (\`openAlexQuery\`)**:
+   - OpenAlex \`search.semantic\` motoru (GTE-Large-EN 1024d embedding) zengin ve detaylı metinlerle en yüksek başarıyı gösterir.
+   - 500-1200 karakter uzunluğunda, alt kutunun araştırma amacını, özgül kuramsal/metodolojik mekanizmasını, ampirik odağını ve analiz kapsamını açıklayan doğal, akıcı ve yoğun bir akademik İngilizce araştırma paragrafı (abstract/grant aim benzeri) oluşturun.
+5. **Semantic Scholar Sorgu Kuralı (\`semanticScholarQuery\`)**:
+   - Semantic Scholar \`paper/search\` motoru Boolean operatörlerini (AND, OR, NOT) DESTEKLEMEZ.
+   - Yalnızca 4-8 adet odaklı, yüksek kesinlikli İngilizce anahtar kelime veya tırnaklı kelime öbeği içeren yalın bir sorgu oluşturun (Örn: \`Daniel Egan Gramsci "war of position" "war of maneuver"\` veya \`"critical discourse analysis" Gramscian hegemony political studies\`).`,
 
     workflowSteps: `1. Her bir alt kutunun türünü (\`boxType\`), açıklamasını, kavramlarını ve Genel Tez Matrisindeki bağlamı inceleyin.
-2. Kutu türü izolasyon kurallarına ve Strict Grounding prensibine tam uyarak yalnızca verilen girdideki özgül kavramları içeren İngilizce semantik arama sorgusunu oluşturun.`,
+2. Kutu türü izolasyon kurallarına ve Strict Grounding prensibine tam uyarak hem zengin \`openAlexQuery\` araştırma paragrafını hem de odaklı \`semanticScholarQuery\` anahtar kelimelerini oluşturun.`,
 
     outputFormat:
-      'Her alt kutu için `subBoxTitle` ve `semanticQuery` alanlarını içeren JSON nesneleri dizisi döndürün. Şema: [{"subBoxTitle": string, "semanticQuery": string}]',
+      'Her alt kutu için `subBoxTitle`, `openAlexQuery` ve `semanticScholarQuery` alanlarını içeren JSON nesneleri dizisi döndürün. Şema: [{"subBoxTitle": string, "openAlexQuery": string, "semanticScholarQuery": string}]',
 
     inputContext: `${matrixContext ? `${matrixContext}\n\n` : ""}### İşlenecek Alt Kutular:
 ${parts.join("\n\n")}`,
 
     taskTrigger:
-      "Yukarıdaki <context> içindeki her alt kutuyu inceleyerek <instructions> kurallarına göre `subBoxTitle` ve `semanticQuery` alanlarını içeren JSON çıktısını üret.",
+      "Yukarıdaki <context> içindeki her alt kutuyu inceleyerek <instructions> kurallarına göre `subBoxTitle`, `openAlexQuery` ve `semanticScholarQuery` alanlarını içeren JSON çıktısını üret.",
   });
 }

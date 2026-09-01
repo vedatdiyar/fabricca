@@ -49,13 +49,20 @@ export async function processAllBoxesAction(
     );
     if (isLiteratureCancelled(userId)) return { error: "cancelled" };
 
+    const thesisMatrixContext = {
+      subjectProblem: matrix.subjectProblem ?? "",
+      theoreticalFramework: matrix.theoreticalFramework ?? "",
+      methodology: matrix.methodology ?? "",
+      primaryMaterial: matrix.primaryMaterial ?? "",
+    };
+
     const { poolEntries } = await run.execute(
       "scan",
       () =>
         orchestrateBatchProcess(
           boxes,
           run.logger,
-          matrix.subjectProblem,
+          thesisMatrixContext,
           () => isLiteratureCancelled(userId),
           async (thesisBoxId, articles) => {
             await persistSubBoxEntry(thesisBoxId, articles);
@@ -108,7 +115,12 @@ export async function runLiteraturePipelineAction(
       },
       { description: "Literature Pool & Boxes Check" },
     );
-    const subjectProblem = matrix.subjectProblem ?? "";
+    const thesisMatrixContext = {
+      subjectProblem: matrix.subjectProblem ?? "",
+      theoreticalFramework: matrix.theoreticalFramework ?? "",
+      methodology: matrix.methodology ?? "",
+      primaryMaterial: matrix.primaryMaterial ?? "",
+    };
 
     const { poolEntries } = await run.execute(
       "scan",
@@ -116,7 +128,7 @@ export async function runLiteraturePipelineAction(
         orchestrateBatchProcess(
           boxes,
           run.logger,
-          subjectProblem,
+          thesisMatrixContext,
           () => isLiteratureCancelled(userId),
           async (thesisBoxId, articles) => {
             await persistSubBoxEntry(thesisBoxId, articles);

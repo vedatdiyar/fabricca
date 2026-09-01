@@ -1,5 +1,9 @@
 import { Logger } from "@/lib/logger";
-import { normalizeCleanTitle, extractCleanDoi } from "@/lib/academic/utils";
+import {
+  normalizeCleanTitle,
+  extractCleanDoi,
+  parseDualSemanticQuery,
+} from "@/lib/academic/utils";
 import { rerankWithCohere } from "@/core/services/ai/cohere";
 import {
   evaluateSingleBoxJury,
@@ -9,30 +13,6 @@ import {
 import type { SubBoxResult, PoolItem, JuryEvalResult } from "./types";
 
 export type { ThesisMatrixContext } from "../batch-jury";
-
-/** Minimum abstract character length for a viable seed candidate. */
-const MIN_ABSTRACT_CHARS = 45;
-
-/**
- * Validates whether a paper's abstract possesses enough substance to be evaluated by the jury.
- *
- * @param abstract - Candidate abstract text.
- * @returns True if the abstract is meaningful, false if missing or placeholder.
- */
-function hasSubstantialAbstract(abstract?: string | null): boolean {
-  if (!abstract) return false;
-  const trimmed = abstract.trim();
-  if (trimmed.length < MIN_ABSTRACT_CHARS) return false;
-  const lower = trimmed.toLowerCase();
-  if (
-    lower === "no abstract available" ||
-    lower === "özet bulunamadı" ||
-    lower.startsWith("no abstract")
-  ) {
-    return false;
-  }
-  return true;
-}
 
 /**
  * Builds the jury pool for a sub-box from raw papers only.
@@ -94,20 +74,18 @@ export async function executePhase2Jury(
       return true;
     });
 
-    // 2. Abstract depth filter (seed-worthiness)
-    const withSubstantialAbstract = pool.filter((item) =>
-      hasSubstantialAbstract(item.rawPaper.abstract),
-    );
-    // Prefer candidates with substantial abstracts; fallback if pool is too small
-    if (withSubstantialAbstract.length >= 4) {
-      pool = withSubstantialAbstract;
-    }
-
-    // 3. Two-tiered pre-ranking: Cohere Rerank v4.0 Pro with heuristic fallback
+    // 2. Two-tiered pre-ranking: Cohere Rerank v4.0 Pro with heuristic fallback
     let capped: PoolItem[] = [];
-    const queryContext = `${r.subBox.title}. ${r.subBoxDescription}`.trim();
+    const { openAlexQuery } = parseDualSemanticQuery(r.subBox.semanticQuery);
+    const queryParts = [
+      r.subBox.title,
+      r.subBoxDescription,
+      openAlexQuery ? `Scholarly context: ${openAlexQuery.slice(0, 400)}` : "",
+    ].filter(Boolean);
+    const queryContext = queryParts.join(". ").trim();
+
     const candidateDocs = pool.map((item) =>
-      `${item.rawPaper.title ?? ""}. ${item.rawPaper.abstract ?? ""}`.trim(),
+      `${item.rawPaper.title ?? ""}. ${item.rawPaper.abstract ?? item.rawPaper.metadata ?? ""}`.trim(),
     );
 
     if (candidateDocs.length > 0) {
@@ -139,8 +117,8 @@ export async function executePhase2Jury(
       capped = pool
         .sort(
           (a, b) =>
-            b.rawPaper.relevanceScore - a.rawPaper.relevanceScore ||
-            (b.rawPaper.citedByCount ?? 0) - (a.rawPaper.citedByCount ?? 0),
+            (b.rawPaper.citedByCount ?? 0) - (a.rawPaper.citedByCount ?? 0) ||
+            b.rawPaper.relevanceScore - a.rawPaper.relevanceScore,
         )
         .slice(0, 20);
     }

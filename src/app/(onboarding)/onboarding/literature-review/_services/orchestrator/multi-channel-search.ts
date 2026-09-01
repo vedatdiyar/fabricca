@@ -4,6 +4,8 @@ import { searchOpenAlex } from "../openalex/client";
 import { searchSemanticScholarPapers } from "@/core/services/semantic-scholar/semantic-scholar-search";
 import { searchTheses } from "@/core/services/thesis-search";
 
+import { parseDualSemanticQuery } from "@/lib/academic/utils";
+
 /** Maximum time to wait for any individual search provider before continuing. */
 const PROVIDER_TIMEOUT_MS = 35000;
 
@@ -47,26 +49,29 @@ export async function searchMultiChannelForSubBox(
   logger: Logger,
   checkCancelled?: () => boolean,
 ): Promise<RawPaper[]> {
-  const englishQuery = (subBox.semanticQuery || "").trim();
+  const { openAlexQuery, semanticScholarQuery } = parseDualSemanticQuery(
+    subBox.semanticQuery,
+  );
   const turkishQuery = `${subBox.title}: ${subBox.description}`.trim();
 
   logger.info("multi_channel_search_start", {
     hidden: true,
     data: {
       subBoxTitle: subBox.title,
-      hasEnglishQuery: Boolean(englishQuery),
+      hasOpenAlexQuery: Boolean(openAlexQuery),
+      hasSemanticScholarQuery: Boolean(semanticScholarQuery),
       hasTurkishQuery: Boolean(turkishQuery),
     },
   });
 
   const [openAlexResult, semanticScholarResult, qdrantThesesResult] =
     await Promise.allSettled([
-      // 1. OpenAlex (Global academic literature)
+      // 1. OpenAlex (Global academic literature - GTE-Large-EN semantic search)
       (async (): Promise<RawPaper[]> => {
-        if (!englishQuery || checkCancelled?.()) return [];
+        if (!openAlexQuery || checkCancelled?.()) return [];
         try {
           const raw = await withProviderTimeout(
-            searchOpenAlex(englishQuery, 35, checkCancelled),
+            searchOpenAlex(openAlexQuery, 35, checkCancelled),
             PROVIDER_TIMEOUT_MS,
             [],
           );
@@ -84,20 +89,16 @@ export async function searchMultiChannelForSubBox(
         }
       })(),
 
-      // 2. Semantic Scholar (Influential global papers)
+      // 2. Semantic Scholar (Influential global papers - focused keyword/phrase search)
       (async (): Promise<RawPaper[]> => {
-        if (!englishQuery || checkCancelled?.()) return [];
+        if (!semanticScholarQuery || checkCancelled?.()) return [];
         try {
-          // S2 Lucene BM25: Use concise keyword query (first 6-8 essential terms) for optimal recall
-          const words = englishQuery.split(/\s+/).filter(Boolean);
-          const s2Query =
-            words.length > 7 ? words.slice(0, 7).join(" ") : englishQuery;
-
           const papers = await withProviderTimeout(
-            searchSemanticScholarPapers(s2Query, 20),
+            searchSemanticScholarPapers(semanticScholarQuery, 20),
             PROVIDER_TIMEOUT_MS,
             [],
           );
+
           return papers.map((p): RawPaper => {
             const authors = (p.authors ?? [])
               .map((a) => a.name)

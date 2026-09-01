@@ -14,6 +14,7 @@ import type { RawQuadrants } from "./box-mapper";
 
 import { fetchThesisMatrix } from "@/app/(onboarding)/onboarding/_services/fetch-actions";
 
+import { serializeDualSemanticQuery } from "@/lib/academic/utils";
 import type { PipelineRun } from "@/lib/pipeline-logger";
 
 /**
@@ -109,7 +110,13 @@ export async function generateSemanticQueriesAction(
 
     const queries = new Map<string, string>();
     for (const entry of result.semanticQueries) {
-      queries.set(entry.subBoxTitle, entry.semanticQuery);
+      queries.set(
+        entry.subBoxTitle,
+        serializeDualSemanticQuery(
+          entry.openAlexQuery,
+          entry.semanticScholarQuery,
+        ),
+      );
     }
 
     const durationMs = performance.now() - startTime;

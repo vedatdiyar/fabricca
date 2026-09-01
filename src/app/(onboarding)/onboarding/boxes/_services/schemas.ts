@@ -125,11 +125,17 @@ export const semanticQueryEntrySchema = z.object({
   subBoxTitle: z
     .string()
     .describe("Eşleştirme için alt kutu başlığı (Phase 1'deki ile aynı)."),
-  semanticQuery: z
+  openAlexQuery: z
     .string()
     .max(2000)
     .describe(
-      "OpenAlex GTE Large EN aramasına özel, 150-300 karakterlik yoğun İngilizce doğal akademik araştırma cümlesi. Tırnak, ikincil yazar ismi, parantez veya şablon içermeyen akıcı bir metin.",
+      "OpenAlex GTE Large EN aramasına özel, 500-1200 karakterlik yoğun İngilizce doğal akademik araştırma paragrafı.",
+    ),
+  semanticScholarQuery: z
+    .string()
+    .max(500)
+    .describe(
+      "Semantic Scholar aramasına özel, 4-8 adet odaklı anahtar kelime/tırnaklı öbek içeren yalın sorgu.",
     ),
 });
 
@@ -137,7 +143,9 @@ export const bulkSemanticQuerySchema = z.object({
   semanticQueries: z
     .array(semanticQueryEntrySchema)
     .min(1)
-    .describe("Her sub-box için bir semanticQuery girişi."),
+    .describe(
+      "Her sub-box için bir openAlexQuery ve semanticScholarQuery girişi.",
+    ),
 });
 
 export type BulkSemanticQueryResponse = z.infer<typeof bulkSemanticQuerySchema>;
@@ -154,13 +162,18 @@ export const bulkSemanticQueryJsonSchema: JsonSchema = {
             type: "string",
             description: "Eşleştirme için alt kutu başlığı",
           },
-          semanticQuery: {
+          openAlexQuery: {
             type: "string",
             description:
-              "OpenAlex GTE Large EN aramasına özel, 150-300 karakter yoğun İngilizce doğal akademik arama metni",
+              "OpenAlex GTE Large EN aramasına özel, 500-1200 karakter yoğun İngilizce doğal akademik araştırma paragrafı",
+          },
+          semanticScholarQuery: {
+            type: "string",
+            description:
+              "Semantic Scholar aramasına özel, 4-8 odaklı anahtar kelime/terim öbeği içeren sorgu",
           },
         },
-        required: ["subBoxTitle", "semanticQuery"],
+        required: ["subBoxTitle", "openAlexQuery", "semanticScholarQuery"],
       },
       minItems: 1,
     },

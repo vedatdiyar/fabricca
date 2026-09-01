@@ -32,3 +32,8 @@ export {
   formatAuthorDisplayString,
   type FormatAuthorOptions,
 } from "./author-formatter";
+export {
+  parseDualSemanticQuery,
+  serializeDualSemanticQuery,
+  type DualSemanticQuery,
+} from "./query-utils";

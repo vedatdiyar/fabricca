@@ -6,6 +6,7 @@ import type { Logger } from "@/lib/logger";
 import { fetchOpenAlexForwardCitations } from "./openalex-expansion-client";
 import { fetchSemanticScholarRecommendations } from "./semantic-scholar-client";
 import { rerankWithCohere } from "@/core/services/ai/cohere";
+import { parseDualSemanticQuery } from "@/lib/academic/utils";
 
 /**
  * Extended candidate representation carrying joint service presence flags.
@@ -135,9 +136,12 @@ export async function executeForwardExpansion(
   const openAlexSeedQuery =
     openAlexSeedIds.length > 0 ? openAlexSeedIds : seedDois;
 
-  const searchQueryText = box?.semanticQuery
-    ? box.semanticQuery.substring(0, 150)
-    : thesisContextQuery.substring(0, 150) || "academic research literature";
+  const parsedDualQuery = parseDualSemanticQuery(box?.semanticQuery);
+  const searchQueryText =
+    parsedDualQuery.openAlexQuery.substring(0, 150) ||
+    parsedDualQuery.semanticScholarQuery.substring(0, 150) ||
+    thesisContextQuery.substring(0, 150) ||
+    "academic research literature";
 
   const [openAlexCandidates, s2Candidates] = await Promise.all([
     fetchOpenAlexForwardCitations(openAlexSeedQuery, searchQueryText, 50),
