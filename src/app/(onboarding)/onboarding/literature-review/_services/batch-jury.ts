@@ -1,7 +1,9 @@
 import {
   generateGeminiStructuredContent,
+  dispatchGeminiBatch,
   type JsonSchema,
 } from "@/core/services/ai";
+import { getProjectIndex } from "@/core/services/ai/gemini-key-pool";
 import { FLASH_LITE_35, GEMINI_SEED } from "@/lib/constants";
 import {
   buildJuryPromptPayload,
@@ -134,7 +136,6 @@ export async function evaluateSingleBoxJury(
   thesisContext: string | ThesisMatrixContext | undefined,
   input: JuryInputItem,
   logger?: Logger,
-  pinnedKeyIndex?: number,
 ): Promise<SingleBoxJuryResult> {
   const { box, articles } = input;
 
@@ -204,8 +205,15 @@ export async function evaluateSingleBoxJury(
     chunks.push(cleanArticles.slice(i, i + JURY_BATCH_CHUNK_SIZE));
   }
 
-  const chunkResults = await Promise.all(
-    chunks.map(async (chunk) => {
+  const chunkResults = await dispatchGeminiBatch<
+    RawPaper[],
+    JuryEvaluation[]
+  >({
+    items: chunks,
+    model: FLASH_LITE_35,
+    operation: "literature_single_box_jury",
+    logger,
+    task: async (chunk, chunkIdx, target) => {
       const articlesText = chunk
         .map((a, idx) => {
           const sourceLabel =
@@ -288,14 +296,15 @@ export async function evaluateSingleBoxJury(
             },
           ],
           payloadStage: "literature_single_box_jury",
-          pinnedKeyIndex,
+          lane: "batch",
+          targetKeyIndex: getProjectIndex(target.apiKey),
           quiet: true,
         },
       );
 
       return raw?.evaluations ?? [];
-    }),
-  );
+    },
+  });
 
   const cleanEvaluations = chunkResults.flat();
   return {

@@ -6,6 +6,7 @@ import {
   extractOpenAlexId,
   normalizeCleanTitle,
   areTitlesSimilar,
+  stripAltTitle,
 } from "@/lib/academic/utils";
 import type {
   SubBoxResult,
@@ -132,10 +133,13 @@ export async function executePhase3Selection(
 
       if (!poolItem) continue;
 
+      const rawTitle = poolItem.rawPaper.title ?? ev.articleTitle;
+      const cleanTitle = stripAltTitle(rawTitle) || rawTitle;
+
       allSelectedArticles.push({
         thesisBoxId: ev.thesisBoxId,
         subBoxTitle: ev.subBoxTitle,
-        originalTitle: poolItem.rawPaper.title ?? ev.articleTitle,
+        originalTitle: cleanTitle,
         originalAuthors: poolItem.rawPaper.authors,
         relevanceScore: ev.relevanceScore,
         reasoning: ev.reasoning,
@@ -195,7 +199,7 @@ export async function executePhase3Selection(
 
     for (const art of boxSelected) {
       const juryArticle: JuryArticle = {
-        title: art.originalTitle,
+        title: stripAltTitle(art.originalTitle) || art.originalTitle,
         authors: art.originalAuthors,
         publisher: art.publisher,
         thesisType:

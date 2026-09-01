@@ -129,6 +129,7 @@ export async function streamOfficeDefense(
 
   const stream = await dispatchGeminiCall<GeminiContentStream>({
     model: FLASH_36,
+    lane: "interactive",
     task: async ({ model, apiKey }) => {
       const ai = getAi(apiKey);
       return ai.models.generateContentStream({

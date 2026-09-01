@@ -2,8 +2,9 @@ import { ThinkingLevel } from "@google/genai";
 import { FLASH_LITE_35, GEMINI_SEED } from "@/lib/constants";
 import {
   generateGeminiStructuredContent,
-  getHealthyGeminiKeyIndex,
+  dispatchGeminiBatch,
 } from "@/core/services/ai";
+import { getProjectIndex } from "@/core/services/ai/gemini-key-pool";
 import type { Logger } from "@/lib/logger";
 import { buildPerThesisEvaluationPromptPayload } from "../_prompts/per-thesis-evaluation.prompt";
 import type { PositioningMatrixInput } from "./validation";
@@ -58,12 +59,18 @@ export async function evaluateThesesInParallel(
     theses.map((t) => [String(t.id), t]),
   );
 
-  const batchKeyIndex = getHealthyGeminiKeyIndex(FLASH_LITE_35);
   const allEvaluations: PerThesisEvaluation[] = [];
 
-  // Execute chunks in parallel on the resolved healthy key (total chunks <= 15)
-  const batchResults = await Promise.all(
-    chunks.map(async (chunk, chunkIdx) => {
+  // Execute chunks in parallel balanced across all healthy keys (10-10-10)
+  const batchResults = await dispatchGeminiBatch<
+    SiftedThesis[],
+    PerThesisEvaluation[]
+  >({
+    items: chunks,
+    model: FLASH_LITE_35,
+    operation: "thesis_evaluation",
+    logger,
+    task: async (chunk, chunkIdx, target) => {
       const payload = buildPerThesisEvaluationPromptPayload(matrix, chunk);
 
       try {
@@ -77,36 +84,37 @@ export async function evaluateThesesInParallel(
             {
               zodSchema: batchThesisEvaluationSchema,
               payloadStage: `per_thesis_eval_chunk_${chunkIdx + 1}`,
-              pinnedKeyIndex: batchKeyIndex,
               seed: GEMINI_SEED,
               thinkingConfig: { thinkingLevel: ThinkingLevel.LOW },
               thesisMatrix: matrix,
+              lane: "batch",
+              targetKeyIndex: getProjectIndex(target.apiKey),
               quiet: true,
             },
           );
 
         return result.evaluations;
       } catch (error) {
-          logger?.error("per_thesis_eval_chunk_error", {
-            data: {
-              chunkIdx,
-              chunkCount: chunk.length,
-            },
-            error,
-          });
+        logger?.error("per_thesis_eval_chunk_error", {
+          data: {
+            chunkIdx,
+            chunkCount: chunk.length,
+          },
+          error,
+        });
 
-          throw new Error(
-            `Aday tez değerlendirme paketi (#${chunkIdx + 1}) işlenirken hata oluştu: ${
-              error instanceof Error ? error.message : String(error)
-            }`,
-          );
-        }
-      }),
-    );
+        throw new Error(
+          `Aday tez değerlendirme paketi (#${chunkIdx + 1}) işlenirken hata oluştu: ${
+            error instanceof Error ? error.message : String(error)
+          }`,
+        );
+      }
+    },
+  });
 
-    allEvaluations.push(...batchResults.flat());
+  allEvaluations.push(...batchResults.flat());
 
-    const evaluatedTheses: EvaluatedThesis[] = [];
+  const evaluatedTheses: EvaluatedThesis[] = [];
   for (const evaluation of allEvaluations) {
     const rawThesis = thesisById.get(String(evaluation.externalThesisId));
     if (rawThesis) {

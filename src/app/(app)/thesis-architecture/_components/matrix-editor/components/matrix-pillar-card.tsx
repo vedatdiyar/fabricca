@@ -1,16 +1,8 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import {
-  Card,
-  CardHeader,
-  CardTitle,
-  CardDescription,
-  CardContent,
-  CardFooter,
-} from "@/components/ui/card";
 import { Copy, Pencil, FileText } from "lucide-react";
+import { PillarCard } from "@/components/thesis/pillar-card";
 import { MatrixValueMarkdown } from "@/components/shared/matrix-value-markdown";
 import type { MatrixCardDef, MatrixKey } from "../constants/matrix-cards";
 import { countWords, copyToClipboard } from "../utils/text-metrics";
@@ -41,32 +33,15 @@ export function MatrixPillarCard({
   const Icon = card.icon;
 
   return (
-    <Card className="flex flex-col h-full bg-card transition-all border-border hover:border-border/80">
-      {/* Card Header */}
-      <CardHeader className="p-4 sm:p-5 pb-3 flex flex-row items-start justify-between space-y-0 gap-3 border-b border-border/40">
-        <div className="flex items-start gap-3 min-w-0 flex-1">
-          <div
-            className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-md border ${card.accentColor}`}
-          >
-            <Icon className="size-3.5" />
-          </div>
-          <div className="min-w-0 flex-1 space-y-0.5">
-            <div className="flex items-center gap-2">
-              <Badge variant="outline" className={`border ${card.badgeColor}`}>
-                {card.badgeLabel}
-              </Badge>
-            </div>
-            <CardTitle className="font-serif text-base font-semibold tracking-tight text-foreground">
-              {card.title}
-            </CardTitle>
-            <CardDescription className="font-sans text-xs text-muted-foreground">
-              {card.description}
-            </CardDescription>
-          </div>
-        </div>
-
-        {/* Header Action Toolbar */}
-        <div className="flex items-center gap-1 shrink-0">
+    <PillarCard
+      badgeLabel={card.badgeLabel}
+      badgeClassName={card.badgeColor}
+      title={card.title}
+      description={card.description}
+      icon={Icon}
+      iconWrapperClassName={card.accentColor}
+      headerActions={
+        <>
           <Button
             variant="ghost"
             size="icon"
@@ -87,47 +62,37 @@ export function MatrixPillarCard({
           >
             <Pencil className="h-3.5 w-3.5" />
           </Button>
-        </div>
-      </CardHeader>
-
-      {/* Card Content */}
-      <CardContent className="flex flex-1 flex-col p-4 sm:p-5 pt-4 space-y-3">
-        {hasValue ? (
-          <div className="flex-1 rounded-md border border-border/40 bg-muted/10 p-4.5 font-sans text-sm leading-relaxed text-foreground min-h-[280px] select-text text-left">
-            <MatrixValueMarkdown content={value} />
-          </div>
-        ) : (
-          <div
-            role="button"
-            tabIndex={0}
-            onClick={() => onEdit(card.key)}
-            onKeyDown={(e) =>
-              (e.key === "Enter" || e.key === " ") && onEdit(card.key)
-            }
-            className="flex flex-1 cursor-pointer flex-col items-center justify-center rounded-md border border-dashed border-border/60 bg-muted/10 p-8 text-center hover:border-primary/40 hover:bg-muted/20 transition-colors min-h-[280px] space-y-2 group"
-          >
-            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-muted/30 text-muted-foreground group-hover:text-primary transition-colors">
-              <FileText className="h-5 w-5" />
-            </div>
-            <p className="font-serif text-sm font-medium text-foreground">
-              Bu sütun henüz doldurulmadı
-            </p>
-            <p className="font-sans text-xs text-muted-foreground max-w-sm">
-              Tezinizin bu ayağını yapılandırmak için buraya veya sağ üstteki
-              &quot;Düzenle&quot; butonuna tıklayın.
-            </p>
-          </div>
-        )}
-      </CardContent>
-
-      {/* Card Footer */}
-      <CardFooter className="p-4 sm:p-5 pt-0 flex items-center justify-between border-t border-border/40 mt-auto text-xs text-muted-foreground">
+        </>
+      }
+      footer={
         <span className="font-sans">
-          {wordCount > 0
-            ? `${wordCount} kelime • ${charCount} karakter`
-            : "0 kelime"}
+          {wordCount > 0 ? `${wordCount} kelime • ${charCount} karakter` : "0 kelime"}
         </span>
-      </CardFooter>
-    </Card>
+      }
+      contentClassName="space-y-3"
+    >
+      {hasValue ? (
+        <div className="flex-1 rounded-md border border-border/40 bg-muted/10 p-4.5 font-sans text-sm leading-relaxed text-foreground min-h-[280px] select-text text-left">
+          <MatrixValueMarkdown content={value} />
+        </div>
+      ) : (
+        <div
+          role="button"
+          tabIndex={0}
+          onClick={() => onEdit(card.key)}
+          onKeyDown={(e) => (e.key === "Enter" || e.key === " ") && onEdit(card.key)}
+          className="flex flex-1 cursor-pointer flex-col items-center justify-center rounded-md border border-dashed border-border/60 bg-muted/10 p-8 text-center hover:border-primary/40 hover:bg-muted/20 transition-colors min-h-[280px] space-y-2 group"
+        >
+          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-muted/30 text-muted-foreground group-hover:text-primary transition-colors">
+            <FileText className="h-5 w-5" />
+          </div>
+          <p className="font-serif text-sm font-medium text-foreground">Bu sütun henüz doldurulmadı</p>
+          <p className="font-sans text-xs text-muted-foreground max-w-sm">
+            Tezinizin bu ayağını yapılandırmak için buraya veya sağ üstteki &quot;Düzenle&quot; butonuna
+            tıklayın.
+          </p>
+        </div>
+      )}
+    </PillarCard>
   );
 }

@@ -15,7 +15,7 @@ import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { useBoxHierarchySelection } from "../_hooks/use-box-hierarchy-selection";
 import { AddResourceBoxSelector } from "./add-resource-box-selector";
-import { PdfDropzone } from "./pdf-dropzone";
+import { UnifiedPdfDropzone } from "@/components/shared/dropzone/pdf-dropzone";
 
 interface AddResourceModalProps {
   isOpen: boolean;
@@ -183,7 +183,7 @@ export function AddResourceModal({
             <Label className="text-xs text-foreground font-medium">
               Akademik PDF Dokümanı *
             </Label>
-            <PdfDropzone
+            <UnifiedPdfDropzone
               selectedFile={selectedFile}
               onFileSelect={handleFileChange}
               isSubmitting={isSubmitting}

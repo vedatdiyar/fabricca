@@ -1,18 +1,10 @@
 "use client";
 
 import { useState } from "react";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-  DialogFooter,
-} from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Loader2, Plus } from "lucide-react";
+import { Plus } from "lucide-react";
+import { FormDialog } from "@/components/shared/dialog/form-dialog";
 import { toast } from "sonner";
 
 interface AddSectionModalProps {
@@ -56,20 +48,23 @@ export function AddSectionModal({
   };
 
   return (
-    <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="max-w-xl bg-card border-border">
-        <DialogHeader>
-          <DialogTitle className="font-serif text-base font-semibold text-foreground">
-            {parentId ? "Yeni Alt Bölüm Ekle" : "Yeni Ana Bölüm Ekle"}
-          </DialogTitle>
-          <DialogDescription className="font-sans text-xs text-muted-foreground">
-            {parentId
-              ? "Seçtiğiniz ana bölümün altına yeni bir alt araştırma başlığı ekleyin."
-              : "Tezinizin ana omurgasına yeni bir ana bölüm ekleyin."}
-          </DialogDescription>
-        </DialogHeader>
-
-        <div className="space-y-4 py-2">
+    <FormDialog
+      open={open}
+      onOpenChange={onClose}
+      title={parentId ? "Yeni Alt Bölüm Ekle" : "Yeni Ana Bölüm Ekle"}
+      description={
+        parentId
+          ? "Seçtiğiniz ana bölümün altına yeni bir alt araştırma başlığı ekleyin."
+          : "Tezinizin ana omurgasına yeni bir ana bölüm ekleyin."
+      }
+      size="lg"
+      isSaving={isSaving}
+      saveLabel="Bölümü Oluştur"
+      saveIcon={Plus}
+      onSave={handleSubmit}
+      showSeparator={false}
+      footerLayout="end"
+    >
           {/* Parent Selection if not locked */}
           <div className="space-y-1.5">
             <label className="font-sans text-xs font-medium text-foreground">
@@ -123,32 +118,6 @@ export function AddSectionModal({
               className="w-full text-xs"
             />
           </div>
-        </div>
-
-        <DialogFooter className="gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={onClose}
-            disabled={isSaving}
-          >
-            İptal
-          </Button>
-          <Button
-            size="sm"
-            onClick={handleSubmit}
-            disabled={isSaving}
-            className="bg-primary text-primary-foreground hover:bg-primary/90 font-medium"
-          >
-            {isSaving ? (
-              <Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" />
-            ) : (
-              <Plus className="h-3.5 w-3.5 mr-1.5" />
-            )}
-            <span>Bölümü Oluştur</span>
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+    </FormDialog>
   );
 }

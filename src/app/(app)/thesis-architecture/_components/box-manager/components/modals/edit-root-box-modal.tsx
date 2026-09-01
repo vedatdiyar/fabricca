@@ -1,20 +1,10 @@
 "use client";
 
 import { useState } from "react";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
-} from "@/components/ui/dialog";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Separator } from "@/components/ui/separator";
-import { cn } from "@/lib/utils";
+import { Check } from "lucide-react";
+import { FormDialog } from "@/components/shared/dialog/form-dialog";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Loader2, Check } from "lucide-react";
 import { QUADRANTS } from "../../constants/quadrant-config";
 import type { BoxWithRelations } from "../../constants/quadrant-config";
 import type { RootBoxFormData } from "../../hooks/use-box-modals";
@@ -47,80 +37,35 @@ export function EditRootBoxModal({
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-lg p-6 gap-4 bg-card border-border">
-        <DialogHeader className="space-y-1 pb-1">
-          <div className="flex items-center gap-2">
-            <Badge
-              variant="outline"
-              className={cn(
-                "text-[10px] font-semibold px-2 py-0.5 border",
-                badgeColor,
-              )}
-            >
-              {shortLabel}
-            </Badge>
-            <span className="text-xs text-muted-foreground font-sans">
-              Ana Eksen Düzenleme
-            </span>
-          </div>
-          <DialogTitle className="font-serif text-base font-semibold text-foreground">
-            Ana Araştırma Sütununu Düzenle
-          </DialogTitle>
-        </DialogHeader>
-        <Separator className="bg-border/40" />
+    <FormDialog
+      open={open}
+      onOpenChange={onOpenChange}
+      title="Ana Araştırma Sütununu Düzenle"
+      badge={{ label: shortLabel, className: `text-[10px] font-semibold px-2 py-0.5 ${badgeColor}` }}
+      subtitle="Ana Eksen Düzenleme"
+      size="md"
+      isSaving={isSaving}
+      saveLabel="Kaydet"
+      saveIcon={Check}
+      onSave={handleSave}
+      footerLayout="spread"
+    >
+      <div className="space-y-1.5">
+        <label className="font-sans text-xs font-medium text-foreground">
+          Eksen Başlığı <span className="text-destructive">*</span>
+        </label>
+        <Input value={title} onChange={(e) => setTitle(e.target.value)} className="font-sans" />
+      </div>
 
-        <div className="space-y-4">
-          <div className="space-y-1.5">
-            <label className="font-sans text-xs font-medium text-foreground">
-              Eksen Başlığı <span className="text-destructive">*</span>
-            </label>
-            <Input
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              className="font-sans"
-            />
-          </div>
-
-          <div className="space-y-1.5">
-            <label className="font-sans text-xs font-medium text-foreground">
-              Eksen Açıklaması
-            </label>
-            <Textarea
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              rows={4}
-              className="w-full p-3 font-sans text-xs leading-relaxed"
-            />
-          </div>
-        </div>
-
-        <Separator className="bg-border/40" />
-        <DialogFooter className="flex items-center justify-between pt-1 sm:justify-between">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => onOpenChange(false)}
-            disabled={isSaving}
-            className="text-xs text-muted-foreground hover:text-foreground"
-          >
-            İptal
-          </Button>
-          <Button
-            size="sm"
-            onClick={handleSave}
-            disabled={isSaving}
-            className="text-xs bg-primary text-primary-foreground hover:bg-primary/90 font-medium gap-1.5"
-          >
-            {isSaving ? (
-              <Loader2 className="h-3.5 w-3.5 animate-spin" />
-            ) : (
-              <Check className="h-3.5 w-3.5" />
-            )}
-            <span>Kaydet</span>
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+      <div className="space-y-1.5">
+        <label className="font-sans text-xs font-medium text-foreground">Eksen Açıklaması</label>
+        <Textarea
+          value={description}
+          onChange={(e) => setDescription(e.target.value)}
+          rows={4}
+          className="w-full p-3 font-sans text-xs leading-relaxed"
+        />
+      </div>
+    </FormDialog>
   );
 }

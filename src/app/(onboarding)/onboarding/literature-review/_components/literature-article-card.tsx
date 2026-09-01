@@ -4,6 +4,7 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import type { JuryArticle } from "@/lib/types";
 import { formatAuthorDisplayString } from "@/lib/academic/author-formatter";
+import { stripAltTitle } from "@/lib/academic/title-utils";
 
 interface LiteratureArticleCardProps {
   article: JuryArticle;
@@ -16,6 +17,8 @@ interface LiteratureArticleCardProps {
  * @returns The primary title fragment, or the raw title when no separator exists.
  */
 function cleanDisplayTitle(title: string): string {
+  const stripped = stripAltTitle(title);
+  if (stripped) return stripped;
   const separatorIndex = title.indexOf(" / ");
   return separatorIndex === -1 ? title : title.slice(0, separatorIndex).trim();
 }

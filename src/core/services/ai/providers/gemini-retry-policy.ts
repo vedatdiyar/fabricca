@@ -7,6 +7,7 @@ import {
   extractQuotaDetails,
   extractRetryDelayMs,
 } from "../llm-errors";
+import { getGeminiKeyPool } from "../gemini-key-pool";
 import {
   type RetryOptions,
   serverOverloadDelay,
@@ -83,10 +84,12 @@ export function createGeminiRetryPolicy(
           return false;
         }
 
-        // If it's an RPM rate limit error, retry with backoff on the current key
-        // to let the sliding window recover before falling back to scheduler rotation.
+        // If it's an RPM rate limit error:
+        // When multiple keys are configured in the pool, do NOT sleep 51s on the exhausted key;
+        // fail fast immediately so dispatchGeminiCall can instantly rotate to the next ready key!
+        // Only retry with backoff if a single key is configured.
         if (isRateLimitError(error)) {
-          return true;
+          return getGeminiKeyPool().keys.length <= 1;
         }
 
         if (

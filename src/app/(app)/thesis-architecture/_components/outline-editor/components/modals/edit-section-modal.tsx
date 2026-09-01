@@ -2,18 +2,10 @@
 
 import { useState } from "react";
 import { Outline } from "@/core/db/schema";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-  DialogFooter,
-} from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Check, Loader2 } from "lucide-react";
+import { Check } from "lucide-react";
+import { FormDialog } from "@/components/shared/dialog/form-dialog";
 import { toast } from "sonner";
 
 interface EditSectionModalProps {
@@ -59,18 +51,19 @@ export function EditSectionModal({
   };
 
   return (
-    <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="max-w-xl bg-card border-border">
-        <DialogHeader>
-          <DialogTitle className="font-serif text-base font-semibold text-foreground">
-            Bölümü Düzenle
-          </DialogTitle>
-          <DialogDescription className="font-sans text-xs text-muted-foreground">
-            Bölüm başlığını, sırasını ve kapsam tanımını güncelleyin.
-          </DialogDescription>
-        </DialogHeader>
-
-        <div className="space-y-4 py-2">
+    <FormDialog
+      open={open}
+      onOpenChange={onClose}
+      title="Bölümü Düzenle"
+      description="Bölüm başlığını, sırasını ve kapsam tanımını güncelleyin."
+      size="lg"
+      isSaving={isSaving}
+      saveLabel="Değişiklikleri Kaydet"
+      saveIcon={Check}
+      onSave={handleSubmit}
+      showSeparator={false}
+      footerLayout="end"
+    >
           {/* Title */}
           <div className="space-y-1.5">
             <label className="font-sans text-xs font-medium text-foreground">
@@ -114,32 +107,6 @@ export function EditSectionModal({
               className="w-full text-xs"
             />
           </div>
-        </div>
-
-        <DialogFooter className="gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={onClose}
-            disabled={isSaving}
-          >
-            İptal
-          </Button>
-          <Button
-            size="sm"
-            onClick={handleSubmit}
-            disabled={isSaving}
-            className="bg-primary text-primary-foreground hover:bg-primary/90 font-medium"
-          >
-            {isSaving ? (
-              <Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" />
-            ) : (
-              <Check className="h-3.5 w-3.5 mr-1.5" />
-            )}
-            <span>Değişiklikleri Kaydet</span>
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+    </FormDialog>
   );
 }

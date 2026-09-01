@@ -12,8 +12,8 @@ export {
 } from "./providers/gemini-provider";
 
 export {
-  getHealthyGeminiKeyIndex,
+  dispatchGeminiCall,
+  dispatchGeminiBatch,
   getKeyUsageStats,
   resetGeminiScheduler,
 } from "./gemini-scheduler";
-

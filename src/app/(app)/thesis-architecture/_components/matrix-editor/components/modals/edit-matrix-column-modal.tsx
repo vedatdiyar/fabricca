@@ -1,19 +1,9 @@
 "use client";
 
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-  DialogFooter,
-} from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Separator } from "@/components/ui/separator";
-import { cn } from "@/lib/utils";
 import { Textarea } from "@/components/ui/textarea";
-import { HelpCircle, Copy, Loader2, Check } from "lucide-react";
+import { HelpCircle, Copy, Check } from "lucide-react";
+import { FormDialog } from "@/components/shared/dialog/form-dialog";
 import type { MatrixCardDef } from "../../constants/matrix-cards";
 import { countWords, copyToClipboard } from "../../utils/text-metrics";
 
@@ -52,36 +42,36 @@ export function EditMatrixColumnModal({
   if (!card) return null;
 
   return (
-    <Dialog
+    <FormDialog
       open={open}
       onOpenChange={(next) => {
         if (!next) onClose();
       }}
+      title={card.title}
+      description={card.description}
+      badge={{ label: card.badgeLabel, className: card.badgeColor }}
+      subtitle="Düzenleme Modu"
+      headerClassName="space-y-1.5"
+      size="3xl"
+      scrollable
+      isSaving={isSaving}
+      saveLabel="Kaydet"
+      saveIcon={Check}
+      onSave={onSave}
+      cancelLabel="Kapat"
+      footerExtra={
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => copyToClipboard(value, card.title)}
+          className="text-xs gap-1.5 border-border/80"
+        >
+          <Copy className="h-3.5 w-3.5" />
+          <span>Kopyala</span>
+        </Button>
+      }
+      footerLayout="spread"
     >
-      <DialogContent className="max-w-3xl max-h-[90vh] flex flex-col p-6 gap-4 bg-card border-border">
-        <DialogHeader className="space-y-1.5 pb-1">
-          <div className="flex items-center gap-2">
-            <Badge
-              variant="outline"
-              className={cn(
-                "text-[10px] font-semibold px-2 py-0.5 border",
-                card.badgeColor,
-              )}
-            >
-              {card.badgeLabel}
-            </Badge>
-            <span className="text-xs text-muted-foreground font-sans">
-              Düzenleme Modu
-            </span>
-          </div>
-          <DialogTitle className="font-serif text-base font-semibold text-foreground">
-            {card.title}
-          </DialogTitle>
-          <DialogDescription className="font-sans text-xs text-muted-foreground">
-            {card.description}
-          </DialogDescription>
-        </DialogHeader>
-        <Separator className="bg-border/40" />
 
         {/* Guide questions in modal */}
         <div className="rounded-md border border-border/40 bg-muted/20 p-3 space-y-1.5">
@@ -122,44 +112,6 @@ export function EditMatrixColumnModal({
             </span>
           </div>
         </div>
-
-        <Separator className="bg-border/40" />
-        <DialogFooter className="flex items-center justify-between pt-1 sm:justify-between">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={onClose}
-            disabled={isSaving}
-            className="text-xs text-muted-foreground hover:text-foreground"
-          >
-            Kapat
-          </Button>
-          <div className="flex items-center gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => copyToClipboard(value, card.title)}
-              className="text-xs gap-1.5 border-border/80"
-            >
-              <Copy className="h-3.5 w-3.5" />
-              <span>Kopyala</span>
-            </Button>
-            <Button
-              size="sm"
-              onClick={onSave}
-              disabled={isSaving}
-              className="text-xs bg-primary text-primary-foreground hover:bg-primary/90 font-medium gap-1.5"
-            >
-              {isSaving ? (
-                <Loader2 className="h-3.5 w-3.5 animate-spin" />
-              ) : (
-                <Check className="h-3.5 w-3.5" />
-              )}
-              <span>Kaydet</span>
-            </Button>
-          </div>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+    </FormDialog>
   );
 }

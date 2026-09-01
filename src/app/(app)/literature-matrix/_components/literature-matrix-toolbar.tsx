@@ -1,16 +1,9 @@
 "use client";
 
 import React from "react";
-import {
-  Search,
-  Filter,
-  Columns3,
-  Download,
-  BookOpenCheck,
-  RotateCcw,
-} from "lucide-react";
-import { Input } from "@/components/ui/input";
+import { Filter, Columns3, Download, BookOpenCheck, RotateCcw } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { SearchInput } from "@/components/shared/toolbar/search-input";
 import {
   Popover,
   PopoverContent,
@@ -84,17 +77,15 @@ export function LiteratureMatrixToolbar({
       {/* Left Group: Search & Filters strictly side-by-side in single line */}
       <div className="flex items-center gap-2.5 shrink-0">
         {/* Realtime Search Input */}
-        <div className="relative w-64 sm:w-72 md:w-80 shrink-0">
-          <Search className="absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
-          <Input
-            placeholder="Makale başlığı, yazar veya içerik ara..."
-            value={filters.searchTerm}
-            onChange={(e) =>
-              onFilterChange({ ...filters, searchTerm: e.target.value })
-            }
-            className="pl-8 text-xs text-foreground bg-background focus-visible:ring-primary h-8 w-full"
-          />
-        </div>
+        <SearchInput
+          placeholder="Makale başlığı, yazar veya içerik ara..."
+          value={filters.searchTerm}
+          onChange={(e) =>
+            onFilterChange({ ...filters, searchTerm: e.target.value })
+          }
+          wrapperClassName="w-64 sm:w-72 md:w-80 shrink-0"
+          className="text-xs text-foreground bg-background focus-visible:ring-primary h-8 w-full"
+        />
 
         {/* Box/Theme Filter */}
         <Select

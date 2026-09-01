@@ -1,21 +1,12 @@
 "use client";
 
 import { useState } from "react";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-  DialogFooter,
-} from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Separator } from "@/components/ui/separator";
-import { cn } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Loader2, Check, Hash, X, Sparkles } from "lucide-react";
+import { Check, Hash, X, Sparkles } from "lucide-react";
+import { FormDialog } from "@/components/shared/dialog/form-dialog";
 import { QUADRANTS } from "../../constants/quadrant-config";
 import type { BoxWithRelations } from "../../constants/quadrant-config";
 import { useConceptTags } from "../../hooks/use-concept-tags";
@@ -63,28 +54,21 @@ export function EditSubBoxModal({
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl max-h-[90vh] flex flex-col p-6 gap-4 bg-card border-border">
-        <DialogHeader className="space-y-1 pb-1">
-          <div className="flex items-center gap-2">
-            <Badge variant="outline" className={cn("border", badgeColor)}>
-              {shortLabel}
-            </Badge>
-            <span className="text-xs text-muted-foreground font-sans">
-              Alt Konu Düzenleme
-            </span>
-          </div>
-          <DialogTitle className="font-serif text-base font-semibold text-foreground">
-            {box.title}
-          </DialogTitle>
-          <DialogDescription className="font-sans text-xs text-muted-foreground">
-            Tezinizin bu tematik alt havuzuna ait başlık, açıklama ve kavram
-            etiketlerini güncelleyin.
-          </DialogDescription>
-        </DialogHeader>
-        <Separator className="bg-border/40" />
-
-        <div className="flex-1 overflow-y-auto space-y-4 pr-1">
+    <FormDialog
+      open={open}
+      onOpenChange={onOpenChange}
+      title={box.title}
+      description="Tezinizin bu tematik alt havuzuna ait başlık, açıklama ve kavram etiketlerini güncelleyin."
+      badge={{ label: shortLabel, className: badgeColor }}
+      subtitle="Alt Konu Düzenleme"
+      size="xl"
+      scrollable
+      isSaving={isSaving}
+      saveLabel="Kaydet"
+      saveIcon={Check}
+      onSave={handleSave}
+      footerLayout="spread"
+    >
           {/* Title Input */}
           <div className="space-y-1.5">
             <label className="font-sans text-xs font-medium text-foreground">
@@ -190,34 +174,6 @@ export function EditSubBoxModal({
               motoru tarafından akademik makale taramalarında kullanılır.
             </p>
           </div>
-        </div>
-
-        <Separator className="bg-border/40" />
-        <DialogFooter className="flex items-center justify-between pt-1 sm:justify-between">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => onOpenChange(false)}
-            disabled={isSaving}
-            className="text-xs text-muted-foreground hover:text-foreground"
-          >
-            İptal
-          </Button>
-          <Button
-            size="sm"
-            onClick={handleSave}
-            disabled={isSaving}
-            className="text-xs bg-primary text-primary-foreground hover:bg-primary/90 font-medium gap-1.5"
-          >
-            {isSaving ? (
-              <Loader2 className="h-3.5 w-3.5 animate-spin" />
-            ) : (
-              <Check className="h-3.5 w-3.5" />
-            )}
-            <span>Kaydet</span>
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+    </FormDialog>
   );
 }

@@ -4,8 +4,10 @@ import { useState, useMemo } from "react";
 import { FolderKanban, BookOpen, CheckSquare, Sparkles } from "lucide-react";
 import type { Box, Source } from "@/core/db/schema";
 import type { TaskRow } from "../_lib/schemas";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
+import { MetricCard } from "@/components/shared/metrics/metric-card";
+import { MetricsGrid } from "@/components/shared/metrics/metrics-grid";
 import { BoxCard } from "./box-card";
 import { KanbanBoard } from "./kanban-board";
 import { AcademicTimelineBar } from "./academic-timeline-bar";
@@ -102,91 +104,38 @@ export function DashboardContent({
       />
 
       {/* Overview Metric Cards */}
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        {/* Metric 1: Konu Kutuları */}
-        <Card className="border border-border bg-card">
-          <CardContent className="flex items-center justify-between p-3">
-            <div className="space-y-0.5 min-w-0 flex-1">
-              <p className="text-xs font-medium text-muted-foreground truncate">
-                Konu Kutuları
-              </p>
-              <p className="font-mono text-xs font-semibold tracking-tight text-foreground">
-                {stats.totalBoxes}
-              </p>
-              <p className="text-xs text-muted-foreground truncate">
-                Aktif araştırma teması
-              </p>
-            </div>
-            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-primary/20 bg-primary/10 text-primary">
-              <FolderKanban className="size-3.5" />
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Metric 2: Okuma İlerlemesi */}
-        <Card className="border border-border bg-card">
-          <CardContent className="flex items-center justify-between p-3">
-            <div className="space-y-0.5 min-w-0 flex-1">
-              <p className="text-xs font-medium text-muted-foreground truncate">
-                Okuma İlerlemesi
-              </p>
-              <p className="font-mono text-xs font-semibold tracking-tight text-foreground">
-                {stats.readArticles} / {stats.totalArticles}
-              </p>
-              <p className="text-xs text-muted-foreground truncate">
-                {stats.totalArticles > 0
-                  ? `%${stats.readPercentage} tamamlandı`
-                  : "Henüz eser eklenmedi"}
-              </p>
-            </div>
-            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-primary/20 bg-primary/10 text-primary">
-              <BookOpen className="size-3.5" />
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Metric 3: Akademik Görevler */}
-        <Card className="border border-border bg-card">
-          <CardContent className="flex items-center justify-between p-3">
-            <div className="space-y-0.5 min-w-0 flex-1">
-              <p className="text-xs font-medium text-muted-foreground truncate">
-                Akademik Görevler
-              </p>
-              <p className="font-mono text-xs font-semibold tracking-tight text-foreground">
-                {stats.activeTasks} Aktif
-              </p>
-              <p className="text-xs text-muted-foreground truncate">
-                {stats.completedTasks} tamamlanan adım
-              </p>
-            </div>
-            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-primary/20 bg-primary/10 text-primary">
-              <CheckSquare className="size-3.5" />
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Metric 4: Literatür Genişletme */}
-        <Card className="border border-border bg-card">
-          <CardContent className="flex items-center justify-between p-3">
-            <div className="space-y-0.5 min-w-0 flex-1">
-              <p className="text-xs font-medium text-muted-foreground truncate">
-                Literatür Döngüsü
-              </p>
-              <p className="font-mono text-xs font-semibold tracking-tight text-foreground">
-                Döngü #{stats.maxExpansionCycle}
-              </p>
-              <p className="text-xs text-muted-foreground truncate">
-                {stats.anyReadyToExpand
-                  ? "Genişletmeye hazır"
-                  : "Kaynaklar inceleniyor"}
-              </p>
-            </div>
-            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-primary/20 bg-primary/10 text-primary">
-              <Sparkles className="size-3.5" />
-            </div>
-          </CardContent>
-        </Card>
-      </div>
+      <MetricsGrid>
+        <MetricCard
+          label="Konu Kutuları"
+          value={stats.totalBoxes}
+          subtext="Aktif araştırma teması"
+          icon={FolderKanban}
+        />
+        <MetricCard
+          label="Okuma İlerlemesi"
+          value={`${stats.readArticles} / ${stats.totalArticles}`}
+          subtext={
+            stats.totalArticles > 0
+              ? `%${stats.readPercentage} tamamlandı`
+              : "Henüz eser eklenmedi"
+          }
+          icon={BookOpen}
+        />
+        <MetricCard
+          label="Akademik Görevler"
+          value={`${stats.activeTasks} Aktif`}
+          subtext={`${stats.completedTasks} tamamlanan adım`}
+          icon={CheckSquare}
+        />
+        <MetricCard
+          label="Literatür Döngüsü"
+          value={`Döngü #${stats.maxExpansionCycle}`}
+          subtext={
+            stats.anyReadyToExpand ? "Genişletmeye hazır" : "Kaynaklar inceleniyor"
+          }
+          icon={Sparkles}
+        />
+      </MetricsGrid>
 
       {/* Section 1: Topic Boxes */}
       <section className="space-y-6">

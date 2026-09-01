@@ -2,8 +2,8 @@
 
 import React from "react";
 import { BookOpen, CheckCircle2, FileText, Layers } from "lucide-react";
-import { Card, CardContent } from "@/components/ui/card";
-import { cn } from "@/lib/utils";
+import { MetricCard } from "@/components/shared/metrics/metric-card";
+import { MetricsGrid } from "@/components/shared/metrics/metrics-grid";
 import type { MatrixStats } from "../_lib/types";
 
 interface LiteratureMatrixStatsProps {
@@ -53,35 +53,17 @@ export function LiteratureMatrixStats({ stats }: LiteratureMatrixStatsProps) {
   ];
 
   return (
-    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
-      {statItems.map((item) => {
-        const Icon = item.icon;
-        return (
-          <Card key={item.label} className="border border-border bg-card">
-            <CardContent className="flex items-center justify-between p-3">
-              <div className="space-y-0.5 min-w-0 flex-1">
-                <p className="text-xs font-medium text-muted-foreground truncate">
-                  {item.label}
-                </p>
-                <p className="font-mono text-xs font-semibold tracking-tight text-foreground">
-                  {item.value}
-                </p>
-                <p className="text-xs text-muted-foreground truncate">
-                  {item.subtext}
-                </p>
-              </div>
-              <div
-                className={cn(
-                  "flex h-8 w-8 shrink-0 items-center justify-center rounded-md border",
-                  item.colorClass,
-                )}
-              >
-                <Icon className="size-3.5" />
-              </div>
-            </CardContent>
-          </Card>
-        );
-      })}
-    </div>
+    <MetricsGrid>
+      {statItems.map((item) => (
+        <MetricCard
+          key={item.label}
+          label={item.label}
+          value={item.value}
+          subtext={item.subtext}
+          icon={item.icon}
+          iconClassName={item.colorClass}
+        />
+      ))}
+    </MetricsGrid>
   );
 }

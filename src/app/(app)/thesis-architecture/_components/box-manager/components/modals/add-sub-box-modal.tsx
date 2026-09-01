@@ -1,20 +1,12 @@
 "use client";
 
 import { useState } from "react";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-  DialogFooter,
-} from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Loader2, Check, Hash, X, Sparkles } from "lucide-react";
-import { Separator } from "@/components/ui/separator";
+import { Check, Hash, X, Sparkles } from "lucide-react";
+import { FormDialog } from "@/components/shared/dialog/form-dialog";
 import { cn } from "@/lib/utils";
 import { QUADRANTS } from "../../constants/quadrant-config";
 import type { BoxWithRelations } from "../../constants/quadrant-config";
@@ -63,31 +55,21 @@ export function AddSubBoxModal({
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl max-h-[90vh] flex flex-col p-6 gap-4 bg-card border-border">
-        <DialogHeader className="space-y-1 pb-1">
-          <div className="flex items-center gap-2">
-            <Badge
-              variant="outline"
-              className="border border-primary/20 bg-primary/10 text-primary"
-            >
-              Yeni Konu Havuzu
-            </Badge>
-            <span className="text-xs text-muted-foreground font-sans">
-              Alt Konu Ekle
-            </span>
-          </div>
-          <DialogTitle className="font-serif text-base font-semibold text-foreground">
-            Yeni Alt Konu Tanımla
-          </DialogTitle>
-          <DialogDescription className="font-sans text-xs text-muted-foreground">
-            Tezinizin araştırma mimarisine yeni bir tematik alt konu ve kavram
-            havuzu ekleyin.
-          </DialogDescription>
-        </DialogHeader>
-        <Separator className="bg-border/40" />
-
-        <div className="flex-1 overflow-y-auto space-y-4 pr-1">
+    <FormDialog
+      open={open}
+      onOpenChange={onOpenChange}
+      title="Yeni Alt Konu Tanımla"
+      description="Tezinizin araştırma mimarisine yeni bir tematik alt konu ve kavram havuzu ekleyin."
+      badge={{ label: "Yeni Konu Havuzu", className: "border-primary/20 bg-primary/10 text-primary" }}
+      subtitle="Alt Konu Ekle"
+      size="xl"
+      scrollable
+      isSaving={isSaving}
+      saveLabel="Alt Konuyu Oluştur"
+      saveIcon={Check}
+      onSave={handleSave}
+      footerLayout="spread"
+    >
           {/* Quadrant Selector */}
           <div className="space-y-1.5">
             <label className="font-sans text-xs font-medium text-foreground">
@@ -235,34 +217,6 @@ export function AddSubBoxModal({
               className="font-sans text-xs bg-background border-border rounded-md"
             />
           </div>
-        </div>
-
-        <Separator className="bg-border/40" />
-        <DialogFooter className="flex items-center justify-between pt-1 sm:justify-between">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => onOpenChange(false)}
-            disabled={isSaving}
-            className="text-xs text-muted-foreground hover:text-foreground"
-          >
-            İptal
-          </Button>
-          <Button
-            size="sm"
-            onClick={handleSave}
-            disabled={isSaving}
-            className="text-xs bg-primary text-primary-foreground hover:bg-primary/90 font-medium gap-1.5"
-          >
-            {isSaving ? (
-              <Loader2 className="h-3.5 w-3.5 animate-spin" />
-            ) : (
-              <Check className="h-3.5 w-3.5" />
-            )}
-            <span>Alt Konuyu Oluştur</span>
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+    </FormDialog>
   );
 }

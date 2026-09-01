@@ -73,11 +73,15 @@ export interface StructuredGenerationOptions<T> {
    */
   operation?: string;
   /**
-   * When set, bypasses the round-robin cursor and pins the call to the key at
-   * this 0-based index in the pool. Used by batch fan-outs that pre-partition
-   * work across keys for deterministic 1/N load distribution.
+   * Execution lane.
+   * - "interactive" (VIP Lane): priority dispatch for live chat and interactive streams.
+   * - "batch" (Default): standard load-balanced execution.
    */
-  pinnedKeyIndex?: number;
+  lane?: "interactive" | "batch";
+  /**
+   * Optional target key index for sharded batch execution (used by dispatchGeminiBatch).
+   */
+  targetKeyIndex?: number;
   /**
    * When true, bypasses the token-bucket RPM rate limiter queuing for this call,
    * allowing immediate parallel execution without pacing delays.

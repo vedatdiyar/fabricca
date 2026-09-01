@@ -129,7 +129,8 @@ export async function generateStructuredContent<T>(
     return await dispatchGeminiCall<T>({
       model: modelName,
       operation,
-      pinnedKeyIndex: options?.pinnedKeyIndex,
+      lane: options?.lane,
+      targetKeyIndex: options?.targetKeyIndex,
       logger,
       task: async ({ model, apiKey }) => {
         const taskStartTime = performance.now();

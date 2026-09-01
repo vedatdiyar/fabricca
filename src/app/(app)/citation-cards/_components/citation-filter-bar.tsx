@@ -1,7 +1,6 @@
 "use client";
 
 import {
-  Search,
   SlidersHorizontal,
   X,
   LayoutGrid,
@@ -12,8 +11,8 @@ import {
   Layers,
   Plus,
 } from "lucide-react";
-import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { SearchInput } from "@/components/shared/toolbar/search-input";
 import {
   Select,
   SelectContent,
@@ -86,25 +85,25 @@ export function CitationFilterBar({
   return (
     <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-2 w-full bg-card/40 border border-border/40 p-1.5 rounded-lg">
       {/* 1. Left: Search Input */}
-      <div className="relative flex-1 min-w-[200px] max-w-md">
-        <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 size-3.5 text-muted-foreground" />
-        <Input
-          aria-label="Alıntı fişi ara"
-          placeholder="Fiş içeriği, yazar, eser veya sayfa ara..."
-          value={filters.searchQuery}
-          onChange={(e) => onFilterChange("searchQuery", e.target.value)}
-          className="pl-8 pr-8 text-xs h-8 bg-background/80 border-border/40 rounded-lg placeholder:text-muted-foreground"
-        />
-        {filters.searchQuery && (
-          <button
-            type="button"
-            onClick={() => onFilterChange("searchQuery", "")}
-            className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground cursor-pointer"
-          >
-            <X className="size-3.5" />
-          </button>
-        )}
-      </div>
+      <SearchInput
+        aria-label="Alıntı fişi ara"
+        placeholder="Fiş içeriği, yazar, eser veya sayfa ara..."
+        value={filters.searchQuery}
+        onChange={(e) => onFilterChange("searchQuery", e.target.value)}
+        wrapperClassName="flex-1 min-w-[200px] max-w-md"
+        className="text-xs h-8 bg-background/80 border-border/40 rounded-lg placeholder:text-muted-foreground"
+        rightElement={
+          filters.searchQuery ? (
+            <button
+              type="button"
+              onClick={() => onFilterChange("searchQuery", "")}
+              className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground cursor-pointer"
+            >
+              <X className="size-3.5" />
+            </button>
+          ) : undefined
+        }
+      />
 
       {/* 2. Middle: Note Type Segmented Control */}
       <div className="flex items-center gap-0.5 bg-muted/30 p-0.5 rounded-lg border border-border/30 overflow-x-auto shrink-0">

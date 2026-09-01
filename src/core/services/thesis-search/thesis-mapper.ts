@@ -1,4 +1,5 @@
 import type { ThesisDetails } from "@/lib/types";
+import { stripAltTitle } from "@/lib/academic/title-utils";
 
 /**
  * Extracts the most reliable abstract text from a raw thesis payload.
@@ -27,14 +28,13 @@ export function mapPayloadToDetails(
   id: number,
   payload: Record<string, unknown>,
 ): ThesisDetails {
-  const titleOriginal = String(
+  const rawOriginal = String(
     payload.title_original ?? payload.title ?? "",
   ).trim();
-  const titleTranslated = String(payload.title_translated ?? "").trim();
-  const title =
-    titleTranslated && titleTranslated !== titleOriginal
-      ? `${titleOriginal} / ${titleTranslated}`
-      : titleOriginal;
+  const rawTranslated = String(payload.title_translated ?? "").trim();
+  const title = rawOriginal
+    ? stripAltTitle(rawOriginal) || rawOriginal
+    : stripAltTitle(rawTranslated) || rawTranslated;
 
   return {
     id,

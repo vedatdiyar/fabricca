@@ -1,7 +1,8 @@
 "use client";
 
-import { Card, CardContent } from "@/components/ui/card";
 import { BookOpen, Layers, FileText, Quote } from "lucide-react";
+import { MetricCard } from "@/components/shared/metrics/metric-card";
+import { MetricsGrid } from "@/components/shared/metrics/metrics-grid";
 import { OutlineMetrics } from "../hooks/use-outline-metrics";
 
 interface OutlineMetricsStripProps {
@@ -17,86 +18,47 @@ interface OutlineMetricsStripProps {
  */
 export function OutlineMetricsStrip({ metrics }: OutlineMetricsStripProps) {
   return (
-    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
-      {/* Metric 1: Root Chapters */}
-      <Card className="border border-border bg-card transition-colors hover:border-border/80">
-        <CardContent className="flex items-center justify-between p-3">
-          <div className="space-y-0.5 min-w-0 flex-1">
-            <span className="font-mono text-xs uppercase tracking-wider text-muted-foreground">
-              Ana Bölümler
-            </span>
-            <p className="font-mono text-xs font-semibold tracking-tight text-foreground">
-              {metrics.totalRoots} Bölüm
-            </p>
-            <p className="font-sans text-xs text-muted-foreground truncate">
-              Hiyerarşik ana başlıklar
-            </p>
-          </div>
-          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-primary/20 bg-primary/10 text-primary">
-            <BookOpen className="size-3.5" />
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Metric 2: Sub-sections */}
-      <Card className="border border-border bg-card transition-colors hover:border-border/80">
-        <CardContent className="flex items-center justify-between p-3">
-          <div className="space-y-0.5 min-w-0 flex-1">
-            <span className="font-mono text-xs uppercase tracking-wider text-muted-foreground">
-              Alt Başlıklar
-            </span>
-            <p className="font-mono text-xs font-semibold tracking-tight text-foreground">
-              {metrics.totalSubs} Alt Bölüm
-            </p>
-            <p className="font-sans text-xs text-muted-foreground truncate">
-              Detaylı alt araştırma başlıkları
-            </p>
-          </div>
-          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-primary/20 bg-primary/10 text-primary">
-            <Layers className="size-3.5" />
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Metric 3: Linked Sources */}
-      <Card className="border border-border bg-card transition-colors hover:border-border/80">
-        <CardContent className="flex items-center justify-between p-3">
-          <div className="space-y-0.5 min-w-0 flex-1">
-            <span className="font-mono text-xs uppercase tracking-wider text-muted-foreground">
-              Bağlı Literatür
-            </span>
-            <p className="font-mono text-xs font-semibold tracking-tight text-foreground">
-              {metrics.totalSources} Kaynak
-            </p>
-            <p className="font-sans text-xs text-muted-foreground truncate">
-              Bölümlere doğrudan bağlı eserler
-            </p>
-          </div>
-          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-primary/20 bg-primary/10 text-primary">
-            <FileText className="size-3.5" />
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Metric 4: Pinned Citation Cards */}
-      <Card className="border border-border bg-card transition-colors hover:border-border/80">
-        <CardContent className="flex items-center justify-between p-3">
-          <div className="space-y-0.5 min-w-0 flex-1">
-            <span className="font-mono text-xs uppercase tracking-wider text-muted-foreground">
-              İliştirilmiş Fişler
-            </span>
-            <p className="font-mono text-xs font-semibold tracking-tight text-foreground">
-              {metrics.totalCards} Fiş
-            </p>
-            <p className="font-sans text-xs text-muted-foreground truncate">
-              Bölümlere bağlı alıntı kartları
-            </p>
-          </div>
-          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-primary/20 bg-primary/10 text-primary">
-            <Quote className="size-3.5" />
-          </div>
-        </CardContent>
-      </Card>
-    </div>
+    <MetricsGrid variant="outline-tight">
+      <MetricCard
+        label="Ana Bölümler"
+        value={`${metrics.totalRoots} Bölüm`}
+        subtext="Hiyerarşik ana başlıklar"
+        icon={BookOpen}
+        labelClassName="font-mono text-xs uppercase tracking-wider text-muted-foreground"
+        valueClassName="font-mono text-xs font-semibold tracking-tight text-foreground"
+        subtextClassName="font-sans text-xs text-muted-foreground truncate"
+        cardClassName="transition-colors hover:border-border/80"
+      />
+      <MetricCard
+        label="Alt Başlıklar"
+        value={`${metrics.totalSubs} Alt Bölüm`}
+        subtext="Detaylı alt araştırma başlıkları"
+        icon={Layers}
+        labelClassName="font-mono text-xs uppercase tracking-wider text-muted-foreground"
+        valueClassName="font-mono text-xs font-semibold tracking-tight text-foreground"
+        subtextClassName="font-sans text-xs text-muted-foreground truncate"
+        cardClassName="transition-colors hover:border-border/80"
+      />
+      <MetricCard
+        label="Bağlı Literatür"
+        value={`${metrics.totalSources} Kaynak`}
+        subtext="Bölümlere doğrudan bağlı eserler"
+        icon={FileText}
+        labelClassName="font-mono text-xs uppercase tracking-wider text-muted-foreground"
+        valueClassName="font-mono text-xs font-semibold tracking-tight text-foreground"
+        subtextClassName="font-sans text-xs text-muted-foreground truncate"
+        cardClassName="transition-colors hover:border-border/80"
+      />
+      <MetricCard
+        label="İliştirilmiş Fişler"
+        value={`${metrics.totalCards} Fiş`}
+        subtext="Bölümlere bağlı alıntı kartları"
+        icon={Quote}
+        labelClassName="font-mono text-xs uppercase tracking-wider text-muted-foreground"
+        valueClassName="font-mono text-xs font-semibold tracking-tight text-foreground"
+        subtextClassName="font-sans text-xs text-muted-foreground truncate"
+        cardClassName="transition-colors hover:border-border/80"
+      />
+    </MetricsGrid>
   );
 }

@@ -20,10 +20,16 @@ interface EmptyStateProps {
   actions?: EmptyStateAction[];
   className?: string;
   variant?: "default" | "dashed" | "dashedMuted";
+  layout?: "card" | "centered";
+  iconWrapperClassName?: string;
+  iconClassName?: string;
+  titleClassName?: string;
+  descriptionClassName?: string;
 }
 
 /**
- * Merkezi empty-state bileşeni — tüm `border-dashed p-12` kopyalarını tek kaynaktan yönetir.
+ * Merkezi empty-state bileşeni — tüm `border-dashed p-12` ve centered
+ * empty-state kopyalarını tek kaynaktan yönetir.
  *
  * @param props - Bileşen prop'ları.
  * @returns Empty state markup.
@@ -35,25 +41,39 @@ export function EmptyState({
   actions,
   className,
   variant = "dashed",
+  layout = "card",
+  iconWrapperClassName,
+  iconClassName,
+  titleClassName,
+  descriptionClassName,
 }: EmptyStateProps) {
-  return (
-    <Card
-      variant={variant}
-      className={cn(
-        "flex flex-col items-center justify-center p-12 text-center",
-        className,
-      )}
-    >
+  const content = (
+    <>
       {Icon && (
-        <div className="flex h-12 w-12 items-center justify-center rounded-full bg-muted/40 border border-border/50 text-muted-foreground mb-4">
-          <Icon className="h-6 w-6" />
+        <div
+          className={cn(
+            "flex h-12 w-12 items-center justify-center rounded-full bg-muted/40 border border-border/50 text-muted-foreground mb-4",
+            iconWrapperClassName,
+          )}
+        >
+          <Icon className={cn("h-6 w-6", iconClassName)} />
         </div>
       )}
-      <h3 className="font-serif text-base font-semibold tracking-tight text-foreground">
+      <h3
+        className={cn(
+          "font-serif text-base font-semibold tracking-tight text-foreground",
+          titleClassName,
+        )}
+      >
         {title}
       </h3>
       {description && (
-        <p className="text-xs text-muted-foreground mt-1.5 max-w-md leading-relaxed">
+        <p
+          className={cn(
+            "text-xs text-muted-foreground mt-1.5 max-w-md leading-relaxed",
+            descriptionClassName,
+          )}
+        >
           {description}
         </p>
       )}
@@ -76,6 +96,31 @@ export function EmptyState({
           })}
         </div>
       )}
+    </>
+  );
+
+  if (layout === "centered") {
+    return (
+      <div
+        className={cn(
+          "flex flex-col items-center justify-center p-6 text-center",
+          className,
+        )}
+      >
+        {content}
+      </div>
+    );
+  }
+
+  return (
+    <Card
+      variant={variant}
+      className={cn(
+        "flex flex-col items-center justify-center p-12 text-center",
+        className,
+      )}
+    >
+      {content}
     </Card>
   );
 }

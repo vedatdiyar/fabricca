@@ -58,6 +58,7 @@ export async function runAdvisorToolLoop(
 
     const stream = await dispatchGeminiCall<GeminiContentStream>({
       model: FLASH_LITE_35,
+      lane: "interactive",
       task: async ({ model, apiKey }) => {
         const ai = getAi(apiKey);
         const stream = await ai.models.generateContentStream({

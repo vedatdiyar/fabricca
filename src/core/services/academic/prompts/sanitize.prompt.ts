@@ -24,7 +24,9 @@ export function buildSanitizePromptPayload(
     primaryTask:
       "Girdi dizisindeki (array) her bir akademik nesnenin `title` ve `author` alanlarını belirtilen kurallara göre standardize edip JSON formatında döndürün.",
 
-    rulesAndConstraints: `- **Başlık Biçimlendirmesi (Title Case):** Bağlaçlar (of, and, the, for, in, to, with, a, an, at, by, from, on, via, versus, vs, nor, or, so, than, up, upon, within, without) hariç her kelimenin ilk harfini büyük yapın.
+    rulesAndConstraints: `- **Başlık Biçimlendirmesi (Title Case):** Bağlaçlar (of, and, the, for, in, to, with, a, an, at, by, from, on, via, versus, vs, nor, or, so, than, up, upon, within, without, ve, veya, ile) hariç her kelimenin ilk harfini büyük yapın.
+- **Çift Dilli / Eğik Çizgili (Slash) Başlıklar:** Başlıkta eğik çizgi (" / ") veya benzeri bir ayraçla ayrılmış Türkçe ve yabancı dil çevirisi veya alternatif başlık bulunuyorsa (ör. "1990-2014 Dönemi Kürt Siyasal Hareketinin Söyleminin Dönüşümü / Transformation of Kurdish Political Movement Discourse During 1990-2014"), yalnızca eğik çizgiden önceki ana/birincil başlığı (Türkçe kısmı) koruyun; eğik çizgi ve sonrasındaki çeviri başlığı tamamen atın.
+- **İki Başlığı Birleştirmeme Yasağı:** İki farklı dildeki veya alternatif başlıklı ifadeleri kesinlikle "ve" veya "and" bağlacıyla birleştirmeyin.
 - **Bölüm Numarası ve İndeks Temizliği:** Kitap veya el kitabı bölümlerinin başındaki gereksiz rakamsal veya metinsel bölüm ön eklerini (ör. "14. Textual Analysis" → "Textual Analysis", "Chapter 5: Discourse Analysis" → "Discourse Analysis", "Bölüm 2 - Söylem Kuramları" → "Söylem Kuramları") temizleyin ve asıl başlığı muhafaza edin. Tarihsel yılları (ör. "1990-1999 Dönemi...") ve bilimsel terimleri (ör. "3D...") koruyun.
 - **Kısaltmaları Koruma:** Bilinen kısaltmaları olduğu gibi koruyun: DOI, LLM, YOK, IMF, NATO, UNESCO, WHO, EU, UN, USA, UK, ABD, AB, TBMM, TUBITAK, TKI, RNA, DNA, PCR, CRISPR.
 - **Latince Terimler:** Latince bilimsel terimleri (Homo sapiens, in vitro, in vivo, et al.) standart biyolojik cins/tür yazımına göre düzeltin.

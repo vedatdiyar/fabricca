@@ -1,5 +1,6 @@
 import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
+import { AIBannerSkeleton } from "@/components/shared/skeletons/ai-banner-skeleton";
 
 /**
  * Skeleton mirroring the onboarding boxes step content: AI banner, the topic
@@ -10,14 +11,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 export function BoxesSkeleton() {
   return (
     <div className="w-full space-y-6">
-      <div className="flex w-full items-start gap-3 rounded-md border border-primary/20 bg-primary/10 px-4 py-3">
-        <Skeleton className="mt-1 size-4 shrink-0 rounded-md" />
-        <div className="space-y-2">
-          <Skeleton className="h-4 w-64" />
-          <Skeleton className="h-3 w-full bg-border/20" />
-          <Skeleton className="h-3 w-4/10 bg-border/20" />
-        </div>
-      </div>
+      <AIBannerSkeleton />
 
       <div className="grid auto-rows-min grid-cols-1 gap-4">
         {Array.from({ length: 3 }).map((_, index) => (

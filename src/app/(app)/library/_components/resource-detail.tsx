@@ -4,7 +4,7 @@ import React, { useState } from "react";
 import { BookMarked, Sparkles } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
-import { PdfUploadDropzone } from "./pdf-upload-dropzone";
+import { UnifiedPdfDropzone } from "@/components/shared/dropzone/pdf-dropzone";
 import { EditResourceModal } from "./edit-resource-modal";
 import { ResourceHeader } from "./resource-detail/resource-header";
 import { CritiqueSection } from "./resource-detail/critique-section";
@@ -136,7 +136,7 @@ export function ResourceDetail({
       />
 
       {resource.pdfStatus !== "READY" && onUploadPdf && (
-        <PdfUploadDropzone
+        <UnifiedPdfDropzone
           resourceTitle={resource.title}
           pdfStatus={resource.pdfStatus}
           onUploadPdf={onUploadPdf}

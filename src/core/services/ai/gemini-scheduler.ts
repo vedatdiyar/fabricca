@@ -1,12 +1,13 @@
 /**
- * Balanced Least-Used & Round-Robin Gemini key dispatcher.
+ * Balanced Least-Used & Round-Robin Gemini key dispatcher with Multi-Key Sharded Batching.
  *
- * Distributes LLM calls evenly across all configured Gemini API keys in the pool.
- * Under normal conditions, requests cycle in balanced round-robin (Key 1 -> Key 2 -> Key 3 -> Key 1...).
- * If a key encounters a temporary RPM rate limit, it enters a 60-second cooldown while
- * remaining healthy keys seamlessly absorb traffic. When it recovers, the least-used balancer
- * naturally catches it up, preserving equal utilization across all keys.
- * If a key exhausts its daily quota (RPD), it fails over to healthy keys until midnight.
+ * Architecture:
+ * 1. VIP / Interactive Lane: Live chat and streaming calls bypass batch queues and immediately
+ *    dispatch on the least-loaded, non-cooling API key.
+ * 2. Balanced Batch Sharding (10-10-10): Batch workloads (N items) are evenly partitioned across
+ *    all healthy API keys (K=3) and executed concurrently in parallel shards.
+ * 3. Autonomous Cooldown & Failover: Automatic 15s-60s RPM cooldown, Pacific midnight RPD reset,
+ *    and cross-key / cross-model fallback chain support.
  */
 import type { Logger } from "@/lib/logger";
 import {
@@ -34,26 +35,7 @@ import {
 } from "./scheduler-state";
 import { getBalancedKeyCandidates } from "./candidate-selector";
 
-import { FLASH_LITE_35 } from "@/lib/constants";
-
 export { getKeyUsageStats, resetGeminiScheduler };
-
-/**
- * Resolves the primary healthy Gemini API key index for a batch operation.
- * Used by parallel batch operations (<= 15 requests) to bind all parallel
- * calls in the batch to the same healthy key.
- *
- * @param model - Target model identifier (defaults to FLASH_LITE_35).
- * @returns 0-based key pool index.
- */
-export function getHealthyGeminiKeyIndex(
-  model: string = FLASH_LITE_35,
-): number {
-  const pool = getGeminiKeyPool().keys;
-  if (pool.length === 0) return 0;
-  const candidates = getBalancedKeyCandidates(model, pool);
-  return candidates[0] ?? 0;
-}
 
 /** Client timeout in milliseconds for the primary model when a fallback model exists (45s). */
 export const GEMINI_PRIMARY_MODEL_TIMEOUT_MS = 45_000;
@@ -102,10 +84,15 @@ export interface GeminiDispatchParams<T> {
    */
   operation?: string;
   /**
-   * When set, pins the dispatch to prioritize this specific 0-based key index.
-   * Used for parallel batches (<= 15 calls) that must stay on a single API key.
+   * Dispatch lane.
+   * - "interactive" (VIP Lane): Prioritizes the lowest in-flight active key for live chat.
+   * - "batch" (Default): Standard load-balanced execution.
    */
-  pinnedKeyIndex?: number;
+  lane?: "interactive" | "batch";
+  /**
+   * Optional target 0-based key pool index for sharded batch operations.
+   */
+  targetKeyIndex?: number;
   /** Optional logger to output key rotation and scheduler events. */
   logger?: Logger;
   /**
@@ -115,9 +102,7 @@ export interface GeminiDispatchParams<T> {
 }
 
 /**
- * Dispatches a Gemini call across available API keys using balanced least-used round-robin distribution.
- * Guarantees fair, equal traffic across all configured keys while automatically failing over
- * upon temporary RPM rate limits or daily RPD exhaustion.
+ * Dispatches a single Gemini call across available API keys using balanced least-used round-robin distribution.
  *
  * @typeParam T - The structured output type produced by the task.
  * @param params - The dispatch parameters (preferred model, operation, task).
@@ -146,11 +131,10 @@ export async function dispatchGeminiCall<T>(
       : [params.model];
 
   for (const model of models) {
-    const keyIndicesToTry = getBalancedKeyCandidates(
-      model,
-      pool,
-      params.pinnedKeyIndex,
-    );
+    const keyIndicesToTry = getBalancedKeyCandidates(model, pool, {
+      lane: params.lane,
+      targetKeyIndex: params.targetKeyIndex,
+    });
     if (keyIndicesToTry.length === 0) {
       continue;
     }
@@ -274,4 +258,99 @@ export async function dispatchGeminiCall<T>(
   }
 
   throw new DailyQuotaExceededError(`gemini_${params.model}`);
+}
+
+/** Options for dispatching parallel batch workloads evenly across keys. */
+export interface GeminiBatchOptions<TItem, TResult> {
+  /** Array of items to process. */
+  items: readonly TItem[];
+  /** Target Gemini model name. */
+  model: string;
+  /** Pipeline operation key. */
+  operation?: string;
+  /** Optional logger. */
+  logger?: Logger;
+  /** Max concurrent requests per individual API key shard (default: 5). */
+  concurrencyPerKey?: number;
+  /** Task executor per item. Receives item, original item index, and resolved Gemini target. */
+  task: (item: TItem, index: number, target: GeminiTarget) => Promise<TResult>;
+}
+
+/**
+ * Executes an array of async tasks with a maximum concurrency limit.
+ */
+async function mapConcurrent<T, R>(
+  items: readonly T[],
+  limit: number,
+  fn: (item: T, index: number) => Promise<R>,
+): Promise<R[]> {
+  const results: R[] = new Array(items.length);
+  let nextIndex = 0;
+
+  async function worker(): Promise<void> {
+    while (nextIndex < items.length) {
+      const idx = nextIndex++;
+      results[idx] = await fn(items[idx], idx);
+    }
+  }
+
+  const workerCount = Math.min(limit, items.length);
+  const workers = Array.from({ length: workerCount }, () => worker());
+  await Promise.all(workers);
+  return results;
+}
+
+/**
+ * Dispatches a batch of N items evenly across all configured API keys (e.g. 30 items -> 10-10-10)
+ * executing in parallel across all healthy keys with automatic rate limiting and failover.
+ *
+ * @typeParam TItem - The input item type.
+ * @typeParam TResult - The output result type.
+ * @param options - Batch execution configuration.
+ * @returns Array of results matching the exact original item ordering.
+ */
+export async function dispatchGeminiBatch<TItem, TResult>(
+  options: GeminiBatchOptions<TItem, TResult>,
+): Promise<TResult[]> {
+  const { items, model, operation, logger, concurrencyPerKey = 5, task } = options;
+  if (items.length === 0) return [];
+
+  const pool = getGeminiKeyPool().keys;
+  if (pool.length === 0) {
+    throw new DailyQuotaExceededError(`gemini_${model}`);
+  }
+
+  const keyCount = pool.length;
+  // Partition items into K shards: item i goes to shard (i % keyCount)
+  const shards: { item: TItem; originalIndex: number }[][] = Array.from(
+    { length: keyCount },
+    () => [],
+  );
+
+  for (let i = 0; i < items.length; i++) {
+    shards[i % keyCount].push({ item: items[i], originalIndex: i });
+  }
+
+  const finalResults: TResult[] = new Array(items.length);
+
+  // Execute all K shards in parallel
+  await Promise.all(
+    shards.map(async (shardItems, shardKeyIndex) => {
+      if (shardItems.length === 0) return;
+
+      await mapConcurrent(shardItems, concurrencyPerKey, async ({ item, originalIndex }) => {
+        const res = await dispatchGeminiCall<TResult>({
+          model,
+          operation,
+          lane: "batch",
+          targetKeyIndex: shardKeyIndex,
+          logger,
+          task: async (target) => await task(item, originalIndex, target),
+        });
+        finalResults[originalIndex] = res;
+      });
+    }),
+  );
+
+  return finalResults;
 }

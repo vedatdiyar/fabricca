@@ -1,16 +1,8 @@
 "use client";
 
 import { Outline } from "@/core/db/schema";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-  DialogFooter,
-} from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
-import { Loader2, Trash2 } from "lucide-react";
+import { Trash2 } from "lucide-react";
+import { FormDialog } from "@/components/shared/dialog/form-dialog";
 
 interface DeleteSectionModalProps {
   open: boolean;
@@ -38,42 +30,25 @@ export function DeleteSectionModal({
   onConfirm,
 }: DeleteSectionModalProps) {
   return (
-    <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="max-w-md bg-card border-border">
-        <DialogHeader>
-          <DialogTitle className="font-serif text-base font-semibold text-destructive">
-            Bölümü Silmek İstediğinize Emin Misiniz?
-          </DialogTitle>
-          <DialogDescription className="font-sans text-xs text-muted-foreground pt-1">
-            &quot;{outline?.title}&quot; bölümü ve bu bölüme bağlı tüm alt
-            başlıklar, kaynak bağlantıları kalıcı olarak silinecektir.
-          </DialogDescription>
-        </DialogHeader>
-
-        <DialogFooter className="gap-2 pt-2">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={onClose}
-            disabled={isDeleting}
-          >
-            Vazgeç
-          </Button>
-          <Button
-            variant="destructive"
-            size="sm"
-            onClick={onConfirm}
-            disabled={isDeleting}
-          >
-            {isDeleting ? (
-              <Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" />
-            ) : (
-              <Trash2 className="h-3.5 w-3.5 mr-1.5" />
-            )}
-            <span>Kalıcı Olarak Sil</span>
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+    <FormDialog
+      open={open}
+      onOpenChange={onClose}
+      title="Bölümü Silmek İstediğinize Emin Misiniz?"
+      titleClassName="text-destructive"
+      description={`"${outline?.title ?? ""}" bölümü ve bu bölüme bağlı tüm alt başlıklar, kaynak bağlantıları kalıcı olarak silinecektir.`}
+      descriptionClassName="pt-1"
+      size="sm"
+      isSaving={isDeleting}
+      saveLabel="Kalıcı Olarak Sil"
+      saveIcon={Trash2}
+      saveVariant="destructive"
+      cancelLabel="Vazgeç"
+      cancelVariant="outline"
+      onSave={onConfirm}
+      showSeparator={false}
+      footerLayout="end"
+      footerClassName="pt-2"
+      hideFooter={false}
+    />
   );
 }
