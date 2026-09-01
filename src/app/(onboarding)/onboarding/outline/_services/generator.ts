@@ -45,30 +45,34 @@ export async function generateOutlineAction(
 
     if (!matrix) return { error: "Thesis matrix not found." };
 
-    const outline = await run.execute("generate", async () => {
-      const payload = buildOutlineGenerationPromptPayload({
-        subjectProblem: matrix.subjectProblem,
-        theoreticalFramework: matrix.theoreticalFramework,
-        primaryMaterial: matrix.primaryMaterial,
-        methodology: matrix.methodology,
-      });
+    const outline = await run.execute(
+      "generate",
+      async () => {
+        const payload = buildOutlineGenerationPromptPayload({
+          subjectProblem: matrix.subjectProblem,
+          theoreticalFramework: matrix.theoreticalFramework,
+          primaryMaterial: matrix.primaryMaterial,
+          methodology: matrix.methodology,
+        });
 
-      return generateGeminiStructuredContent<OutlineGenerationResponse>(
-        FLASH_LITE_35,
-        payload.systemInstruction,
-        payload.userPrompt,
-        outlineGenerationJsonSchema,
-        run.logger,
-        {
-          thinkingConfig: { thinkingLevel: ThinkingLevel.LOW },
-          zodSchema: outlineGenerationSchema,
-          seed: GEMINI_SEED,
-          thesisMatrix: matrix,
-          payloadStage: "outline_generation",
-          quiet: true,
-        },
-      );
-    });
+        return generateGeminiStructuredContent<OutlineGenerationResponse>(
+          FLASH_LITE_35,
+          payload.systemInstruction,
+          payload.userPrompt,
+          outlineGenerationJsonSchema,
+          run.logger,
+          {
+            thinkingConfig: { thinkingLevel: ThinkingLevel.LOW },
+            zodSchema: outlineGenerationSchema,
+            seed: GEMINI_SEED,
+            thesisMatrix: matrix,
+            payloadStage: "outline_generation",
+            quiet: true,
+          },
+        );
+      },
+      { description: "AI Outline Synthesis (Gemini Flash)" },
+    );
 
     return { success: true, outline };
   } catch {
@@ -104,11 +108,15 @@ export async function persistOutlineAction(
 
     if (!matrix) return { error: "Thesis matrix not found." };
 
-    await run.execute("persist", async () => {
-      await persistOutlines(session.userId, matrix.id, outline, run.logger);
+    await run.execute(
+      "persist",
+      async () => {
+        await persistOutlines(session.userId, matrix.id, outline, run.logger);
 
-      invalidateOnboardingStepCache("outline");
-    });
+        invalidateOnboardingStepCache("outline");
+      },
+      { description: "Outline Saved to Database" },
+    );
 
     run.finish();
 

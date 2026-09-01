@@ -13,14 +13,18 @@ import {
 } from "./schemas";
 import { fetchThesisMatrix } from "@/app/(onboarding)/onboarding/_services/fetch-actions";
 
+import type { PipelineRun } from "@/lib/pipeline-logger";
+
 /**
  * Phase 1: generates the 4-quadrant Turkish box structure only (no semantic queries).
  *
  * @param flowId - Optional shared flow identifier of the parent pipeline run.
+ * @param pipelineRun - Optional parent PipelineRun instance for step emission.
  * @returns The generated box structure or an error message.
  */
 export async function runBoxStructureAction(
   flowId?: string,
+  pipelineRun?: PipelineRun,
 ): Promise<
   { success: true; structure: RawBoxStructureResponse } | { error: string }
 > {
@@ -36,6 +40,7 @@ export async function runBoxStructureAction(
 
     log.info("box_structure_generation_start", {
       service: "boxes",
+      hidden: true,
     });
 
     const payload = buildBoxStructurePromptPayload({
@@ -58,13 +63,17 @@ export async function runBoxStructureAction(
           seed: GEMINI_SEED,
           thesisMatrix: matrix,
           payloadStage: "box_structure_generation",
-          quiet: false,
+          quiet: true,
         },
       );
 
+    const durationMs = performance.now() - startTime;
+    pipelineRun?.subStep("4-Quadrant Box Structure (Gemini Flash)", durationMs);
+
     log.info("box_structure_generation_success", {
       service: "boxes",
-      durationMs: Math.round(performance.now() - startTime),
+      durationMs: Math.round(durationMs),
+      hidden: true,
     });
 
     return { success: true, structure };

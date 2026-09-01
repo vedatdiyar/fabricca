@@ -52,7 +52,7 @@ export function ReportOverlapSection({
             return (
               <div
                 key={`overlap-${i}`}
-                className="p-4 rounded-md border border-destructive/20 bg-background/90 space-y-3.5 shadow-sm"
+                className="p-4 rounded-md border border-destructive/20 bg-background/90 space-y-3.5"
               >
                 <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
                   <div className="space-y-1">
@@ -160,8 +160,8 @@ export function ReportOverlapSection({
             onClick={() => router.push("/onboarding/proposal")}
             size="default"
           >
-            <RefreshCw className="size-4 mr-2" />
-            Taslağı Yeniden Düzenle
+            <RefreshCw className="size-4" />
+            <span>Taslağı Yeniden Düzenle</span>
           </Button>
         </div>
       </div>

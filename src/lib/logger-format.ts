@@ -136,6 +136,7 @@ export interface StageLineOptions {
   backoffMs?: number;
   status?: "SUCCESS" | "FAILED" | "RETRY" | "START";
   isSubStep?: boolean;
+  isStageTotal?: boolean;
   error?: unknown;
 }
 
@@ -143,6 +144,7 @@ export interface StageLineOptions {
  * Formats a badge-aligned stage or sub-step log line.
  * E.g. "  [1/4] DECOMPOSE  │ Gemini Flash ──────── 2.2s"
  * E.g. "                   │ Exa (x2) ──────────── 267ms"
+ * E.g. "                   │ ∑ Stage Total ─────── 5.5s"
  *
  * @param options - Stage configuration options.
  * @returns Formatted stage line string.
@@ -181,7 +183,11 @@ export function formatStageLine(options: StageLineOptions): string {
     rightPart = `${C_GREEN}${dur}${C_RESET}`;
   }
 
-  const content = formatLeaderLine(options.description, rightPart, 46);
+  const rawDescription = options.isStageTotal
+    ? `${C_CYAN}∑${C_RESET} ${options.description}`
+    : options.description;
+
+  const content = formatLeaderLine(rawDescription, rightPart, 46);
   return `  ${badgeStr} ${sep} ${content}`;
 }
 

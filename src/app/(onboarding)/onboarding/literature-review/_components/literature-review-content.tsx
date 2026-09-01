@@ -1,9 +1,11 @@
 "use client";
 
-import { Loader2, AlertCircle, BookOpen, Check } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { useRouter } from "next/navigation";
+import { AlertCircle, BookOpen } from "lucide-react";
 import { Card } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import { AIBanner } from "@/components/shared/ai-banner";
+import { OnboardingStepFooter } from "@/app/(onboarding)/onboarding/_components/onboarding-step-footer";
 import { LiteratureReviewSkeleton } from "./literature-review-skeleton";
 import type { GeminiThesisBox, LiteraturePoolEntry } from "@/lib/types";
 import { LiteratureArticleCard } from "./literature-article-card";
@@ -225,6 +227,7 @@ function SubBoxDone({
  * @returns The literature review content UI.
  */
 export function LiteratureReviewContent() {
+  const router = useRouter();
   const {
     subBoxes,
     loading,
@@ -272,16 +275,19 @@ export function LiteratureReviewContent() {
           return (
             <Card
               key={subBox.title}
-              className="p-5 sm:p-6 space-y-4 rounded-md"
+              className="p-5 sm:p-6 space-y-4 rounded-lg border border-border bg-card"
             >
               <div className="flex items-center gap-2">
                 <h2 className="font-serif text-base font-semibold tracking-tight text-foreground">
                   {subBox.title}
                 </h2>
                 {subBox.boxType && (
-                  <span className="inline-flex items-center px-2.5 py-0.5 rounded-md text-xs font-medium border bg-primary/10 border-primary/20 text-primary ml-auto">
+                  <Badge
+                    variant="secondary"
+                    className="px-2.5 py-0.5 rounded-md text-xs font-medium ml-auto"
+                  >
                     {getBoxTypeLabel(subBox.boxType)}
-                  </span>
+                  </Badge>
                 )}
               </div>
               {subBox.description && (
@@ -302,21 +308,17 @@ export function LiteratureReviewContent() {
         })}
       </div>
 
-      <div className="flex justify-end mt-6 pb-8">
-        <Button onClick={handleFinalize} disabled={confirming} size="lg">
-          {confirming ? (
-            <span className="flex items-center gap-2">
-              <Loader2 className="size-4 animate-spin" />
-              Kaydediliyor...
-            </span>
-          ) : (
-            <span className="flex items-center gap-2">
-              Onayla ve Tamamla
-              <Check className="size-4" />
-            </span>
-          )}
-        </Button>
-      </div>
+      <OnboardingStepFooter
+        onBack={() => router.push("/onboarding/outline")}
+        backLabel="Tez Planına Dön"
+        backDisabled={confirming}
+        onNext={handleFinalize}
+        nextLabel="Onayla ve Tamamla"
+        nextDisabled={confirming}
+        nextLoading={confirming}
+        nextLoadingText="Kaydediliyor..."
+        isLastStep={true}
+      />
     </div>
   );
 }

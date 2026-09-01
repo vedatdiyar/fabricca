@@ -165,6 +165,7 @@ export async function sanitizeTargetedArticles(
       ],
       payloadStage: "literature_targeted_sanitization",
       operation: "sanitize",
+      quiet: true,
     },
   );
 

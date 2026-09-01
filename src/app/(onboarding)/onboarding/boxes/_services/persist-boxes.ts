@@ -77,11 +77,15 @@ export async function persistBoxesAction(
     const validBoxes = parsed.data;
     const thesisMatrixId = matrix.id;
 
-    await run.execute("persist", async () => {
-      await db.transaction(async (tx) => {
-        await insertBoxesTransaction(tx, validBoxes, thesisMatrixId);
-      });
-    });
+    await run.execute(
+      "persist",
+      async () => {
+        await db.transaction(async (tx) => {
+          await insertBoxesTransaction(tx, validBoxes, thesisMatrixId);
+        });
+      },
+      { description: "Boxes Saved to Database" },
+    );
 
     try {
       revalidateOnboardingPaths();

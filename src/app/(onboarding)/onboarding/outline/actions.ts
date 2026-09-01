@@ -104,6 +104,7 @@ export async function saveOutlineHierarchyAction(
     log.info("save_outline_hierarchy_success", {
       service: "outline",
       data: { sectionCount: sections.length },
+      hidden: true,
     });
 
     return { success: true };

@@ -260,12 +260,12 @@ export function ProposalStudio({ initialProposal = "" }: ProposalStudioProps) {
 
   return (
     <div className="w-full space-y-4">
-      <Card className="flex flex-col rounded-lg border border-border bg-card shadow-sm overflow-hidden">
+      <Card className="flex flex-col rounded-lg border border-border bg-card overflow-hidden">
         {/* Studio Header */}
         <div className="p-4 sm:p-5 border-b border-border/60 bg-card/60">
           <div className="flex items-center justify-between gap-3 flex-wrap">
             <div className="flex items-center gap-2.5">
-              <span className="flex items-center justify-center size-5 rounded bg-primary/10 text-primary font-mono text-xs font-semibold">
+              <span className="flex items-center justify-center size-5 rounded bg-primary/10 border border-primary/20 text-primary font-mono text-xs font-semibold">
                 01
               </span>
               <FileText className="size-4 text-muted-foreground shrink-0" />
@@ -284,8 +284,8 @@ export function ProposalStudio({ initialProposal = "" }: ProposalStudioProps) {
                   setIsEditing(true);
                 }}
               >
-                <RotateCcw className="size-3.5 mr-1.5" />
-                Temizle
+                <RotateCcw className="size-3.5" />
+                <span>Temizle</span>
               </Button>
             )}
           </div>
@@ -342,7 +342,7 @@ export function ProposalStudio({ initialProposal = "" }: ProposalStudioProps) {
         </div>
 
         {/* Studio Permanent Footer Bar */}
-        <div className="flex items-center justify-between px-4 sm:px-6 py-3 border-t border-border/60 bg-card/90">
+        <div className="flex items-center justify-between px-4 sm:px-6 py-3.5 border-t border-border/60 bg-card/90">
           <div className="flex items-center gap-3">
             <span className="inline-flex items-center gap-1.5 font-mono text-xs text-muted-foreground">
               <span className="font-semibold text-foreground">
@@ -368,8 +368,8 @@ export function ProposalStudio({ initialProposal = "" }: ProposalStudioProps) {
             }
             size="lg"
           >
-            <Search className="size-4 mr-2" />
-            Raporu Oluştur
+            <Search className="size-4" />
+            <span>Raporu Oluştur</span>
           </Button>
         </div>
       </Card>

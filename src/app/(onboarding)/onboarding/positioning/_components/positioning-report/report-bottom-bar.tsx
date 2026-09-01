@@ -1,8 +1,8 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { RefreshCw, ArrowRight, Loader2 } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { RefreshCw } from "lucide-react";
+import { OnboardingStepFooter } from "@/app/(onboarding)/onboarding/_components/onboarding-step-footer";
 
 interface ReportBottomBarProps {
   isDirectOverlap: boolean;
@@ -11,10 +11,10 @@ interface ReportBottomBarProps {
 }
 
 /**
- * Renders bottom action bar for positioning report.
+ * Renders bottom action bar for positioning report using the standardized footer.
  *
  * @param props - Bottom bar props.
- * @returns Bottom bar markup.
+ * @returns Bottom bar markup or null if direct overlap.
  */
 export function ReportBottomBar({
   isDirectOverlap,
@@ -28,30 +28,16 @@ export function ReportBottomBar({
   }
 
   return (
-    <div className="flex justify-between items-center pt-4 pb-8 border-t border-border/40">
-      <Button
-        variant="outline"
-        size="default"
-        onClick={() => router.push("/onboarding/proposal")}
-        disabled={confirming}
-      >
-        <RefreshCw className="size-4 mr-2" />
-        Taslağı Düzenle
-      </Button>
-
-      <Button onClick={onConfirm} disabled={confirming} size="lg">
-        {confirming ? (
-          <span className="flex items-center justify-center gap-2">
-            <Loader2 className="size-4 animate-spin" />
-            Konu Kutuları Hazırlanıyor...
-          </span>
-        ) : (
-          <span className="flex items-center gap-2">
-            Konumlandırmayı Onayla
-            <ArrowRight className="size-4" />
-          </span>
-        )}
-      </Button>
-    </div>
+    <OnboardingStepFooter
+      onBack={() => router.push("/onboarding/proposal")}
+      backLabel="Taslağı Düzenle"
+      backIcon={RefreshCw}
+      backDisabled={confirming}
+      onNext={onConfirm}
+      nextLabel="Konumlandırmayı Onayla"
+      nextDisabled={confirming}
+      nextLoading={confirming}
+      nextLoadingText="Konu Kutuları Hazırlanıyor..."
+    />
   );
 }

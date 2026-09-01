@@ -8,7 +8,6 @@ import { PipelineRun } from "@/lib/pipeline-logger";
 import { PROPOSAL_POSITIONING_PIPELINE } from "@/lib/pipeline-definitions";
 import { clearDownstreamDbAction } from "../../actions";
 import { synthesizeInitialMatrixFromProposal } from "../../matrix/_services/proposal-synthesis-service";
-import { generatePositioningQuery } from "../_services/query-generator";
 import { searchAndSiftTheses } from "../_services/sifting";
 import { evaluateThesesInParallel } from "../_services/per-thesis-evaluation";
 import { analyzePositioningJury } from "../_services/analysis";
@@ -45,16 +44,9 @@ export async function startOnboardingFromProposalAction(
 
     await clearDownstreamDbAction("proposal");
 
-    // 1. Kick off Query Distillation and Search concurrently with Proposal Decomposition
-    const queryStartTime = performance.now();
-    const queryPromise = generatePositioningQuery(
-      { subjectProblem: trimmed },
-      run.logger,
-    );
-
-    let matrixDbPromise: Promise<number> | null = null;
-
-    const matrixTask = run.execute(
+    // Stage 1: Matrix Decomposition & Persistence
+    let matrixDbId = 0;
+    const savedMatrix = await run.execute(
       "matrix",
       async () => {
         const t0 = performance.now();
@@ -67,70 +59,62 @@ export async function startOnboardingFromProposalAction(
           performance.now() - t0,
         );
 
-        // 2. Persist matrix to DB in parallel background (non-blocking for search scan)
         const t1 = performance.now();
-        matrixDbPromise = (async () => {
-          const [persisted] = await db
-            .insert(matrices)
-            .values({
-              userId: session.userId,
+        const [persisted] = await db
+          .insert(matrices)
+          .values({
+            userId: session.userId,
+            rawProposal: trimmed,
+            subjectProblem: matrix.subjectProblem,
+            theoreticalFramework: matrix.theoreticalFramework,
+            primaryMaterial: matrix.primaryMaterial,
+            methodology: matrix.methodology,
+            updatedAt: sql`now()`,
+          })
+          .onConflictDoUpdate({
+            target: matrices.userId,
+            set: {
               rawProposal: trimmed,
               subjectProblem: matrix.subjectProblem,
               theoreticalFramework: matrix.theoreticalFramework,
               primaryMaterial: matrix.primaryMaterial,
               methodology: matrix.methodology,
               updatedAt: sql`now()`,
-            })
-            .onConflictDoUpdate({
-              target: matrices.userId,
-              set: {
-                rawProposal: trimmed,
-                subjectProblem: matrix.subjectProblem,
-                theoreticalFramework: matrix.theoreticalFramework,
-                primaryMaterial: matrix.primaryMaterial,
-                methodology: matrix.methodology,
-                updatedAt: sql`now()`,
-              },
-            })
-            .returning({ id: matrices.id });
+            },
+          })
+          .returning({ id: matrices.id });
 
-          if (!persisted) {
-            throw new Error("Tez matrisi oluşturulamadı.");
-          }
+        if (!persisted) {
+          throw new Error("Tez matrisi oluşturulamadı.");
+        }
+        matrixDbId = persisted.id;
 
-          run.subStep("Matrix Saved to Database", performance.now() - t1);
-          return persisted.id;
-        })();
+        run.subStep("Matrix Saved to Database", performance.now() - t1);
 
         return matrix;
       },
       { description: "Initial Matrix Synthesis (Gemini Flash)" },
     );
 
-    const searchTask = run.execute(
+    // Stage 2: 4-Channel Literature Search & Cohere Rerank
+    const siftedCandidates = await run.execute(
       "search",
       () =>
         searchAndSiftTheses(
           {
-            subjectProblem: trimmed.slice(0, 500),
-            theoreticalFramework: "Kuramsal Çerçeve",
-            methodology: "Metodoloji",
+            subjectProblem: savedMatrix.subjectProblem,
+            theoreticalFramework: savedMatrix.theoreticalFramework,
+            methodology: savedMatrix.methodology,
           },
           run.logger,
           {
             pipelineRun: run,
-            queryPromise,
-            queryStartTime,
           },
         ),
       { description: "4-Channel Literature Scan & Cohere Rerank" },
     );
 
-    const [savedMatrix, siftedCandidates] = await Promise.all([
-      matrixTask,
-      searchTask,
-    ]);
-
+    // Stage 3: Candidate Evaluation & Positioning Jury
     const juryResult = await run.execute(
       "jury_review",
       async () => {
@@ -171,11 +155,10 @@ export async function startOnboardingFromProposalAction(
       { description: "Gemini Candidate Evaluation & Jury Review" },
     );
 
+    // Stage 4: Persist Positioning Report
     await run.execute(
       "persist",
       async () => {
-        const matrixId = matrixDbPromise ? await matrixDbPromise : 0;
-
         const t0 = performance.now();
         await sanitizeJuryTheses(juryResult, run.logger);
         if ((juryResult.recommendedTheses?.length ?? 0) > 0) {
@@ -185,18 +168,13 @@ export async function startOnboardingFromProposalAction(
           );
         }
 
-        const t1 = performance.now();
         await savePositioningReportTransaction(
           session.userId,
-          matrixId,
+          matrixDbId,
           juryResult,
         );
-        run.subStep(
-          "Positioning Report Saved to Database",
-          performance.now() - t1,
-        );
       },
-      { description: "Save Positioning Report to Database" },
+      { description: "Positioning Report Saved to Database" },
     );
 
     run.finish();

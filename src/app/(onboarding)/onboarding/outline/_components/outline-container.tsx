@@ -1,9 +1,9 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { ArrowRight, Loader2, BookOpen } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { BookOpen } from "lucide-react";
 import { AIBanner } from "@/components/shared/ai-banner";
+import { OnboardingStepFooter } from "@/app/(onboarding)/onboarding/_components/onboarding-step-footer";
 import { OutlineStatsBar } from "./outline-stats-bar";
 import { type OutlineSectionData } from "./outline-section-card";
 import { OutlineSectionList } from "./outline-section-list";
@@ -41,6 +41,7 @@ function OutlineEditor({
   sections: initialSections,
   academicField: initialAcademicField,
 }: OutlineContainerProps) {
+  const router = useRouter();
   const {
     sections,
     academicField,
@@ -93,21 +94,16 @@ function OutlineEditor({
         onDragEndSection={handleDragEndSection}
       />
 
-      <div className="flex justify-end pt-4 pb-8">
-        <Button onClick={handleConfirm} disabled={confirming} size="lg">
-          {confirming ? (
-            <span className="flex items-center gap-2">
-              <Loader2 className="size-4 animate-spin" />
-              Kaydediliyor...
-            </span>
-          ) : (
-            <span className="flex items-center gap-2">
-              Literatür Taramasına Geç
-              <ArrowRight className="size-4" />
-            </span>
-          )}
-        </Button>
-      </div>
+      <OnboardingStepFooter
+        onBack={() => router.push("/onboarding/boxes")}
+        backLabel="Konu Kutularına Dön"
+        backDisabled={confirming}
+        onNext={handleConfirm}
+        nextLabel="Literatür Taramasına Geç"
+        nextDisabled={confirming}
+        nextLoading={confirming}
+        nextLoadingText="Kaydediliyor..."
+      />
     </div>
   );
 }

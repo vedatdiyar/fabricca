@@ -15,6 +15,8 @@ export type {
   JuryEvalResult,
 } from "./orchestrator/types";
 
+import type { PipelineRun } from "@/lib/pipeline-logger";
+
 /**
  * Runs the full multi-box literature review pipeline across search, jury, selection and persistence phases.
  *
@@ -23,6 +25,7 @@ export type {
  * @param thesisMatrixContext - Optional thesis subject string or 4-quadrant matrix for jury context.
  * @param checkCancelled - Optional callback to abort the pipeline.
  * @param persistSubBox - Optional callback to persist articles per sub-box.
+ * @param pipelineRun - Optional parent PipelineRun instance for step emission.
  * @returns The orchestrated pool entries and archival box titles.
  */
 export async function orchestrateBatchProcess(
@@ -34,6 +37,7 @@ export async function orchestrateBatchProcess(
     thesisBoxId: number,
     articles: JuryArticle[],
   ) => Promise<void>,
+  pipelineRun?: PipelineRun,
 ): Promise<BatchOrchestrationResult> {
   const poolEntries: LiteraturePoolEntry[] = [];
   const archivalBoxTitles: string[] = [];
@@ -68,26 +72,41 @@ export async function orchestrateBatchProcess(
   }
 
   // Phase 1: Search & Pool Building
+  const t1 = performance.now();
   const fulfilledResults = await executePhase1Search(
     activeJobs,
     logger,
     checkCancelled,
   );
+  pipelineRun?.subStep(
+    `4-Channel Academic Search (${activeJobs.length} sub-boxes)`,
+    performance.now() - t1,
+  );
 
   // Phase 2: Jury Pool Preparation & Evaluation
+  const t2 = performance.now();
   const { poolByBox, juryEvaluations } = await executePhase2Jury(
     fulfilledResults,
     logger,
     thesisMatrixContext,
   );
+  pipelineRun?.subStep(
+    `Parallel Jury Evaluation (${juryEvaluations.length} candidate evaluations)`,
+    performance.now() - t2,
+  );
 
   // Phase 3: Article Selection, Sanitization & Author Healing
+  const t3 = performance.now();
   const subBoxResultsToPersist = await executePhase3Selection(
     fulfilledResults,
     poolByBox,
     juryEvaluations,
     logger,
     checkCancelled,
+  );
+  pipelineRun?.subStep(
+    "Article Selection & Sanitization",
+    performance.now() - t3,
   );
 
   // Final Persistence Phase

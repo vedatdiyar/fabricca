@@ -1,11 +1,11 @@
 import { redirect } from "next/navigation";
 import { getProfile } from "@/lib/session";
 import { BoxesContainer } from "./_components/boxes-container";
-import { StartOverButton } from "../_components/start-over-button";
+import { OnboardingStepHeader } from "../_components/onboarding-step-header";
 import { fetchBoxesWithFullShape } from "@/app/(onboarding)/onboarding/_services/fetch-actions";
 
 /**
- * Onboarding step 4: subject boxes page that verifies auth and renders the boxes.
+ * Onboarding step 3: subject boxes page that verifies auth and renders the boxes.
  *
  * @returns The subject boxes page markup.
  */
@@ -24,20 +24,10 @@ export default async function OnboardingBoxesPage() {
   return (
     <div className="flex flex-col items-center justify-center p-4 pt-10 pb-4">
       <div className="flex w-full max-w-5xl flex-col items-center space-y-4">
-        <div className="flex w-full flex-col sm:flex-row justify-between items-start sm:items-center gap-4 pb-6 border-b border-border">
-          <div className="flex flex-col space-y-1 text-left">
-            <h1 className="font-serif text-xl font-semibold tracking-tight text-foreground">
-              Konu Kutuları
-            </h1>
-            <p className="text-sm leading-relaxed text-muted-foreground">
-              Tez matrisinizin çözümlenmesiyle oluşturulan konu kutularını
-              inceleyin ve onaylayın.
-            </p>
-          </div>
-          <div className="flex items-center self-end sm:self-center">
-            <StartOverButton />
-          </div>
-        </div>
+        <OnboardingStepHeader
+          title="Konu Kutuları"
+          description="Tez matrisinizin çözümlenmesiyle oluşturulan konu kutularını inceleyin ve onaylayın."
+        />
 
         <BoxesContainer />
       </div>

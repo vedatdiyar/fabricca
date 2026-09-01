@@ -14,16 +14,20 @@ import type { RawQuadrants } from "./box-mapper";
 
 import { fetchThesisMatrix } from "@/app/(onboarding)/onboarding/_services/fetch-actions";
 
+import type { PipelineRun } from "@/lib/pipeline-logger";
+
 /**
  * Phase 2: generates English semantic queries for every sub-box in a single Gemini call.
  *
  * @param structure - The raw box structure generated in phase 1.
  * @param flowId - Optional shared flow identifier of the parent pipeline run.
+ * @param pipelineRun - Optional parent PipelineRun instance for step emission.
  * @returns The semantic queries keyed by sub-box title, or an error message.
  */
 export async function generateSemanticQueriesAction(
   structure: RawBoxStructureResponse,
   flowId?: string,
+  pipelineRun?: PipelineRun,
 ): Promise<
   { success: true; queries: Map<string, string> } | { error: string }
 > {
@@ -99,7 +103,7 @@ export async function generateSemanticQueriesAction(
           zodSchema: bulkSemanticQuerySchema,
           seed: GEMINI_SEED,
           payloadStage: "semantic_query_generation",
-          quiet: false,
+          quiet: true,
         },
       );
 
@@ -108,10 +112,14 @@ export async function generateSemanticQueriesAction(
       queries.set(entry.subBoxTitle, entry.semanticQuery);
     }
 
+    const durationMs = performance.now() - startTime;
+    pipelineRun?.subStep("Semantic Query Synthesis (Gemini Flash)", durationMs);
+
     log.info("semantic_query_generation_success", {
       service: "boxes",
-      durationMs: Math.round(performance.now() - startTime),
+      durationMs: Math.round(durationMs),
       data: { queryCount: queries.size },
+      hidden: true,
     });
 
     return { success: true, queries };

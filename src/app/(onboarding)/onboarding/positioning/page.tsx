@@ -2,7 +2,7 @@ import { redirect } from "next/navigation";
 import { getProfile } from "@/lib/session";
 import { getPositioningAction } from "./actions";
 import { PositioningContainer } from "./_components/positioning-container";
-import { StartOverButton } from "../_components/start-over-button";
+import { OnboardingStepHeader } from "../_components/onboarding-step-header";
 
 /**
  * Server Component for the Universal Positioning Matrix onboarding page that guards
@@ -27,20 +27,10 @@ export default async function OnboardingPositioningPage() {
   return (
     <div className="flex flex-col items-center justify-center p-4 pt-10 pb-4">
       <div className="flex w-full max-w-5xl flex-col items-center space-y-4">
-        <div className="flex w-full flex-col sm:flex-row justify-between items-start sm:items-center gap-4 pb-6 border-b border-border">
-          <div className="flex flex-col space-y-1 text-left">
-            <h1 className="font-serif text-xl font-semibold tracking-tight text-foreground">
-              Akademik Konumlandırma Raporu
-            </h1>
-            <p className="font-sans text-sm font-normal leading-relaxed text-muted-foreground">
-              Çalışmanızın odağı, yöntemi ve kapsamı literatürdeki mevcut
-              tezlerle karşılaştırılarak özgünlük boşluğunuz analiz edildi.
-            </p>
-          </div>
-          <div className="flex items-center self-end sm:self-center">
-            <StartOverButton />
-          </div>
-        </div>
+        <OnboardingStepHeader
+          title="Akademik Konumlandırma Raporu"
+          description="Çalışmanızın odağı, yöntemi ve kapsamı literatürdeki mevcut tezlerle karşılaştırılarak özgünlük boşluğunuz analiz edildi."
+        />
 
         <PositioningContainer initialRecord={record} />
       </div>

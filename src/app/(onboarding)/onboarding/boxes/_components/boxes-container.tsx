@@ -1,21 +1,21 @@
 "use client";
 
 import { useCallback, useMemo, memo, useState } from "react";
+import { useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import {
   CheckCircle2,
-  ArrowRight,
   Target,
   Compass,
   Microscope,
   BookOpen,
   Library,
   Archive,
-  Loader2,
 } from "lucide-react";
-import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import { AIBanner } from "@/components/shared/ai-banner";
+import { OnboardingStepFooter } from "@/app/(onboarding)/onboarding/_components/onboarding-step-footer";
 import { BoxesSkeleton } from "./boxes-skeleton";
 import { useBoxesContinue } from "../../_hooks/use-boxes-continue";
 import { fetchBoxesWithFullShape } from "@/app/(onboarding)/onboarding/_services/fetch-actions";
@@ -40,6 +40,7 @@ const BOX_TYPE_ICONS: Record<
  * @returns The boxes container markup.
  */
 export function BoxesContainer() {
+  const router = useRouter();
   const { proceedFromBoxes } = useBoxesContinue();
 
   const { data: boxes, isLoading: loading } = useQuery({
@@ -85,21 +86,16 @@ export function BoxesContainer() {
         ))}
       </div>
 
-      <div className="flex justify-end mt-6 pb-8">
-        <Button onClick={handleProceed} disabled={proceeding} size="lg">
-          {proceeding ? (
-            <span className="flex items-center gap-2">
-              <Loader2 className="size-4 animate-spin" />
-              Kaydediliyor...
-            </span>
-          ) : (
-            <span className="flex items-center gap-2">
-              Tez Planına Geç
-              <ArrowRight className="size-4" />
-            </span>
-          )}
-        </Button>
-      </div>
+      <OnboardingStepFooter
+        onBack={() => router.push("/onboarding/positioning")}
+        backLabel="Konumlandırmaya Dön"
+        backDisabled={proceeding}
+        onNext={handleProceed}
+        nextLabel="Tez Planına Geç"
+        nextDisabled={proceeding}
+        nextLoading={proceeding}
+        nextLoadingText="Kaydediliyor..."
+      />
     </div>
   );
 }
@@ -131,7 +127,7 @@ const SubBoxSection = memo(function SubBoxSection({
         {subBoxes.map((subBox, sbIdx) => (
           <Card
             key={`${subBox.title}-${sbIdx}`}
-            className="flex flex-col justify-between p-4 rounded-md border border-border bg-background/50 transition-colors hover:border-primary/30 space-y-3"
+            className="flex flex-col justify-between p-4 rounded-md border border-border/60 bg-card/60 transition-colors hover:border-primary/30 space-y-3"
           >
             <div className="space-y-2">
               <div className="flex items-center justify-between gap-2">
@@ -143,9 +139,12 @@ const SubBoxSection = memo(function SubBoxSection({
                     {subBox.title}
                   </h4>
                 </div>
-                <span className="font-sans text-xs font-medium text-muted-foreground shrink-0">
+                <Badge
+                  variant="outline"
+                  className="text-xs font-medium text-muted-foreground shrink-0 border-border/40"
+                >
                   Alt Odak
-                </span>
+                </Badge>
               </div>
               {subBox.description && (
                 <p className="font-sans text-xs text-muted-foreground leading-relaxed">
@@ -157,12 +156,13 @@ const SubBoxSection = memo(function SubBoxSection({
             {subBox.concepts && subBox.concepts.length > 0 && (
               <div className="flex flex-wrap gap-1.5 pt-1">
                 {subBox.concepts.map((concept, cIdx) => (
-                  <span
+                  <Badge
                     key={`${concept}-${cIdx}`}
-                    className="inline-flex items-center px-2 py-0.5 rounded-md bg-secondary text-secondary-foreground border border-border text-xs font-medium"
+                    variant="secondary"
+                    className="px-2 py-0.5 text-xs font-medium rounded-md"
                   >
                     {concept}
-                  </span>
+                  </Badge>
                 ))}
               </div>
             )}
@@ -214,7 +214,7 @@ const BoxCard = memo(function BoxCard({
   const parentConcepts = box.concepts ?? [];
 
   return (
-    <Card className="flex flex-col p-5 sm:p-6 rounded-md border border-border bg-card transition-colors hover:border-primary/20 space-y-4">
+    <Card className="flex flex-col p-5 sm:p-6 rounded-lg border border-border bg-card transition-colors hover:border-primary/20 space-y-4">
       {/* Top Header Row */}
       <div className="flex items-center justify-between gap-2">
         <div className="flex items-center gap-2">
@@ -225,9 +225,12 @@ const BoxCard = memo(function BoxCard({
             Kutu 0{index + 1}
           </span>
         </div>
-        <span className="inline-flex items-center px-2.5 py-0.5 rounded-md text-xs font-medium bg-secondary text-secondary-foreground border border-border">
+        <Badge
+          variant="secondary"
+          className="px-2.5 py-0.5 text-xs font-medium rounded-md"
+        >
           {BOX_TYPE_LABELS[box.boxType as ThesisBoxType] ?? box.boxType}
-        </span>
+        </Badge>
       </div>
 
       {/* Main Title & Description */}
@@ -246,12 +249,13 @@ const BoxCard = memo(function BoxCard({
       {parentConcepts.length > 0 && (
         <div className="flex flex-wrap gap-1.5">
           {parentConcepts.map((concept, i) => (
-            <span
+            <Badge
               key={`${concept}-${i}`}
-              className="inline-flex items-center px-2 py-0.5 rounded-md bg-secondary text-secondary-foreground border border-border text-xs font-medium"
+              variant="secondary"
+              className="px-2 py-0.5 text-xs font-medium rounded-md"
             >
               {concept}
-            </span>
+            </Badge>
           ))}
         </div>
       )}

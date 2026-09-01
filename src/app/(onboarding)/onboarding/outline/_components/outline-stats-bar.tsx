@@ -29,26 +29,28 @@ export function OutlineStatsBar({
   isRegenerating,
 }: OutlineStatsBarProps) {
   return (
-    <Card className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-3 rounded-md border border-border p-4">
+    <Card className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-3 rounded-lg border border-border p-4 bg-card">
       <div className="flex items-center gap-2 flex-wrap">
         <Badge
           variant="outline"
-          className="flex items-center gap-2 bg-primary/10 border-primary/20 text-primary py-1 px-2"
+          className="flex items-center gap-2 bg-primary/10 border-primary/20 text-primary py-1 px-2.5 rounded-md"
         >
           <GraduationCap className="size-3.5" />
-          <span className="font-semibold">
+          <span className="font-semibold text-xs">
             {academicField || "Genel Akademik"}
           </span>
         </Badge>
 
         <div className="flex items-center gap-2 text-xs text-muted-foreground border-l border-border/40 pl-3 ml-1">
-          <span className="flex items-center gap-1 font-medium text-foreground">
+          <span className="flex items-center gap-1.5 font-medium text-foreground">
             <ListTree className="size-3.5 text-primary" />
-            {sectionCount} Bölüm
+            <span className="font-mono font-semibold">{sectionCount}</span>{" "}
+            Bölüm
           </span>
           <span>•</span>
           <span className="font-medium text-foreground">
-            {subSectionCount} Alt Bölüm
+            <span className="font-mono font-semibold">{subSectionCount}</span>{" "}
+            Alt Bölüm
           </span>
         </div>
       </div>
@@ -64,12 +66,14 @@ export function OutlineStatsBar({
           <Sparkles
             className={`size-3.5 ${isRegenerating ? "animate-spin" : ""}`}
           />
-          {isRegenerating ? "Yeniden Üretiliyor..." : "Yeniden Üret"}
+          <span>
+            {isRegenerating ? "Yeniden Üretiliyor..." : "Yeniden Üret"}
+          </span>
         </Button>
 
         <Button variant="default" size="sm" onClick={onAddSection}>
           <Plus className="size-3.5" />
-          Yeni Bölüm Ekle
+          <span>Yeni Bölüm Ekle</span>
         </Button>
       </div>
     </Card>

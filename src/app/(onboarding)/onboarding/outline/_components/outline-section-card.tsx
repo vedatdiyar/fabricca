@@ -84,7 +84,7 @@ export function OutlineSectionCard(props: OutlineSectionCardProps) {
       }}
       onDrop={() => onDropSection(sectionIndex)}
       onDragEnd={onDragEndSection}
-      className={`flex flex-col w-full p-4 rounded-md border bg-card transition-all duration-200 ${
+      className={`flex flex-col w-full p-5 rounded-lg border bg-card transition-all duration-200 ${
         isDraggingSection ? "opacity-40 border-primary" : "border-border"
       } ${isDragOverSection ? "border-primary ring-2 ring-primary/10" : "hover:border-primary/20"}`}
     >
@@ -106,7 +106,7 @@ export function OutlineSectionCard(props: OutlineSectionCardProps) {
             }`}
           >
             <span
-              className="cursor-grab active:cursor-grabbing text-muted-foreground hover:text-muted-foreground p-0.5 rounded transition-colors"
+              className="cursor-grab active:cursor-grabbing text-muted-foreground hover:text-foreground p-0.5 rounded transition-colors"
               title="Bölümü Taşı"
             >
               <GripVertical className="size-4" />
@@ -125,7 +125,7 @@ export function OutlineSectionCard(props: OutlineSectionCardProps) {
                   onChange={(e) =>
                     updateCardState({ editTitle: e.target.value })
                   }
-                  className="font-serif text-base font-semibold"
+                  className="font-serif text-base font-semibold h-9 rounded-md"
                   placeholder="Bölüm başlığı..."
                 />
                 <Textarea
@@ -133,19 +133,22 @@ export function OutlineSectionCard(props: OutlineSectionCardProps) {
                   onChange={(e) =>
                     updateCardState({ editDescription: e.target.value })
                   }
-                  className="text-xs min-h-[60px]"
+                  className="text-xs min-h-[60px] resize-none rounded-md"
                   placeholder="Bölüm açıklaması..."
+                  rows={2}
                 />
                 <div className="flex items-center gap-2">
                   <Button size="sm" onClick={handleSaveSectionEdit}>
-                    <Check className="size-3.5" /> Kaydet
+                    <Check className="size-3.5" />
+                    <span>Kaydet</span>
                   </Button>
                   <Button
                     size="sm"
                     variant="ghost"
                     onClick={handleCancelSectionEdit}
                   >
-                    <X className="size-3.5" /> İptal
+                    <X className="size-3.5" />
+                    <span>İptal</span>
                   </Button>
                 </div>
               </div>

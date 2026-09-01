@@ -1,6 +1,8 @@
 import React from "react";
 import { Compass, ScanEye, Sparkles } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { Card } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import type { GapAnalysisStructured } from "@/app/(onboarding)/onboarding/positioning/_services/validation";
 
 interface PositioningMarkdownRendererProps {
@@ -213,10 +215,10 @@ export function PositioningMarkdownRenderer({
       {sections.map((sec) => {
         const Icon = sec.icon;
         return (
-          <div
+          <Card
             key={sec.step}
             className={cn(
-              "p-4 rounded-md border transition-all duration-200 space-y-2.5",
+              "p-5 rounded-lg border transition-all duration-200 space-y-3",
               sec.isHighlight
                 ? "border-primary/20 bg-primary/10"
                 : "border-border bg-card hover:border-primary/20",
@@ -227,9 +229,9 @@ export function PositioningMarkdownRenderer({
               <div className="flex items-center gap-2">
                 <span
                   className={cn(
-                    "font-mono text-xs font-medium px-2 py-0.5 rounded-md shrink-0",
+                    "font-mono text-xs font-semibold px-2 py-0.5 rounded shrink-0",
                     sec.isHighlight
-                      ? "border border-primary/40 bg-primary text-primary-foreground font-semibold"
+                      ? "border border-primary/40 bg-primary text-primary-foreground"
                       : "border border-primary/20 bg-primary/10 text-primary",
                   )}
                 >
@@ -240,16 +242,16 @@ export function PositioningMarkdownRenderer({
                   {sec.title}
                 </h3>
               </div>
-              <span
+              <Badge
+                variant={sec.isHighlight ? "default" : "secondary"}
                 className={cn(
-                  "font-sans text-xs font-medium px-2 py-0.5 rounded-md shrink-0",
-                  sec.isHighlight
-                    ? "border border-primary/30 bg-primary/10 text-primary"
-                    : "text-secondary-foreground bg-secondary border border-border",
+                  "px-2.5 py-0.5 text-xs font-medium rounded-md shrink-0",
+                  sec.isHighlight &&
+                    "border border-primary/30 bg-primary/10 text-primary hover:bg-primary/10",
                 )}
               >
                 {sec.subtitle}
-              </span>
+              </Badge>
             </div>
 
             {/* Content Paragraphs */}
@@ -257,13 +259,13 @@ export function PositioningMarkdownRenderer({
               {sec.content.split("\n\n").map((para) => (
                 <p
                   key={paragraphKey(para)}
-                  className="text-foreground leading-relaxed text-justify"
+                  className="text-foreground leading-relaxed"
                 >
                   {parseInlineMarkdown(para)}
                 </p>
               ))}
             </div>
-          </div>
+          </Card>
         );
       })}
     </div>

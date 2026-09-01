@@ -101,9 +101,9 @@ export function SubSectionTreeList({
                 });
               }}
               className={cn(
-                "group/sub relative rounded-md border border-border/60 bg-card/40 p-2.5 transition-all text-xs",
+                "group/sub relative rounded-md border border-border/40 bg-card/60 p-3 transition-all text-xs",
                 isSubDragging && "opacity-40 border-dashed border-primary",
-                isSubDragOver && "border-primary bg-primary/5",
+                isSubDragOver && "border-primary bg-primary/10",
               )}
             >
               {isSubEditing ? (
@@ -126,7 +126,7 @@ export function SubSectionTreeList({
                     }
                     placeholder="Alt bölüm açıklaması..."
                     rows={2}
-                    className="text-xs"
+                    className="text-xs resize-none rounded-md"
                   />
                   <div className="flex items-center gap-2 pt-1">
                     <Button
@@ -134,7 +134,8 @@ export function SubSectionTreeList({
                       size="sm"
                       onClick={() => onSaveSubEdit(subIdx)}
                     >
-                      <Check className="size-3.5" /> Kaydet
+                      <Check className="size-3.5" />
+                      <span>Kaydet</span>
                     </Button>
                     <Button
                       variant="ghost"
@@ -143,7 +144,8 @@ export function SubSectionTreeList({
                         onUpdateCardState({ editingSubIndex: null })
                       }
                     >
-                      <X className="size-3.5" /> İptal
+                      <X className="size-3.5" />
+                      <span>İptal</span>
                     </Button>
                   </div>
                 </div>

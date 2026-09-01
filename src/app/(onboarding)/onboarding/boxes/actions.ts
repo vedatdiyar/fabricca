@@ -32,27 +32,35 @@ export async function generateAndMapBoxesAction(
     : PipelineRun.create(BOX_GENERATION_PIPELINE);
 
   try {
-    const boxes = await run.execute("generate", async () => {
-      const structRes = await runBoxStructureAction(flowId ?? run.flowId);
-      if ("error" in structRes) throw new Error(structRes.error);
+    const boxes = await run.execute(
+      "generate",
+      async () => {
+        const structRes = await runBoxStructureAction(
+          flowId ?? run.flowId,
+          run,
+        );
+        if ("error" in structRes) throw new Error(structRes.error);
 
-      const queryRes = await generateSemanticQueriesAction(
-        structRes.structure,
-        run.flowId,
-      );
-      if ("error" in queryRes) throw new Error(queryRes.error);
+        const queryRes = await generateSemanticQueriesAction(
+          structRes.structure,
+          run.flowId,
+          run,
+        );
+        if ("error" in queryRes) throw new Error(queryRes.error);
 
-      const quadrants = structureToQuadrants(structRes.structure);
-      const mapped = mapToProductionShape(quadrants);
+        const quadrants = structureToQuadrants(structRes.structure);
+        const mapped = mapToProductionShape(quadrants);
 
-      for (const box of mapped) {
-        if (box.parentId !== null && queryRes.queries.has(box.title)) {
-          box.semanticQuery = queryRes.queries.get(box.title) ?? "";
+        for (const box of mapped) {
+          if (box.parentId !== null && queryRes.queries.has(box.title)) {
+            box.semanticQuery = queryRes.queries.get(box.title) ?? "";
+          }
         }
-      }
 
-      return mapped;
-    });
+        return mapped;
+      },
+      { description: "Box Structure & Semantic Queries" },
+    );
 
     return { success: true, boxes };
   } catch (err) {

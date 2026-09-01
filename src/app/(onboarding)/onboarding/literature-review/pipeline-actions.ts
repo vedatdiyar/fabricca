@@ -38,20 +38,31 @@ export async function processAllBoxesAction(
 
     if (isLiteratureCancelled(userId)) return { error: "cancelled" };
 
-    const { matrix } = await loadThesisMatrixAndBoxes(userId);
-    if (!matrix) return { error: "Tez matrisi bulunamadı." };
+    const { matrix } = await run.execute(
+      "check",
+      async () => {
+        const data = await loadThesisMatrixAndBoxes(userId);
+        if (!data.matrix) throw new Error("Tez matrisi bulunamadı.");
+        return { matrix: data.matrix };
+      },
+      { description: "Literature Pool & Boxes Check" },
+    );
     if (isLiteratureCancelled(userId)) return { error: "cancelled" };
 
-    const { poolEntries } = await run.execute("scan", () =>
-      orchestrateBatchProcess(
-        boxes,
-        run.logger,
-        matrix.subjectProblem,
-        () => isLiteratureCancelled(userId),
-        async (thesisBoxId, articles) => {
-          await persistSubBoxEntry(thesisBoxId, articles);
-        },
-      ),
+    const { poolEntries } = await run.execute(
+      "scan",
+      () =>
+        orchestrateBatchProcess(
+          boxes,
+          run.logger,
+          matrix.subjectProblem,
+          () => isLiteratureCancelled(userId),
+          async (thesisBoxId, articles) => {
+            await persistSubBoxEntry(thesisBoxId, articles);
+          },
+          run,
+        ),
+      { description: "Academic Sources Scan & Evaluation" },
     );
 
     if (isLiteratureCancelled(userId)) return { error: "cancelled" };
@@ -88,24 +99,38 @@ export async function runLiteraturePipelineAction(
 
     if (isLiteratureCancelled(userId)) return { error: "cancelled" };
 
-    const { matrix } = await loadThesisMatrixAndBoxes(userId);
-    const subjectProblem = matrix?.subjectProblem ?? "";
+    const { matrix } = await run.execute(
+      "check",
+      async () => {
+        const data = await loadThesisMatrixAndBoxes(userId);
+        if (!data.matrix) throw new Error("Tez matrisi bulunamadı.");
+        return { matrix: data.matrix };
+      },
+      { description: "Literature Pool & Boxes Check" },
+    );
+    const subjectProblem = matrix.subjectProblem ?? "";
 
-    const { poolEntries } = await run.execute("scan", () =>
-      orchestrateBatchProcess(
-        boxes,
-        run.logger,
-        subjectProblem,
-        () => isLiteratureCancelled(userId),
-        async (thesisBoxId, articles) => {
-          await persistSubBoxEntry(thesisBoxId, articles);
-        },
-      ),
+    const { poolEntries } = await run.execute(
+      "scan",
+      () =>
+        orchestrateBatchProcess(
+          boxes,
+          run.logger,
+          subjectProblem,
+          () => isLiteratureCancelled(userId),
+          async (thesisBoxId, articles) => {
+            await persistSubBoxEntry(thesisBoxId, articles);
+          },
+          run,
+        ),
+      { description: "Academic Sources Scan & Evaluation" },
     );
 
     if (isLiteratureCancelled(userId)) return { error: "cancelled" };
 
-    await run.execute("persist", () => persistLiteraturePool(poolEntries));
+    await run.execute("persist", () => persistLiteraturePool(poolEntries), {
+      description: "Literature Pool Saved to Database",
+    });
 
     try {
       revalidateOnboardingPaths();

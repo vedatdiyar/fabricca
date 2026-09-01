@@ -29,7 +29,7 @@ export function ReportClarifications({
   if (questions.length === 0) return null;
 
   return (
-    <Card className="p-5 border-border bg-card space-y-4">
+    <Card className="rounded-lg p-5 border-border bg-card space-y-4">
       <div className="flex flex-col space-y-1">
         <div className="flex items-center gap-2">
           <QuestionIcon className="size-4 text-primary" />
@@ -63,7 +63,7 @@ export function ReportClarifications({
               value={answers[q.id] || ""}
               onChange={(e) => onAnswerChange(q.id, e.target.value)}
               placeholder="Bu konudaki açıklamanızı, tercihinizi veya düzeltmenizi belirtin (opsiyonel)..."
-              className="text-xs h-9 mt-1.5"
+              className="text-xs h-8 mt-1.5"
             />
           </div>
         ))}
