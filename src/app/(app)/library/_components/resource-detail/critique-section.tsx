@@ -122,7 +122,10 @@ export function CritiqueSection({
             </span>
           </div>
 
-          <Progress value={progressPercentage} className="hidden sm:flex w-24 h-2 bg-muted border border-border/50" />
+          <Progress
+            value={progressPercentage}
+            className="hidden sm:flex w-24 h-2 bg-muted border border-border/50"
+          />
         </div>
 
         {/* Right: Auto-save status & Evaluate Action */}

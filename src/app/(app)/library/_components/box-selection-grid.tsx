@@ -80,7 +80,9 @@ export function BoxSelectionGrid({
         </div>
       )}
 
-      <div className={cn("grid grid-cols-2 gap-2", variant === "add" && "pt-1")}>
+      <div
+        className={cn("grid grid-cols-2 gap-2", variant === "add" && "pt-1")}
+      >
         {parentBoxes.map((parent) => {
           const isSelected = selectedParentId === parent.id;
           return (

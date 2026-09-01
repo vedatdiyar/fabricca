@@ -72,7 +72,8 @@ export async function executePhase3Selection(
       (ev) => ev.isRelevant && ev.relevanceScore >= 80,
     );
     const secondaryEvals = boxEvals.filter(
-      (ev) => ev.isRelevant && ev.relevanceScore >= 75 && ev.relevanceScore < 80,
+      (ev) =>
+        ev.isRelevant && ev.relevanceScore >= 75 && ev.relevanceScore < 80,
     );
 
     const isDuplicate = (title: string): boolean => {

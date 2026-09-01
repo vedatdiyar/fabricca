@@ -76,7 +76,7 @@ export function createGeminiRetryPolicy(
       }
       return defaultDelay;
     },
-    isRetryable: (error, attempt = 1) => {
+    isRetryable: (error, _attempt = 1) => {
       if (error instanceof Error) {
         // If it's an RPD (Daily Quota) error, do not retry on the same key;
         // let dispatchGeminiCall immediately switch to the next API key!
@@ -105,8 +105,7 @@ export function createGeminiRetryPolicy(
           ("status" in error &&
             ((error as { status: string }).status === "UNAVAILABLE" ||
               (error as { status: string }).status === "RESOURCE_EXHAUSTED")) ||
-          ("code" in error &&
-            (error as { code: number }).code === 503) ||
+          ("code" in error && (error as { code: number }).code === 503) ||
           error.message.includes("high demand") ||
           error.message.includes("503") ||
           error.message.includes("UNAVAILABLE");

@@ -41,7 +41,8 @@ export async function getUsersMatrixAndBoxes(
     })
     .from(matrices)
     .where(eq(matrices.userId, userId));
-  const matrix = matrixRow as unknown as typeof matrices.$inferSelect | undefined;
+  const matrix = matrixRow as unknown as
+    typeof matrices.$inferSelect | undefined;
 
   if (!matrix) {
     return { error: "Thesis matrix not found." };

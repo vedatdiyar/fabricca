@@ -147,12 +147,17 @@ export function TaskFormModal({
               <Label className="font-sans text-xs font-medium text-muted-foreground">
                 Görev Türü
               </Label>
-              <Select value={taskType} onValueChange={(v) => setTaskType(v as TaskType)}>
+              <Select
+                value={taskType}
+                onValueChange={(v) => setTaskType(v as TaskType)}
+              >
                 <SelectTrigger className="h-8 text-xs bg-background">
                   <SelectValue placeholder="Görev Türü" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="ADVISOR_REQUEST">Danışman Talebi</SelectItem>
+                  <SelectItem value="ADVISOR_REQUEST">
+                    Danışman Talebi
+                  </SelectItem>
                   <SelectItem value="MANUAL">Kişisel Hedef</SelectItem>
                   <SelectItem value="READING">Kaynak Okuma</SelectItem>
                   <SelectItem value="NOTE_TAKING">Not & Alıntı</SelectItem>
@@ -168,7 +173,9 @@ export function TaskFormModal({
               </Label>
               <Select
                 value={priority}
-                onValueChange={(v) => setPriority(v as "HIGH" | "MEDIUM" | "LOW")}
+                onValueChange={(v) =>
+                  setPriority(v as "HIGH" | "MEDIUM" | "LOW")
+                }
               >
                 <SelectTrigger className="h-8 text-xs bg-background">
                   <SelectValue placeholder="Öncelik" />
@@ -186,7 +193,10 @@ export function TaskFormModal({
             <Label className="font-sans text-xs font-medium text-muted-foreground">
               İlişkili Konu Kutusu
             </Label>
-            <Select value={boxId || "_none"} onValueChange={(v) => setBoxId(v === "_none" ? "" : v)}>
+            <Select
+              value={boxId || "_none"}
+              onValueChange={(v) => setBoxId(v === "_none" ? "" : v)}
+            >
               <SelectTrigger className="h-8 text-xs bg-background">
                 <SelectValue placeholder="Genel / Bağlantısız" />
               </SelectTrigger>

@@ -137,10 +137,7 @@ export function OutlineSectionCard(props: OutlineSectionCardProps) {
                   placeholder="Bölüm açıklaması..."
                 />
                 <div className="flex items-center gap-2">
-                  <Button
-                    size="sm"
-                    onClick={handleSaveSectionEdit}
-                  >
+                  <Button size="sm" onClick={handleSaveSectionEdit}>
                     <Check className="size-3.5" /> Kaydet
                   </Button>
                   <Button

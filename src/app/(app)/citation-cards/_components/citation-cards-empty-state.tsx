@@ -24,7 +24,9 @@ export function CitationCardsEmptyState({
     <EmptyState
       icon={hasFilters ? FilterX : BookOpen}
       title={
-        hasFilters ? "Kriterlere Uygun Alıntı Fişi Bulunamadı" : "Henüz Alıntı Fişi Oluşturulmadı"
+        hasFilters
+          ? "Kriterlere Uygun Alıntı Fişi Bulunamadı"
+          : "Henüz Alıntı Fişi Oluşturulmadı"
       }
       description={
         hasFilters
@@ -35,7 +37,11 @@ export function CitationCardsEmptyState({
       actions={
         hasFilters
           ? [
-              { label: "Filtreleri Temizle", onClick: onClearFilters, variant: "outline" },
+              {
+                label: "Filtreleri Temizle",
+                onClick: onClearFilters,
+                variant: "outline",
+              },
               { label: "Yeni Fiş Ekle", onClick: onAddNew, icon: Plus },
             ]
           : [{ label: "Yeni Fiş Ekle", onClick: onAddNew, icon: Plus }]

@@ -24,7 +24,6 @@ export { getAi, logRawLlmCall };
 
 const CJK_RE = /[\u4E00-\u9FFF\u3400-\u4DBF\u3040-\u30FF\uAC00-\uD7AF]/;
 
-
 /**
  * Guards against CJK leakage in Turkish academic output. Retries with perturbed seed or strips chars on final attempt.
  */
@@ -65,16 +64,21 @@ function validateParsed<T>(
     if (err instanceof SchemaValidationError) {
       logger?.error("ai_schema_validation_failed", {
         service: "gemini",
-        filePath: "src/services/ai/providers/gemini-provider.ts",
+        filePath: "src/core/services/ai/providers/gemini-provider.ts",
         data: {
           model,
           projectIndex: projectIndex + 1,
           errorCount: err.zodError.issues.length,
-          issues: err.zodError.issues.map((i) => ({ path: i.path.join("."), message: i.message })),
+          issues: err.zodError.issues.map((i) => ({
+            path: i.path.join("."),
+            message: i.message,
+          })),
         },
         error: new Error(`Zod validation failed: ${err.zodError.message}`),
       });
-      throw new Error("AI response did not match the expected structural schema. Please try again.");
+      throw new Error(
+        "AI response did not match the expected structural schema. Please try again.",
+      );
     }
     throw err;
   }
@@ -114,7 +118,10 @@ export async function generateStructuredContent<T>(
   if (options?.thinkingConfig?.thinkingBudget !== undefined) {
     logger?.warn("deprecated_thinking_budget_ignored", {
       service: "gemini",
-      data: { payloadStage: callLabel, thinkingBudget: options.thinkingConfig.thinkingBudget },
+      data: {
+        payloadStage: callLabel,
+        thinkingBudget: options.thinkingConfig.thinkingBudget,
+      },
     });
   }
 
@@ -190,20 +197,36 @@ export async function generateStructuredContent<T>(
                     ...payload,
                     config: {
                       ...payload.config,
-                      seed: (options?.seed ?? GEMINI_SEED) + attempts * 1000 + 7,
+                      seed:
+                        (options?.seed ?? GEMINI_SEED) + attempts * 1000 + 7,
                     },
                   }
                 : payload;
 
-            const res = await getAi(apiKey).models.generateContent(currentPayload);
+            const res =
+              await getAi(apiKey).models.generateContent(currentPayload);
             geminiResponse = res;
             const outputText = res.text;
-            if (!outputText) throw new Error("Gemini returned an empty response.");
-            return guardCjkOutput(outputText, model, callLabel, attempts, maxRetries, logger);
+            if (!outputText)
+              throw new Error("Gemini returned an empty response.");
+            return guardCjkOutput(
+              outputText,
+              model,
+              callLabel,
+              attempts,
+              maxRetries,
+              logger,
+            );
           }, retryPolicy);
 
           const parsed = sanitizeAndParseJson<T>(text);
-          validateParsed(parsed, options?.zodSchema, logger, model, projectIndex);
+          validateParsed(
+            parsed,
+            options?.zodSchema,
+            logger,
+            model,
+            projectIndex,
+          );
 
           const taskDurationMs = performance.now() - taskStartTime;
           const metadata = (
@@ -252,7 +275,7 @@ export async function generateStructuredContent<T>(
 
           logger?.error(`${callLabel}_failed`, {
             service: "gemini",
-            filePath: "src/services/ai/providers/gemini-provider.ts",
+            filePath: "src/core/services/ai/providers/gemini-provider.ts",
             durationMs: taskDurationMs,
             data: {
               model,
@@ -273,7 +296,7 @@ export async function generateStructuredContent<T>(
     if (isDailyQuotaExceeded(error)) {
       logger?.info("gemini_daily_quota_exhausted", {
         service: "gemini",
-        filePath: "src/services/ai/providers/gemini-provider.ts",
+        filePath: "src/core/services/ai/providers/gemini-provider.ts",
         data: {
           model: modelName,
           operation: operation ?? undefined,

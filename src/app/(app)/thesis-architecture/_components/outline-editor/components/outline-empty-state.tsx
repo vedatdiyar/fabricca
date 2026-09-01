@@ -19,7 +19,9 @@ export function OutlineEmptyState({ onAddRoot }: OutlineEmptyStateProps) {
       icon={BookOpen}
       title="Henüz Tez Bölüm Planı Oluşturulmadı"
       description="Tez matrisinize ve araştırma eksenlerinize uygun olarak ana bölümler ve alt başlıklar ekleyerek tezinizin iskeletini oluşturun."
-      actions={[{ label: "İlk Ana Bölümü Ekle", onClick: onAddRoot, icon: Plus }]}
+      actions={[
+        { label: "İlk Ana Bölümü Ekle", onClick: onAddRoot, icon: Plus },
+      ]}
     />
   );
 }

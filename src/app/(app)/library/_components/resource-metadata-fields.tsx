@@ -70,7 +70,9 @@ export function ResourceMetadataFields({
           <Label className="text-xs font-semibold">Eser Türü</Label>
           <Select
             value={fields.documentType || "_auto"}
-            onValueChange={(v) => onFieldChange("documentType", v === "_auto" ? "" : v)}
+            onValueChange={(v) =>
+              onFieldChange("documentType", v === "_auto" ? "" : v)
+            }
           >
             <SelectTrigger className="h-8 text-xs bg-background">
               <SelectValue placeholder="Eser Türü" />
@@ -80,7 +82,9 @@ export function ResourceMetadataFields({
               <SelectItem value="journal-article">Makale (Dergi)</SelectItem>
               <SelectItem value="book-chapter">Kitap Bölümü</SelectItem>
               <SelectItem value="book">Müstakil Kitap</SelectItem>
-              <SelectItem value="thesis">Tez (Yüksek Lisans / Doktora)</SelectItem>
+              <SelectItem value="thesis">
+                Tez (Yüksek Lisans / Doktora)
+              </SelectItem>
               <SelectItem value="report">Rapor / Çalışma Metni</SelectItem>
             </SelectContent>
           </Select>

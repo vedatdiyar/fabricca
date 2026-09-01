@@ -120,7 +120,7 @@ ${payload.suspiciousCandidates
    - If fewer candidates exist than the target count, select all confirmed candidates.`,
 
     outputFormat:
-      "Output strict JSON adhering to the schema without markdown formatting or conversational filler. Schema: {\"selectedIndices\": number[], \"suspiciousDuplicates\": string[], \"suspiciousClear\": string[]}",
+      'Output strict JSON adhering to the schema without markdown formatting or conversational filler. Schema: {"selectedIndices": number[], "suspiciousDuplicates": string[], "suspiciousClear": string[]}',
 
     inputContext: `### Tez Bağlamı (Thesis Context):
 ${payload.thesisContext}

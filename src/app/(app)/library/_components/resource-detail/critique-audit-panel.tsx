@@ -79,7 +79,10 @@ export function CritiqueAuditPanel({ auditReport }: CritiqueAuditPanelProps) {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
             {/* Strengths */}
             {strengths.length > 0 && (
-              <Alert variant="success" className="p-3.5 space-y-2 flex-col items-stretch">
+              <Alert
+                variant="success"
+                className="p-3.5 space-y-2 flex-col items-stretch"
+              >
                 <div className="flex items-center gap-1.5 font-semibold text-xs">
                   <Check className="size-3.5" />
                   <span>Güçlü Yakalanan Boyutlar</span>
@@ -100,7 +103,10 @@ export function CritiqueAuditPanel({ auditReport }: CritiqueAuditPanelProps) {
 
             {/* Blind spots */}
             {blindSpots.length > 0 && (
-              <Alert variant="warning" className="p-3.5 space-y-2 flex-col items-stretch">
+              <Alert
+                variant="warning"
+                className="p-3.5 space-y-2 flex-col items-stretch"
+              >
                 <div className="flex items-center gap-1.5 font-semibold text-xs">
                   <AlertTriangle className="size-3.5" />
                   <span>Gözden Kaçan / Eksik Noktalar</span>
@@ -122,7 +128,10 @@ export function CritiqueAuditPanel({ auditReport }: CritiqueAuditPanelProps) {
 
           {/* Commentary risks */}
           {commentaryRisks.length > 0 && (
-            <Alert variant="warning" className="p-3.5 space-y-1.5 flex-col items-stretch border-l-2 border-l-warning">
+            <Alert
+              variant="warning"
+              className="p-3.5 space-y-1.5 flex-col items-stretch border-l-2 border-l-warning"
+            >
               <div className="flex items-center gap-1.5 font-semibold text-xs">
                 <AlertTriangle className="size-3.5" />
                 <span>Şerh ve Yorum Uyarısı</span>
@@ -143,7 +152,10 @@ export function CritiqueAuditPanel({ auditReport }: CritiqueAuditPanelProps) {
 
           {/* Thesis Alignment Advice */}
           {auditReport.thesisAlignmentAdvice && (
-            <Alert variant="info" className="p-3.5 space-y-1.5 flex-col items-stretch border-l-2 border-l-primary">
+            <Alert
+              variant="info"
+              className="p-3.5 space-y-1.5 flex-col items-stretch border-l-2 border-l-primary"
+            >
               <div className="flex items-center gap-1.5 font-semibold text-xs">
                 <Lightbulb className="size-3.5" />
                 <span>Tez Probleminizle Eklemlenme Tavsiyesi</span>

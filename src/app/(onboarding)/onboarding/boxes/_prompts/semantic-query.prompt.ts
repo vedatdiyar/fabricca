@@ -67,7 +67,7 @@ Anahtar Kavramlar (Concepts): [${conceptsText}]`;
 2. Kutu türü izolasyon kurallarına ve Strict Grounding prensibine tam uyarak yalnızca verilen girdideki özgül kavramları içeren İngilizce semantik arama sorgusunu oluşturun.`,
 
     outputFormat:
-      "Her alt kutu için `subBoxTitle` ve `semanticQuery` alanlarını içeren JSON nesneleri dizisi döndürün. Şema: [{\"subBoxTitle\": string, \"semanticQuery\": string}]",
+      'Her alt kutu için `subBoxTitle` ve `semanticQuery` alanlarını içeren JSON nesneleri dizisi döndürün. Şema: [{"subBoxTitle": string, "semanticQuery": string}]',
 
     inputContext: `${matrixContext ? `${matrixContext}\n\n` : ""}### İşlenecek Alt Kutular:
 ${parts.join("\n\n")}`,

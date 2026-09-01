@@ -13,7 +13,8 @@ export const typography = {
   /** Body — p — 14px sans */
   body: "font-sans text-sm font-normal leading-relaxed text-foreground",
   /** Body muted — açıklama paragrafları */
-  bodyMuted: "font-sans text-sm font-normal leading-relaxed text-muted-foreground",
+  bodyMuted:
+    "font-sans text-sm font-normal leading-relaxed text-muted-foreground",
   /** UI & Meta — label/badge/button — 12px sans */
   meta: "font-sans text-xs font-medium text-muted-foreground",
   /** UI & Meta foreground — koyu meta */

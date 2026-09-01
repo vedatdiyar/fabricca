@@ -27,9 +27,9 @@ export default async function OnboardingProposalPage() {
               Tez Önerisi & Ön Değerlendirme
             </h1>
             <p className="font-sans text-sm font-normal leading-relaxed text-muted-foreground">
-              Tez önerinizi veya araştırma taslağınızı girin; yapay zeka web, YÖK
-              tez arşivi ve uluslararası literatür taramasıyla tezinizin güçlü
-              yönlerini ve metodolojik boşluklarını tespit etsin.
+              Tez önerinizi veya araştırma taslağınızı girin; yapay zeka web,
+              YÖK tez arşivi ve uluslararası literatür taramasıyla tezinizin
+              güçlü yönlerini ve metodolojik boşluklarını tespit etsin.
             </p>
           </div>
           <div className="flex items-center self-end sm:self-center">

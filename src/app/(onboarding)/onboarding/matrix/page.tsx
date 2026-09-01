@@ -2,9 +2,9 @@ import { redirect } from "next/navigation";
 import { getProfile } from "@/lib/session";
 
 /**
- * Onboarding Step 2: 4-Quadrant Academic Thesis Matrix review, editing, and confirmation studio.
+ * Legacy matrix onboarding route — redirects directly to positioning step.
  *
- * @returns The rendered matrix onboarding page.
+ * @returns Server-side redirect to positioning.
  */
 export default async function OnboardingMatrixPage() {
   const profile = await getProfile();

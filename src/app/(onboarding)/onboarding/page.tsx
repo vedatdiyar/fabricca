@@ -70,10 +70,7 @@ export default async function OnboardingPage() {
     .from(sources)
     .innerJoin(boxes, eq(sources.boxId, boxes.id))
     .where(
-      and(
-        eq(boxes.matrixId, matrix.id),
-        ne(boxes.boxType, "RELATED_THESES"),
-      ),
+      and(eq(boxes.matrixId, matrix.id), ne(boxes.boxType, "RELATED_THESES")),
     )
     .limit(1);
 

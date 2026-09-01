@@ -67,11 +67,7 @@ export function OutlineStatsBar({
           {isRegenerating ? "Yeniden Üretiliyor..." : "Yeniden Üret"}
         </Button>
 
-        <Button
-          variant="default"
-          size="sm"
-          onClick={onAddSection}
-        >
+        <Button variant="default" size="sm" onClick={onAddSection}>
           <Plus className="size-3.5" />
           Yeni Bölüm Ekle
         </Button>

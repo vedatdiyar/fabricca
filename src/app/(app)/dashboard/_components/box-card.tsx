@@ -75,7 +75,10 @@ export function BoxCard({
           <div className="flex items-center justify-between gap-3">
             <Badge
               variant="outline"
-              className={cn("shrink-0 border px-2.5 py-0.5 text-xs font-medium", badgeConfig.className)}
+              className={cn(
+                "shrink-0 border px-2.5 py-0.5 text-xs font-medium",
+                badgeConfig.className,
+              )}
             >
               {badgeConfig.label}
             </Badge>

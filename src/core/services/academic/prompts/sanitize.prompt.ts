@@ -33,7 +33,7 @@ export function buildSanitizePromptPayload(
 - **Karakter Temizliği:** Başlık sonlarındaki dipnot veya asterisk (*) işaretlerini temizleyin.`,
 
     outputFormat:
-      "Girdideki nesnelerin sırasını bozmadan standardize edilmiş `title` ve `author` alanlarını içeren JSON nesnesi döndürün. Şema: [{\"title\": string, \"author\": string}]",
+      'Girdideki nesnelerin sırasını bozmadan standardize edilmiş `title` ve `author` alanlarını içeren JSON nesnesi döndürün. Şema: [{"title": string, "author": string}]',
 
     inputContext: `Aşağıdaki dizide yer alan nesnelerin title ve author alanlarını kurallara uygun biçimde düzenleyin:\n\n${JSON.stringify(
       items,

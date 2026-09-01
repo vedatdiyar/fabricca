@@ -156,10 +156,7 @@ export async function dispatchGeminiCall<T>(
         // 503 / High demand overload or 45s Timeout is a model-level capacity constraint affecting all keys.
         // If a fallback model is configured, immediately failover to the next model without
         // spinning through all other keys on the overloaded model.
-        if (
-          (isOverload || isTimeout) &&
-          model !== models[models.length - 1]
-        ) {
+        if ((isOverload || isTimeout) && model !== models[models.length - 1]) {
           const nextModel = models[models.indexOf(model) + 1];
           params.logger?.info("gemini_model_fallback_retry", {
             service: "gemini",

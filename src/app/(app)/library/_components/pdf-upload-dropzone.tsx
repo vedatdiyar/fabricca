@@ -81,7 +81,12 @@ export function PdfUploadDropzone({
   };
 
   return (
-    <div className={cn("flex flex-1 min-h-0 flex-col justify-between gap-4", className)}>
+    <div
+      className={cn(
+        "flex flex-1 min-h-0 flex-col justify-between gap-4",
+        className,
+      )}
+    >
       <Card
         className={cn(
           "flex-1 flex flex-col justify-center items-center border border-dashed transition-all relative overflow-hidden",

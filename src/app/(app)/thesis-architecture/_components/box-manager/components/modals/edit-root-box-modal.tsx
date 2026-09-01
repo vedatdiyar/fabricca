@@ -53,7 +53,10 @@ export function EditRootBoxModal({
           <div className="flex items-center gap-2">
             <Badge
               variant="outline"
-              className={cn("text-[10px] font-semibold px-2 py-0.5 border", badgeColor)}
+              className={cn(
+                "text-[10px] font-semibold px-2 py-0.5 border",
+                badgeColor,
+              )}
             >
               {shortLabel}
             </Badge>

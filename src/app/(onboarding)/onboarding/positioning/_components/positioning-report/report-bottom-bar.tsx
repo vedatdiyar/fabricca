@@ -39,11 +39,7 @@ export function ReportBottomBar({
         Taslağı Düzenle
       </Button>
 
-      <Button
-        onClick={onConfirm}
-        disabled={confirming}
-        size="lg"
-      >
+      <Button onClick={onConfirm} disabled={confirming} size="lg">
         {confirming ? (
           <span className="flex items-center justify-center gap-2">
             <Loader2 className="size-4 animate-spin" />

@@ -41,7 +41,9 @@ export function AIBanner({
     >
       <Icon className={cn("mt-0.5 h-4 w-4 shrink-0", iconColors[variant])} />
       <div className="space-y-2">
-        <AlertTitle className="text-sm font-semibold text-foreground">{title}</AlertTitle>
+        <AlertTitle className="text-sm font-semibold text-foreground">
+          {title}
+        </AlertTitle>
         <AlertDescription className="text-xs leading-relaxed text-muted-foreground">
           {description}
         </AlertDescription>

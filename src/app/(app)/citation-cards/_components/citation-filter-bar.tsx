@@ -129,9 +129,7 @@ export function CitationFilterBar({
               <span
                 className={cn(
                   "font-mono text-[10px] ml-0.5",
-                  isActive
-                    ? "text-primary font-bold"
-                    : "text-muted-foreground",
+                  isActive ? "text-primary font-bold" : "text-muted-foreground",
                 )}
               >
                 {tab.count}

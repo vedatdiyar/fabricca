@@ -23,7 +23,7 @@ export function buildHyDePromptPayload(query: string): PromptPayload {
 4. Generate a concise 2-3 sentence hypothetical academic document snippet in the target language matching the style of peer-reviewed literature.`,
 
     outputFormat:
-      "Output MUST strictly follow the required JSON schema. Schema: {\"detectedLanguage\": string, \"targetTranslation\": string, \"targetKeywords\": string[], \"hypotheticalSnippet\": string}",
+      'Output MUST strictly follow the required JSON schema. Schema: {"detectedLanguage": string, "targetTranslation": string, "targetKeywords": string[], "hypotheticalSnippet": string}',
 
     inputContext: `Kullanıcı Arama Sorgusu (User Search Query): "${query}"`,
 

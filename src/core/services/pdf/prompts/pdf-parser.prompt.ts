@@ -30,7 +30,7 @@ export function buildPdfParserPromptPayload(
    - Ensure all Turkish characters (ç, ğ, ı, ö, ş, ü, İ) are normalized and preserved without corruption.`,
 
     outputFormat:
-      "Return structured JSON with a 'metadata' object adhering strictly to the provided document metadata schema. Schema: {\"metadata\": {\"title\": string|null, \"authors\": string[], \"containerTitle\": string|null, \"publicationYear\": number|null, \"publisher\": string|null}}",
+      'Return structured JSON with a \'metadata\' object adhering strictly to the provided document metadata schema. Schema: {"metadata": {"title": string|null, "authors": string[], "containerTitle": string|null, "publicationYear": number|null, "publisher": string|null}}',
 
     inputContext: firstPagesText,
 
@@ -65,7 +65,7 @@ export function buildPdfReferencesPromptPayload(
    - Parse each reference into explicit fields: raw, documentType, title, containerTitle, authors, year, publisher, and publisherPlace.`,
 
     outputFormat:
-      "Return structured JSON with a 'references' array adhering strictly to the provided schema. Schema: {\"references\": [{\"raw\": string, \"documentType\": string, \"title\": string, \"authors\": string[], \"year\": number|null, \"publisher\": string|null, \"publisherPlace\": string|null}]}",
+      'Return structured JSON with a \'references\' array adhering strictly to the provided schema. Schema: {"references": [{"raw": string, "documentType": string, "title": string, "authors": string[], "year": number|null, "publisher": string|null, "publisherPlace": string|null}]}',
 
     inputContext: bibliographyText,
 

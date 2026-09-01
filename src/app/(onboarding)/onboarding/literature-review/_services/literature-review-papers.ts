@@ -5,6 +5,7 @@ export interface SubBoxItem {
   description: string;
   thesisBoxId: number;
   semanticQuery: string;
+  concepts?: string[];
 }
 
 export interface SubBoxInput {
