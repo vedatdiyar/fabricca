@@ -1,7 +1,9 @@
 import { ThinkingLevel } from "@google/genai";
 import { FLASH_LITE_35, GEMINI_SEED } from "@/lib/constants";
-import { generateGeminiStructuredContent } from "@/core/services/ai";
-import { getGeminiKeyPool } from "@/core/services/ai/gemini-key-pool";
+import {
+  generateGeminiStructuredContent,
+  getHealthyGeminiKeyIndex,
+} from "@/core/services/ai";
 import type { Logger } from "@/lib/logger";
 import { buildPerThesisEvaluationPromptPayload } from "../_prompts/per-thesis-evaluation.prompt";
 import type { PositioningMatrixInput } from "./validation";
@@ -56,37 +58,35 @@ export async function evaluateThesesInParallel(
     theses.map((t) => [String(t.id), t]),
   );
 
-  const poolSize = Math.max(1, getGeminiKeyPool().keys.length);
+  const batchKeyIndex = getHealthyGeminiKeyIndex(FLASH_LITE_35);
   const allEvaluations: PerThesisEvaluation[] = [];
 
-  // Execute chunks in waves matching the key pool size (1 active request per key)
-  for (let i = 0; i < chunks.length; i += poolSize) {
-    const chunkBatch = chunks.slice(i, i + poolSize);
-    const batchResults = await Promise.all(
-      chunkBatch.map(async (chunk, batchOffset) => {
-        const chunkIdx = i + batchOffset;
-        const payload = buildPerThesisEvaluationPromptPayload(matrix, chunk);
+  // Execute chunks in parallel on the resolved healthy key (total chunks <= 15)
+  const batchResults = await Promise.all(
+    chunks.map(async (chunk, chunkIdx) => {
+      const payload = buildPerThesisEvaluationPromptPayload(matrix, chunk);
 
-        try {
-          const result =
-            await generateGeminiStructuredContent<BatchThesisEvaluationOutput>(
-              FLASH_LITE_35,
-              payload.systemInstruction,
-              payload.userPrompt,
-              batchThesisEvaluationJsonSchema,
-              logger,
-              {
-                zodSchema: batchThesisEvaluationSchema,
-                payloadStage: `per_thesis_eval_chunk_${chunkIdx + 1}`,
-                seed: GEMINI_SEED,
-                thinkingConfig: { thinkingLevel: ThinkingLevel.LOW },
-                thesisMatrix: matrix,
-                quiet: true,
-              },
-            );
+      try {
+        const result =
+          await generateGeminiStructuredContent<BatchThesisEvaluationOutput>(
+            FLASH_LITE_35,
+            payload.systemInstruction,
+            payload.userPrompt,
+            batchThesisEvaluationJsonSchema,
+            logger,
+            {
+              zodSchema: batchThesisEvaluationSchema,
+              payloadStage: `per_thesis_eval_chunk_${chunkIdx + 1}`,
+              pinnedKeyIndex: batchKeyIndex,
+              seed: GEMINI_SEED,
+              thinkingConfig: { thinkingLevel: ThinkingLevel.LOW },
+              thesisMatrix: matrix,
+              quiet: true,
+            },
+          );
 
-          return result.evaluations;
-        } catch (error) {
+        return result.evaluations;
+      } catch (error) {
           logger?.error("per_thesis_eval_chunk_error", {
             data: {
               chunkIdx,
@@ -105,9 +105,8 @@ export async function evaluateThesesInParallel(
     );
 
     allEvaluations.push(...batchResults.flat());
-  }
 
-  const evaluatedTheses: EvaluatedThesis[] = [];
+    const evaluatedTheses: EvaluatedThesis[] = [];
   for (const evaluation of allEvaluations) {
     const rawThesis = thesisById.get(String(evaluation.externalThesisId));
     if (rawThesis) {

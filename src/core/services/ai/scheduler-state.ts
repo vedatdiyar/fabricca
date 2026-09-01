@@ -16,8 +16,8 @@ const keyInFlightCounts = new Map<string, number>();
 /** Round-robin sequence cursor for fair tie-breaking. */
 let roundRobinCounter = 0;
 
-/** Default cooldown duration for RPM rate limits (60 seconds). */
-export const DEFAULT_RPM_COOLDOWN_MS = 60_000;
+/** Default cooldown duration for RPM rate limits (15 seconds, matching sliding window recovery). */
+export const DEFAULT_RPM_COOLDOWN_MS = 15_000;
 
 /** Increments active in-flight request count for an API key. */
 export function incrementInFlight(apiKey: string): void {

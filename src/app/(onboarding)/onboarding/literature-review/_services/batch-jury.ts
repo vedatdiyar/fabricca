@@ -134,6 +134,7 @@ export async function evaluateSingleBoxJury(
   thesisContext: string | ThesisMatrixContext | undefined,
   input: JuryInputItem,
   logger?: Logger,
+  pinnedKeyIndex?: number,
 ): Promise<SingleBoxJuryResult> {
   const { box, articles } = input;
 
@@ -287,6 +288,7 @@ export async function evaluateSingleBoxJury(
             },
           ],
           payloadStage: "literature_single_box_jury",
+          pinnedKeyIndex,
           quiet: true,
         },
       );

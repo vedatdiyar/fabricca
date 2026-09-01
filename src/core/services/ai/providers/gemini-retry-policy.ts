@@ -1,5 +1,4 @@
 import type { Logger } from "@/lib/logger";
-import { getGeminiKeyPool } from "../gemini-key-pool";
 import {
   isRateLimitError,
   isRpdError,
@@ -84,12 +83,9 @@ export function createGeminiRetryPolicy(
           return false;
         }
 
-        // If it's an RPM rate limit error and multiple keys exist in the pool,
-        // fail fast on this key so dispatchGeminiCall switches to an idle key immediately!
+        // If it's an RPM rate limit error, retry with backoff on the current key
+        // to let the sliding window recover before falling back to scheduler rotation.
         if (isRateLimitError(error)) {
-          if (getGeminiKeyPool().keys.length > 1) {
-            return false;
-          }
           return true;
         }
 
@@ -103,8 +99,7 @@ export function createGeminiRetryPolicy(
         const isOverload =
           isServerOverloadError(error) ||
           ("status" in error &&
-            ((error as { status: string }).status === "UNAVAILABLE" ||
-              (error as { status: string }).status === "RESOURCE_EXHAUSTED")) ||
+            (error as { status: string }).status === "UNAVAILABLE") ||
           ("code" in error && (error as { code: number }).code === 503) ||
           error.message.includes("high demand") ||
           error.message.includes("503") ||

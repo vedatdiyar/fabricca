@@ -10,3 +10,10 @@ export {
   getAi,
   logRawLlmCall,
 } from "./providers/gemini-provider";
+
+export {
+  getHealthyGeminiKeyIndex,
+  getKeyUsageStats,
+  resetGeminiScheduler,
+} from "./gemini-scheduler";
+

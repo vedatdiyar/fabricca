@@ -5,6 +5,8 @@ import {
   parseDualSemanticQuery,
 } from "@/lib/academic/utils";
 import { rerankWithCohere } from "@/core/services/ai/cohere";
+import { getHealthyGeminiKeyIndex } from "@/core/services/ai";
+import { FLASH_LITE_35 } from "@/lib/constants";
 import {
   evaluateSingleBoxJury,
   type JuryInputItem,
@@ -140,12 +142,14 @@ export async function executePhase2Jury(
 
   if (juryInputs.length > 0) {
     try {
+      const batchKeyIndex = getHealthyGeminiKeyIndex(FLASH_LITE_35);
       const juryResults = await Promise.all(
         juryInputs.map(async (input) => {
           const result = await evaluateSingleBoxJury(
             thesisMatrixContext,
             input,
             logger,
+            batchKeyIndex,
           );
           return result.evaluations;
         }),

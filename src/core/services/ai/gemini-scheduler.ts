@@ -34,7 +34,26 @@ import {
 } from "./scheduler-state";
 import { getBalancedKeyCandidates } from "./candidate-selector";
 
+import { FLASH_LITE_35 } from "@/lib/constants";
+
 export { getKeyUsageStats, resetGeminiScheduler };
+
+/**
+ * Resolves the primary healthy Gemini API key index for a batch operation.
+ * Used by parallel batch operations (<= 15 requests) to bind all parallel
+ * calls in the batch to the same healthy key.
+ *
+ * @param model - Target model identifier (defaults to FLASH_LITE_35).
+ * @returns 0-based key pool index.
+ */
+export function getHealthyGeminiKeyIndex(
+  model: string = FLASH_LITE_35,
+): number {
+  const pool = getGeminiKeyPool().keys;
+  if (pool.length === 0) return 0;
+  const candidates = getBalancedKeyCandidates(model, pool);
+  return candidates[0] ?? 0;
+}
 
 /** Client timeout in milliseconds for the primary model when a fallback model exists (45s). */
 export const GEMINI_PRIMARY_MODEL_TIMEOUT_MS = 45_000;
@@ -82,6 +101,11 @@ export interface GeminiDispatchParams<T> {
    * `GEMINI_FALLBACK_OPERATIONS`, a model fallback may be attempted.
    */
   operation?: string;
+  /**
+   * When set, pins the dispatch to prioritize this specific 0-based key index.
+   * Used for parallel batches (<= 15 calls) that must stay on a single API key.
+   */
+  pinnedKeyIndex?: number;
   /** Optional logger to output key rotation and scheduler events. */
   logger?: Logger;
   /**
@@ -122,7 +146,11 @@ export async function dispatchGeminiCall<T>(
       : [params.model];
 
   for (const model of models) {
-    const keyIndicesToTry = getBalancedKeyCandidates(model, pool);
+    const keyIndicesToTry = getBalancedKeyCandidates(
+      model,
+      pool,
+      params.pinnedKeyIndex,
+    );
     if (keyIndicesToTry.length === 0) {
       continue;
     }
