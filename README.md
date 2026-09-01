@@ -65,7 +65,7 @@ Qdrant vektör veritabanı (366.000+ tez, multilingual-e5-base 768d) üzerinden 
 
 ### 3. Konu Kutuları (Thesis Boxes)
 
-Google Gemini (`FLASH_LITE_31`) tarafından matris analiz edilerek otomatik oluşturulan kavramsal kutulardır. **Beş tür kutu** mevcuttur:
+Google Gemini (`FLASH_36`) tarafından matris analiz edilerek otomatik oluşturulan kavramsal kutulardır. **Beş tür kutu** mevcuttur:
 
 - `SUBJECT_PROBLEM` — Araştırma Problemi
 - `THEORETICAL_FRAMEWORK` — Teorik Çerçeve
@@ -127,7 +127,7 @@ Konu kutuları, dinamik okuma ilerlemesi ve Kanban araştırma görevlerinin tek
 | **Veritabanı**         | Neon Serverless PostgreSQL                                                   |
 | **ORM**                | Drizzle ORM (snake_case)                                                     |
 | **Vektör DB (RAG)**    | pgvector (HNSW) + tsvector (FTS), COSINE                                     |
-| **LLM Motoru**         | Google Gemini Flash ailesi (`FLASH_LITE_31`, `FLASH_LITE_35`, `FLASH_36`)    |
+| **LLM Motoru**         | Google Gemini Flash ailesi (`FLASH_LITE_35`, `FLASH_36`)                     |
 | **Embedding**          | Cloudflare Workers AI (`@cf/baai/bge-m3`, **1024 dim**) — tek ve sabit motor |
 | **Rerank**             | Cohere Rerank v4.0 Pro (`rerank-v4.0-pro`)                                   |
 | **Tez Veri Kaynağı**   | Qdrant Cloud Vektör Veritabanı (366k+ Tez, E5-Base 768d)                     |

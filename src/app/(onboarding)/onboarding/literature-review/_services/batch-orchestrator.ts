@@ -6,6 +6,8 @@ import { executePhase1Search } from "./orchestrator/phase1-search";
 import { executePhase2Jury } from "./orchestrator/phase2-jury";
 import { executePhase3Selection } from "./orchestrator/phase3-selection";
 
+import type { ThesisMatrixContext } from "./orchestrator/phase2-jury";
+
 export type {
   BatchOrchestrationResult,
   SubBoxResult,
@@ -18,7 +20,7 @@ export type {
  *
  * @param boxes - The sub-box inputs to process.
  * @param logger - The pipeline logger instance.
- * @param thesisMatrixSubject - Optional thesis subject problem for jury context.
+ * @param thesisMatrixContext - Optional thesis subject string or 4-quadrant matrix for jury context.
  * @param checkCancelled - Optional callback to abort the pipeline.
  * @param persistSubBox - Optional callback to persist articles per sub-box.
  * @returns The orchestrated pool entries and archival box titles.
@@ -26,7 +28,7 @@ export type {
 export async function orchestrateBatchProcess(
   boxes: SubBoxInput[],
   logger: Logger,
-  thesisMatrixSubject?: string,
+  thesisMatrixContext?: string | ThesisMatrixContext,
   checkCancelled?: () => boolean,
   persistSubBox?: (
     thesisBoxId: number,
@@ -76,7 +78,7 @@ export async function orchestrateBatchProcess(
   const { poolByBox, juryEvaluations } = await executePhase2Jury(
     fulfilledResults,
     logger,
-    thesisMatrixSubject,
+    thesisMatrixContext,
   );
 
   // Phase 3: Article Selection, Sanitization & Author Healing

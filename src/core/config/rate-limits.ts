@@ -11,10 +11,8 @@
  * - GEMINI_MODEL_QUOTAS: Flash Lite 15 RPM/500 RPD, Flash 5 RPM/20 RPD (free tier, per key; 3 key toplam 45/1500 ve 15/60)
  */
 import {
-  FLASH_LITE_31,
   FLASH_LITE_35,
   FLASH_36,
-  FLASH_37,
 } from "@/lib/constants";
 import type { RateLimiterOptions } from "@/lib/rate-limiter";
 
@@ -64,18 +62,14 @@ export interface GeminiModelQuota {
 }
 
 export const GEMINI_MODEL_QUOTAS: Record<string, GeminiModelQuota> = {
-  [FLASH_LITE_31]: { rpm: 15, rpd: 500 },
   [FLASH_LITE_35]: { rpm: 15, rpd: 500 },
   [FLASH_36]: { rpm: 5, rpd: 20 },
-  [FLASH_37]: { rpm: 5, rpd: 20 },
 };
 
 /** Primary model -> fallback. */
 export const GEMINI_FALLBACK_CHAINS: Record<string, string | null> = {
-  [FLASH_LITE_35]: FLASH_LITE_31,
-  [FLASH_LITE_31]: null,
-  [FLASH_36]: null,
-  [FLASH_37]: FLASH_36,
+  [FLASH_36]: FLASH_LITE_35,
+  [FLASH_LITE_35]: null,
 };
 
 export const GEMINI_FALLBACK_OPERATIONS = [

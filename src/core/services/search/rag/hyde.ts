@@ -89,7 +89,7 @@ export async function expandAndTranslateQuery(
       {
         payloadStage: "rag_hyde_expansion",
         zodSchema: HyDeExpansionSchema,
-        thinkingConfig: { thinkingLevel: ThinkingLevel.LOW },
+        thinkingConfig: { thinkingLevel: ThinkingLevel.MINIMAL },
       },
     );
     return result;

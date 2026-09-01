@@ -67,9 +67,12 @@ export async function executePhase3Selection(
       continue;
     }
 
-    const relevantEvals = boxEvals.filter((ev) => ev.isRelevant);
-    const eliminatedEvals = boxEvals.filter(
-      (ev) => !ev.isRelevant && ev.relevanceScore >= 50,
+    // Strict seed quality: Prefer high-confidence relevant candidates (>= 80)
+    const primaryEvals = boxEvals.filter(
+      (ev) => ev.isRelevant && ev.relevanceScore >= 80,
+    );
+    const secondaryEvals = boxEvals.filter(
+      (ev) => ev.isRelevant && ev.relevanceScore >= 75 && ev.relevanceScore < 80,
     );
 
     const isDuplicate = (title: string): boolean => {
@@ -98,13 +101,14 @@ export async function executePhase3Selection(
       return true;
     };
 
-    for (const ev of relevantEvals) {
+    for (const ev of primaryEvals) {
       if (selectedEvals.length >= 4) break;
       tryAdd(ev);
     }
 
+    // Only fallback to relevant candidates with score >= 75 if needed; never take eliminated/irrelevant papers
     if (selectedEvals.length < 4) {
-      for (const ev of eliminatedEvals) {
+      for (const ev of secondaryEvals) {
         if (selectedEvals.length >= 4) break;
         tryAdd(ev);
       }

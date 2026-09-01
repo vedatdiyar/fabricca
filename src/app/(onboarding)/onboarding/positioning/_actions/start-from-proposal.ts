@@ -45,7 +45,7 @@ export async function startOnboardingFromProposalAction(
 
     await clearDownstreamDbAction("proposal");
 
-    // 1. Kick off Query Distillation and Proposal Decomposition concurrently in parallel
+    // 1. Kick off Query Distillation and Search concurrently with Proposal Decomposition
     const queryStartTime = performance.now();
     const queryPromise = generatePositioningQuery(
       { subjectProblem: trimmed },
@@ -54,7 +54,7 @@ export async function startOnboardingFromProposalAction(
 
     let matrixDbPromise: Promise<number> | null = null;
 
-    const savedMatrix = await run.execute(
+    const matrixTask = run.execute(
       "matrix",
       async () => {
         const t0 = performance.now();
@@ -107,14 +107,14 @@ export async function startOnboardingFromProposalAction(
       { description: "Initial Matrix Synthesis (Gemini Flash)" },
     );
 
-    const siftedCandidates = await run.execute(
+    const searchTask = run.execute(
       "search",
       () =>
         searchAndSiftTheses(
           {
-            subjectProblem: savedMatrix.subjectProblem,
-            theoreticalFramework: savedMatrix.theoreticalFramework,
-            methodology: savedMatrix.methodology,
+            subjectProblem: trimmed.slice(0, 500),
+            theoreticalFramework: "Kuramsal Çerçeve",
+            methodology: "Metodoloji",
           },
           run.logger,
           {
@@ -125,6 +125,11 @@ export async function startOnboardingFromProposalAction(
         ),
       { description: "4-Channel Literature Scan & Cohere Rerank" },
     );
+
+    const [savedMatrix, siftedCandidates] = await Promise.all([
+      matrixTask,
+      searchTask,
+    ]);
 
     const juryResult = await run.execute(
       "jury_review",

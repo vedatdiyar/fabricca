@@ -72,7 +72,7 @@ export async function sanitizeAcademicDataBulk(
       SANITIZE_RESPONSE_SCHEMA,
       logger,
       {
-        thinkingConfig: { thinkingLevel: ThinkingLevel.LOW },
+        thinkingConfig: { thinkingLevel: ThinkingLevel.MINIMAL },
         zodSchema: sanitizeResponseSchema,
         seed: GEMINI_SEED,
         safetySettings: [
@@ -142,7 +142,7 @@ export async function sanitizeTargetedArticles(
     SANITIZE_RESPONSE_SCHEMA,
     logger,
     {
-      thinkingConfig: { thinkingLevel: ThinkingLevel.LOW },
+      thinkingConfig: { thinkingLevel: ThinkingLevel.MINIMAL },
       zodSchema: sanitizeResponseSchema,
       seed: GEMINI_SEED,
       safetySettings: [

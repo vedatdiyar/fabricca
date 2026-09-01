@@ -4,7 +4,7 @@ import { sessions, messages, outlines } from "@/core/db/schema";
 import { HarmCategory, HarmBlockThreshold, ThinkingLevel } from "@google/genai";
 import { getAi } from "@/core/services/ai";
 import { dispatchGeminiCall } from "@/core/services/ai/gemini-scheduler";
-import { FLASH_37, GEMINI_SEED } from "@/lib/constants";
+import { FLASH_36, GEMINI_SEED } from "@/lib/constants";
 import { buildOfficeDefensePromptPayload } from "../_prompts/office-defense.prompt";
 import type { AdvisorStreamWriter } from "./stream";
 import type { PipelineResultData, JuryCritique } from "./pipeline/types";
@@ -128,7 +128,7 @@ export async function streamOfficeDefense(
   let fullText = "";
 
   const stream = await dispatchGeminiCall<GeminiContentStream>({
-    model: FLASH_37,
+    model: FLASH_36,
     task: async ({ model, apiKey }) => {
       const ai = getAi(apiKey);
       return ai.models.generateContentStream({
@@ -139,7 +139,7 @@ export async function streamOfficeDefense(
         config: {
           systemInstruction: payload.systemInstruction,
           seed: GEMINI_SEED,
-          thinkingConfig: { thinkingLevel: ThinkingLevel.HIGH },
+          thinkingConfig: { thinkingLevel: ThinkingLevel.LOW },
           safetySettings: [
             {
               category: HarmCategory.HARM_CATEGORY_HATE_SPEECH,

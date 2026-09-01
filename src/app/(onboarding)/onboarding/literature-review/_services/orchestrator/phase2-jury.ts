@@ -1,8 +1,14 @@
 import { Logger } from "@/lib/logger";
 import { normalizeCleanTitle, extractCleanDoi } from "@/lib/academic/utils";
 import { rerankWithCohere } from "@/core/services/ai/cohere";
-import { evaluateSingleBoxJury, type JuryInputItem } from "../batch-jury";
+import {
+  evaluateSingleBoxJury,
+  type JuryInputItem,
+  type ThesisMatrixContext,
+} from "../batch-jury";
 import type { SubBoxResult, PoolItem, JuryEvalResult } from "./types";
+
+export type { ThesisMatrixContext } from "../batch-jury";
 
 /** Minimum abstract character length for a viable seed candidate. */
 const MIN_ABSTRACT_CHARS = 45;
@@ -47,17 +53,17 @@ function buildPool(r: SubBoxResult): PoolItem[] {
  * 1. Title and DOI deduplication across all 4 channels.
  * 2. Abstract depth verification (seed worthiness).
  * 3. Cohere Rerank v4.0 Pro semantic pre-ranking against sub-box context (with heuristic fallback).
- * 4. Structured Gemini Flash Lite academic jury evaluation.
+ * 4. Structured Gemini Flash Lite academic jury evaluation with Holistic Thesis Matrix & Box Isolation.
  *
  * @param fulfilledResults - The Phase 1 search results per sub-box.
  * @param logger - The shared flow logger.
- * @param thesisMatrixSubject - Optional thesis matrix subject used to guide the jury.
+ * @param thesisMatrixContext - Optional thesis matrix context (string or 4-quadrant object) used to guide the jury.
  * @returns The per-box candidate pools and the pooled jury evaluations.
  */
 export async function executePhase2Jury(
   fulfilledResults: SubBoxResult[],
   logger: Logger,
-  thesisMatrixSubject?: string,
+  thesisMatrixContext?: string | ThesisMatrixContext,
 ): Promise<{
   poolByBox: Map<number, PoolItem[]>;
   juryEvaluations: JuryEvalResult[];
@@ -109,7 +115,7 @@ export async function executePhase2Jury(
         const rerankResults = await rerankWithCohere({
           query: queryContext,
           documents: candidateDocs,
-          topN: 16,
+          topN: 20,
           logger,
           silent: true,
         });
@@ -136,7 +142,7 @@ export async function executePhase2Jury(
             b.rawPaper.relevanceScore - a.rawPaper.relevanceScore ||
             (b.rawPaper.citedByCount ?? 0) - (a.rawPaper.citedByCount ?? 0),
         )
-        .slice(0, 16);
+        .slice(0, 20);
     }
 
     poolByBox.set(r.thesisBoxId, capped);
@@ -146,6 +152,7 @@ export async function executePhase2Jury(
         subBoxTitle: r.subBox.title,
         boxType: r.boxType,
         description: r.subBoxDescription,
+        concepts: r.subBox.concepts,
       },
       articles: capped.map((p) => p.rawPaper),
     });
@@ -154,13 +161,11 @@ export async function executePhase2Jury(
   let juryEvaluations: JuryEvalResult[] = [];
 
   if (juryInputs.length > 0) {
-    const subjectProblem = thesisMatrixSubject ?? "";
-
     try {
       const juryResults = await Promise.all(
         juryInputs.map(async (input) => {
           const result = await evaluateSingleBoxJury(
-            subjectProblem,
+            thesisMatrixContext,
             input,
             logger,
           );

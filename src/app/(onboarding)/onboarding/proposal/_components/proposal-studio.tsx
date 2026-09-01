@@ -301,7 +301,7 @@ export function ProposalStudio({ initialProposal = "" }: ProposalStudioProps) {
 
         {/* Studio Content Area (Pure Paper Viewport) */}
         <div className="relative flex-1">
-          <div className="h-[calc(100vh-340px)] min-h-[460px] max-h-[680px] w-full overflow-y-auto">
+          <div className="h-[calc(100vh-380px)] min-h-[420px] max-h-[640px] w-full overflow-y-auto">
             <div className="max-w-3xl mx-auto px-6 sm:px-12 py-8 text-foreground min-h-full">
               {isEditing || !hasProposal ? (
                 <textarea
@@ -355,11 +355,6 @@ export function ProposalStudio({ initialProposal = "" }: ProposalStudioProps) {
             {hasProposal && !hasMinWords && (
               <span className="text-xs text-warning font-medium">
                 (Analiz için en az 10 kelimelik bir taslak gereklidir)
-              </span>
-            )}
-            {hasProposal && hasMinWords && (
-              <span className="hidden sm:inline-block text-xs text-muted-foreground">
-                • {rawProposal.trim().length.toLocaleString("tr-TR")} karakter
               </span>
             )}
           </div>

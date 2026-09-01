@@ -22,12 +22,21 @@ function buildQuadrantSpecificInstruction(boxType: string): string {
   }
 }
 
+export interface ThesisMatrixContext {
+  subjectProblem?: string;
+  theoreticalFramework?: string;
+  methodology?: string;
+  primaryMaterial?: string;
+}
+
 export interface JuryBatchPromptInput {
-  thesisSubject: string;
+  thesisSubject?: string;
+  thesisMatrix?: ThesisMatrixContext;
   thesisBoxId: number;
   subBoxTitle: string;
   boxType: string;
   description: string;
+  concepts?: string[];
   articlesText: string;
   articleCount: number;
 }
@@ -43,31 +52,47 @@ export function buildJuryPromptPayload(
 ): PromptPayload {
   const {
     thesisSubject,
+    thesisMatrix,
     thesisBoxId,
     subBoxTitle,
     boxType,
     description,
+    concepts,
     articlesText,
     articleCount,
   } = params;
 
   const quadrantBlock = buildQuadrantSpecificInstruction(boxType);
 
+  const matrixBlock = thesisMatrix
+    ? `### BÜTÜNSEL TEZ MATRİSİ (Araştırmanın Genel Çerçevesi):
+- Araştırma Problemi: ${thesisMatrix.subjectProblem || thesisSubject || "Belirtilmemiş"}
+- Teorik Çerçeve: ${thesisMatrix.theoreticalFramework || "Belirtilmemiş"}
+- Yöntem ve Araştırma Deseni: ${thesisMatrix.methodology || "Belirtilmemiş"}
+- Birincil Analiz Korpusu: ${thesisMatrix.primaryMaterial || "Belirtilmemiş"}`
+    : `### Tez Konusu (Subject Problem):
+${thesisSubject || "Belirtilmemiş"}`;
+
+  const conceptsBlock =
+    concepts && concepts.length > 0
+      ? `\n- Kutu Anahtar Kavramları: [${concepts.join(", ")}]`
+      : "";
+
   return buildPromptPayload({
     roleAndExpertise:
       "Sen, akademik makaleleri belirli bir tez alt kutusu bağlamında değerlendiren uzman bir akademik jüri üyesisin.",
 
     primaryTask:
-      "Her bir makaleyi, sana verilen alt kutunun türü, başlığı ve açıklaması ile karşılaştırarak değerlendir. Makalenin kutu bağlamıyla doğrudan alakalı olup olmadığına karar ver, 0-100 arası alaka skoru belirle ve 1 cümlelik Türkçe gerekçe yaz.",
+      "Her bir makaleyi, sana verilen Bütünsel Tez Matrisi ve özel alt kutunun türü, başlığı ve açıklaması ile karşılaştırarak değerlendir. Makalenin kutu bağlamıyla doğrudan alakalı olup olmadığına karar ver, 0-100 arası alaka skoru belirle ve 1 cümlelik Türkçe gerekçe yaz.",
 
     rulesAndConstraints: `1. **Dil Uygunluğu:** Yalnızca Türkçe veya İngilizce dilindeki akademik çalışmaları kabul et. Başlığı veya içeriği bu iki dilin dışındaki (İspanyolca, Fransızca, Almanca, İtalyanca vb.) herhangi bir dilde olan kaynakları doğrudan uygunsuz olarak ele (isRelevant: false, relevanceScore: 0, gerekçede dil uyuşmazlığını belirt). **CJK Özel Kuralı:** Başlık veya özet Han/Kana/Hangul (Çince/Japonca/Korece, \\u4E00-\\u9FFF, \\u3400-\\u4DBF, \\u3040-\\u30FF, \\uAC00-\\uD7AF) karakter içeriyorsa bu eseri doğrudan uygunsuz ele (isRelevant: false, relevanceScore: 0, gerekçede "Dil uygunluğu: Çince/Japonca/Korece karakter" belirt) ve articleTitle alanına asla CJK karakter kopyalama — yerine "[CJK başlık — dil filtresi]" yaz. Bu kural LANGUAGE_GUARD ile çelişmeyi önler ve verbatim-echo yasağını aşar.
 2. **Yayın Türü Filtresi (Book Review / Tanıtım Yasağı):** Yalnızca orijinal araştırma makalelerini, monografileri, lisansüstü tezleri ve metodolojik eserleri kabul et. Bir kitabın 1-3 sayfalık kitap incelemesi/tanıtımı (Book Review), editör notu, konferans duyurusu gibi ikincil tanıtım yazılarını doğrudan uygunsuz olarak ele (isRelevant: false, relevanceScore: 0, gerekçede "Bağımsız araştırma makalesi olmayıp kitap incelemesidir" şeklinde belirt).
 3. **Özet Derinliği ve Tohum Gücü (Seed Worthiness):** Eserin özeti (abstract) çalışmanın kuramsal/metodolojik iddiasını veya ampirik bulgularını açıkça yansıtmalıdır. Özeti olmayan veya içi boş tanıtım cümlelerinden ibaret olan çalışmaları tohum olmaya uygun görme (düşük puan ver veya ele).
 4. **Çok Kanallı Akademik Eşitlik:** Ulusal tezleri (YÖK), hakemli dergi makalelerini (DergiPark) ve uluslararası yayınları (OpenAlex, Semantic Scholar) alt kutu bağlamına uygunlukları açısından tamamen eşit akademik standartta ve liyakatle değerlendir.
-5. **Bütünsel Örtüşme ve Alan/Ölçek Uyumu:** Soyut kavram benzerliklerine aldanma. Eserin incelediği olgu ve ölçek tezin ve alt kutunun araştırma çerçevesiyle uyumlu olmalıdır. Örneğin makro-tarihsel kurumsal süreçleri inceleyen bir tez için anlık sokak protestolarındaki mikro-etkileşim duygu modellerini veya genel uluslararası ilişkiler dünya düzeni teorilerini teğetsel/uygunsuz olarak ele.
-6. **Metodolojik ve Epistemolojik Tutarlılık:** Yöntem kutusunda, alt kutu açıklamasında ve tez matrisinde belirtilen araştırma deseni, veri toplama ve analiz yaklaşımıyla uyuşmayan veya bu yaklaşımdan kökten sapan yöntemleri yöntemsel uyuşmazlık nedeniyle düşük puanlandır veya ele.
-7. **Dönemsel Uygunluk:** Tezin ve kutunun kapsadığı tarihsel/olgusal dönemin dışındaki başka bir döneme veya olaya odaklanan çalışmalar düşük puanlandırılmalıdır.
-8. **Temel Monografiler:** Tezin kapsadığı tarihsel dönemi ve vaka alanını doğrudan işleyen kapsayıcı temel monografilere ve saha araştırmalarına yüksek relevans puanı (80-95+) ver.${quadrantBlock}`,
+5. **Kutu İzolasyonu ve Sınır Koruması (Sub-Box Boundary Isolation):** Aday çalışma, Bütünsel Tez Matrisi'ndeki başka bir kadran için değerli olsa bile, yalnızca "Şu An Değerlendirilen Kutu"nun işlevine ve türüne (\`boxType\`) göre puanlanmalıdır. Örneğin ampirik vaka analizleri kuramsal veya yöntemsel kutulara kabul edilmemeli, vaka kutusuna yönlendirilerek bu kutu için düşük puanlandırılmalıdır.
+6. **Metodolojik ve Epistemolojik Tutarlılık:** Aday çalışmanın benimsediği araştırma deseni, veri toplama ve analiz yaklaşımı, Bütünsel Tez Matrisi'nde ilan edilen kuramsal ve yöntemsel paradigmaya zıt veya uyumsuz ise (örneğin tezin yöntemi nitel söylem analizi iken adayın nicel ekonometri olması veya tam tersi), metodolojik uyumsuzluk nedeniyle elenmeli veya düşük puanlandırılmalıdır.
+7. **Dönemsel ve Olgusal Kapsam Uygunluğu:** Tezin kapsadığı tarihsel dönemi içeren veya bu dönemi temel bir evre olarak ele alan boylamsal (longitudinal/tarihsel) monografileri ve kapsamlı çalışmaları yüksek puanlandırın (85-95+ puan). Yalnızca tezin dönemini HİÇ İÇERMEYEN ya da tamamen başka bir tarihsel kesite (örneğin tezin dönemi 1990'lar iken yalnızca 2015 sonrasına veya yalnızca 1920'lere) odaklanan çalışmaları düşük puanlandırın veya eleyin.
+8. **Temel Monografiler ve Kanonik Eserler:** Tezin kapsadığı tarihsel dönemi, kuramsal modeli ve vaka alanını doğrudan işleyen kapsayıcı temel monografilere ve araştırmalara yüksek relevans puanı (80-100) ver.${quadrantBlock}`,
 
     outputFormat: `Her değerlendirme için aşağıdaki alanları içeren JSON nesneleri dizisi döndürün. Şema: {"evaluations": [{"thesisBoxId": number, "subBoxTitle": string, "articleTitle": string, "isRelevant": boolean, "relevanceScore": number, "reasoning": string}]}:
 - thesisBoxId: (girdide verilen box id)
@@ -77,14 +102,13 @@ export function buildJuryPromptPayload(
 - relevanceScore: 0-100 arası tam sayı
 - reasoning: Türkçe 1 cümlelik gerekçe`,
 
-    inputContext: `### Tez Konusu (Subject Problem):
-${thesisSubject}
+    inputContext: `${matrixBlock}
 
-### Kutu Bağlamı:
+### ŞU AN DEĞERLENDİRİLEN ÖZEL KUTU:
 - Kutu ID: [Box ${thesisBoxId}]
 - Kutu Türü: ${boxType}
 - Kutu Başlığı: "${subBoxTitle}"
-- Kutu Açıklaması: ${description}
+- Kutu Açıklaması: ${description}${conceptsBlock}
 
 ### Değerlendirilecek Makaleler (${articleCount} Adet):
 ${articlesText}`,

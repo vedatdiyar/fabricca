@@ -3,18 +3,24 @@ import {
   type JsonSchema,
 } from "@/core/services/ai";
 import { FLASH_LITE_35, GEMINI_SEED } from "@/lib/constants";
-import { buildJuryPromptPayload } from "../_prompts/batch-jury.prompt";
+import {
+  buildJuryPromptPayload,
+  type ThesisMatrixContext,
+} from "../_prompts/batch-jury.prompt";
 import { ThinkingLevel, HarmCategory, HarmBlockThreshold } from "@google/genai";
 import { Logger } from "@/lib/logger";
 import { extractOpenAlexId } from "@/lib/academic/utils";
 import { z } from "zod";
 import type { RawPaper } from "./literature-review-papers";
 
+export type { ThesisMatrixContext } from "../_prompts/batch-jury.prompt";
+
 export interface JuryBoxContext {
   thesisBoxId: number;
   subBoxTitle: string;
   boxType: string;
   description: string;
+  concepts?: string[];
 }
 
 export interface JuryInputItem {
@@ -106,10 +112,10 @@ const juryJsonSchema: JsonSchema = {
 /**
  * Runs a jury evaluation for a single sub-box with a box-type-specific prompt.
  *
- * @param thesisSubject - The thesis subject problem statement.
+ * @param thesisContext - The thesis subject string or the holistic ThesisMatrixContext.
  * @param input - The sub-box context and raw articles to evaluate.
- * @param logger - Optional logger for pipeline events.
- * @returns The jury evaluation results for the sub-box.
+ * @param logger - Optional pipeline logger.
+ * @returns The structured evaluations for this sub-box.
  */
 const CJK_RE = /[\u4E00-\u9FFF\u3400-\u4DBF\u3040-\u30FF\uAC00-\uD7AF]/;
 
@@ -125,7 +131,7 @@ function containsCjk(text: string | null | undefined): boolean {
 }
 
 export async function evaluateSingleBoxJury(
-  thesisSubject: string,
+  thesisContext: string | ThesisMatrixContext | undefined,
   input: JuryInputItem,
   logger?: Logger,
 ): Promise<SingleBoxJuryResult> {
@@ -220,12 +226,23 @@ export async function evaluateSingleBoxJury(
     })
     .join("\n\n");
 
+  const isMatrixObj =
+    typeof thesisContext === "object" && thesisContext !== null;
+  const matrixObj = isMatrixObj ? thesisContext : undefined;
+  const subjectStr = isMatrixObj
+    ? thesisContext.subjectProblem || ""
+    : typeof thesisContext === "string"
+      ? thesisContext
+      : "";
+
   const payload = buildJuryPromptPayload({
-    thesisSubject,
+    thesisSubject: subjectStr,
+    thesisMatrix: matrixObj,
     thesisBoxId: box.thesisBoxId,
     subBoxTitle: box.subBoxTitle,
     boxType: box.boxType,
     description: box.description,
+    concepts: box.concepts,
     articlesText,
     articleCount: cleanArticles.length,
   });

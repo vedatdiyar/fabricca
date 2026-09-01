@@ -1,8 +1,7 @@
-import { ThinkingLevel } from "@google/genai";
 import type { Logger } from "@/lib/logger";
 import { getProjectIndex } from "../gemini-key-pool";
 import { dispatchGeminiCall } from "../gemini-scheduler";
-import { GEMINI_SEED, FLASH_37 } from "@/lib/constants";
+import { GEMINI_SEED } from "@/lib/constants";
 import {
   SchemaValidationError,
   classifyError,
@@ -25,24 +24,6 @@ export { getAi, logRawLlmCall };
 
 const CJK_RE = /[\u4E00-\u9FFF\u3400-\u4DBF\u3040-\u30FF\uAC00-\uD7AF]/;
 
-/**
- * Resolves the effective thinking level, upgrading MINIMAL→LOW for FLASH_37 which does not support MINIMAL.
- */
-function resolveEffectiveThinkingLevel(
-  modelName: string,
-  thinkingLevel: ThinkingLevel | undefined,
-  logger: Logger | undefined,
-  callLabel: string,
-): ThinkingLevel | undefined {
-  if (modelName === FLASH_37 && thinkingLevel === ThinkingLevel.MINIMAL) {
-    logger?.warn("flash_37_minimal_upgraded_to_low", {
-      service: "gemini",
-      data: { payloadStage: callLabel, originalLevel: thinkingLevel },
-    });
-    return ThinkingLevel.LOW;
-  }
-  return thinkingLevel;
-}
 
 /**
  * Guards against CJK leakage in Turkish academic output. Retries with perturbed seed or strips chars on final attempt.
@@ -137,13 +118,6 @@ export async function generateStructuredContent<T>(
     });
   }
 
-  const effectiveThinkingLevel = resolveEffectiveThinkingLevel(
-    modelName,
-    thinkingLevel,
-    logger,
-    callLabel,
-  );
-
   try {
     return await dispatchGeminiCall<T>({
       model: modelName,
@@ -162,14 +136,14 @@ export async function generateStructuredContent<T>(
               projectIndex: projectIndex + 1,
               instructionLength: systemInstruction.length,
               promptLength: prompt.length,
-              thinkingLevel: effectiveThinkingLevel ?? undefined,
+              thinkingLevel: thinkingLevel ?? undefined,
             },
           });
         }
 
         // Gemini 3.x: sadece thinkingLevel iletilir, thinkingBudget ve temperature asla iletilmez.
-        const sanitizedThinkingConfig = effectiveThinkingLevel
-          ? { thinkingLevel: effectiveThinkingLevel }
+        const sanitizedThinkingConfig = thinkingLevel
+          ? { thinkingLevel: thinkingLevel }
           : undefined;
 
         const payload = {
@@ -263,7 +237,7 @@ export async function generateStructuredContent<T>(
                 projectIndex: projectIndex + 1,
                 crossProjectRotation: true,
                 attempt: attempts,
-                thinkingLevel: effectiveThinkingLevel ?? undefined,
+                thinkingLevel: thinkingLevel ?? undefined,
               },
             });
           }
@@ -285,7 +259,7 @@ export async function generateStructuredContent<T>(
               projectIndex: projectIndex + 1,
               crossProjectRotation: true,
               attempts,
-              thinkingLevel: effectiveThinkingLevel ?? undefined,
+              thinkingLevel: thinkingLevel ?? undefined,
               scenario,
               quotaDetails: quotaDetails ?? undefined,
             },

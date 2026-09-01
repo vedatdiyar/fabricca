@@ -5,7 +5,7 @@ import { searchSemanticScholarPapers } from "@/core/services/semantic-scholar/se
 import { searchTheses } from "@/core/services/thesis-search";
 
 /** Maximum time to wait for any individual search provider before continuing. */
-const PROVIDER_TIMEOUT_MS = 25000;
+const PROVIDER_TIMEOUT_MS = 35000;
 
 /**
  * Wraps a promise with a timeout so a slow provider never hangs the whole pipeline.
@@ -66,7 +66,7 @@ export async function searchMultiChannelForSubBox(
         if (!englishQuery || checkCancelled?.()) return [];
         try {
           const raw = await withProviderTimeout(
-            searchOpenAlex(englishQuery, 10, checkCancelled),
+            searchOpenAlex(englishQuery, 35, checkCancelled),
             PROVIDER_TIMEOUT_MS,
             [],
           );
@@ -88,8 +88,13 @@ export async function searchMultiChannelForSubBox(
       (async (): Promise<RawPaper[]> => {
         if (!englishQuery || checkCancelled?.()) return [];
         try {
+          // S2 Lucene BM25: Use concise keyword query (first 6-8 essential terms) for optimal recall
+          const words = englishQuery.split(/\s+/).filter(Boolean);
+          const s2Query =
+            words.length > 7 ? words.slice(0, 7).join(" ") : englishQuery;
+
           const papers = await withProviderTimeout(
-            searchSemanticScholarPapers(englishQuery, 10),
+            searchSemanticScholarPapers(s2Query, 20),
             PROVIDER_TIMEOUT_MS,
             [],
           );
@@ -142,7 +147,7 @@ export async function searchMultiChannelForSubBox(
         try {
           const theses = await withProviderTimeout(
             searchTheses(turkishQuery, logger, {
-              limit: 10,
+              limit: 15,
               rankingScoreThreshold: 0.7,
               silent: true,
             }),

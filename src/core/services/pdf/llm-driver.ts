@@ -66,7 +66,7 @@ export async function extractDocumentMetadata(
       MetadataOnlySchema,
       logger,
       {
-        thinkingConfig: { thinkingLevel: ThinkingLevel.LOW },
+        thinkingConfig: { thinkingLevel: ThinkingLevel.MINIMAL },
         seed: GEMINI_SEED,
         payloadStage: "pdf_parser_metadata",
         operation: "pdf_read",
@@ -113,7 +113,7 @@ export async function extractDocumentReferences(
       ReferencesOnlySchema,
       logger,
       {
-        thinkingConfig: { thinkingLevel: ThinkingLevel.LOW },
+        thinkingConfig: { thinkingLevel: ThinkingLevel.MINIMAL },
         seed: GEMINI_SEED,
         payloadStage: "pdf_parser_references",
         operation: "pdf_read",

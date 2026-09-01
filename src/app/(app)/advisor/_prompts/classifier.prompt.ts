@@ -31,7 +31,7 @@ export function buildClassifierPromptPayload(
 3. **mode:** Eğer kullanıcı mesajı denetlenip kritik tartışılacak paragraf/taslak metni (özellikle İngilizce tez pasajı) ise PIPELINE; bağımsız doğrudan bir soru veya işlem ise DIRECT seçilir.`,
 
     outputFormat:
-      "Çıktı, persona, reasoning, isActionQuery ve mode alanlarını içeren JSON nesnesidir. Şema: {\"persona\": \"SOCRATIC_ADVISOR\"|\"TEZ_ASSISTANT\", \"reasoning\": string, \"isActionQuery\": boolean, \"mode\": \"DIRECT\"|\"PIPELINE\"}",
+      'Çıktı, persona, reasoning, isActionQuery ve mode alanlarını içeren JSON nesnesidir. Şema: {"persona": "SOCRATIC_ADVISOR"|"TEZ_ASSISTANT", "reasoning": string, "isActionQuery": boolean, "mode": "DIRECT"|"PIPELINE"}',
 
     inputContext: `${historyText ? `### SOHBET GEÇMİŞİ:\n${historyText}\n\n` : ""}### KULLANICININ SON MESAJI:\n${userQuery}`,
 

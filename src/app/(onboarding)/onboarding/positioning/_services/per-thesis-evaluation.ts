@@ -20,7 +20,7 @@ export interface EvaluatedThesis {
 }
 
 /** Number of candidate theses evaluated in a single parallel batch call. */
-const BATCH_CHUNK_SIZE = 4;
+const BATCH_CHUNK_SIZE = 10;
 
 /**
  * Evaluates candidate theses in parallel batches of 4 using FLASH_LITE_35 with LOW thinking.
