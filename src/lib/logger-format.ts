@@ -262,17 +262,117 @@ export function formatLogLine(options: SingleLineLogOptions): string {
 }
 
 /**
- * Converts an unknown error value into a short readable message.
+ * Converts an unknown error value into a clean, human-readable single-line message.
+ * Strips raw Google RPC JSON dumps, URL links, and massive stack payloads.
  *
  * @param error - Error value of any type.
- * @returns Short readable message.
+ * @returns Clean readable single-line message.
  */
 export function extractReason(error: unknown): string {
-  if (error instanceof Error) return error.message;
-  if (typeof error === "string") return error;
-  try {
-    return JSON.stringify(error);
-  } catch {
-    return String(error);
+  if (!error) return "Bilinmeyen hata";
+
+  let raw = "";
+  if (error instanceof Error) {
+    raw = error.message;
+  } else if (typeof error === "string") {
+    raw = error;
+  } else if (typeof error === "object") {
+    try {
+      raw = JSON.stringify(error);
+    } catch {
+      raw = String(error);
+    }
   }
+
+  // Check if raw is a JSON string containing an API error structure
+  if (raw.startsWith("{") && raw.endsWith("}")) {
+    try {
+      const parsed = JSON.parse(raw);
+      const apiErr = parsed?.error ?? parsed;
+      if (apiErr && typeof apiErr === "object") {
+        const code = apiErr.code ?? apiErr.status;
+        const msg = typeof apiErr.message === "string" ? apiErr.message : "";
+
+        if (
+          code === 429 ||
+          apiErr.status === "RESOURCE_EXHAUSTED" ||
+          msg.includes("Quota exceeded") ||
+          msg.includes("RESOURCE_EXHAUSTED")
+        ) {
+          const retryMatch = msg.match(
+            /(?:retry in|retryDelay|retry after)\s+([\d.]+)\s*s/i,
+          );
+          const retrySec = retryMatch
+            ? `${Math.round(parseFloat(retryMatch[1]))}s`
+            : "";
+          const metricMatch = msg.match(/limit:\s*(\d+)/i);
+          const limitStr = metricMatch ? `${metricMatch[1]} RPM` : "15 RPM";
+          return `Gemini Kota Limiti Aşıldı (429 ${limitStr}${retrySec ? `, ${retrySec} sonra tekrar` : ""})`;
+        }
+
+        if (
+          code === 503 ||
+          apiErr.status === "UNAVAILABLE" ||
+          msg.includes("503") ||
+          msg.includes("high demand")
+        ) {
+          return "Gemini Sunucu Yoğunluğu (503 Service Unavailable)";
+        }
+
+        if (msg) {
+          const cleanMsg = msg
+            .replace(/https?:\/\/[^\s]+/g, "")
+            .replace(/\* Quota exceeded for metric: [^\n]+/g, "")
+            .replace(/For more information on this error[^\n]+/g, "")
+            .replace(/To monitor your current usage[^\n]+/g, "")
+            .replace(/\s+/g, " ")
+            .trim();
+          if (cleanMsg.length > 0) {
+            return cleanMsg.length > 120
+              ? `${cleanMsg.slice(0, 117)}...`
+              : cleanMsg;
+          }
+        }
+      }
+    } catch {
+      // not valid json
+    }
+  }
+
+  // If raw string has 429 quota message
+  if (
+    raw.includes("RESOURCE_EXHAUSTED") ||
+    raw.includes("Quota exceeded") ||
+    raw.includes("429")
+  ) {
+    const retryMatch = raw.match(
+      /(?:retry in|retryDelay|retry after)\s+([\d.]+)\s*s/i,
+    );
+    const retrySec = retryMatch
+      ? `${Math.round(parseFloat(retryMatch[1]))}s`
+      : "";
+    const metricMatch = raw.match(/limit:\s*(\d+)/i);
+    const limitStr = metricMatch ? `${metricMatch[1]} RPM` : "15 RPM";
+    return `Gemini Kota Limiti Aşıldı (429 ${limitStr}${retrySec ? `, ${retrySec} sonra tekrar` : ""})`;
+  }
+
+  if (
+    raw.includes("503") ||
+    raw.includes("high demand") ||
+    raw.includes("UNAVAILABLE")
+  ) {
+    return "Gemini Sunucu Yoğunluğu (503 Service Unavailable)";
+  }
+
+  // Clean URLs and excessive whitespace
+  const sanitized = raw
+    .replace(/https?:\/\/[^\s]+/g, "")
+    .replace(/\{"error":\{.*\}\}/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+
+  if (sanitized.length > 120) {
+    return `${sanitized.slice(0, 117)}...`;
+  }
+  return sanitized || "Hata oluştu";
 }

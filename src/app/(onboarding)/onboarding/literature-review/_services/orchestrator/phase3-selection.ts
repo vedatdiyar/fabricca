@@ -198,14 +198,15 @@ export async function executePhase3Selection(
     const subBoxArticles: JuryArticle[] = [];
 
     for (const art of boxSelected) {
+      const isQdrantThesis = art.poolItem.rawPaper.source === "qdrant";
       const juryArticle: JuryArticle = {
         title: stripAltTitle(art.originalTitle) || art.originalTitle,
         authors: art.originalAuthors,
-        publisher: art.publisher,
+        publisher: isQdrantThesis ? art.publisher : null,
         thesisType:
           art.poolItem.rawPaper.publicationType ||
-          (art.poolItem.rawPaper.source === "qdrant" ? "Tez" : "Makale"),
-        publicationYear: art.publicationYear,
+          (isQdrantThesis ? "Tez" : "Makale"),
+        publicationYear: isQdrantThesis ? art.publicationYear : null,
         doi: art.doi,
         openalexId: art.openalexId,
         relevanceScore: art.relevanceScore,

@@ -185,6 +185,34 @@ export function parseOpenAlexResults(
       number[]
     > | null;
 
+    const primaryLoc = work.primary_location as
+      | {
+          source?: {
+            display_name?: string;
+            type?: string;
+          };
+        }
+      | null
+      | undefined;
+    const hostVenue = work.host_venue as
+      | {
+          display_name?: string;
+        }
+      | null
+      | undefined;
+
+    const publisher =
+      primaryLoc?.source?.display_name || hostVenue?.display_name || null;
+    const year = (work.publication_year as number) ?? null;
+    const workType = work.type as string | undefined;
+    const isBook = workType === "book" || workType === "monograph";
+    const isSection = workType === "book-chapter";
+    const publicationType = isBook
+      ? "Kitap / Monografi"
+      : isSection
+        ? "Kitap Bölümü"
+        : "Makale";
+
     return {
       source: "openalex" as const,
       title: cleanHtmlTags((work.title as string) ?? ""),
@@ -194,14 +222,15 @@ export function parseOpenAlexResults(
       authors:
         authorships?.map((a) => a.author?.display_name ?? "").filter(Boolean) ??
         [],
-      year: null,
-      publisher: null,
+      year,
+      publisher,
       openAlexId: extractOpenAlexId(work.id as string | null | undefined),
       relevanceScore: (work.relevance_score as number) ?? 0,
       referencedWorks: Array.isArray(work.referenced_works)
         ? (work.referenced_works as string[])
         : [],
       citedByCount: (work.cited_by_count as number) ?? 0,
+      publicationType,
     };
   });
 }
@@ -219,6 +248,14 @@ export function parseOpenAlexMetadataResults(
     const authorships = Array.isArray(work.authorships)
       ? (work.authorships as { author?: { display_name?: string } }[])
       : [];
+    const primaryLoc = work.primary_location as
+      | {
+          source?: {
+            display_name?: string;
+          };
+        }
+      | null
+      | undefined;
 
     return {
       id: (work.id as string) ?? "",
@@ -227,10 +264,10 @@ export function parseOpenAlexMetadataResults(
         .map((a) => a.author?.display_name ?? "")
         .filter(Boolean),
 
-      year: null,
+      year: (work.publication_year as number) ?? null,
       workType: (work.type as string) ?? null,
       doi: (work.doi as string) ?? null,
-      publisher: null,
+      publisher: primaryLoc?.source?.display_name ?? null,
       citedByCount: (work.cited_by_count as number) ?? 0,
     };
   });

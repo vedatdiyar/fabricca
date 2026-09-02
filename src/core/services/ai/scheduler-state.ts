@@ -80,6 +80,25 @@ export function markKeyRpmCoolingDown(
   rpmCooldownKeys.set(cacheKey, Date.now() + durationMs);
 }
 
+/**
+ * Returns remaining cooldown duration in milliseconds for an API key on a given model.
+ * Returns 0 if key is not currently in RPM cooldown.
+ */
+export function getKeyRpmCooldownRemainingMs(
+  model: string,
+  apiKey: string,
+): number {
+  const cacheKey = `${model}::${apiKey}`;
+  const expiresAt = rpmCooldownKeys.get(cacheKey);
+  if (!expiresAt) return 0;
+  const remaining = expiresAt - Date.now();
+  if (remaining <= 0) {
+    rpmCooldownKeys.delete(cacheKey);
+    return 0;
+  }
+  return remaining;
+}
+
 /** Records a successful LLM call on the specified key for load balancing. */
 export function recordKeyUsage(apiKey: string): void {
   keyUsageCounts.set(apiKey, (keyUsageCounts.get(apiKey) ?? 0) + 1);

@@ -6,13 +6,62 @@ import {
 } from "@/lib/academic/utils";
 import { rerankWithCohere } from "@/core/services/ai/cohere";
 import {
-  evaluateSingleBoxJury,
+  evaluateMultiBoxJury,
   type JuryInputItem,
   type ThesisMatrixContext,
 } from "../batch-jury";
 import type { SubBoxResult, PoolItem, JuryEvalResult } from "./types";
 
 export type { ThesisMatrixContext } from "../batch-jury";
+
+// Book Review detection regex
+const BOOK_REVIEW_TITLE_PATTERNS = [
+  /\bbook\s+review\b/i,
+  /\breview\s+article\b/i,
+  /^review:\s+/i,
+  /\bcolloque\b/i,
+  /\bby\s+[A-Z][a-z]+(\s+[A-Z][a-z]+)*\s*$/i,
+];
+
+const BOOK_REVIEW_ABSTRACT_PATTERNS = [
+  /\b(REVIEWED BY|Reviewed by)\b/i,
+  /\bPp\.\s*\d+\b/i,
+  /\$\s*\d+(\.\d+)?\s*(cloth|paper|hardcover|pb)\b/i,
+  /\bISBN\s*[\d-]+\b/i,
+];
+
+function isBookReview(
+  title: string | null | undefined,
+  abstract: string | null | undefined,
+): boolean {
+  if (title && BOOK_REVIEW_TITLE_PATTERNS.some((p) => p.test(title)))
+    return true;
+  if (
+    abstract &&
+    BOOK_REVIEW_ABSTRACT_PATTERNS.some((p) => p.test(abstract.slice(0, 300)))
+  )
+    return true;
+  return false;
+}
+
+const FOREIGN_ROMANCE_GERMANIC_RE =
+  /\b(della|dello|degli|delle|nella|nello|negli|nelle|congiuntura|quaderni|rivoluzione|carcere|pour|dans|avec|sur|une|des|sobre|hacia|und|der|die|das|aufspüren|korpuspragmatisch)\b/i;
+
+function isForeignTitle(title: string | null | undefined): boolean {
+  if (!title) return false;
+  return FOREIGN_ROMANCE_GERMANIC_RE.test(title);
+}
+
+const PERIOD_MISMATCH_RE =
+  /\b(2011[-–]2017|2005[-–]2015|2001[-–]2017|2007[-–]8|post[-–]2000|since\s+2000|AKP['’]?s|AK\s+Parti['’]?nin|AK\s+Parti['’]?s)\b/i;
+
+function isPeriodMismatch(
+  boxType: string,
+  title: string | null | undefined,
+): boolean {
+  if (boxType !== "SUBJECT_PROBLEM") return false;
+  return PERIOD_MISMATCH_RE.test(title ?? "");
+}
 
 /**
  * Builds the jury pool for a sub-box from raw papers only.
@@ -31,9 +80,10 @@ function buildPool(r: SubBoxResult): PoolItem[] {
  * Executes Phase 2 jury evaluation over the de-duplicated candidate pools.
  * Applies:
  * 1. Title and DOI deduplication across all 4 channels.
- * 2. Abstract depth verification (seed worthiness).
- * 3. Cohere Rerank v4.0 Pro semantic pre-ranking against sub-box context (with heuristic fallback).
- * 4. Structured Gemini Flash Lite academic jury evaluation with Holistic Thesis Matrix & Box Isolation.
+ * 2. Abstract depth and monograph verification (seed worthiness).
+ * 3. Pre-filters for book reviews, foreign language titles, and period mismatches.
+ * 4. Cohere Rerank v4.0 Pro semantic pre-ranking against sub-box context (top 35).
+ * 5. Structured Gemini Flash Lite academic jury evaluation with Holistic Thesis Matrix & Box Isolation.
  *
  * @param fulfilledResults - The Phase 1 search results per sub-box.
  * @param logger - The shared flow logger.
@@ -57,11 +107,15 @@ export async function executePhase2Jury(
     let pool = buildPool(r);
     if (pool.length === 0) continue;
 
-    // 1. Cross-channel title and DOI deduplication
+    // 1. Cross-channel title and DOI deduplication & code-level pre-filters
     const seenNormTitles = new Set<string>();
     const seenDois = new Set<string>();
     pool = pool.filter((item) => {
-      const normTitle = normalizeCleanTitle(item.rawPaper.title ?? "");
+      const title = item.rawPaper.title ?? "";
+      const abstract = item.rawPaper.abstract ?? "";
+      if (!title || title.trim().length < 3) return false;
+
+      const normTitle = normalizeCleanTitle(title);
       const doi = extractCleanDoi(item.rawPaper.doi ?? "");
       if (doi) {
         if (seenDois.has(doi)) return false;
@@ -71,10 +125,16 @@ export async function executePhase2Jury(
         if (seenNormTitles.has(normTitle)) return false;
         seenNormTitles.add(normTitle);
       }
+
+      // Code-level pre-filters
+      if (isBookReview(title, abstract)) return false;
+      if (isForeignTitle(title)) return false;
+      if (isPeriodMismatch(r.boxType, title)) return false;
+
       return true;
     });
 
-    // 2. Two-tiered pre-ranking: Cohere Rerank v4.0 Pro with heuristic fallback
+    // 2. Two-tiered pre-ranking: Cohere Rerank v4.0 Pro (top 35) with heuristic fallback
     let capped: PoolItem[] = [];
     const { openAlexQuery } = parseDualSemanticQuery(r.subBox.semanticQuery);
     const queryParts = [
@@ -84,22 +144,37 @@ export async function executePhase2Jury(
     ].filter(Boolean);
     const queryContext = queryParts.join(". ").trim();
 
-    const candidateDocs = pool.map((item) =>
-      `${item.rawPaper.title ?? ""}. ${item.rawPaper.abstract ?? item.rawPaper.metadata ?? ""}`.trim(),
-    );
+    const candidateDocs = pool.map((item) => {
+      const parts = [
+        item.rawPaper.title,
+        item.rawPaper.authors?.length > 0
+          ? `Yazarlar: ${item.rawPaper.authors.join(", ")}`
+          : "",
+        item.rawPaper.year ? `Yıl: ${item.rawPaper.year}` : "",
+        item.rawPaper.publisher
+          ? `Yayıncı/Kurum: ${item.rawPaper.publisher}`
+          : "",
+        item.rawPaper.citedByCount
+          ? `Atıf Sayısı: ${item.rawPaper.citedByCount}`
+          : "",
+        item.rawPaper.abstract ?? item.rawPaper.metadata ?? "",
+      ].filter(Boolean);
+      return parts.join(". ").trim();
+    });
 
     if (candidateDocs.length > 0) {
       try {
         const rerankResults = await rerankWithCohere({
           query: queryContext,
           documents: candidateDocs,
-          topN: 20,
+          topN: Math.min(35, candidateDocs.length),
           logger,
           silent: true,
         });
 
         if (rerankResults.length > 0) {
           capped = rerankResults
+            .slice(0, 35)
             .map((res) => pool[res.index])
             .filter((item): item is PoolItem => Boolean(item));
         }
@@ -120,7 +195,7 @@ export async function executePhase2Jury(
             (b.rawPaper.citedByCount ?? 0) - (a.rawPaper.citedByCount ?? 0) ||
             b.rawPaper.relevanceScore - a.rawPaper.relevanceScore,
         )
-        .slice(0, 20);
+        .slice(0, 35);
     }
 
     poolByBox.set(r.thesisBoxId, capped);
@@ -140,17 +215,12 @@ export async function executePhase2Jury(
 
   if (juryInputs.length > 0) {
     try {
-      const juryResults = await Promise.all(
-        juryInputs.map(async (input) => {
-          const result = await evaluateSingleBoxJury(
-            thesisMatrixContext,
-            input,
-            logger,
-          );
-          return result.evaluations;
-        }),
+      const juryResults = await evaluateMultiBoxJury(
+        thesisMatrixContext,
+        juryInputs,
+        logger,
       );
-      juryEvaluations = juryResults.flat();
+      juryEvaluations = juryResults.flatMap((res) => res.evaluations);
 
       logger.info("literature_batch_jury_success", {
         hidden: true,

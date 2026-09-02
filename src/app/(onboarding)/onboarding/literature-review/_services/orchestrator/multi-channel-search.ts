@@ -91,10 +91,13 @@ export async function searchMultiChannelForSubBox(
 
       // 2. Semantic Scholar (Influential global papers - focused keyword/phrase search)
       (async (): Promise<RawPaper[]> => {
-        if (!semanticScholarQuery || checkCancelled?.()) return [];
+        const s2Query =
+          semanticScholarQuery ||
+          `${subBox.title} ${subBox.concepts?.join(" ") ?? ""}`.trim();
+        if (!s2Query || checkCancelled?.()) return [];
         try {
           const papers = await withProviderTimeout(
-            searchSemanticScholarPapers(semanticScholarQuery, 20),
+            searchSemanticScholarPapers(s2Query, 25),
             PROVIDER_TIMEOUT_MS,
             [],
           );
@@ -112,7 +115,7 @@ export async function searchMultiChannelForSubBox(
               "BookSection",
             );
             const pubType = isBook
-              ? "Kitap"
+              ? "Kitap / Monografi"
               : isSection
                 ? "Kitap Bölümü"
                 : "Makale";

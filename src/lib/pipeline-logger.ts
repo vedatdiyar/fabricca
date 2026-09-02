@@ -5,6 +5,7 @@ import {
   formatPipelineFinish,
 } from "./logger-format";
 import { stageIndexOf, type PipelineDefinition } from "./pipeline-definitions";
+import { resetGeminiScheduler } from "@/core/services/ai";
 
 interface StageRecord {
   key: string;
@@ -91,6 +92,7 @@ export class PipelineRun {
    * @returns A new pipeline run instance.
    */
   static create(definition: PipelineDefinition): PipelineRun {
+    resetGeminiScheduler();
     return new PipelineRun(definition, createFlowId(), true);
   }
 

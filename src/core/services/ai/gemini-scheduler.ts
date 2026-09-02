@@ -30,6 +30,7 @@ import {
   recordKeyUsage,
   incrementInFlight,
   decrementInFlight,
+  getNextRoundRobinOffset,
   getKeyUsageStats,
   resetGeminiScheduler,
 } from "./scheduler-state";
@@ -198,30 +199,29 @@ export async function dispatchGeminiCall<T>(
 
         if (i < keyIndicesToTry.length - 1) {
           const nextKeyIdx = keyIndicesToTry[i + 1];
-          const quotaLabel =
+          const retrySec = retryDelayMs
+            ? `${Math.round(retryDelayMs / 1000)}s`
+            : "60s";
+          const quotaSummary =
             quotaKind === "rpd_daily"
-              ? "GUNLUK kota (RPD) — Pacific midnight reset"
+              ? "Günlük kota (RPD)"
               : quotaKind === "rpm_per_minute"
-                ? `DAKIKALIK limit (RPM) — retryDelay ${retryDelayMs ? `${Math.round(retryDelayMs / 1000)}s` : "60s (varsayilan)"}`
-                : "bilinmeyen 429";
+                ? `15 RPM kotası (${retrySec} soğuma)`
+                : "429 limit";
+
           params.logger?.info("gemini_key_rotate_retry", {
             service: "gemini",
             status: "RETRY",
             data: {
-              summary: `(key ${currentKeyIdx + 1} failed [${quotaKind}] → ${quotaLabel}, rotating to key ${nextKeyIdx + 1}/${pool.length})`,
+              summary: `(Key ${currentKeyIdx + 1} [${quotaSummary}] ➔ Key ${nextKeyIdx + 1}/${pool.length} devraldı)`,
               fromKey: currentKeyIdx + 1,
               toKey: nextKeyIdx + 1,
               totalKeys: pool.length,
               model,
               quotaKind,
-              quotaLabel,
               quotaMetric: quotaDetails?.quotaMetric,
               quotaId: quotaDetails?.quotaId,
               retryDelayMs: retryDelayMs ?? undefined,
-              errorMessage:
-                error instanceof Error
-                  ? error.message.slice(0, 300)
-                  : String(error).slice(0, 300),
             },
           });
           continue;
@@ -312,7 +312,7 @@ async function mapConcurrent<T, R>(
 export async function dispatchGeminiBatch<TItem, TResult>(
   options: GeminiBatchOptions<TItem, TResult>,
 ): Promise<TResult[]> {
-  const { items, model, operation, logger, concurrencyPerKey = 5, task } = options;
+  const { items, model, operation, logger, concurrencyPerKey = 2, task } = options;
   if (items.length === 0) return [];
 
   const pool = getGeminiKeyPool().keys;
@@ -321,14 +321,17 @@ export async function dispatchGeminiBatch<TItem, TResult>(
   }
 
   const keyCount = pool.length;
-  // Partition items into K shards: item i goes to shard (i % keyCount)
+  // Monotonically advance start shard offset so even small consecutive batches rotate across all keys
+  const startOffset = getNextRoundRobinOffset(keyCount);
+
+  // Partition items into K shards: item i goes to shard ((startOffset + i) % keyCount)
   const shards: { item: TItem; originalIndex: number }[][] = Array.from(
     { length: keyCount },
     () => [],
   );
 
   for (let i = 0; i < items.length; i++) {
-    shards[i % keyCount].push({ item: items[i], originalIndex: i });
+    shards[(startOffset + i) % keyCount].push({ item: items[i], originalIndex: i });
   }
 
   const finalResults: TResult[] = new Array(items.length);

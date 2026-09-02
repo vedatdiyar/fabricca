@@ -17,6 +17,7 @@ import {
 import { loadThesisMatrixAndBoxes } from "@/app/(onboarding)/onboarding/literature-review/_services/process-boxes-data";
 import { isLiteratureCancelled } from "./cancel-state";
 import { resetLiteratureCancelledAction } from "./cancel-actions";
+import { resetGeminiScheduler } from "@/core/services/ai";
 
 /**
  * Processes all sub-boxes through the batch literature pipeline.
@@ -34,6 +35,7 @@ export async function processAllBoxesAction(
     if (!session) return { error: SESSION_ERROR_MSG };
 
     const userId = session.userId;
+    resetGeminiScheduler();
     await resetLiteratureCancelledAction();
 
     if (isLiteratureCancelled(userId)) return { error: "cancelled" };
@@ -102,6 +104,7 @@ export async function runLiteraturePipelineAction(
     if (!session) return { error: SESSION_ERROR_MSG };
 
     const userId = session.userId;
+    resetGeminiScheduler();
     await resetLiteratureCancelledAction();
 
     if (isLiteratureCancelled(userId)) return { error: "cancelled" };

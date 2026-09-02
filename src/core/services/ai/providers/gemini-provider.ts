@@ -275,21 +275,23 @@ export async function generateStructuredContent<T>(
           const payloadStage = options?.payloadStage ?? "gemini";
           logger?.saveDebugPayload?.(payloadStage, model, prompt);
 
-          logger?.error(`${callLabel}_failed`, {
-            service: "gemini",
-            filePath: "src/core/services/ai/providers/gemini-provider.ts",
-            durationMs: taskDurationMs,
-            data: {
-              model,
-              projectIndex: projectIndex + 1,
-              crossProjectRotation: true,
-              attempts,
-              thinkingLevel: thinkingLevel ?? undefined,
-              scenario,
-              quotaDetails: quotaDetails ?? undefined,
-            },
-            error,
-          });
+          if (options?.quiet !== true) {
+            logger?.error(`${callLabel}_failed`, {
+              service: "gemini",
+              filePath: "src/core/services/ai/providers/gemini-provider.ts",
+              durationMs: taskDurationMs,
+              data: {
+                model,
+                projectIndex: projectIndex + 1,
+                crossProjectRotation: true,
+                attempts,
+                thinkingLevel: thinkingLevel ?? undefined,
+                scenario,
+                quotaDetails: quotaDetails ?? undefined,
+              },
+              error,
+            });
+          }
           throw error;
         }
       },
