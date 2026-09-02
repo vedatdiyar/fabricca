@@ -11,9 +11,11 @@ import { toAiProviderError } from "./llm-errors";
 
 /** Multilingual (incl. Turkish) Cohere Rerank model ID — 32,768-token context. */
 export const COHERE_RERANK_MODEL = "rerank-v4.0-pro";
-/** Maximum duration to wait for a Cohere Rerank response before aborting. */
-const COHERE_TIMEOUT_MS = 30000;
-/** Maximum retry attempts for transient Cohere failures (429/5xx). */
+/** Maximum duration to wait for a single HTTP attempt before killing a stalled socket. */
+const COHERE_ATTEMPT_TIMEOUT_MS = 10000;
+/** Maximum total execution duration across all retries. */
+const COHERE_TOTAL_TIMEOUT_MS = 45000;
+/** Maximum retry attempts for transient Cohere failures (429/5xx/stalled sockets). */
 const COHERE_MAX_RETRIES = 3;
 
 /**
@@ -57,6 +59,19 @@ export interface RerankParams {
 }
 
 /**
+ * Checks if an error represents an AbortError or TimeoutError (e.g. stalled socket).
+ *
+ * @param error - The error to inspect.
+ * @returns True if error is a timeout or abort.
+ */
+function isTimeoutOrAbortError(error: unknown): boolean {
+  if (error instanceof Error) {
+    return error.name === "AbortError" || error.name === "TimeoutError";
+  }
+  return false;
+}
+
+/**
  * Reranks all documents against a query via Cohere rerank-v4.0-pro, returning the full
  * score list so the caller applies its own deterministic cutoff. No fallback models or
  * synthetic scores are used; any failure aborts the pipeline with a thrown error.
@@ -82,68 +97,90 @@ export async function rerankWithCohere(
     throw error;
   }
 
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), COHERE_TIMEOUT_MS);
-
   const rerankStart = performance.now();
 
   try {
-    const response = await cohereRequestQueue.exec(() =>
-      withRetry(
-        async (): Promise<Response> => {
-          const res = await fetch(COHERE_RERANK_URL, {
-            method: "POST",
-            headers: {
-              Authorization: `Bearer ${apiKey}`,
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-              model: COHERE_RERANK_MODEL,
-              query,
-              documents,
-              top_n: documents.length,
-            }),
-            signal: controller.signal,
-          });
+    const response = await cohereRequestQueue.exec(async () => {
+      const overallController = new AbortController();
+      const overallTimer = setTimeout(
+        () => overallController.abort(),
+        COHERE_TOTAL_TIMEOUT_MS,
+      );
 
-          if (!res.ok) {
-            const errText = await res.text().catch(() => "");
-            throw new HttpError(
-              res.status,
-              errText,
-              parseRetryAfterHeader(res),
-            );
-          }
+      try {
+        return await withRetry(
+          async (): Promise<Response> => {
+            const attemptSignal = AbortSignal.timeout(COHERE_ATTEMPT_TIMEOUT_MS);
+            const compositeSignal =
+              typeof AbortSignal.any === "function"
+                ? AbortSignal.any([overallController.signal, attemptSignal])
+                : attemptSignal;
 
-          return res;
-        },
-        {
-          maxRetries: COHERE_MAX_RETRIES,
-          baseDelay: 1000,
-          maxDelay: DEFAULT_MAX_DELAY,
-          isRetryable: (error) => {
-            if (error instanceof HttpError) {
-              return error.status === 429 || error.status >= 500;
-            }
-            return false;
-          },
-          getRetryAfter: (error) =>
-            error instanceof HttpError ? error.retryAfter : null,
-          onRetry: (attempt, delayMs, error) => {
-            logger?.retry("cohere_rerank", {
-              service: "cohere",
-              durationMs: delayMs,
-              error,
-              data: {
-                summary: `(attempt ${attempt}/${COHERE_MAX_RETRIES})`,
-                attempt,
-                delayMs: Math.round(delayMs),
+            const res = await fetch(COHERE_RERANK_URL, {
+              method: "POST",
+              headers: {
+                Authorization: `Bearer ${apiKey}`,
+                "Content-Type": "application/json",
               },
+              body: JSON.stringify({
+                model: COHERE_RERANK_MODEL,
+                query,
+                documents,
+                top_n: documents.length,
+              }),
+              signal: compositeSignal,
             });
+
+            if (!res.ok) {
+              const errText = await res.text().catch(() => "");
+              throw new HttpError(
+                res.status,
+                errText,
+                parseRetryAfterHeader(res),
+              );
+            }
+
+            return res;
           },
-        },
-      ),
-    );
+          {
+            maxRetries: COHERE_MAX_RETRIES,
+            baseDelay: 1000,
+            maxDelay: DEFAULT_MAX_DELAY,
+            isRetryable: (error) => {
+              if (overallController.signal.aborted) {
+                return false;
+              }
+              if (isTimeoutOrAbortError(error)) {
+                return true;
+              }
+              if (error instanceof HttpError) {
+                return error.status === 429 || error.status >= 500;
+              }
+              return false;
+            },
+            getRetryAfter: (error) =>
+              error instanceof HttpError ? error.retryAfter : null,
+            onRetry: (attempt, delayMs, error) => {
+              const isTimeout = isTimeoutOrAbortError(error);
+              logger?.retry("cohere_rerank", {
+                service: "cohere",
+                durationMs: delayMs,
+                error,
+                data: {
+                  summary: isTimeout
+                    ? `(stalled socket recovered, attempt ${attempt}/${COHERE_MAX_RETRIES})`
+                    : `(attempt ${attempt}/${COHERE_MAX_RETRIES})`,
+                  attempt,
+                  delayMs: Math.round(delayMs),
+                },
+              });
+            },
+          },
+        );
+      } finally {
+        clearTimeout(overallTimer);
+      }
+    });
 
     const data = (await response.json()) as {
       results?: Array<{ index: number; relevance_score?: number }>;
@@ -185,7 +222,5 @@ export async function rerankWithCohere(
       error,
     });
     throw toAiProviderError(error, "cohere");
-  } finally {
-    clearTimeout(timer);
   }
 }

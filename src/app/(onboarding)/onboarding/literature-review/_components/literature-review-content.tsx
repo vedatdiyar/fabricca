@@ -329,7 +329,7 @@ export function LiteratureReviewContent() {
       <AIBanner
         icon={BookOpen}
         title="Akademik Kaynak Taraması Aktif"
-        description="Yapay zeka asistanınız her bir konu kutusu için akademik veri tabanlarını (Crossref, Semantic Scholar, ulusal tez arşivi vb.) tarayarak başlangıç kaynaklarını derliyor."
+        description="Yapay zeka asistanınız her bir konu kutusu için akademik veri tabanlarını (OpenAlex, ulusal tez arşivi vb.) tarayarak başlangıç kaynaklarını derliyor."
       />
 
       <div className="grid grid-cols-1 gap-4">

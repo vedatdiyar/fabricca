@@ -4,8 +4,8 @@ import { searchMultiChannelForSubBox } from "./multi-channel-search";
 import type { SubBoxResult } from "./types";
 
 /**
- * Executes Phase 1 search across sub-boxes using the 4-channel multi-source search engine
- * (OpenAlex, Semantic Scholar, Exa DergiPark, and Qdrant YÖK Theses).
+ * Executes Phase 1 search across sub-boxes using the multi-source search engine
+ * (OpenAlex GTE Semantic, OpenAlex Title Search, and Qdrant YÖK Theses).
  *
  * @param activeJobs - The list of box sub-box jobs to search.
  * @param logger - The shared flow logger.

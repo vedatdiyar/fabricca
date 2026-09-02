@@ -280,9 +280,7 @@ export async function evaluateMultiBoxJury(
                 ? "YÖK Ulusal Tez Merkezi"
                 : a.source === "exa"
                   ? "DergiPark"
-                  : a.source === "semantic_scholar"
-                    ? "Semantic Scholar"
-                    : "OpenAlex";
+                  : "OpenAlex";
 
             const typeLabel =
               a.publicationType || (a.source === "qdrant" ? "Tez" : "Makale");

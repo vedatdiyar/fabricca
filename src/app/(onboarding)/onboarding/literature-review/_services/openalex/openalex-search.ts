@@ -30,8 +30,8 @@ export async function searchOpenAlex(
   checkCancelled?: () => boolean,
   externalSignal?: AbortSignal,
 ): Promise<RawPaper[]> {
-  // Sanitize: collapse whitespace/newlines, trim, enforce 1700-char URL safety margin (API max 2000)
-  const sanitized = query.replace(/\s+/g, " ").trim().slice(0, 1700);
+  // Sanitize: collapse whitespace/newlines, trim, enforce 1500-char API limit (free plan)
+  const sanitized = query.replace(/\s+/g, " ").trim().slice(0, 1500);
   if (sanitized.length < 3) return [];
   const trimmedQuery = sanitized;
   const params = new URLSearchParams({
@@ -47,6 +47,42 @@ export async function searchOpenAlex(
   }
 
   return (await semanticQueue.exec(() =>
+    queryOpenAlexWorks(params, checkCancelled, externalSignal),
+  )) as RawPaper[];
+}
+
+/**
+ * Hybrid complement: keyword-based OpenAlex `search` to recover canonical
+ * works that GTE semantic ranking demotes. Uses `search` (not `title.search`)
+ * for broader recall and regular queue (100 req/s).
+ * Generic: derived from sub-box keywords, not hardcoded titles.
+ *
+ * @param keywordQuery - Short keyword phrase (3-80 chars).
+ * @param perPage - Number of results to request (capped 10).
+ * @returns Matching raw papers (empty when query < 3 chars).
+ */
+export async function searchOpenAlexByTitleFilter(
+  keywordQuery: string,
+  perPage: number,
+  checkCancelled?: () => boolean,
+  externalSignal?: AbortSignal,
+): Promise<RawPaper[]> {
+  const sanitized = keywordQuery.replace(/\s+/g, " ").trim().slice(0, 80);
+  if (sanitized.length < 3) return [];
+  const params = new URLSearchParams({
+    search: sanitized,
+    per_page: String(Math.min(perPage, 10)),
+    select:
+      "id,title,type,authorships,relevance_score,doi,referenced_works,language,abstract_inverted_index,cited_by_count,primary_location",
+  });
+
+  const apiKey = process.env.OPENALEX_API_KEY;
+  if (apiKey) params.set("api_key", apiKey);
+
+  // Uses regular queue (no semantic turnstile) — imported lazily to avoid cycle
+  const { openAlexQueue } = await import("./openalex-http");
+  const { queryOpenAlexWorks } = await import("./openalex-http");
+  return (await openAlexQueue.exec(() =>
     queryOpenAlexWorks(params, checkCancelled, externalSignal),
   )) as RawPaper[];
 }

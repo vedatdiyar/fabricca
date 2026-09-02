@@ -29,7 +29,7 @@ export interface RefMetadata {
 }
 
 export type LiteratureSourceChannel =
-  "openalex" | "semantic_scholar" | "exa" | "qdrant";
+  "openalex" | "exa" | "qdrant";
 
 export interface RawPaper {
   source: LiteratureSourceChannel;

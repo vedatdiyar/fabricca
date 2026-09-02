@@ -4,10 +4,7 @@ import {
   extractCleanDoi,
   parseDualSemanticQuery,
 } from "@/lib/academic/utils";
-import {
-  areTitlesDuplicateByMetric,
-  normalizeCleanTitle,
-} from "@/lib/academic/title-utils";
+import { areTitlesDuplicateByMetric } from "@/lib/academic/title-utils";
 import { extractSurname } from "@/lib/academic/filename-utils";
 import { rerankWithCohere } from "@/core/services/ai/cohere";
 import {
@@ -133,7 +130,7 @@ function buildPool(r: SubBoxResult): PoolItem[] {
  * 1. Title and DOI deduplication across all 4 channels.
  * 2. Abstract depth and monograph verification (seed worthiness).
  * 3. Pre-filters for book reviews, foreign language titles, and period mismatches.
- * 4. Cohere Rerank v4.0 Pro semantic pre-ranking against sub-box context (top 35).
+ * 4. Cohere Rerank v4.0 Pro semantic pre-ranking against sub-box context (top 18).
  * 5. Structured Gemini Flash Lite academic jury evaluation with Holistic Thesis Matrix & Box Isolation.
  *
  * @param fulfilledResults - The Phase 1 search results per sub-box.
@@ -154,167 +151,150 @@ export async function executePhase2Jury(
   const juryInputs: JuryInputItem[] = [];
   const poolByBox = new Map<number, PoolItem[]>();
 
-  for (const r of fulfilledResults) {
-    let pool = buildPool(r);
-    if (pool.length === 0) continue;
-
-    // 1. Cross-channel deduplication & code-level pre-filters
-    // DOI exact match + metric-based title dedup (Jaccard/Levenshtein >=0.90) with year/author guard
-    const seenDois = new Set<string>();
-    const seenPapers: Array<{ title: string; year: number | null; authors: string[] }> = [];
-    pool = pool.filter((item) => {
-      const title = item.rawPaper.title ?? "";
-      const abstract = item.rawPaper.abstract ?? "";
-      if (!title || title.trim().length < 3) return false;
-
-      // Code-level pre-filters (before dedup to avoid polluting seen set)
-      if (isBookReview(title, abstract)) return false;
-      if (!isTargetLanguage(title, abstract)) {
-        const sampleText = `${title} ${abstract ?? ""}`.slice(0, 300);
-        let detectedLang = "und";
-        try {
-          detectedLang = franc(sampleText, { minLength: 10 });
-        } catch {
-          detectedLang = "und";
-        }
-        logger.info("foreign_language_paper_dropped", {
-          hidden: true,
-          data: { title: title.slice(0, 120), detectedLang },
-        });
-        return false;
+  const processedResults = await Promise.all(
+    fulfilledResults.map(async (r) => {
+      let pool = buildPool(r);
+      if (pool.length === 0) {
+        return {
+          thesisBoxId: r.thesisBoxId,
+          capped: [] as PoolItem[],
+          juryInput: null,
+        };
       }
-      if (isPeriodMismatch(r.boxType, title)) return false;
 
-      const doi = extractCleanDoi(item.rawPaper.doi ?? "");
-      if (doi && seenDois.has(doi)) return false;
+      // 1. Cross-channel deduplication & code-level pre-filters
+      // DOI exact match + metric-based title dedup (Jaccard/Levenshtein >=0.90) with year/author guard
+      const seenDois = new Set<string>();
+      const seenPapers: Array<{ title: string; year: number | null; authors: string[] }> = [];
+      pool = pool.filter((item) => {
+        const title = item.rawPaper.title ?? "";
+        const abstract = item.rawPaper.abstract ?? "";
+        if (!title || title.trim().length < 3) return false;
 
-      // Metric-based duplicate check: similarity >=0.90 AND (year ±1 OR first-author match)
-      const isDuplicate = seenPapers.some((prev) => {
-        if (!areTitlesDuplicateByMetric(title, prev.title, 0.90)) return false;
-        const yearMatch =
-          typeof item.rawPaper.year === "number" &&
-          typeof prev.year === "number" &&
-          Math.abs(item.rawPaper.year - prev.year) <= 1;
-        const firstAuthorA = item.rawPaper.authors?.[0]
-          ? extractSurname(item.rawPaper.authors[0]).toLowerCase()
-          : null;
-        const firstAuthorB = prev.authors?.[0]
-          ? extractSurname(prev.authors[0]).toLowerCase()
-          : null;
-        const hasAuthor =
-          !!firstAuthorA &&
-          !!firstAuthorB &&
-          firstAuthorA !== "anonim" &&
-          firstAuthorB !== "anonim";
-        const authorMatch = hasAuthor ? firstAuthorA === firstAuthorB : false;
-        const hasMeta =
-          (typeof item.rawPaper.year === "number" && typeof prev.year === "number") || hasAuthor;
-        if (hasMeta) return yearMatch || authorMatch;
+        // Code-level pre-filters (before dedup to avoid polluting seen set)
+        if (isBookReview(title, abstract)) return false;
+        if (!isTargetLanguage(title, abstract)) {
+          const sampleText = `${title} ${abstract ?? ""}`.slice(0, 300);
+          let detectedLang = "und";
+          try {
+            detectedLang = franc(sampleText, { minLength: 10 });
+          } catch {
+            detectedLang = "und";
+          }
+          logger.info("foreign_language_paper_dropped", {
+            hidden: true,
+            data: { title: title.slice(0, 120), detectedLang },
+          });
+          return false;
+        }
+        if (isPeriodMismatch(r.boxType, title)) return false;
+
+        const doi = extractCleanDoi(item.rawPaper.doi ?? "");
+        if (doi && seenDois.has(doi)) return false;
+
+        // Metric-based duplicate check: similarity >=0.90 AND (year ±1 OR first-author match)
+        const isDuplicate = seenPapers.some((prev) => {
+          if (!areTitlesDuplicateByMetric(title, prev.title, 0.90)) return false;
+          const yearMatch =
+            typeof item.rawPaper.year === "number" &&
+            typeof prev.year === "number" &&
+            Math.abs(item.rawPaper.year - prev.year) <= 1;
+          const firstAuthorA = item.rawPaper.authors?.[0]
+            ? extractSurname(item.rawPaper.authors[0]).toLowerCase()
+            : null;
+          const firstAuthorB = prev.authors?.[0]
+            ? extractSurname(prev.authors[0]).toLowerCase()
+            : null;
+          const hasAuthor =
+            !!firstAuthorA &&
+            !!firstAuthorB &&
+            firstAuthorA !== "anonim" &&
+            firstAuthorB !== "anonim";
+          const authorMatch = hasAuthor ? firstAuthorA === firstAuthorB : false;
+          const hasMeta =
+            (typeof item.rawPaper.year === "number" && typeof prev.year === "number") || hasAuthor;
+          if (hasMeta) return yearMatch || authorMatch;
+          return true;
+        });
+        if (isDuplicate) return false;
+
+        if (doi) seenDois.add(doi);
+        seenPapers.push({
+          title,
+          year: item.rawPaper.year ?? null,
+          authors: item.rawPaper.authors ?? [],
+        });
         return true;
       });
-      if (isDuplicate) return false;
 
-      if (doi) seenDois.add(doi);
-      seenPapers.push({
-        title,
-        year: item.rawPaper.year ?? null,
-        authors: item.rawPaper.authors ?? [],
-      });
-      return true;
-    });
-
-    // 2. Two-tiered pre-ranking: Cohere Rerank v4.0 Pro (top 35) with heuristic fallback
-    let capped: PoolItem[] = [];
-    const { openAlexQuery } = parseDualSemanticQuery(r.subBox.semanticQuery);
-    const queryParts = [
-      r.subBox.title,
-      r.subBoxDescription,
-      openAlexQuery ? `Scholarly context: ${openAlexQuery.slice(0, 400)}` : "",
-    ].filter(Boolean);
-    const queryContext = queryParts.join(". ").trim();
-
-    const candidateDocs = pool.map((item) => {
-      const parts = [
-        item.rawPaper.title,
-        item.rawPaper.authors?.length > 0
-          ? `Yazarlar: ${item.rawPaper.authors.join(", ")}`
-          : "",
-        item.rawPaper.year ? `Yıl: ${item.rawPaper.year}` : "",
-        item.rawPaper.publisher
-          ? `Yayıncı/Kurum: ${item.rawPaper.publisher}`
-          : "",
-        item.rawPaper.citedByCount
-          ? `Atıf Sayısı: ${item.rawPaper.citedByCount}`
-          : "",
-        item.rawPaper.abstract ?? item.rawPaper.metadata ?? "",
+      // 2. Parallel pre-ranking: Cohere Rerank v4.0 Pro (top 18)
+      let capped: PoolItem[] = [];
+      const { openAlexQuery } = parseDualSemanticQuery(r.subBox.semanticQuery);
+      const queryParts = [
+        r.subBox.title,
+        r.subBoxDescription,
+        openAlexQuery ? `Scholarly context: ${openAlexQuery.slice(0, 400)}` : "",
       ].filter(Boolean);
-      return parts.join(". ").trim();
-    });
+      const queryContext = queryParts.join(". ").trim();
 
-    // Cohere Rerank: single consolidated call per sub-box (global 10 RPM limiter in cohere.ts:24)
-    // pool is already deduped by title/DOI, so no duplicate documents are sent.
-    let cohereFailed = false;
-    if (candidateDocs.length > 0) {
-      try {
+      const candidateDocs = pool.map((item) => {
+        const parts = [
+          item.rawPaper.title,
+          item.rawPaper.authors?.length > 0
+            ? `Yazarlar: ${item.rawPaper.authors.join(", ")}`
+            : "",
+          item.rawPaper.year ? `Yıl: ${item.rawPaper.year}` : "",
+          item.rawPaper.publisher
+            ? `Yayıncı/Kurum: ${item.rawPaper.publisher}`
+            : "",
+          item.rawPaper.citedByCount
+            ? `Atıf Sayısı: ${item.rawPaper.citedByCount}`
+            : "",
+          item.rawPaper.abstract ?? item.rawPaper.metadata ?? "",
+        ].filter(Boolean);
+        return parts.join(". ").trim();
+      });
+
+      // Cohere Rerank: executed concurrently across sub-boxes (limiter token-bucket in cohere.ts)
+      if (candidateDocs.length > 0) {
         const rerankResults = await rerankWithCohere({
           query: queryContext,
           documents: candidateDocs,
-          topN: Math.min(35, candidateDocs.length),
+          topN: Math.min(18, candidateDocs.length),
           logger,
           silent: true,
         });
 
         if (rerankResults.length > 0) {
           capped = rerankResults
-            .slice(0, 35)
+            .slice(0, 18)
             .map((res) => pool[res.index])
             .filter((item): item is PoolItem => Boolean(item));
         }
-      } catch (rerankErr) {
-        cohereFailed = true;
-        logger.warn("literature_cohere_rerank_fallback", {
-          error:
-            rerankErr instanceof Error ? rerankErr.message : String(rerankErr),
-          data: { subBoxTitle: r.subBox.title },
-        });
       }
-    }
 
-    // Hybrid deterministic fallback if Cohere wasn't used, returned empty, or threw
-    if (capped.length === 0) {
-      if (pool.length > 0) {
-        logger.warn("cohere_rerank_fallback_engaged", {
-          service: "literature",
-          filePath:
-            "src/app/(onboarding)/onboarding/literature-review/_services/orchestrator/phase2-jury.ts",
-          data: {
-            subBoxTitle: r.subBox.title,
-            poolSize: pool.length,
-            cohereFailed,
-            reason: cohereFailed ? "cohere_error" : "empty_rerank_or_no_candidates",
-          },
-        });
-      }
-      capped = [...pool]
-        .sort(
-          (a, b) =>
-            calculateFallbackScore(b.rawPaper) -
-            calculateFallbackScore(a.rawPaper),
-        )
-        .slice(0, 35);
-    }
-
-    poolByBox.set(r.thesisBoxId, capped);
-    juryInputs.push({
-      box: {
+      return {
         thesisBoxId: r.thesisBoxId,
-        subBoxTitle: r.subBox.title,
-        boxType: r.boxType,
-        description: r.subBoxDescription,
-        concepts: r.subBox.concepts,
-      },
-      articles: capped.map((p) => p.rawPaper),
-    });
+        capped,
+        juryInput: {
+          box: {
+            thesisBoxId: r.thesisBoxId,
+            subBoxTitle: r.subBox.title,
+            boxType: r.boxType,
+            description: r.subBoxDescription,
+            concepts: r.subBox.concepts,
+          },
+          articles: capped.map((p) => p.rawPaper),
+        },
+      };
+    }),
+  );
+
+  for (const item of processedResults) {
+    poolByBox.set(item.thesisBoxId, item.capped);
+    if (item.juryInput && item.juryInput.articles.length > 0) {
+      juryInputs.push(item.juryInput);
+    }
   }
 
   let juryEvaluations: JuryEvalResult[] = [];

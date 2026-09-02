@@ -1,6 +1,6 @@
 /**
  * Dual semantic query interface representing separated queries for
- * OpenAlex (rich semantic vector description) and Semantic Scholar (concise keywords).
+ * OpenAlex (rich semantic vector description) and hybrid title/keyword search.
  */
 export interface DualSemanticQuery {
   openAlexQuery: string;
@@ -8,7 +8,7 @@ export interface DualSemanticQuery {
 }
 
 /**
- * Parses a stored semantic query string into distinct OpenAlex and Semantic Scholar queries.
+ * Parses a stored semantic query string into distinct OpenAlex vector and keyword queries.
  * Supports backwards compatibility with legacy plain string queries.
  *
  * @param rawQuery - Raw string from database or API.
@@ -55,7 +55,7 @@ export function parseDualSemanticQuery(
  * Serializes openAlexQuery and semanticScholarQuery into a unified JSON string for database storage.
  *
  * @param openAlexQuery - Rich semantic paragraph query for OpenAlex.
- * @param semanticScholarQuery - Focused keyword/phrase query for Semantic Scholar.
+ * @param semanticScholarQuery - Focused keyword/phrase query for hybrid search.
  * @returns JSON string containing both queries.
  */
 export function serializeDualSemanticQuery(

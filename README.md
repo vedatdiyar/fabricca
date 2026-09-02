@@ -189,7 +189,7 @@ src/
 │   ├── db/                          # Neon DB bağlantısı, 15 tablo şeması, reset.ts ve seed.ts
 │   ├── config/                      # Rate limit konfigürasyonu (rate-limits.ts)
 │   ├── providers/                   # QueryProvider, LoadingOverlayProvider
-│   └── services/                    # Ortak çekirdek servisler (ai, search, pdf, storage, box, academic, thesis-search, exa, semantic-scholar, timeline)
+│   └── services/                    # Ortak çekirdek servisler (ai, search, pdf, storage, box, academic, thesis-search, exa, timeline)
 ├── lib/
 │   ├── session.ts                   # Cookie tabanlı session yönetimi
 │   ├── constants.ts                 # Model sabitleri
@@ -231,32 +231,31 @@ Kutu (`boxes`) ve outline (`outlines`) ilişkilerinde `onDelete: "cascade"`; gö
 
 Gerekli tüm API anahtarları `.env.local` dosyasında tanımlanır:
 
-| Değişken                   | Hizmet                                      |
-| -------------------------- | ------------------------------------------- |
-| `DATABASE_URL`             | Neon PostgreSQL bağlantı dizesi             |
-| `GEMINI_API_KEY_1..3`      | Google Gemini API (en az 1 anahtar gerekli) |
-| `CLOUDFLARE_ACCOUNT_ID`    | Cloudflare Workers AI hesap ID              |
-| `CLOUDFLARE_API_TOKEN`     | Cloudflare Workers AI API token             |
-| `COHERE_API_KEY`           | Cohere Rerank API                           |
-| `OPENALEX_API_KEY`         | OpenAlex API (isteğe bağlı)                 |
-| `CROSSREF_CONTACT_EMAIL`   | Polite pool e-posta (User-Agent)            |
-| `HUGGINGFACE_API_KEY`      | Hugging Face Serverless Inference API key   |
-| `QDRANT_URL`               | Qdrant Cloud Tez Vektör DB endpoint         |
-| `QDRANT_API_KEY`           | Qdrant Cloud API key                        |
-| `MISTRAL_OCR_API_KEY`      | Mistral OCR API key                         |
-| `SEMANTIC_SCHOLAR_API_KEY` | Semantic Scholar API key                    |
-| `EXA_API_KEY`              | Exa.ai API key                              |
-| `R2_ACCOUNT_ID`            | Cloudflare R2 hesabı                        |
-| `R2_ACCESS_KEY_ID`         | R2 S3 access key                            |
-| `R2_SECRET_ACCESS_KEY`     | R2 S3 secret key                            |
-| `R2_BUCKET_NAME`           | R2 bucket adı (varsayılan `fabricca`)       |
-| `R2_PUBLIC_DOMAIN`         | R2 public domain (zorunlu, varsayılan yok)  |
-| `SEED_USER1_NAME`          | Seed kullanıcı 1 adı soyadı                 |
-| `SEED_USER1_USERNAME`      | Seed kullanıcı 1 kullanıcı adı              |
-| `SEED_USER1_PASSWORD`      | Seed kullanıcı 1 şifre                      |
-| `SEED_USER2_NAME`          | Seed kullanıcı 2 adı soyadı                 |
-| `SEED_USER2_USERNAME`      | Seed kullanıcı 2 kullanıcı adı              |
-| `SEED_USER2_PASSWORD`      | Seed kullanıcı 2 şifre                      |
+| Değişken                 | Hizmet                                      |
+| ------------------------ | ------------------------------------------- |
+| `DATABASE_URL`           | Neon PostgreSQL bağlantı dizesi             |
+| `GEMINI_API_KEY_1..3`    | Google Gemini API (en az 1 anahtar gerekli) |
+| `CLOUDFLARE_ACCOUNT_ID`  | Cloudflare Workers AI hesap ID              |
+| `CLOUDFLARE_API_TOKEN`   | Cloudflare Workers AI API token             |
+| `COHERE_API_KEY`         | Cohere Rerank API                           |
+| `OPENALEX_API_KEY`       | OpenAlex API (isteğe bağlı)                 |
+| `CROSSREF_CONTACT_EMAIL` | Polite pool e-posta (User-Agent)            |
+| `HUGGINGFACE_API_KEY`    | Hugging Face Serverless Inference API key   |
+| `QDRANT_URL`             | Qdrant Cloud Tez Vektör DB endpoint         |
+| `QDRANT_API_KEY`         | Qdrant Cloud API key                        |
+| `MISTRAL_OCR_API_KEY`    | Mistral OCR API key                         |
+| `EXA_API_KEY`            | Exa.ai API key                              |
+| `R2_ACCOUNT_ID`          | Cloudflare R2 hesabı                        |
+| `R2_ACCESS_KEY_ID`       | R2 S3 access key                            |
+| `R2_SECRET_ACCESS_KEY`   | R2 S3 secret key                            |
+| `R2_BUCKET_NAME`         | R2 bucket adı (varsayılan `fabricca`)       |
+| `R2_PUBLIC_DOMAIN`       | R2 public domain (zorunlu, varsayılan yok)  |
+| `SEED_USER1_NAME`        | Seed kullanıcı 1 adı soyadı                 |
+| `SEED_USER1_USERNAME`    | Seed kullanıcı 1 kullanıcı adı              |
+| `SEED_USER1_PASSWORD`    | Seed kullanıcı 1 şifre                      |
+| `SEED_USER2_NAME`        | Seed kullanıcı 2 adı soyadı                 |
+| `SEED_USER2_USERNAME`    | Seed kullanıcı 2 kullanıcı adı              |
+| `SEED_USER2_PASSWORD`    | Seed kullanıcı 2 şifre                      |
 
 ---
 

@@ -14,7 +14,7 @@ export interface MatrixInputForQuery {
 /**
  * Builds the hybrid XML/Markdown prompt payload for 4-channel multi-source query extraction:
  * 1. Qdrant (YÖK 366k Tez) - 2x Turkish queries
- * 2. OpenAlex & Semantic Scholar - 2x English queries
+ * 2. OpenAlex - 2x English queries
  * 3. Exa.ai (DergiPark & Field) - 2x Turkish queries
  *
  * @param matrix - The positioning matrix or raw proposal input.
@@ -40,9 +40,7 @@ Kullanıcının araştırma konusunu, kuramsal çerçevesini ve yöntemini anali
    - Dünyadaki kuramsal modelleri, felsefi/sosyolojik paradigmaları ve kurucu teorisyenleri hedefleyen İngilizce akademik sorgu.
 4. **globalEmpiricalQuery (OpenAlex / İngilizce):**
    - Küresel literatürdeki benzer olgusal araştırmaları, çağdaş tartışmaları ve etkili makaleleri hedefleyen İngilizce sorgu.
-5. **semanticScholarQuery (Semantic Scholar / İngilizce):**
-   - Semantic Scholar'ın anahtar kelime arama motoru için 3-6 kelimelik, araştırmanın en temel kavramlarını ve odağını birleştiren dolgusuz, öz İngilizce kavram sorgusu (örnek: "digital diplomacy artificial intelligence public diplomacy").
-6. **dergiparkQuery (Exa.ai - DergiPark / Türkçe):**
+5. **dergiparkQuery (Exa.ai - DergiPark / Türkçe):**
    - Türkiye'deki hakemli dergilerde yayımlanmış makaleleri yakalayacak Türkçe akademik sorgu (örn: "DergiPark [temel kavramlar ve vaka]").
 7. **fieldWebQuery (Exa.ai - Canlı Saha & Raporlar / Türkçe):**
    - Türkiye sahasındaki güncel sektörel verileri, mevzuatı, kurumsal raporları veya vaka dinamiklerini hedefleyen doğal dil sorgusu.

@@ -47,10 +47,10 @@ Anahtar Kavramlar (Concepts): [${conceptsText}]`;
 
   return buildPromptPayload({
     roleAndExpertise:
-      "Siz, tüm akademik disiplinlerdeki lisansüstü tez çalışmaları için hem OpenAlex'in GTE-Large-EN vektör motoruna hem de Semantic Scholar'ın akademik arama motoruna özel yüksek kaliteli, hedeflenmiş ve disiplinlerarası kanonik İngilizce arama sorguları üreten kıdemli bir bilgi bilimi ve araştırma metodolojisi uzmanısınız.",
+      "Siz, tüm akademik disiplinlerdeki lisansüstü tez çalışmaları için hem OpenAlex'in GTE-Large-EN vektör motoruna hem de akademik hibrit anahtar kelime motoruna özel yüksek kaliteli, hedeflenmiş ve disiplinlerarası kanonik İngilizce arama sorguları üreten kıdemli bir bilgi bilimi ve araştırma metodolojisi uzmanısınız.",
 
     primaryTask:
-      "Size verilen Genel Tez Matrisini, ilgili Alt Kutuyu (Sub-Box) ve Alt Kutuya ait Anahtar Kavramları (`concepts`) analiz ederek; her alt kutu için eşzamanlı olarak iki farklı arama sorgusu üretin: (1) OpenAlex GTE-Large-EN vektör modeli için zengin ve yoğun bir akademik araştırma paragrafı (`openAlexQuery`), (2) Semantic Scholar arama motoru için odaklanmış anahtar kelime/terim öbeği sorgusu (`semanticScholarQuery`).",
+      "Size verilen Genel Tez Matrisini, ilgili Alt Kutuyu (Sub-Box) ve Alt Kutuya ait Anahtar Kavramları (`concepts`) analiz ederek; her alt kutu için eşzamanlı olarak iki farklı arama sorgusu üretin: (1) OpenAlex GTE-Large-EN vektör modeli için zengin ve yoğun bir akademik araştırma paragrafı (`openAlexQuery`), (2) Hibrit başlık ve anahtar kelime araması için odaklanmış anahtar kelime/terim öbeği sorgusu (`semanticScholarQuery`).",
 
     rulesAndConstraints: `1. **Bütünsel Tez Matrisi ve Alt Kutu Çapalaması (Holistic Matrix & Sub-Box Grounding)**:
    - İlgili alt kutunun ait olduğu kadranın Genel Tez Matrisindeki detaylarından, alt kutu başlığından (\`title\`), açıklamasından (\`description\`) ve anahtar kavramlarından (\`concepts\`) yararlanın.
@@ -63,15 +63,16 @@ Anahtar Kavramlar (Concepts): [${conceptsText}]`;
    - **THEORETICAL_FRAMEWORK**: Kutu başlığı, açıklaması ve Genel Tez Matrisindeki spesifik kuramsal modele, kavramsal mekanizmaya ve belirtilen kuramcıların isimlerine odaklanın. Ampirik vaka aktörlerini hariç tutun.
    - **METHODOLOGY**: Tezin ve alt kutunun benimsediği araştırma desenine, veri toplama ve analiz protokollerine (söylem analizi, ekonometri, arşiv taraması, nitel/nicel vb.) odaklanın. Yalnızca ilgili yöntemin metodolojik literatürünü hedefleyin; ampirik vaka aktörlerini hariç tutun.
    - **PRIMARY_MATERIAL**: Boş string (\`""\`) döndürün.
-4. **OpenAlex Sorgu Kuralı (\`openAlexQuery\`)**:
-   - OpenAlex \`search.semantic\` motoru (GTE-Large-EN 1024d embedding) zengin ve detaylı metinlerle en yüksek başarıyı gösterir.
-   - 500-1200 karakter uzunluğunda, alt kutunun araştırma amacını, özgül kuramsal/metodolojik mekanizmasını, ampirik odağını ve analiz kapsamını açıklayan doğal, akıcı ve yoğun bir akademik İngilizce araştırma paragrafı (abstract/grant aim benzeri) oluşturun.
-5. **Semantic Scholar Sorgu Kuralı (\`semanticScholarQuery\`)**:
-   - Semantic Scholar \`paper/search\` motoru Boolean operatörlerini (AND, OR, NOT) DESTEKLEMEZ.
+ 4. **OpenAlex Sorgu Kuralı (\`openAlexQuery\`)**:
+   - OpenAlex \`search.semantic\` motoru (GTE-Large-EN 1024d embedding) zengin ve detaylı metinlerle en yüksek başarıyı gösterir (doküman: Up to 2000 chars, long-text queries shine — ancak ücretsiz planda 1500 karakter limiti var).
+   - **1300-1500 karakter** uzunluğunda, alt kutunun araştırma amacını, özgül kuramsal/metodolojik mekanizmasını, ampirik odağını ve analiz kapsamını açıklayan doğal, akıcı ve yoğun bir akademik İngilizce araştırma paragrafı (abstract/grant aim benzeri) oluşturun. Mutlaka 1300 karakter altı üretmeyin, 1500 üstüne çıkmayın.
+5. **Hibrit Başlık ve Anahtar Kelime Sorgu Kuralı (\`semanticScholarQuery\`)**:
+   - Boolean operatörleri (AND, OR, NOT) KULLANMAYIN.
    - Yalnızca 4-8 adet odaklı, yüksek kesinlikli İngilizce anahtar kelime veya tırnaklı kelime öbeği içeren yalın bir sorgu oluşturun (Örn: \`Daniel Egan Gramsci "war of position" "war of maneuver"\` veya \`"critical discourse analysis" Gramscian hegemony political studies\`).`,
 
-    workflowSteps: `1. Her bir alt kutunun türünü (\`boxType\`), açıklamasını, kavramlarını ve Genel Tez Matrisindeki bağlamı inceleyin.
-2. Kutu türü izolasyon kurallarına ve Strict Grounding prensibine tam uyarak hem zengin \`openAlexQuery\` araştırma paragrafını hem de odaklı \`semanticScholarQuery\` anahtar kelimelerini oluşturun.`,
+     workflowSteps: `1. Her bir alt kutunun türünü (\`boxType\`), açıklamasını, kavramlarını ve Genel Tez Matrisindeki bağlamı inceleyin.
+2. Kutu türü izolasyon kurallarına ve Strict Grounding prensibine tam uyarak hem zengin \`openAlexQuery\` araştırma paragrafını hem de odaklı \`semanticScholarQuery\` anahtar kelimelerini oluşturun.
+3. Çıktıyı vermeden önce her \`openAlexQuery\`’yi karakter sayısıyla doğrulayın: 1300 altı ise genişletin; 1500 üstü ise kısaltın (API limiti).`,
 
     outputFormat:
       'Her alt kutu için `subBoxTitle`, `openAlexQuery` ve `semanticScholarQuery` alanlarını içeren JSON nesneleri dizisi döndürün. Şema: [{"subBoxTitle": string, "openAlexQuery": string, "semanticScholarQuery": string}]',

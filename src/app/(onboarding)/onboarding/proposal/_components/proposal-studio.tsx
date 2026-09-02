@@ -207,8 +207,8 @@ export function ProposalStudio({ initialProposal = "" }: ProposalStudioProps) {
     }));
 
     showLoading(
-      "4 Kanallı Akademik Konumlandırma Yürütülüyor",
-      "Tez taslağınız; YÖK Tez Merkezi (366k tez), küresel literatür (OpenAlex, Semantic Scholar) ve DergiPark/web veritabanlarında taranıyor, jüri analizi hazırlanıyor...",
+      "Akademik Konumlandırma Yürütülüyor",
+      "Tez taslağınız; YÖK Tez Merkezi (366k tez), küresel literatür (OpenAlex) ve DergiPark/web veritabanlarında taranıyor, jüri analizi hazırlanıyor...",
       steps,
     );
 

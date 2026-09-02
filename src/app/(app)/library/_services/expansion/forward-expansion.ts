@@ -1,22 +1,11 @@
 import { db } from "@/core/db";
-import { boxes, matrices, sources } from "@/core/db/schema";
+import { boxes, sources } from "@/core/db/schema";
 import { eq, inArray } from "drizzle-orm";
 import type { CandidateSource } from "./types";
 import type { Logger } from "@/lib/logger";
 import { fetchOpenAlexForwardCitations } from "./openalex-expansion-client";
-import { fetchSemanticScholarRecommendations } from "./semantic-scholar-client";
 import { rerankWithCohere } from "@/core/services/ai/cohere";
 import { parseDualSemanticQuery } from "@/lib/academic/utils";
-
-/**
- * Extended candidate representation carrying joint service presence flags.
- */
-interface JointCandidate {
-  candidate: CandidateSource;
-  inOpenAlex: boolean;
-  inSemanticScholar: boolean;
-  isIntersected: boolean;
-}
 
 /**
  * Normalizes a title string for deduplication.
@@ -32,8 +21,8 @@ function normalizeTitle(title: string): string {
 }
 
 /**
- * Executes forward expansion using parallel OpenAlex & Semantic Scholar fetching,
- * joint candidate intersection matching, and Cohere Rerank against the Thesis Matrix.
+ * Executes forward expansion using OpenAlex forward citation fetching
+ * and Cohere Rerank against the Thesis Matrix.
  *
  * @param boxId - Target Sub-Box ID.
  * @param activeSeedIds - List of active seed source IDs.
@@ -69,59 +58,31 @@ export async function executeForwardExpansion(
     thesisContextQuery += `. ${box.description}`;
   }
 
-  if (box?.matrixId) {
-    const matrixRows = await db
-      .select({
-        subjectProblem: matrices.subjectProblem,
-        theoreticalFramework: matrices.theoreticalFramework,
-      })
-      .from(matrices)
-      .where(eq(matrices.id, box.matrixId));
-
-    const m = matrixRows[0];
-    if (m) {
-      thesisContextQuery += `. ${m.subjectProblem} ${m.theoreticalFramework}`;
-    }
-  }
-
-  // 2. Fetch seed sources metadata
+  // 2. Fetch seed sources metadata (DOIs and OpenAlex IDs)
   const seedSources = await db
     .select({
+      id: sources.id,
       doi: sources.doi,
       openalexId: sources.openalexId,
+      title: sources.title,
     })
     .from(sources)
     .where(inArray(sources.id, activeSeedIds));
 
-  const seedDois: string[] = [];
-  const openAlexSeedIds: string[] = [];
-  const s2PaperIds: string[] = [];
+  const seedDois = seedSources
+    .map((s) => s.doi?.trim())
+    .filter((d): d is string => Boolean(d && d.length > 5));
 
-  for (const s of seedSources) {
-    if (s.doi) {
-      const cleanDoi = s.doi.replace("https://doi.org/", "").trim();
-      seedDois.push(cleanDoi);
-      s2PaperIds.push(`DOI:${cleanDoi}`);
-    }
-    if (s.openalexId) {
-      openAlexSeedIds.push(s.openalexId);
-    }
-  }
+  const openAlexSeedIds = seedSources
+    .map((s) => s.openalexId?.trim())
+    .filter((id): id is string => Boolean(id && id.length > 3));
 
-  logger?.info("forward_expansion_start", {
-    service: "literature",
-    hidden: true,
-    data: {
-      boxId,
-      targetCount,
-      doiSeedCount: seedDois.length,
-      openAlexSeedCount: openAlexSeedIds.length,
-    },
-  });
-
-  // 3. Fetch existing sources in box to deduplicate
+  // 3. Collect existing box source titles and DOIs to prevent re-expansion duplication
   const existingBoxSources = await db
-    .select({ title: sources.title, doi: sources.doi })
+    .select({
+      title: sources.title,
+      doi: sources.doi,
+    })
     .from(sources)
     .where(eq(sources.boxId, boxId));
 
@@ -132,81 +93,37 @@ export async function executeForwardExpansion(
     existingBoxSources.map((s) => s.doi?.toLowerCase().trim()).filter(Boolean),
   );
 
-  // 4. Query OpenAlex & Semantic Scholar IN PARALLEL (No fallback, joint execution)
+  // 4. Query OpenAlex Forward Citations
   const openAlexSeedQuery =
     openAlexSeedIds.length > 0 ? openAlexSeedIds : seedDois;
 
   const parsedDualQuery = parseDualSemanticQuery(box?.semanticQuery);
   const searchQueryText =
     parsedDualQuery.openAlexQuery.substring(0, 150) ||
-    parsedDualQuery.semanticScholarQuery.substring(0, 150) ||
     thesisContextQuery.substring(0, 150) ||
     "academic research literature";
 
-  const [openAlexCandidates, s2Candidates] = await Promise.all([
-    fetchOpenAlexForwardCitations(openAlexSeedQuery, searchQueryText, 50),
-    fetchSemanticScholarRecommendations(s2PaperIds, 50),
-  ]);
+  const openAlexCandidates = await fetchOpenAlexForwardCitations(
+    openAlexSeedQuery,
+    searchQueryText,
+    60,
+  );
 
-  // 5. Merge, intersect, and map candidate sources from both providers
-  const jointCandidateMap = new Map<string, JointCandidate>();
+  // 5. Deduplicate candidates against existing sources
+  const candidateMap = new Map<string, CandidateSource>();
 
-  // Process OpenAlex candidates
   for (const c of openAlexCandidates) {
     if (!c.title || c.title.trim().length < 5) continue;
     const normTitle = normalizeTitle(c.title);
     if (existingTitles.has(normTitle)) continue;
     if (c.doi && existingDois.has(c.doi.toLowerCase().trim())) continue;
 
-    jointCandidateMap.set(normTitle, {
-      candidate: { ...c },
-      inOpenAlex: true,
-      inSemanticScholar: false,
-      isIntersected: false,
-    });
+    candidateMap.set(normTitle, { ...c });
   }
 
-  // Process Semantic Scholar candidates & find intersection matches
-  for (const c of s2Candidates) {
-    if (!c.title || c.title.trim().length < 5) continue;
-    const normTitle = normalizeTitle(c.title);
-    if (existingTitles.has(normTitle)) continue;
-    if (c.doi && existingDois.has(c.doi.toLowerCase().trim())) continue;
+  const candidateList = Array.from(candidateMap.values());
 
-    const existing = jointCandidateMap.get(normTitle);
-
-    if (existing) {
-      // INTERSECTION MATCH: Present in BOTH OpenAlex and Semantic Scholar!
-      existing.inSemanticScholar = true;
-      existing.isIntersected = true;
-      if (!existing.candidate.doi && c.doi) existing.candidate.doi = c.doi;
-      if (!existing.candidate.corpusId && c.corpusId)
-        existing.candidate.corpusId = c.corpusId;
-      if (!existing.candidate.pdfUrl && c.pdfUrl)
-        existing.candidate.pdfUrl = c.pdfUrl;
-
-      existing.candidate.influentialCitationCount = Math.max(
-        existing.candidate.influentialCitationCount ?? 0,
-        c.influentialCitationCount ?? 0,
-      );
-      existing.candidate.citationCount = Math.max(
-        existing.candidate.citationCount ?? 0,
-        c.citationCount ?? 0,
-      );
-      existing.candidate.sourceOrigin = "forward_openalex";
-    } else {
-      jointCandidateMap.set(normTitle, {
-        candidate: { ...c },
-        inOpenAlex: false,
-        inSemanticScholar: true,
-        isIntersected: false,
-      });
-    }
-  }
-
-  const jointCandidateList = Array.from(jointCandidateMap.values());
-
-  if (jointCandidateList.length === 0) {
+  if (candidateList.length === 0) {
     logger?.info("forward_expansion_success", {
       service: "literature",
       hidden: true,
@@ -219,12 +136,12 @@ export async function executeForwardExpansion(
   let selectedCandidates: CandidateSource[] = [];
   let rerankUsed = false;
 
-  // 6. Rerank joint candidate pool using Cohere Rerank v4.0 Pro
+  // 6. Rerank candidate pool using Cohere Rerank v4.0 Pro
   if (process.env.COHERE_API_KEY) {
     try {
-      const documents = jointCandidateList.map(
-        (item) =>
-          `${item.candidate.title}. Yazar: ${item.candidate.authors.join(", ")}. Yayıncı: ${item.candidate.publisher ?? ""}`,
+      const documents = candidateList.map(
+        (c) =>
+          `${c.title}. Yazar: ${c.authors.join(", ")}. Yayıncı: ${c.publisher ?? ""}`,
       );
 
       const rerankResults = await rerankWithCohere({
@@ -232,20 +149,16 @@ export async function executeForwardExpansion(
         documents,
       });
 
-      // Apply intersection boost to rerank score for candidates present in BOTH services
       const scoredList = rerankResults.map((res) => {
-        const item = jointCandidateList[res.index];
-        // Give 25% boost to papers appearing in BOTH OpenAlex and Semantic Scholar
-        const boostMultiplier = item.isIntersected ? 1.25 : 1.0;
-        const finalScore = res.relevanceScore * boostMultiplier;
+        const item = candidateList[res.index];
+        const finalScore = res.relevanceScore;
 
         return {
           candidate: {
-            ...item.candidate,
+            ...item,
             relevanceScore: Number(finalScore.toFixed(4)),
           },
           finalScore,
-          isIntersected: item.isIntersected,
         };
       });
 
@@ -256,24 +169,13 @@ export async function executeForwardExpansion(
         .map((s) => s.candidate);
       rerankUsed = true;
     } catch {
-      // Fallback to sorting by intersection and citation count if Cohere is offline
+      // Fallback to sorting by citation count if Cohere is offline
     }
   }
 
   if (!rerankUsed) {
-    // Pure intersection & citation count ranking fallback
-    jointCandidateList.sort((a, b) => {
-      if (a.isIntersected !== b.isIntersected) {
-        return a.isIntersected ? -1 : 1;
-      }
-      return (
-        (b.candidate.citationCount ?? 0) - (a.candidate.citationCount ?? 0)
-      );
-    });
-
-    selectedCandidates = jointCandidateList
-      .slice(0, targetCount)
-      .map((item) => item.candidate);
+    candidateList.sort((a, b) => (b.citationCount ?? 0) - (a.citationCount ?? 0));
+    selectedCandidates = candidateList.slice(0, targetCount);
   }
 
   logger?.info("forward_expansion_success", {
@@ -283,9 +185,7 @@ export async function executeForwardExpansion(
     data: {
       boxId,
       openAlexCandidates: openAlexCandidates.length,
-      s2Candidates: s2Candidates.length,
-      intersected: jointCandidateList.filter((i) => i.isIntersected).length,
-      poolSize: jointCandidateList.length,
+      poolSize: candidateList.length,
       rerank: rerankUsed ? "cohere" : "fallback",
       selectedCount: selectedCandidates.length,
     },

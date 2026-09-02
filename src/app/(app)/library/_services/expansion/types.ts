@@ -1,5 +1,5 @@
 /**
- * Candidate source item normalized across backward parsing, OpenAlex, and Semantic Scholar.
+ * Candidate source item normalized across backward parsing and OpenAlex.
  */
 export interface CandidateSource {
   title: string;
@@ -11,7 +11,7 @@ export interface CandidateSource {
   corpusId?: number;
   relevanceScore?: number;
   pdfUrl?: string;
-  sourceOrigin: "backward" | "forward_openalex" | "forward_s2";
+  sourceOrigin: "backward" | "forward_openalex";
   citationCount?: number;
   influentialCitationCount?: number;
   rawParsedRef?: string;

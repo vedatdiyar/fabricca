@@ -123,7 +123,7 @@ export async function runLiteratureExpansion(
   }
 
   // Determine whether any active seed exposes a usable identifier for
-  // forward expansion (OpenAlex / Semantic Scholar). If not, only backward
+  // forward expansion (OpenAlex). If not, only backward
   // expansion runs and every candidate must come from the parsed references.
   const seedIdentifierRows = await db
     .select({ doi: sources.doi, openalexId: sources.openalexId })

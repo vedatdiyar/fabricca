@@ -19,18 +19,12 @@ import type {
 } from "./types";
 
 /**
- * Executes Phase 3 selection with global optimal assignment.
+ * Executes Phase 3 selection with strict per-box isolation.
  *
- * İş Kuralı (Step 13):
- * - Bir makale ASLA birden fazla sub-box içinde yer alamaz (Strict 1-to-1).
- * - Her sub-box hedef olarak tam 4 makale ile doldurulmalıdır (quota = 4).
- * - Highest Relevance Affinity: tüm kutular arası en yüksek skorlu eşleşme kazanır.
- *
- * Algoritma:
- *  1. Global skor matrisi oluştur (`{paper, boxId, score}`) ve skora göre azalan sırala.
- *  2. Sırayla ata: makale atanmamış + kutu <4 ise ata ve küresel olarak işaretle.
- *  3. Backfill: primary (>=80) sonrası boş slotlar için secondary (>=75) havuzdan
- *     yine global skor sıralı şekilde doldur.
+ * İş Kuralı (güncellendi — kullanıcı isteği: kutular asla sızmamalı):
+ * - Her sub-box kendi havuzundan bağımsız `quota=4` seçer (global skor matrisi yok).
+ * - Deduplication kutu içinde yapılır (DOI/title), kutular arası global dedup kaldırıldı.
+ * - Sıra: primary (>=80) skor sıralı, sonra secondary (75-79) backfill.
  *
  * @param fulfilledResults - The Phase 1 search results per sub-box.
  * @param poolByBox - The per-box candidate pools built during Phase 2.
@@ -46,9 +40,6 @@ export async function executePhase3Selection(
   logger: Logger,
   checkCancelled?: () => boolean,
 ): Promise<SubBoxResultToPersist[]> {
-  // Metric-based deduplication: DOI exact OR (Jaccard/Levenshtein >=0.90 AND year±1/first-author)
-  const seenDois = new Set<string>();
-  const seenPapers: Array<{ title: string; year: number | null; authors: string[]; doi: string | null }> = [];
 
   const poolLookup = new Map<string, PoolItem>();
   for (const [boxId, pool] of poolByBox) {
@@ -63,47 +54,11 @@ export async function executePhase3Selection(
 
   const allSelectedArticles: SelectedArticleCandidate[] = [];
 
-  // ── Global assignment state ──────────────────────────────────────────────
+  // ── Per-box assignment state (strict isolation) ──────────────────────────
   const selectedEvalsByBox = new Map<number, JuryEvalResult[]>();
   for (const r of fulfilledResults) {
     selectedEvalsByBox.set(r.thesisBoxId, []);
   }
-
-  const isDuplicate = (
-    title: string,
-    year: number | null,
-    authors: string[],
-    doi: string | null,
-  ): boolean => {
-    const cleanDoi = doi ? extractCleanDoi(doi) : null;
-    if (cleanDoi && seenDois.has(cleanDoi)) return true;
-    for (const prev of seenPapers) {
-      if (cleanDoi && prev.doi && cleanDoi === prev.doi) return true;
-      if (!areTitlesDuplicateByMetric(title, prev.title, 0.90)) continue;
-      const yearMatch =
-        typeof year === "number" &&
-        typeof prev.year === "number" &&
-        Math.abs(year - prev.year) <= 1;
-      const firstA = authors?.[0] ? extractSurname(authors[0]).toLowerCase() : null;
-      const firstB = prev.authors?.[0] ? extractSurname(prev.authors[0]).toLowerCase() : null;
-      const hasAuthor = !!firstA && !!firstB && firstA !== "anonim" && firstB !== "anonim";
-      const authorMatch = hasAuthor ? firstA === firstB : false;
-      const hasMeta = (typeof year === "number" && typeof prev.year === "number") || hasAuthor;
-      if (hasMeta ? yearMatch || authorMatch : true) return true;
-    }
-    return false;
-  };
-
-  const markSelected = (
-    title: string,
-    year: number | null,
-    authors: string[],
-    doi: string | null,
-  ): void => {
-    const cleanDoi = doi ? extractCleanDoi(doi) : null;
-    if (cleanDoi) seenDois.add(cleanDoi);
-    seenPapers.push({ title, year, authors: authors ?? [], doi: cleanDoi });
-  };
 
   type ScoredEntry = { ev: JuryEvalResult; boxId: number; score: number };
 
@@ -120,62 +75,73 @@ export async function executePhase3Selection(
     };
   };
 
-  const tryAssignEntry = (entry: ScoredEntry): boolean => {
-    const { ev, boxId } = entry;
-    const bucket = selectedEvalsByBox.get(boxId);
-    if (!bucket || bucket.length >= 4) return false;
-    const { poolItem, year, authors, doi } = getPoolMeta(ev);
-    if (!poolItem) return false;
-    if (isDuplicate(ev.articleTitle, year, authors, doi)) return false;
-    markSelected(ev.articleTitle, year, authors, doi);
-    bucket.push(ev);
-    return true;
+  // Per-box dedup helpers (isolated per box)
+  const makeBoxDedup = () => {
+    const seenDois = new Set<string>();
+    const seenPapers: Array<{ title: string; year: number | null; authors: string[]; doi: string | null }> = [];
+    return {
+      isDuplicate: (title: string, year: number | null, authors: string[], doi: string | null): boolean => {
+        const cleanDoi = doi ? extractCleanDoi(doi) : null;
+        if (cleanDoi && seenDois.has(cleanDoi)) return true;
+        for (const prev of seenPapers) {
+          if (cleanDoi && prev.doi && cleanDoi === prev.doi) return true;
+          if (!areTitlesDuplicateByMetric(title, prev.title, 0.90)) continue;
+          const yearMatch =
+            typeof year === "number" &&
+            typeof prev.year === "number" &&
+            Math.abs(year - prev.year) <= 1;
+          const firstA = authors?.[0] ? extractSurname(authors[0]).toLowerCase() : null;
+          const firstB = prev.authors?.[0] ? extractSurname(prev.authors[0]).toLowerCase() : null;
+          const hasAuthor = !!firstA && !!firstB && firstA !== "anonim" && firstB !== "anonim";
+          const authorMatch = hasAuthor ? firstA === firstB : false;
+          const hasMeta = (typeof year === "number" && typeof prev.year === "number") || hasAuthor;
+          if (hasMeta ? yearMatch || authorMatch : true) return true;
+        }
+        return false;
+      },
+      markSelected: (title: string, year: number | null, authors: string[], doi: string | null): void => {
+        const cleanDoi = doi ? extractCleanDoi(doi) : null;
+        if (cleanDoi) seenDois.add(cleanDoi);
+        seenPapers.push({ title, year, authors: authors ?? [], doi: cleanDoi });
+      },
+    };
   };
 
-  // ── Step 2: Global skor matrisi ve öncelikli eşleştirme (primary >=80) ──
-  const primaryEntries: ScoredEntry[] = [];
+  // ── Step 2 & 3: Per-box primary + secondary selection (isolated) ──
   for (const r of fulfilledResults) {
     if (checkCancelled?.()) break;
-    const boxPrimary = juryEvaluations.filter(
-      (ev) => ev.thesisBoxId === r.thesisBoxId && ev.isRelevant && ev.relevanceScore >= 80,
-    );
-    for (const ev of boxPrimary) {
-      primaryEntries.push({ ev, boxId: r.thesisBoxId, score: ev.relevanceScore });
-    }
-  }
-  primaryEntries.sort((a, b) => b.score - a.score);
+    const boxEvals = juryEvaluations.filter((ev) => ev.thesisBoxId === r.thesisBoxId && ev.isRelevant);
+    const primary = boxEvals
+      .filter((ev) => ev.relevanceScore >= 80)
+      .sort((a, b) => b.relevanceScore - a.relevanceScore);
+    const secondary = boxEvals
+      .filter((ev) => ev.relevanceScore >= 75 && ev.relevanceScore < 80)
+      .sort((a, b) => b.relevanceScore - a.relevanceScore);
 
-  for (const entry of primaryEntries) {
-    if (checkCancelled?.()) break;
-    tryAssignEntry(entry);
-  }
+    const dedup = makeBoxDedup();
+    const bucket = selectedEvalsByBox.get(r.thesisBoxId)!;
 
-  // ── Step 3: Alt kutuları doldurma garantisi — secondary backfill (75–79) ──
-  const needsBackfill = Array.from(selectedEvalsByBox.values()).some((arr) => arr.length < 4);
-  if (needsBackfill) {
-    const secondaryEntries: ScoredEntry[] = [];
-    for (const r of fulfilledResults) {
+    const tryAssign = (ev: JuryEvalResult): boolean => {
+      if (bucket.length >= 4) return false;
+      const { poolItem, year, authors, doi } = getPoolMeta(ev);
+      if (!poolItem) return false;
+      if (dedup.isDuplicate(ev.articleTitle, year, authors, doi)) return false;
+      dedup.markSelected(ev.articleTitle, year, authors, doi);
+      bucket.push(ev);
+      return true;
+    };
+
+    for (const ev of primary) {
       if (checkCancelled?.()) break;
-      const bucket = selectedEvalsByBox.get(r.thesisBoxId);
-      if (!bucket || bucket.length >= 4) continue;
-      const boxSecondary = juryEvaluations.filter(
-        (ev) =>
-          ev.thesisBoxId === r.thesisBoxId &&
-          ev.isRelevant &&
-          ev.relevanceScore >= 75 &&
-          ev.relevanceScore < 80,
-      );
-      for (const ev of boxSecondary) {
-        secondaryEntries.push({ ev, boxId: r.thesisBoxId, score: ev.relevanceScore });
+      if (bucket.length >= 4) break;
+      tryAssign(ev);
+    }
+    if (bucket.length < 4) {
+      for (const ev of secondary) {
+        if (checkCancelled?.()) break;
+        if (bucket.length >= 4) break;
+        tryAssign(ev);
       }
-    }
-    secondaryEntries.sort((a, b) => b.score - a.score);
-
-    for (const entry of secondaryEntries) {
-      if (checkCancelled?.()) break;
-      const bucket = selectedEvalsByBox.get(entry.boxId);
-      if (!bucket || bucket.length >= 4) continue;
-      tryAssignEntry(entry);
     }
   }
 

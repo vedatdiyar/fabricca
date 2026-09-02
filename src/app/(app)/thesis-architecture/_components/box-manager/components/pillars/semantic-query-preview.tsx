@@ -29,7 +29,7 @@ export function SemanticQueryPreview({
     const textToCopy =
       openAlexQuery === semanticScholarQuery
         ? openAlexQuery
-        : `OpenAlex: ${openAlexQuery}\n\nSemantic Scholar: ${semanticScholarQuery}`;
+        : `OpenAlex (Vektör): ${openAlexQuery}\n\nAnahtar Kelimeler: ${semanticScholarQuery}`;
     navigator.clipboard.writeText(textToCopy);
     toast.success("RAG arama sorgusu kopyalandı.");
   };
@@ -58,24 +58,18 @@ export function SemanticQueryPreview({
       </button>
 
       {isOpen && (
-        <div className="mt-2 p-2.5 rounded-md bg-secondary/40 border border-border/60 text-xs font-sans space-y-2">
-          <div className="flex items-center justify-between text-[11px] text-muted-foreground">
-            <span className="font-medium">
-              Akademik Literatür Arama İfadeleri
-            </span>
-            <button
-              type="button"
-              onClick={handleCopyQuery}
-              className="inline-flex items-center gap-1 hover:text-foreground transition-colors cursor-pointer"
-              title="Sorguyu kopyala"
-            >
-              <Copy className="h-3 w-3" />
-              <span>Kopyala</span>
-            </button>
-          </div>
+        <div className="mt-2 p-2.5 rounded-md bg-secondary/40 border border-border/60 text-xs font-sans space-y-2 relative group/preview">
+          <button
+            type="button"
+            onClick={handleCopyQuery}
+            className="absolute top-2 right-2 p-1.5 rounded-md bg-background/80 hover:bg-background border border-border/40 text-muted-foreground hover:text-foreground opacity-0 group-hover/preview:opacity-100 transition-opacity cursor-pointer"
+            title="Sorguyu Kopyala"
+          >
+            <Copy className="h-3.5 w-3.5" />
+          </button>
 
           {isDual ? (
-            <div className="space-y-2 text-xs">
+            <div className="space-y-2">
               <div className="bg-background/50 p-2 rounded border border-border/40">
                 <span className="text-[10px] uppercase font-semibold text-primary block mb-1">
                   OpenAlex (GTE-Large-EN Vektör Paragrafı)
@@ -86,7 +80,7 @@ export function SemanticQueryPreview({
               </div>
               <div className="bg-background/50 p-2 rounded border border-border/40">
                 <span className="text-[10px] uppercase font-semibold text-primary block mb-1">
-                  Semantic Scholar (BM25 Anahtar Terimler)
+                  Akademik Anahtar Kelimeler (Hibrit Arama)
                 </span>
                 <p className="font-mono text-xs text-foreground select-all leading-relaxed">
                   {semanticScholarQuery}

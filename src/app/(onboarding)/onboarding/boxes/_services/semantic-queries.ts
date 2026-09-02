@@ -100,7 +100,7 @@ export async function generateSemanticQueriesAction(
         bulkSemanticQueryJsonSchema,
         log,
         {
-          thinkingConfig: { thinkingLevel: ThinkingLevel.LOW },
+          thinkingConfig: { thinkingLevel: ThinkingLevel.MEDIUM },
           zodSchema: bulkSemanticQuerySchema,
           seed: GEMINI_SEED,
           payloadStage: "semantic_query_generation",

@@ -1,6 +1,5 @@
 import { searchTheses } from "@/core/services/thesis-search";
 import { searchOpenAlex } from "@/app/(onboarding)/onboarding/literature-review/_services/openalex/openalex-search";
-import { searchSemanticScholarPapers } from "@/core/services/semantic-scholar/semantic-scholar-search";
 import { rerankWithCohere } from "@/core/services/ai/cohere";
 import { buildYokThesisUrl } from "@/core/config/endpoints";
 import type { Logger } from "@/lib/logger";
@@ -30,7 +29,7 @@ export interface SiftedThesis {
   abstract: string;
   url?: string;
   doi?: string;
-  sourceChannel: "yok" | "openalex" | "semantic_scholar";
+  sourceChannel: "yok" | "openalex";
   publicationType: "Tez" | "Makale" | "Kitap" | "Kitap Bölümü" | "Rapor";
   relevanceScore?: number;
 }
@@ -45,9 +44,9 @@ export const MIN_COHERE_RELEVANCE_SCORE = 0.45;
 const MIN_ABSTRACT_LENGTH = 40;
 
 /**
- * 3-Channel Multi-Source Academic Sifting Engine:
- * 1. Generates complementary queries (Qdrant, OpenAlex, Semantic Scholar) via FLASH_LITE_35.
- * 2. Fetches candidates in parallel from all 3 academic channels via Promise.all.
+ * Multi-Source Academic Sifting Engine:
+ * 1. Generates complementary queries (Qdrant, OpenAlex) via FLASH_LITE_35.
+ * 2. Fetches candidates in parallel from academic channels via Promise.all.
  * 3. Normalizes and deduplicates candidates into unified SiftedThesis models.
  * 4. Applies Cohere Rerank v4.0 Pro across the combined candidate pool.
  * 5. Returns sorted candidates ready for batch jury evaluation.
@@ -91,13 +90,13 @@ export async function searchAndSiftTheses(
 
   const searchStart = performance.now();
 
-  const { yokResults, openAlexResults, s2Results } = await fetchAllChannels(
+  const { yokResults, openAlexResults } = await fetchAllChannels(
     distilledQuery,
     logger,
     pipelineRun,
   );
-  const [[yokRes1, yokRes2], [openAlexRes1, openAlexRes2], semanticScholarRes] =
-    [yokResults, openAlexResults, s2Results] as const;
+  const [[yokRes1, yokRes2], [openAlexRes1, openAlexRes2]] =
+    [yokResults, openAlexResults] as const;
 
   const candidates: SiftedThesis[] = [];
   const seenTitles = new Set<string>();
@@ -161,40 +160,6 @@ export async function searchAndSiftTheses(
     });
   }
 
-  // Ingest Semantic Scholar Papers
-  for (const p of semanticScholarRes) {
-    const title = p.title || "";
-    const key = normalizeTitleKey(title);
-    if (!key || seenTitles.has(key)) continue;
-    seenTitles.add(key);
-
-    const abstractStr = p.abstract || "";
-    const isBook = (p.publicationTypes ?? []).includes("Book");
-    const isSection = (p.publicationTypes ?? []).includes("BookSection");
-    const s2Type = isBook ? "Kitap" : isSection ? "Kitap Bölümü" : "Makale";
-
-    candidates.push({
-      id: `s2-${p.paperId || Math.random().toString(36).slice(2, 8)}`,
-      title,
-      author:
-        p.authors && p.authors.length > 0
-          ? p.authors.map((a) => a.name).join(", ")
-          : "Bilinmiyor",
-      university: p.venue || "Uluslararası Akademik Yayın",
-      year: p.year || new Date().getFullYear(),
-      thesisType: s2Type,
-      abstract: abstractStr,
-      doi: p.externalIds?.DOI,
-      url:
-        p.url ||
-        (p.externalIds?.DOI
-          ? `https://doi.org/${p.externalIds.DOI}`
-          : undefined),
-      sourceChannel: "semantic_scholar",
-      publicationType: s2Type,
-    });
-  }
-
   // Filter candidates with minimum viable abstract content
   const validCandidates = candidates.filter(
     (c) => c.abstract.trim().length >= MIN_ABSTRACT_LENGTH,
@@ -210,8 +175,6 @@ export async function searchAndSiftTheses(
       validFound: validCandidates.length,
       yokCount: candidates.filter((c) => c.sourceChannel === "yok").length,
       openAlexCount: candidates.filter((c) => c.sourceChannel === "openalex")
-        .length,
-      s2Count: candidates.filter((c) => c.sourceChannel === "semantic_scholar")
         .length,
     },
     hidden: true,
@@ -309,43 +272,16 @@ async function fetchOpenAlexChannel(
   return [r1, r2] as const;
 }
 
-async function fetchSemanticScholarChannel(
-  distilledQuery: MultiSourcePositioningQuery,
-  logger: Logger | undefined,
-  pipelineRun: PipelineRun | undefined,
-) {
-  const t0 = performance.now();
-  const query =
-    distilledQuery.semanticScholarQuery ||
-    distilledQuery.globalTheoreticalQuery;
-  const res = await searchSemanticScholarPapers(
-    sanitizeSearchQuery(query),
-    10,
-  ).catch((err) => {
-    logger?.warn("sifting_s2_channel_error", {
-      service: "thesis-search",
-      error: err,
-    });
-    return [];
-  });
-  pipelineRun?.subStep(
-    `Semantic Scholar (${res.length} papers)`,
-    performance.now() - t0,
-  );
-  return res;
-}
-
 async function fetchAllChannels(
   distilledQuery: MultiSourcePositioningQuery,
   logger: Logger | undefined,
   pipelineRun: PipelineRun | undefined,
 ) {
-  const [yokResults, openAlexResults, s2Results] = await Promise.all([
+  const [yokResults, openAlexResults] = await Promise.all([
     fetchQdrantChannel(distilledQuery, logger, pipelineRun),
     fetchOpenAlexChannel(distilledQuery, logger, pipelineRun),
-    fetchSemanticScholarChannel(distilledQuery, logger, pipelineRun),
   ]);
-  return { yokResults, openAlexResults, s2Results };
+  return { yokResults, openAlexResults };
 }
 
 // ── Reranking ──

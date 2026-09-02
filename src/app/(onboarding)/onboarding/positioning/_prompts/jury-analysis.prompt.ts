@@ -8,7 +8,7 @@ export interface JuryAnalysisPromptPayload {
 
 /**
  * Builds the hybrid XML/Markdown prompt payload for the final multi-source jury synthesis analysis,
- * synthesizing evidence across YÖK theses, OpenAlex/Semantic Scholar papers, and Exa factual verification.
+ * synthesizing evidence across YÖK theses, OpenAlex papers, and Exa factual verification.
  *
  * Strictly adheres to docs/LLM_INTEGRATION.md.
  *

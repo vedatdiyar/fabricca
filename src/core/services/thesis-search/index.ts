@@ -116,7 +116,7 @@ export async function searchTheses(
     return results;
   } catch (err) {
     // Graceful degradation: HF endpoint gone (404/410) must not crash the pipeline —
-    // thesis channel returns [] so OpenAlex/Semantic Scholar can still populate.
+    // thesis channel returns [] so OpenAlex can still populate.
     if (err instanceof HfDeprecatedEndpointError) {
       logger?.error("thesis_search_degraded_no_theses", {
         service: "thesis-search",

@@ -135,7 +135,7 @@ export const semanticQueryEntrySchema = z.object({
     .string()
     .max(500)
     .describe(
-      "Semantic Scholar aramasına özel, 4-8 adet odaklı anahtar kelime/tırnaklı öbek içeren yalın sorgu.",
+      "Hibrit başlık ve anahtar kelime aramasına özel, 4-8 adet odaklı anahtar kelime/tırnaklı öbek içeren yalın sorgu.",
     ),
 });
 
@@ -170,7 +170,7 @@ export const bulkSemanticQueryJsonSchema: JsonSchema = {
           semanticScholarQuery: {
             type: "string",
             description:
-              "Semantic Scholar aramasına özel, 4-8 odaklı anahtar kelime/terim öbeği içeren sorgu",
+              "Hibrit başlık ve anahtar kelime aramasına özel, 4-8 odaklı anahtar kelime/terim öbeği içeren sorgu",
           },
         },
         required: ["subBoxTitle", "openAlexQuery", "semanticScholarQuery"],

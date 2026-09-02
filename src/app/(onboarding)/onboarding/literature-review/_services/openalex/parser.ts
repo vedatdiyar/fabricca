@@ -144,9 +144,15 @@ export function parseOpenAlexResults(
   results = results.filter((work) => {
     const type = work.type as string | undefined;
     const lang = work.language as string | undefined;
+    // Keep book-review as well for parent-book resolution (filtered later if unresolved)
     const isArticleOrBook =
-      type === "article" || type === "book-chapter" || type === "book";
+      type === "article" ||
+      type === "book-chapter" ||
+      type === "book" ||
+      type === "book-review";
     const isAllowedLang = !lang || lang === "en" || lang === "tr";
+    // Strict review heuristics only for non-explicit book-review types (kept for resolution)
+    if (type === "book-review") return isAllowedLang;
     const isReview = isSuspectedBookReview(work);
     return isArticleOrBook && isAllowedLang && !isReview;
   });
@@ -207,11 +213,14 @@ export function parseOpenAlexResults(
     const workType = work.type as string | undefined;
     const isBook = workType === "book" || workType === "monograph";
     const isSection = workType === "book-chapter";
+    const isReview = workType === "book-review";
     const publicationType = isBook
       ? "Kitap / Monografi"
       : isSection
         ? "Kitap Bölümü"
-        : "Makale";
+        : isReview
+          ? "Kitap İncelemesi"
+          : "Makale";
 
     return {
       source: "openalex" as const,

@@ -5,7 +5,6 @@
  * - OPENALEX_REGULAR_LIMITS: Saniyede max 100 istek (6.000 RPM)
  * - OPENALEX_SEMANTIC_LIMITS: Saniyede max 1 istek (60 RPM, concurrency 1, 1050 ms gap)
  * - CROSSREF_LIMITS: Saniyede max 10 istek (600 RPM), concurrency 3
- * - SEMANTIC_SCHOLAR_LIMITS: Saniyede max 1 istek (60 RPM, concurrency 1, 1050 ms gap)
  * - COHERE_LIMITS: Dakikada max 10 istek (10 RPM)
  * - CLOUDFLARE_EMBEDDINGS_LIMITS: Dakikada max 3.000 istek (3000 RPM)
  * - GEMINI_MODEL_QUOTAS: Flash Lite 15 RPM/500 RPD, Flash 5 RPM/20 RPD (free tier, per key; 3 key toplam 45/1500 ve 15/60)
@@ -32,14 +31,6 @@ export const CROSSREF_LIMITS: RateLimiterOptions = {
   label: "crossref",
   rpm: 600,
   concurrency: 3,
-};
-
-/** Semantic Scholar — 1 req/s turnstile (1050 ms gap, 60 RPM, concurrency 1). */
-export const SEMANTIC_SCHOLAR_LIMITS: RateLimiterOptions = {
-  label: "semantic_scholar",
-  rpm: 60,
-  concurrency: 1,
-  minIntervalMs: 1050,
 };
 
 /** Cohere Rerank — dakikada max 10 istek (10 req/min). */
