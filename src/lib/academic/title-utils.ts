@@ -163,6 +163,101 @@ export function areTitlesSimilar(
 }
 
 /**
+ * Tokenizes normalized title into word set for Jaccard.
+ *
+ * @param title - Raw title.
+ * @returns Set of lowercase word tokens.
+ */
+function tokenizeForJaccard(title: string): Set<string> {
+  const clean = normalizeTitle(title);
+  if (!clean) return new Set();
+  return new Set(clean.split(/\s+/).filter(Boolean));
+}
+
+/**
+ * Computes Jaccard similarity (word-set) between two titles: |A∩B| / |A∪B|.
+ *
+ * @param titleA - First title.
+ * @param titleB - Second title.
+ * @returns Similarity 0..1.
+ */
+export function jaccardSimilarity(titleA: string, titleB: string): number {
+  const setA = tokenizeForJaccard(titleA);
+  const setB = tokenizeForJaccard(titleB);
+  if (setA.size === 0 && setB.size === 0) return 1.0;
+  if (setA.size === 0 || setB.size === 0) return 0.0;
+  let intersection = 0;
+  for (const tok of setA) if (setB.has(tok)) intersection++;
+  const union = setA.size + setB.size - intersection;
+  return union === 0 ? 0 : intersection / union;
+}
+
+/**
+ * Levenshtein edit distance (DP, O(n*m)).
+ *
+ * @param a - First normalized string.
+ * @param b - Second normalized string.
+ * @returns Edit distance.
+ */
+export function levenshteinDistance(a: string, b: string): number {
+  const s = normalizeTitle(a);
+  const t = normalizeTitle(b);
+  const n = s.length;
+  const m = t.length;
+  if (n === 0) return m;
+  if (m === 0) return n;
+  let prev = Array.from({ length: m + 1 }, (_, i) => i);
+  let curr = new Array(m + 1);
+  for (let i = 1; i <= n; i++) {
+    curr[0] = i;
+    for (let j = 1; j <= m; j++) {
+      const cost = s[i - 1] === t[j - 1] ? 0 : 1;
+      curr[j] = Math.min(prev[j] + 1, curr[j - 1] + 1, prev[j - 1] + cost);
+    }
+    [prev, curr] = [curr, prev];
+  }
+  return prev[m];
+}
+
+/**
+ * Normalized Levenshtein similarity: 1 - distance / maxLen.
+ *
+ * @param titleA - First title.
+ * @param titleB - Second title.
+ * @returns Similarity 0..1.
+ */
+export function normalizedLevenshteinSimilarity(
+  titleA: string,
+  titleB: string,
+): number {
+  const s = normalizeTitle(titleA);
+  const t = normalizeTitle(titleB);
+  const maxLen = Math.max(s.length, t.length);
+  if (maxLen === 0) return 1.0;
+  return 1 - levenshteinDistance(s, t) / maxLen;
+}
+
+/**
+ * Metric-based title similarity — Jaccard word-set primary, Levenshtein fallback.
+ * Threshold is 0.90 per spec to avoid false duplicates like "Yapay Zeka: Tıpta Devrim" vs "Yapay Zeka: Hukukta Dönüşüm".
+ *
+ * @param titleA - First title.
+ * @param titleB - Second title.
+ * @param threshold - Minimum similarity (default 0.90).
+ * @returns True when Jaccard or normalized Levenshtein meets threshold.
+ */
+export function areTitlesDuplicateByMetric(
+  titleA: string,
+  titleB: string,
+  threshold = 0.90,
+): boolean {
+  const jaccard = jaccardSimilarity(titleA, titleB);
+  if (jaccard >= threshold) return true;
+  // Fallback to Levenshtein for punctuation/typo variants
+  return normalizedLevenshteinSimilarity(titleA, titleB) >= threshold;
+}
+
+/**
  * Normalizes a title into a lowercase, punctuation-stripped string for matching.
  *
  * @param title - Raw title.
@@ -186,21 +281,18 @@ export function normalizeTitle(
 }
 
 /**
- * Strips the subtitle from a title, then normalizes the core title for duplicate matching.
+ * Normalizes a title for duplicate matching — preserves the full title (no colon/dash truncation).
+ * Only lowercases, strips punctuation and collapses whitespace.
  *
  * @param title - Raw title with optional subtitle.
  * @param maxLength - Optional maximum length to keep.
- * @returns Normalized core title.
+ * @returns Normalized full title.
  */
 export function normalizeCleanTitle(
   title: string | null | undefined,
   maxLength?: number,
 ): string {
   if (!title) return "";
-  let coreTitle = title;
-  const separatorMatch = title.match(/^([^:/\-–—]+)/);
-  if (separatorMatch && separatorMatch[1].trim().length >= 3) {
-    coreTitle = separatorMatch[1].trim();
-  }
-  return normalizeTitle(coreTitle, maxLength);
+  // Spec: cleanTitle = title.toLowerCase().replace(/[^\p{L}\p{N}\s]/gu, "").replace(/\s+/g, " ").trim()
+  return normalizeTitle(title, maxLength);
 }

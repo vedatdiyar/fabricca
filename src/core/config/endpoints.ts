@@ -7,8 +7,18 @@ export const OPENALEX_BASE_URL = "https://api.openalex.org" as const;
 export const CROSSREF_BASE_URL = "https://api.crossref.org" as const;
 export const COHERE_RERANK_URL = "https://api.cohere.com/v2/rerank" as const;
 export const HF_EMBEDDING_BASE_URL = "https://router.huggingface.co" as const;
+export const HF_E5_MODEL = "intfloat/multilingual-e5-base" as const;
 export const HF_E5_ENDPOINT =
-  `${HF_EMBEDDING_BASE_URL}/hf-inference/models/intfloat/multilingual-e5-base/pipeline/feature-extraction` as const;
+  `${HF_EMBEDDING_BASE_URL}/hf-inference/models/${HF_E5_MODEL}/pipeline/feature-extraction` as const;
+
+/**
+ * Resolves the HF embedding endpoint, allowing env override for rotation/fallback.
+ * `HF_EMBEDDING_ENDPOINT` env var takes precedence; falls back to the canonical Router URL.
+ */
+export function getHfEmbeddingEndpoint(): string {
+  const override = process.env.HF_EMBEDDING_ENDPOINT?.trim();
+  return override && override.length > 0 ? override : HF_E5_ENDPOINT;
+}
 export const YOK_THESIS_BASE_URL =
   "https://tez.yok.gov.tr/UlusalTezMerkezi" as const;
 export const R2_ENDPOINT_TEMPLATE =

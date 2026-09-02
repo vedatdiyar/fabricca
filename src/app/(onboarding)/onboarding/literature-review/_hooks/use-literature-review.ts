@@ -4,6 +4,7 @@ import { useMemo, useState, useCallback, useRef } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import type { GeminiThesisBox, LiteraturePoolEntry } from "@/lib/types";
+import { handleActionErrorToast } from "@/lib/errors/ui-error-handler";
 import {
   fetchBoxesWithFullShape,
   fetchUncachedBoxesWithFullShape,
@@ -17,7 +18,12 @@ import type { SubBoxInput } from "@/app/(onboarding)/onboarding/literature-revie
 import { compareBoxTypes } from "@/lib/box-constants";
 
 /** Processing status of a single sub-box within the literature review grid. */
-export type BoxStatus = "idle" | "loading" | "done" | "error";
+export type BoxStatus =
+  | "idle"
+  | "loading"
+  | "done"
+  | "error"
+  | "manual_entry_required";
 
 /** Shape returned by {@link useLiteratureReview}. */
 export interface UseLiteratureReviewResult {
@@ -94,6 +100,16 @@ export function useLiteratureReview(): UseLiteratureReviewResult {
   const boxStatuses = useMemo(() => {
     const statuses: Record<string, BoxStatus> = {};
     for (const box of subBoxes) {
+      const poolEntry = literaturePool.find(
+        (entry) => entry.subBoxTitle === box.title,
+      );
+      if (
+        poolEntry?.status === "manual_entry_required" ||
+        box.boxType === "PRIMARY_MATERIAL"
+      ) {
+        statuses[box.title] = "manual_entry_required";
+        continue;
+      }
       const hasEntry = literaturePool.some(
         (entry) => entry.subBoxTitle === box.title && entry.articles.length > 0,
       );
@@ -134,12 +150,15 @@ export function useLiteratureReview(): UseLiteratureReviewResult {
         queryClient.invalidateQueries({ queryKey: ["literature-pool"] });
         queryClient.setQueryData(["literature-pool"], res.data);
       } else if (res.error) {
-        toast.error("Literatür taraması hatası: " + res.error);
+        handleActionErrorToast(
+          res as unknown as Parameters<typeof handleActionErrorToast>[0],
+          `Literatür taraması hatası: ${res.error}`,
+        );
       }
     } catch (err) {
       const msg =
         err instanceof Error ? err.message : "Tarama çalıştırılamadı.";
-      toast.error(msg);
+      handleActionErrorToast(msg);
     } finally {
       setProcessing(false);
     }

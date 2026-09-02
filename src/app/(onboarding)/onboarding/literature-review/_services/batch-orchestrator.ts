@@ -48,11 +48,26 @@ export async function orchestrateBatchProcess(
 
     if (box.boxType === "PRIMARY_MATERIAL") {
       archivalBoxTitles.push(box.title);
+      // Parent-level manual entry (kept for backward compat / archivalBoxTitles parity)
       poolEntries.push({
         subBoxTitle: box.title,
         thesisBoxId: box.id,
         articles: [],
+        status: "manual_entry_required",
       });
+      // Per-child manual entries so SubBoxDone can resolve status by sub.title
+      if (box.subBoxes && box.subBoxes.length > 0) {
+        for (const sub of box.subBoxes) {
+          // Avoid duplicate when sub title equals parent title (already pushed)
+          if (sub.title === box.title) continue;
+          poolEntries.push({
+            subBoxTitle: sub.title,
+            thesisBoxId: sub.thesisBoxId,
+            articles: [],
+            status: "manual_entry_required",
+          });
+        }
+      }
     }
   }
 

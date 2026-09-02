@@ -122,6 +122,33 @@ const juryJsonSchema: JsonSchema = {
 const CJK_RE = /[\u4E00-\u9FFF\u3400-\u4DBF\u3040-\u30FF\uAC00-\uD7AF]/;
 
 /**
+ * Truncates text at sentence boundary to avoid cutting mid-sentence.
+ * Used as safety buffer for anomalously long abstracts (>2500 chars).
+ *
+ * @param text - Full abstract text.
+ * @param limit - Maximum character limit.
+ * @returns Truncated text ending at last sentence terminator within limit.
+ */
+function truncateAtSentence(text: string, limit: number): string {
+  if (text.length <= limit) return text;
+  const sliced = text.slice(0, limit);
+  const lastSentenceEnd = Math.max(
+    sliced.lastIndexOf("."),
+    sliced.lastIndexOf("!"),
+    sliced.lastIndexOf("?"),
+  );
+  // Keep sentence-complete truncation if terminator is not too early (>50% of limit)
+  if (lastSentenceEnd > limit * 0.5) {
+    return sliced.slice(0, lastSentenceEnd + 1).trimEnd();
+  }
+  const lastSpace = sliced.lastIndexOf(" ");
+  if (lastSpace > limit * 0.7) {
+    return sliced.slice(0, lastSpace).trimEnd();
+  }
+  return sliced.trimEnd();
+}
+
+/**
  * Returns true when text contains Han/Kana/Hangul characters.
  *
  * @param text - Candidate title or abstract.
@@ -286,7 +313,11 @@ export async function evaluateMultiBoxJury(
               safeAbstract.trim().length > 15 &&
               safeAbstract !== "(özet yok)"
             ) {
-              abstractText = safeAbstract.slice(0, 600);
+              // Akademik özetler genelde 1000-1500 karakterdir; tamamını koru, yalnızca bozuk/aşırı uzun veri anomalilerini sınırla.
+              abstractText =
+                safeAbstract.length > 2500
+                  ? truncateAtSentence(safeAbstract, 2500)
+                  : safeAbstract;
             } else {
               abstractText = `(Özet metni bulunmamaktadır. Bu eser ${safePublisher} tarafından yayımlanmış ${typeLabel} formatında bir çalışmadır${citationBadge}. Başlığı, yazarı ve konu uyumu üzerinden değerlendiriniz.)`;
             }

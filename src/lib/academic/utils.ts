@@ -10,6 +10,10 @@ export {
 export {
   stripAltTitle,
   areTitlesSimilar,
+  areTitlesDuplicateByMetric,
+  jaccardSimilarity,
+  normalizedLevenshteinSimilarity,
+  levenshteinDistance,
   normalizeTitle,
   normalizeCleanTitle,
 } from "./title-utils";

@@ -1,11 +1,50 @@
 import { z } from "zod";
 import { Logger, createFlowId } from "@/lib/logger";
-import { AppError, ValidationError } from "./app-error";
+import { AppError, ValidationError, type QuotaType } from "./app-error";
+import { isDailyQuotaExceeded } from "@/lib/rate-limiter";
 
 export interface ActionErrorResult {
   success: false;
   error: string;
   code: string;
+  quotaType?: QuotaType;
+  retryAfterMs?: number;
+  resetsAt?: string;
+  meta?: Record<string, unknown>;
+}
+
+/**
+ * Computes Pacific midnight ISO for DailyQuotaExceededError fallback.
+ */
+function getPacificMidnightResetISOFallback(): string {
+  const ptDateStr = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "America/Los_Angeles",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(new Date());
+  const [yStr, mStr, dStr] = ptDateStr.split("-");
+  const y = Number(yStr);
+  const m = Number(mStr);
+  const d = Number(dStr);
+  const nextD = d === new Date(y, m, 0).getDate() ? 1 : d + 1;
+  const nextM = d === new Date(y, m, 0).getDate() ? (m % 12) + 1 : m;
+  const nextY = m === 12 && d === 31 ? y + 1 : y;
+  const isPDT = (() => {
+    const secondSundayMarch = (() => {
+      const first = new Date(Date.UTC(nextY, 2, 1));
+      return 1 + ((7 - first.getUTCDay()) % 7) + 7;
+    })();
+    const firstSundayNov = (() => {
+      const first = new Date(Date.UTC(nextY, 10, 1));
+      return 1 + ((7 - first.getUTCDay()) % 7);
+    })();
+    if (nextM > 3 && nextM < 11) return true;
+    if (nextM < 3 || nextM > 11) return false;
+    if (nextM === 3) return nextD >= secondSundayMarch;
+    return nextD < firstSundayNov;
+  })();
+  return new Date(Date.UTC(nextY, nextM - 1, nextD, isPDT ? 7 : 8, 0, 0)).toISOString();
 }
 
 const UNEXPECTED_MESSAGE =
@@ -33,9 +72,32 @@ export function handleActionError(
 ): ActionErrorResult {
   const log = logger ?? new Logger(createFlowId());
 
+  if (isDailyQuotaExceeded(error)) {
+    const resetsAt = getPacificMidnightResetISOFallback();
+    const label = (error as { label?: string }).label ?? "unknown";
+    log.warn("action_daily_quota_exceeded", {
+      data: { code: "AI_PROVIDER_ERROR", label, resetsAt, quotaType: "RPD" as const },
+      error,
+    });
+    return {
+      success: false,
+      error: "Yapay zeka hizmetinin günlük kullanım kotası doldu. Kota Pasifik saatiyle gece yarısı sıfırlanacak. Lütfen yarın tekrar deneyin.",
+      code: "AI_PROVIDER_ERROR",
+      quotaType: "RPD",
+      resetsAt,
+      meta: { label },
+    };
+  }
+
   if (error instanceof AppError) {
     const payload = {
-      data: { code: error.code, statusCode: error.statusCode },
+      data: {
+        code: error.code,
+        statusCode: error.statusCode,
+        quotaType: error.quotaType,
+        retryAfterMs: error.retryAfterMs,
+        resetsAt: error.resetsAt,
+      },
       error,
     };
     if (error.isOperational) {
@@ -43,7 +105,15 @@ export function handleActionError(
     } else {
       log.error("action_system_error", payload);
     }
-    return { success: false, error: error.userMessage, code: error.code };
+    return {
+      success: false,
+      error: error.userMessage,
+      code: error.code,
+      ...(error.quotaType ? { quotaType: error.quotaType } : {}),
+      ...(error.retryAfterMs !== undefined ? { retryAfterMs: error.retryAfterMs } : {}),
+      ...(error.resetsAt ? { resetsAt: error.resetsAt } : {}),
+      ...(error.meta ? { meta: error.meta } : {}),
+    };
   }
 
   if (error instanceof z.ZodError) {

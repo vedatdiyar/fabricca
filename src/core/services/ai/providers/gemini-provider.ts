@@ -6,8 +6,12 @@ import {
   SchemaValidationError,
   classifyError,
   extractQuotaDetails,
+  extractRetryDelayMs,
+  isRateLimitError,
+  isRpdError,
   toAiProviderError,
 } from "../llm-errors";
+import { AiProviderError } from "@/lib/errors/app-error";
 import { withRetry } from "../llm-retry";
 import { sanitizeAndParseJson, validateStructuredOutput } from "../llm-json";
 import type { JsonSchema, StructuredGenerationOptions } from "../llm-types";
@@ -306,8 +310,33 @@ export async function generateStructuredContent<T>(
           operation: operation ?? undefined,
         },
       });
+      // Preserve RPD semantics as DailyQuotaExceededError; handleActionError
+      // will map it to { quotaType:"RPD", resetsAt } (Pacific midnight) for the UI.
       throw new DailyQuotaExceededError(`gemini_${modelName}`);
     }
-    throw toAiProviderError(error, "gemini");
+    // Enrich 429/RPM vs RPD quota details before crossing the server boundary:
+    // toAiProviderError now internally calls extractRetryDelayMs + extractQuotaDetails
+    // and populates quotaType / retryAfterMs / resetsAt on the AiProviderError.
+    // Explicit pre-check keeps the intent visible at the provider boundary.
+    if (isRpdError(error) || isRateLimitError(error)) {
+      const retryAfterMs = extractRetryDelayMs(error) ?? undefined;
+      const quotaDetails = extractQuotaDetails(error);
+      // Delegate to toAiProviderError which will attach quotaType/retryAfterMs/resetsAt/meta;
+      // we keep the error object intact for that helper to inspect.
+      void retryAfterMs;
+      void quotaDetails;
+    }
+    // Enforce that quota-enriched errors are never returned as plain Error:
+    // if the helper somehow returned a plain Error, wrap it explicitly.
+    const enriched = toAiProviderError(error, "gemini");
+    if (!(enriched instanceof AiProviderError)) {
+      throw new AiProviderError({
+        cause: error,
+        message: error instanceof Error ? error.message : String(error),
+        quotaType: isRpdError(error) ? "RPD" : isRateLimitError(error) ? "RPM" : undefined,
+        retryAfterMs: extractRetryDelayMs(error) ?? undefined,
+      });
+    }
+    throw enriched;
   }
 }

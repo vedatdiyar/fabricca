@@ -18,6 +18,7 @@ import { loadThesisMatrixAndBoxes } from "@/app/(onboarding)/onboarding/literatu
 import { isLiteratureCancelled } from "./cancel-state";
 import { resetLiteratureCancelledAction } from "./cancel-actions";
 import { resetGeminiScheduler } from "@/core/services/ai";
+import { handleActionError } from "@/lib/errors/handle-error";
 
 /**
  * Processes all sub-boxes through the batch literature pipeline.
@@ -27,7 +28,15 @@ import { resetGeminiScheduler } from "@/core/services/ai";
  */
 export async function processAllBoxesAction(
   boxes: SubBoxInput[],
-): Promise<{ data?: LiteraturePoolEntry[]; error?: string }> {
+): Promise<{
+  data?: LiteraturePoolEntry[];
+  error?: string;
+  code?: string;
+  quotaType?: "RPM" | "RPD" | "CONCURRENCY";
+  retryAfterMs?: number;
+  resetsAt?: string;
+  meta?: Record<string, unknown>;
+}> {
   const run = PipelineRun.create(LITERATURE_PIPELINE);
 
   try {
@@ -81,9 +90,15 @@ export async function processAllBoxesAction(
     return { data: poolEntries };
   } catch (err) {
     run.finish();
-    const message =
-      err instanceof Error ? err.message : "Beklenmeyen bir hata oluştu.";
-    return { error: message };
+    const handled = handleActionError(err);
+    return {
+      error: handled.error,
+      code: handled.code,
+      quotaType: handled.quotaType,
+      retryAfterMs: handled.retryAfterMs,
+      resetsAt: handled.resetsAt,
+      meta: handled.meta,
+    };
   }
 }
 
@@ -95,7 +110,15 @@ export async function processAllBoxesAction(
  */
 export async function runLiteraturePipelineAction(
   boxes: SubBoxInput[],
-): Promise<{ data?: LiteraturePoolEntry[]; error?: string }> {
+): Promise<{
+  data?: LiteraturePoolEntry[];
+  error?: string;
+  code?: string;
+  quotaType?: "RPM" | "RPD" | "CONCURRENCY";
+  retryAfterMs?: number;
+  resetsAt?: string;
+  meta?: Record<string, unknown>;
+}> {
   const run = PipelineRun.create(LITERATURE_PIPELINE);
   const pipelineStart = performance.now();
 
@@ -164,8 +187,14 @@ export async function runLiteraturePipelineAction(
     return { data: poolEntries };
   } catch (err) {
     run.finish();
-    const message =
-      err instanceof Error ? err.message : "Beklenmeyen bir hata oluştu.";
-    return { error: message };
+    const handled = handleActionError(err);
+    return {
+      error: handled.error,
+      code: handled.code,
+      quotaType: handled.quotaType,
+      retryAfterMs: handled.retryAfterMs,
+      resetsAt: handled.resetsAt,
+      meta: handled.meta,
+    };
   }
 }

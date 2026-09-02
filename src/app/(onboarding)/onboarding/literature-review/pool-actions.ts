@@ -116,6 +116,11 @@ export async function checkLiteraturePoolAction(): Promise<{
   data?: LiteraturePoolEntry[];
   exists: boolean;
   error?: string;
+  code?: string;
+  quotaType?: "RPM" | "RPD" | "CONCURRENCY";
+  retryAfterMs?: number;
+  resetsAt?: string;
+  meta?: Record<string, unknown>;
 }> {
   try {
     const session = await getSession();
@@ -135,10 +140,15 @@ export async function checkLiteraturePoolAction(): Promise<{
 
     return { exists: false };
   } catch (err) {
+    const handled = handleActionError(err);
     return {
       exists: false,
-      error:
-        err instanceof Error ? err.message : "Beklenmeyen bir hata oluştu.",
+      error: handled.error,
+      code: handled.code,
+      quotaType: handled.quotaType,
+      retryAfterMs: handled.retryAfterMs,
+      resetsAt: handled.resetsAt,
+      meta: handled.meta,
     };
   }
 }

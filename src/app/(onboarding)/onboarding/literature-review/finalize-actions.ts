@@ -14,6 +14,7 @@ import {
   SESSION_ERROR_MSG,
 } from "@/lib/session";
 import type { OnboardingActionResult } from "@/lib/types";
+import { handleActionError } from "@/lib/errors/handle-error";
 
 /**
  * Marks onboarding as completed for the current user and updates the session cookie.
@@ -61,9 +62,6 @@ export async function finalizeOnboardingAction(): Promise<OnboardingActionResult
     log.error("finalize_onboarding_failed", {
       error: err,
     });
-    return {
-      error:
-        err instanceof Error ? err.message : "An unexpected error occurred.",
-    };
+    return handleActionError(err);
   }
 }

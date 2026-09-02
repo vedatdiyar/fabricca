@@ -644,6 +644,25 @@ export const tasksRelations = relations(tasks, ({ one }) => ({
   }),
 }));
 
+/** Daily quota counters — ultra-light distributed RPD ledger (Pacific date-key). */
+export const dailyQuotaCounters = pgTable(
+  "daily_quota_counters",
+  {
+    id: serial().primaryKey(),
+    serviceKey: varchar("service_key", { length: 128 }).notNull(),
+    dateKey: varchar("date_key", { length: 10 }).notNull(),
+    requestCount: integer("request_count").notNull().default(0),
+    updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  },
+  (table) => [
+    uniqueIndex("uq_daily_quota_service_date").on(table.serviceKey, table.dateKey),
+    index("idx_daily_quota_service_key").on(table.serviceKey),
+  ],
+);
+
+export type DailyQuotaCounter = InferSelectModel<typeof dailyQuotaCounters>;
+export type NewDailyQuotaCounter = InferInsertModel<typeof dailyQuotaCounters>;
+
 /** Sessions table — stores advisor conversation threads and office review sessions per user. */
 export const sessions = pgTable(
   "sessions",

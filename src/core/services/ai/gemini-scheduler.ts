@@ -33,6 +33,8 @@ import {
   getNextRoundRobinOffset,
   getKeyUsageStats,
   resetGeminiScheduler,
+  hasDailyCapacityForModel,
+  incrementDailyForKey,
 } from "./scheduler-state";
 import { getBalancedKeyCandidates } from "./candidate-selector";
 
@@ -117,6 +119,17 @@ export async function dispatchGeminiCall<T>(
     throw new DailyQuotaExceededError(`gemini_${params.model}`);
   }
 
+  // Proactive RPD gate — multi-device consistent via Pacific date-key counter + DB sync (fail-open)
+  // If all keys are proactively exhausted for this model, fail fast before any network call.
+  try {
+    if (!hasDailyCapacityForModel(params.model)) {
+      throw new DailyQuotaExceededError(`gemini_${params.model}`);
+    }
+  } catch (err) {
+    if (err instanceof DailyQuotaExceededError) throw err;
+    console.warn(`[gemini-scheduler] hasDailyCapacityForModel check failed for ${params.model}, fail-open:`, err);
+  }
+
   const allowFallback =
     params.operation !== undefined
       ? GEMINI_FALLBACK_OPERATIONS.some((op) => op === params.operation) ||
@@ -154,8 +167,13 @@ export async function dispatchGeminiCall<T>(
             )
           : await taskPromise;
 
-        // Increment usage count for balanced tracking
+        // Increment usage count for balanced tracking + proactive daily quota
         recordKeyUsage(apiKey);
+        try {
+          incrementDailyForKey(model, apiKey);
+        } catch (err) {
+          console.warn(`[gemini-scheduler] incrementDailyForKey failed for ${model}, fail-open:`, err);
+        }
         return result;
       } catch (error) {
         const currentKeyIdx = keyIndicesToTry[i];

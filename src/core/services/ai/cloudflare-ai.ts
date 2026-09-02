@@ -13,6 +13,13 @@ const MAX_EMBEDDING_RETRIES = 3;
 const RETRY_BASE_DELAY_MS = 500;
 
 /**
+ * Safe batch token ceiling — Cloudflare theoretical max is 15k tokens/batch.
+ * Use 11k as guard band for Turkish UTF-8/subword inflation (ç,ğ,ı,ö,ş,ü often
+ * split into 2-3 subwords, inflating real token count ~30-40% vs ASCII).
+ */
+export const CLOUDFLARE_SAFE_TOKEN_LIMIT = 11000;
+
+/**
  * Global embedding limiter (3000 req/min task ceiling) shared across every
  * caller, so concurrent pipeline stages cannot overflow the service rate.
  */
@@ -66,14 +73,16 @@ export async function generateCloudflareEmbeddings(
   }
 
   const url = `https://api.cloudflare.com/client/v4/accounts/${accountId}/ai/run/${BGE_M3_MODEL}`;
-  const MAX_BATCH_TOKENS = 15000;
+  const MAX_BATCH_TOKENS = CLOUDFLARE_SAFE_TOKEN_LIMIT;
   const MAX_BATCH_TEXT_COUNT = 50;
   const batches: string[][] = [];
   let currentBatch: string[] = [];
   let currentBatchTokens = 0;
 
   for (const text of texts) {
-    const estimatedTokens = Math.ceil(text.length / 4);
+    // Conservative Turkish/UTF-8 estimate: subword tokenizer splits ç,ğ,ı,ö,ş,ü often
+    // into 2-3 pieces, so `length/4` undercounts by 30-40%. Use `length/2.5`.
+    const estimatedTokens = Math.ceil(text.length / 2.5);
     if (
       currentBatch.length > 0 &&
       (currentBatchTokens + estimatedTokens > MAX_BATCH_TOKENS ||

@@ -10,6 +10,7 @@ import { LITERATURE_PIPELINE, stageIndexOf } from "@/lib/pipeline-definitions";
 import type { LiteraturePoolEntry } from "@/lib/types";
 import { getStepTanStackKeys } from "@/lib/onboarding-cache";
 import { clearDownstreamDbAction } from "../actions";
+import { handleActionErrorToast } from "@/lib/errors/ui-error-handler";
 import {
   checkLiteraturePoolAction,
   runLiteraturePipelineAction,
@@ -122,7 +123,10 @@ export function useLiteratureContinue() {
     try {
       const finalizeResult = await finalizeOnboardingAction();
       if ("error" in finalizeResult && finalizeResult.error) {
-        toast.error(finalizeResult.error);
+        // Merkezi quota-aware toast: RPM→ saniye, RPD→ HH:mm
+        handleActionErrorToast(
+          finalizeResult as unknown as Parameters<typeof handleActionErrorToast>[0],
+        );
         return { success: false, error: finalizeResult.error };
       }
 
@@ -134,7 +138,7 @@ export function useLiteratureContinue() {
     } catch (err) {
       const message =
         err instanceof Error ? err.message : "Beklenmeyen bir hata oluştu.";
-      toast.error(message);
+      handleActionErrorToast(message);
       return { success: false, error: message };
     }
   }, [queryClient, router]);

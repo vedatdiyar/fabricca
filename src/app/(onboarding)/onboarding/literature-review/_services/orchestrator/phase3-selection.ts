@@ -5,9 +5,11 @@ import { healAuthorsByTitle } from "../openalex/client";
 import {
   extractOpenAlexId,
   normalizeCleanTitle,
-  areTitlesSimilar,
   stripAltTitle,
 } from "@/lib/academic/utils";
+import { areTitlesDuplicateByMetric } from "@/lib/academic/title-utils";
+import { extractCleanDoi } from "@/lib/academic/identifier-utils";
+import { extractSurname } from "@/lib/academic/filename-utils";
 import type {
   SubBoxResult,
   PoolItem,
@@ -17,8 +19,18 @@ import type {
 } from "./types";
 
 /**
- * Executes Phase 3 selection, filtering jury evaluations into the final articles
- * to persist for each sub-box.
+ * Executes Phase 3 selection with global optimal assignment.
+ *
+ * İş Kuralı (Step 13):
+ * - Bir makale ASLA birden fazla sub-box içinde yer alamaz (Strict 1-to-1).
+ * - Her sub-box hedef olarak tam 4 makale ile doldurulmalıdır (quota = 4).
+ * - Highest Relevance Affinity: tüm kutular arası en yüksek skorlu eşleşme kazanır.
+ *
+ * Algoritma:
+ *  1. Global skor matrisi oluştur (`{paper, boxId, score}`) ve skora göre azalan sırala.
+ *  2. Sırayla ata: makale atanmamış + kutu <4 ise ata ve küresel olarak işaretle.
+ *  3. Backfill: primary (>=80) sonrası boş slotlar için secondary (>=75) havuzdan
+ *     yine global skor sıralı şekilde doldur.
  *
  * @param fulfilledResults - The Phase 1 search results per sub-box.
  * @param poolByBox - The per-box candidate pools built during Phase 2.
@@ -34,10 +46,9 @@ export async function executePhase3Selection(
   logger: Logger,
   checkCancelled?: () => boolean,
 ): Promise<SubBoxResultToPersist[]> {
-  const assignedTitles = new Set<string>();
-  const assignedRawTitles: string[] = [];
-
-  const subBoxResultsToPersist: SubBoxResultToPersist[] = [];
+  // Metric-based deduplication: DOI exact OR (Jaccard/Levenshtein >=0.90 AND year±1/first-author)
+  const seenDois = new Set<string>();
+  const seenPapers: Array<{ title: string; year: number | null; authors: string[]; doi: string | null }> = [];
 
   const poolLookup = new Map<string, PoolItem>();
   for (const [boxId, pool] of poolByBox) {
@@ -52,85 +63,132 @@ export async function executePhase3Selection(
 
   const allSelectedArticles: SelectedArticleCandidate[] = [];
 
+  // ── Global assignment state ──────────────────────────────────────────────
+  const selectedEvalsByBox = new Map<number, JuryEvalResult[]>();
+  for (const r of fulfilledResults) {
+    selectedEvalsByBox.set(r.thesisBoxId, []);
+  }
+
+  const isDuplicate = (
+    title: string,
+    year: number | null,
+    authors: string[],
+    doi: string | null,
+  ): boolean => {
+    const cleanDoi = doi ? extractCleanDoi(doi) : null;
+    if (cleanDoi && seenDois.has(cleanDoi)) return true;
+    for (const prev of seenPapers) {
+      if (cleanDoi && prev.doi && cleanDoi === prev.doi) return true;
+      if (!areTitlesDuplicateByMetric(title, prev.title, 0.90)) continue;
+      const yearMatch =
+        typeof year === "number" &&
+        typeof prev.year === "number" &&
+        Math.abs(year - prev.year) <= 1;
+      const firstA = authors?.[0] ? extractSurname(authors[0]).toLowerCase() : null;
+      const firstB = prev.authors?.[0] ? extractSurname(prev.authors[0]).toLowerCase() : null;
+      const hasAuthor = !!firstA && !!firstB && firstA !== "anonim" && firstB !== "anonim";
+      const authorMatch = hasAuthor ? firstA === firstB : false;
+      const hasMeta = (typeof year === "number" && typeof prev.year === "number") || hasAuthor;
+      if (hasMeta ? yearMatch || authorMatch : true) return true;
+    }
+    return false;
+  };
+
+  const markSelected = (
+    title: string,
+    year: number | null,
+    authors: string[],
+    doi: string | null,
+  ): void => {
+    const cleanDoi = doi ? extractCleanDoi(doi) : null;
+    if (cleanDoi) seenDois.add(cleanDoi);
+    seenPapers.push({ title, year, authors: authors ?? [], doi: cleanDoi });
+  };
+
+  type ScoredEntry = { ev: JuryEvalResult; boxId: number; score: number };
+
+  const getPoolMeta = (
+    ev: JuryEvalResult,
+  ): { poolItem: PoolItem | undefined; year: number | null; authors: string[]; doi: string | null } => {
+    const poolKey = `${ev.thesisBoxId}::${normalizeCleanTitle(ev.articleTitle)}`;
+    const poolItem = poolLookup.get(poolKey);
+    return {
+      poolItem,
+      year: poolItem?.rawPaper.year ?? null,
+      authors: poolItem?.rawPaper.authors ?? [],
+      doi: poolItem?.rawPaper.doi ?? ev.openAlexId ?? null,
+    };
+  };
+
+  const tryAssignEntry = (entry: ScoredEntry): boolean => {
+    const { ev, boxId } = entry;
+    const bucket = selectedEvalsByBox.get(boxId);
+    if (!bucket || bucket.length >= 4) return false;
+    const { poolItem, year, authors, doi } = getPoolMeta(ev);
+    if (!poolItem) return false;
+    if (isDuplicate(ev.articleTitle, year, authors, doi)) return false;
+    markSelected(ev.articleTitle, year, authors, doi);
+    bucket.push(ev);
+    return true;
+  };
+
+  // ── Step 2: Global skor matrisi ve öncelikli eşleştirme (primary >=80) ──
+  const primaryEntries: ScoredEntry[] = [];
   for (const r of fulfilledResults) {
     if (checkCancelled?.()) break;
-
-    const boxEvals = juryEvaluations
-      .filter((ev) => ev.thesisBoxId === r.thesisBoxId)
-      .sort((a, b) => b.relevanceScore - a.relevanceScore);
-
-    if (boxEvals.length === 0) {
-      subBoxResultsToPersist.push({
-        subBoxTitle: r.subBox.title,
-        thesisBoxId: r.thesisBoxId,
-        articles: [],
-      });
-      continue;
-    }
-
-    // Strict seed quality: Prefer high-confidence relevant candidates (>= 80)
-    const primaryEvals = boxEvals.filter(
-      (ev) => ev.isRelevant && ev.relevanceScore >= 80,
+    const boxPrimary = juryEvaluations.filter(
+      (ev) => ev.thesisBoxId === r.thesisBoxId && ev.isRelevant && ev.relevanceScore >= 80,
     );
-    const secondaryEvals = boxEvals.filter(
-      (ev) =>
-        ev.isRelevant && ev.relevanceScore >= 75 && ev.relevanceScore < 80,
-    );
-
-    const isDuplicate = (title: string): boolean => {
-      const normTitle = normalizeCleanTitle(title);
-      if (assignedTitles.has(normTitle)) return true;
-      for (const raw of assignedRawTitles) {
-        if (areTitlesSimilar(title, raw, 0.8)) return true;
-      }
-      return false;
-    };
-
-    const markSelected = (title: string): void => {
-      assignedTitles.add(normalizeCleanTitle(title));
-      assignedRawTitles.push(title);
-    };
-
-    const selectedEvals: typeof boxEvals = [];
-
-    const tryAdd = (ev: (typeof boxEvals)[0]): boolean => {
-      if (selectedEvals.length >= 4) return false;
-      if (isDuplicate(ev.articleTitle)) return false;
-      const poolKey = `${ev.thesisBoxId}::${normalizeCleanTitle(ev.articleTitle)}`;
-      if (!poolLookup.has(poolKey)) return false;
-      markSelected(ev.articleTitle);
-      selectedEvals.push(ev);
-      return true;
-    };
-
-    for (const ev of primaryEvals) {
-      if (selectedEvals.length >= 4) break;
-      tryAdd(ev);
+    for (const ev of boxPrimary) {
+      primaryEntries.push({ ev, boxId: r.thesisBoxId, score: ev.relevanceScore });
     }
+  }
+  primaryEntries.sort((a, b) => b.score - a.score);
 
-    // Only fallback to relevant candidates with score >= 75 if needed; never take eliminated/irrelevant papers
-    if (selectedEvals.length < 4) {
-      for (const ev of secondaryEvals) {
-        if (selectedEvals.length >= 4) break;
-        tryAdd(ev);
+  for (const entry of primaryEntries) {
+    if (checkCancelled?.()) break;
+    tryAssignEntry(entry);
+  }
+
+  // ── Step 3: Alt kutuları doldurma garantisi — secondary backfill (75–79) ──
+  const needsBackfill = Array.from(selectedEvalsByBox.values()).some((arr) => arr.length < 4);
+  if (needsBackfill) {
+    const secondaryEntries: ScoredEntry[] = [];
+    for (const r of fulfilledResults) {
+      if (checkCancelled?.()) break;
+      const bucket = selectedEvalsByBox.get(r.thesisBoxId);
+      if (!bucket || bucket.length >= 4) continue;
+      const boxSecondary = juryEvaluations.filter(
+        (ev) =>
+          ev.thesisBoxId === r.thesisBoxId &&
+          ev.isRelevant &&
+          ev.relevanceScore >= 75 &&
+          ev.relevanceScore < 80,
+      );
+      for (const ev of boxSecondary) {
+        secondaryEntries.push({ ev, boxId: r.thesisBoxId, score: ev.relevanceScore });
       }
     }
+    secondaryEntries.sort((a, b) => b.score - a.score);
 
-    if (selectedEvals.length === 0) {
-      subBoxResultsToPersist.push({
-        subBoxTitle: r.subBox.title,
-        thesisBoxId: r.thesisBoxId,
-        articles: [],
-      });
-      continue;
+    for (const entry of secondaryEntries) {
+      if (checkCancelled?.()) break;
+      const bucket = selectedEvalsByBox.get(entry.boxId);
+      if (!bucket || bucket.length >= 4) continue;
+      tryAssignEntry(entry);
     }
+  }
 
-    for (let idx = 0; idx < selectedEvals.length; idx++) {
-      const ev = selectedEvals[idx];
+  // ── Collect selected evals into flat candidate list ─────────────────────
+  for (const r of fulfilledResults) {
+    if (checkCancelled?.()) break;
+    const selectedEvals = selectedEvalsByBox.get(r.thesisBoxId) ?? [];
+    if (selectedEvals.length === 0) continue;
+
+    for (const ev of selectedEvals) {
       const normTitle = normalizeCleanTitle(ev.articleTitle);
       const poolKey = `${ev.thesisBoxId}::${normTitle}`;
       const poolItem = poolLookup.get(poolKey);
-
       if (!poolItem) continue;
 
       const rawTitle = poolItem.rawPaper.title ?? ev.articleTitle;
@@ -190,6 +248,8 @@ export async function executePhase3Selection(
     list.push(art);
     selectedByBox.set(art.thesisBoxId, list);
   }
+
+  const subBoxResultsToPersist: SubBoxResultToPersist[] = [];
 
   for (const r of fulfilledResults) {
     if (checkCancelled?.()) break;

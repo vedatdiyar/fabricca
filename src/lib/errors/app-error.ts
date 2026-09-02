@@ -9,6 +9,8 @@ export type ErrorCode =
   | "EXTERNAL_API_ERROR"
   | "INTERNAL_ERROR";
 
+export type QuotaType = "RPM" | "RPD" | "CONCURRENCY";
+
 export interface AppErrorInput {
   /** Stable machine-readable error identifier. */
   code?: ErrorCode;
@@ -24,6 +26,14 @@ export interface AppErrorInput {
   isOperational?: boolean;
   /** Optional HTTP status override (e.g. AiProviderError 502 vs 503). */
   statusCode?: number;
+  /** Quota kind extracted from provider error (RPM per-minute vs RPD per-day). */
+  quotaType?: QuotaType;
+  /** Recommended retry delay in milliseconds (from RetryInfo / Retry-After). */
+  retryAfterMs?: number;
+  /** ISO-8601 timestamp when quota resets (Pacific midnight for RPD, now+retryAfter for RPM). */
+  resetsAt?: string;
+  /** Arbitrary structured metadata forwarded to the client (lossless quota details). */
+  meta?: Record<string, unknown>;
 }
 
 /**
@@ -40,6 +50,10 @@ export class AppError extends Error {
   public readonly isOperational: boolean;
   public readonly userMessage: string;
   public readonly technicalDetails: unknown;
+  public readonly quotaType?: QuotaType;
+  public readonly retryAfterMs?: number;
+  public readonly resetsAt?: string;
+  public readonly meta?: Record<string, unknown>;
 
   constructor(input: AppErrorInput) {
     super(input.message ?? "Application error.");
@@ -50,6 +64,10 @@ export class AppError extends Error {
     this.userMessage =
       input.userMessage ?? "Bir hata oluştu. Lütfen tekrar deneyin.";
     this.technicalDetails = input.technicalDetails ?? input.cause;
+    this.quotaType = input.quotaType;
+    this.retryAfterMs = input.retryAfterMs;
+    this.resetsAt = input.resetsAt;
+    this.meta = input.meta;
     if (input.cause !== undefined) {
       this.cause = input.cause;
     }
@@ -71,6 +89,10 @@ export class ValidationError extends AppError {
       isOperational: input.isOperational ?? true,
       cause: input.cause,
       technicalDetails: input.technicalDetails,
+      quotaType: input.quotaType,
+      retryAfterMs: input.retryAfterMs,
+      resetsAt: input.resetsAt,
+      meta: input.meta,
     });
     this.name = "ValidationError";
   }
@@ -90,6 +112,10 @@ export class AuthenticationError extends AppError {
       isOperational: input.isOperational ?? true,
       cause: input.cause,
       technicalDetails: input.technicalDetails,
+      quotaType: input.quotaType,
+      retryAfterMs: input.retryAfterMs,
+      resetsAt: input.resetsAt,
+      meta: input.meta,
     });
     this.name = "AuthenticationError";
   }
@@ -110,6 +136,10 @@ export class ForbiddenError extends AppError {
       isOperational: input.isOperational ?? true,
       cause: input.cause,
       technicalDetails: input.technicalDetails,
+      quotaType: input.quotaType,
+      retryAfterMs: input.retryAfterMs,
+      resetsAt: input.resetsAt,
+      meta: input.meta,
     });
     this.name = "ForbiddenError";
   }
@@ -128,6 +158,10 @@ export class NotFoundError extends AppError {
       isOperational: input.isOperational ?? true,
       cause: input.cause,
       technicalDetails: input.technicalDetails,
+      quotaType: input.quotaType,
+      retryAfterMs: input.retryAfterMs,
+      resetsAt: input.resetsAt,
+      meta: input.meta,
     });
     this.name = "NotFoundError";
   }
@@ -148,6 +182,10 @@ export class DatabaseError extends AppError {
       isOperational: input.isOperational ?? true,
       cause: input.cause,
       technicalDetails: input.technicalDetails,
+      quotaType: input.quotaType,
+      retryAfterMs: input.retryAfterMs,
+      resetsAt: input.resetsAt,
+      meta: input.meta,
     });
     this.name = "DatabaseError";
   }
@@ -168,6 +206,10 @@ export class AiProviderError extends AppError {
       isOperational: input.isOperational ?? true,
       cause: input.cause,
       technicalDetails: input.technicalDetails,
+      quotaType: input.quotaType,
+      retryAfterMs: input.retryAfterMs,
+      resetsAt: input.resetsAt,
+      meta: input.meta,
     });
     this.name = "AiProviderError";
   }
@@ -188,6 +230,10 @@ export class StorageError extends AppError {
       isOperational: input.isOperational ?? true,
       cause: input.cause,
       technicalDetails: input.technicalDetails,
+      quotaType: input.quotaType,
+      retryAfterMs: input.retryAfterMs,
+      resetsAt: input.resetsAt,
+      meta: input.meta,
     });
     this.name = "StorageError";
   }
@@ -208,6 +254,10 @@ export class ExternalApiError extends AppError {
       isOperational: input.isOperational ?? true,
       cause: input.cause,
       technicalDetails: input.technicalDetails,
+      quotaType: input.quotaType,
+      retryAfterMs: input.retryAfterMs,
+      resetsAt: input.resetsAt,
+      meta: input.meta,
     });
     this.name = "ExternalApiError";
   }

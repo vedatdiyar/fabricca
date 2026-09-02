@@ -2,7 +2,24 @@ import type { ThesisBoxType } from "./box-constants";
 
 export type OnboardingActionResult =
   | { success: true; isProcessing?: boolean; error?: never }
-  | { success?: never; error: string };
+  | {
+      success: false;
+      error: string;
+      code?: string;
+      quotaType?: "RPM" | "RPD" | "CONCURRENCY";
+      retryAfterMs?: number;
+      resetsAt?: string;
+      meta?: Record<string, unknown>;
+    }
+  | {
+      success?: never;
+      error: string;
+      code?: string;
+      quotaType?: "RPM" | "RPD" | "CONCURRENCY";
+      retryAfterMs?: number;
+      resetsAt?: string;
+      meta?: Record<string, unknown>;
+    };
 
 export interface ThesisSummary {
   id: number;
@@ -60,8 +77,11 @@ export interface JuryArticle {
   subBoxId?: string;
 }
 
+export type LiteraturePoolEntryStatus = "manual_entry_required";
+
 export interface LiteraturePoolEntry {
   subBoxTitle: string;
   thesisBoxId: number;
   articles: JuryArticle[];
+  status?: LiteraturePoolEntryStatus;
 }
