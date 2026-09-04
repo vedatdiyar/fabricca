@@ -35,7 +35,6 @@ export function PositioningContainer({
         academicGap: "",
         originalContribution: "",
       },
-    recommendedTheses: [],
   };
 
   return (

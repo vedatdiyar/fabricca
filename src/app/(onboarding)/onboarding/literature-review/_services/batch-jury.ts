@@ -36,6 +36,7 @@ export interface JuryEvaluation {
   articleTitle: string;
   openAlexId: string | null;
   isRelevant: boolean;
+  tier: "TIER_1" | "TIER_2" | "REJECT";
   relevanceScore: number;
   reasoning: string;
 }
@@ -45,21 +46,39 @@ export interface SingleBoxJuryResult {
   evaluations: JuryEvaluation[];
 }
 
-const juryEvaluationSchema = z.object({
-  thesisBoxId: z.number().int().min(0),
-  subBoxTitle: z.string().min(1),
-  articleTitle: z
-    .string()
-    .default("")
-    .transform((v) => v.trim()),
-  openAlexId: z
-    .string()
-    .nullable()
-    .transform((v) => extractOpenAlexId(v)),
-  isRelevant: z.boolean(),
-  relevanceScore: z.number().int().min(0).max(100),
-  reasoning: z.string().min(1),
-});
+const juryEvaluationSchema = z
+  .object({
+    thesisBoxId: z.number().int().min(0),
+    subBoxTitle: z.string().min(1),
+    articleTitle: z
+      .string()
+      .default("")
+      .transform((v) => v.trim()),
+    openAlexId: z
+      .string()
+      .nullable()
+      .transform((v) => extractOpenAlexId(v)),
+    reasoning: z.string().min(1),
+    tier: z.enum(["TIER_1", "TIER_2", "REJECT"]).default("REJECT"),
+    isRelevant: z.boolean().optional(),
+    relevanceScore: z.number().int().min(0).max(100).optional(),
+  })
+  .transform((data) => {
+    const isRelevant = data.isRelevant ?? (data.tier !== "REJECT");
+    const relevanceScore =
+      data.relevanceScore ??
+      (data.tier === "TIER_1" ? 95 : data.tier === "TIER_2" ? 80 : 0);
+    return {
+      thesisBoxId: data.thesisBoxId,
+      subBoxTitle: data.subBoxTitle,
+      articleTitle: data.articleTitle,
+      openAlexId: data.openAlexId,
+      reasoning: data.reasoning,
+      tier: data.tier,
+      isRelevant,
+      relevanceScore,
+    };
+  });
 
 const singleBoxJuryOutputSchema = z.object({
   evaluations: z.array(juryEvaluationSchema),
@@ -81,19 +100,26 @@ const juryJsonSchema: JsonSchema = {
             description:
               "Makalenin gerçek OpenAlex ID'si (W... formatında). Bilinmiyorsa string 'null' değil, JSON null gönder.",
           },
+          reasoning: {
+            type: "string",
+            description:
+              "Türkçe 1 cümlelik gerekçe (sınıflandırmadan önce oluştur)",
+          },
+          tier: {
+            type: "string",
+            enum: ["TIER_1", "TIER_2", "REJECT"],
+            description:
+              "Kategorik sınıflandırma: TIER_1 (Çekirdek/Kanonik), TIER_2 (Güçlü Destekleyici), REJECT (Uyumsuz)",
+          },
           isRelevant: {
             type: "boolean",
-            description: "Makale box bağlamıyla alakalı mı?",
+            description: "Makale tez ve alt kutu bağlamıyla doğrudan alakalı mı?",
           },
           relevanceScore: {
             type: "integer",
             minimum: 0,
             maximum: 100,
-            description: "0-100 arası alaka skoru",
-          },
-          reasoning: {
-            type: "string",
-            description: "Türkçe 1 cümlelik kabul/ret gerekçesi",
+            description: "TIER_1 için 95, TIER_2 için 80, REJECT için 0",
           },
         },
         required: [
@@ -101,9 +127,10 @@ const juryJsonSchema: JsonSchema = {
           "subBoxTitle",
           "articleTitle",
           "openAlexId",
+          "reasoning",
+          "tier",
           "isRelevant",
           "relevanceScore",
-          "reasoning",
         ],
       },
     },
@@ -216,6 +243,7 @@ export async function evaluateMultiBoxJury(
       articleTitle: a.title ?? "(başlık yok)",
       openAlexId: extractOpenAlexId(a.openAlexId),
       isRelevant: false,
+      tier: "REJECT" as const,
       relevanceScore: 0,
       reasoning:
         "Başlık veya özet Çince/Japonca/Korece karakter içerdiğinden dil uygunluğu nedeniyle elenmiştir.",

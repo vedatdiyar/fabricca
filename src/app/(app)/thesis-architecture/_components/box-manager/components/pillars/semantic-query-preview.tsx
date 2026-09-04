@@ -20,24 +20,13 @@ export function SemanticQueryPreview({
 }: SemanticQueryPreviewProps) {
   if (!subBox.semanticQuery) return null;
 
-  const { openAlexQuery, semanticScholarQuery } = parseDualSemanticQuery(
-    subBox.semanticQuery,
-  );
+  const { openAlexQuery } = parseDualSemanticQuery(subBox.semanticQuery);
 
   const handleCopyQuery = (e: React.MouseEvent) => {
     e.stopPropagation();
-    const textToCopy =
-      openAlexQuery === semanticScholarQuery
-        ? openAlexQuery
-        : `OpenAlex (Vektör): ${openAlexQuery}\n\nAnahtar Kelimeler: ${semanticScholarQuery}`;
-    navigator.clipboard.writeText(textToCopy);
+    navigator.clipboard.writeText(openAlexQuery || subBox.semanticQuery || "");
     toast.success("RAG arama sorgusu kopyalandı.");
   };
-
-  const isDual =
-    openAlexQuery &&
-    semanticScholarQuery &&
-    openAlexQuery !== semanticScholarQuery;
 
   return (
     <div className="pt-0.5">
@@ -68,30 +57,14 @@ export function SemanticQueryPreview({
             <Copy className="h-3.5 w-3.5" />
           </button>
 
-          {isDual ? (
-            <div className="space-y-2">
-              <div className="bg-background/50 p-2 rounded border border-border/40">
-                <span className="text-[10px] uppercase font-semibold text-primary block mb-1">
-                  OpenAlex (GTE-Large-EN Vektör Paragrafı)
-                </span>
-                <p className="font-mono text-xs text-foreground select-all leading-relaxed">
-                  {openAlexQuery}
-                </p>
-              </div>
-              <div className="bg-background/50 p-2 rounded border border-border/40">
-                <span className="text-[10px] uppercase font-semibold text-primary block mb-1">
-                  Akademik Anahtar Kelimeler (Hibrit Arama)
-                </span>
-                <p className="font-mono text-xs text-foreground select-all leading-relaxed">
-                  {semanticScholarQuery}
-                </p>
-              </div>
-            </div>
-          ) : (
-            <p className="font-mono text-xs text-foreground select-all leading-relaxed bg-background/50 p-2 rounded border border-border/40">
+          <div className="bg-background/50 p-2 rounded border border-border/40">
+            <span className="text-[10px] uppercase font-semibold text-primary block mb-1">
+              OpenAlex (GTE-Large-EN Vektör Paragrafı)
+            </span>
+            <p className="font-mono text-xs text-foreground select-all leading-relaxed">
               {openAlexQuery || subBox.semanticQuery}
             </p>
-          )}
+          </div>
         </div>
       )}
     </div>

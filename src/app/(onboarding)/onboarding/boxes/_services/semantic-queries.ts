@@ -114,7 +114,7 @@ export async function generateSemanticQueriesAction(
         entry.subBoxTitle,
         serializeDualSemanticQuery(
           entry.openAlexQuery,
-          entry.semanticScholarQuery,
+          entry.openAlexLexicalQueries,
         ),
       );
     }

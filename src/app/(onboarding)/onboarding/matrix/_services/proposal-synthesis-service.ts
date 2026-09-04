@@ -3,11 +3,12 @@ import {
   generateGeminiStructuredContent,
   type JsonSchema,
 } from "@/core/services/ai";
-import { FLASH_LITE_35, GEMINI_SEED } from "@/lib/constants";
+import { FLASH_38, GEMINI_SEED } from "@/lib/constants";
 import { ThinkingLevel } from "@google/genai";
 import { PipelineRun } from "@/lib/pipeline-logger";
 import { MATRIX_SYNTHESIS_PIPELINE } from "@/lib/pipeline-definitions";
 import type { ThesisMatrix } from "@/lib/types";
+import type { Logger } from "@/lib/logger";
 
 export interface UserClarificationAnswer {
   question: string;
@@ -17,27 +18,27 @@ export interface UserClarificationAnswer {
 export const synthesizedMatrixSchema = z.object({
   subjectProblem: z
     .string()
-    .min(35)
+    .min(100)
     .describe(
-      "Araştırma Problemi, Aktörler ve Odak: Çözülecek gerilimi, aktörleri, sınırları ve araştırma sorularını enstitü standartlarında açıklayan yoğun akademik paragraf",
+      "Araştırma Problemi, Aktörler ve Odak: Literatürdeki temel boşluğu/gerilimi, temel araştırma sorusunu, alt soruları ve metindeki tüm hipotezleri (varsa H1, H2 vb.) eksiksiz içeren yoğun akademik paragraf.",
     ),
   theoreticalFramework: z
     .string()
-    .min(35)
+    .min(100)
     .describe(
-      "Teorik ve Kavramsal Çerçeve: Temel alınan kuramsal merceği, analitik kavramları ve literatür zeminini açıklayan yoğun akademik paragraf",
+      "Kuramsal ve Kavramsal Çerçeve: Yalnızca araştırmacının benimsediği kuramsal omurgayı, düşünürleri ve analitik modelleri içeren; ikincil literatürden ve yöntem araçlarından arındırılmış kuramsal çerçeve paragrafı.",
     ),
   primaryMaterial: z
     .string()
-    .min(20)
+    .min(100)
     .describe(
-      "Veri Kaynağı / Birincil Malzeme: Kullanılacak arşiv belgelerini, saha örneklemini, veri setlerini veya birincil materyali tanımlayan somut paragraf",
+      "Birincil Malzeme / Veri Kümesi: Metinde tanımlanan tüm birincil belgeleri, arşivleri, veri kaynaklarını tek tek adları ve tarihleriyle somut olarak listeleyen, dönemsel/mekansal eşikleri açıklayan paragraf.",
     ),
   methodology: z
     .string()
-    .min(35)
+    .min(100)
     .describe(
-      "Metodoloji: Veri toplama, kodlama/ölçme, analiz adımlarını ve operasyonelleştirmeyi açıklayan yetkin akademik paragraf",
+      "Metodoloji ve Araştırma Deseni: Yöntemsel yaklaşımı, veriyi analiz etmede kullanılan kavramsal/yöntemsel araçları, analitik soruları, analiz aşamalarını/momentlerini ve karşılaştırma desenini açıklayan metodoloji paragrafı.",
     ),
 });
 
@@ -47,22 +48,22 @@ export const synthesizedMatrixJsonSchema: JsonSchema = {
     subjectProblem: {
       type: "string",
       description:
-        "Araştırma Problemi, Aktörler ve Odak: Çözülecek gerilimi, aktörleri ve araştırma sorularını açıklayan yoğun akademik paragraf",
+        "Araştırma Problemi, Aktörler ve Odak: Literatürdeki temel boşluğu/gerilimi, temel araştırma sorusunu, alt soruları ve metindeki tüm hipotezleri (varsa H1, H2 vb.) eksiksiz içeren yoğun akademik paragraf.",
     },
     theoreticalFramework: {
       type: "string",
       description:
-        "Teorik ve Kavramsal Çerçeve: Temel alınan kuramsal merceği ve analitik kavramları açıklayan yoğun akademik paragraf",
+        "Kuramsal ve Kavramsal Çerçeve: Yalnızca araştırmacının benimsediği kuramsal omurgayı, düşünürleri ve analitik modelleri içeren; ikincil literatürden ve yöntem araçlarından arındırılmış kuramsal çerçeve paragrafı.",
     },
     primaryMaterial: {
       type: "string",
       description:
-        "Veri Kaynağı / Birincil Malzeme: Kullanılacak arşiv belgelerini, saha örneklemini veya veri setlerini tanımlayan paragraf",
+        "Birincil Malzeme / Veri Kümesi: Metinde tanımlanan tüm birincil belgeleri, arşivleri, veri kaynaklarını tek tek adları ve tarihleriyle somut olarak listeleyen, dönemsel/mekansal eşikleri açıklayan paragraf.",
     },
     methodology: {
       type: "string",
       description:
-        "Metodoloji: Veri toplama ve analiz adımlarını açıklayan yetkin akademik paragraf",
+        "Metodoloji ve Araştırma Deseni: Yöntemsel yaklaşımı, veriyi analiz etmede kullanılan kavramsal/yöntemsel araçları, analitik soruları, analiz aşamalarını/momentlerini ve karşılaştırma desenini açıklayan metodoloji paragrafı.",
     },
   },
   required: [
@@ -72,6 +73,41 @@ export const synthesizedMatrixJsonSchema: JsonSchema = {
     "methodology",
   ],
 };
+
+export const universalDecompositionSystemInstruction = `<role>
+Sen, tüm sosyal ve beşeri bilimler alanlarında (Siyaset Bilimi, Sosyoloji, Tarih, Uluslararası İlişkiler, Hukuk, Antropoloji, İletişim, Felsefe vb.) uzmanlaşmış kıdemli bir araştırma metodoloğu ve tez danışmanısın.
+Görevin, araştırmacının sunduğu ham tez önerisi metnini analiz ederek, tezin tüm kuramsal, ampirik ve yöntemsel unsurlarını eksiksiz ve enstitü standartlarında 4 temel araştırma kadranına (Problem, Kuramsal Çerçeve, Birincil Malzeme, Metodoloji) ayrıştırmaktır.
+</role>
+
+<instructions>
+Aşağıdaki 4 kurala KESİNLİKLE ve TAVİZSİZ uymalısın:
+
+1. [subjectProblem - Araştırma Problemi ve Odak]:
+- Araştırmacının literatürde tespit ettiği temel boşluğu, yapay yarılmayı, teorik/ampirik gerilimi veya problemi net biçimde ifade et.
+- Tezin temel araştırma sorusunu, varsa alt araştırma sorularını belirt.
+- Metinde yer alan ana hipotezi ve varsa numaralandırılmış tüm alt hipotezleri (H1, H2, H3 vb.) ya da tezin temel iddialarını atlamadan, eksiksiz aktar.
+- Tezi genel ve yüzeysel bir konu betimlemesine indirgeme; çözülmek istenen araştırma sorunsalını ve iddiayı koru.
+
+2. [theoreticalFramework - Kuramsal ve Kavramsal Çerçeve]:
+- YALNIZCA araştırmacının kendi tezinin teorik omurgası olarak benimsediği kuramları, düşünürleri, kuramsal modelleri ve analitik kavramları yaz.
+- Sınır Kuralı 1 (Yöntem Ayrımı): Yöntemsel analiz araçlarını, veri çözümleme tekniklerini veya kuramın metne/veriye uygulanmasını sağlayan metodolojik köprüleri buraya yazma; bunları Metodoloji kadranına aktar.
+- Sınır Kuralı 2 (Literatür Ayrımı): İkincil literatür özetinde geçen, araştırmacının eleştirdiği veya arka plan olarak andığı ikincil yazarları ve karşılaştırmalı bağlam örneklerini kuramsal omurgaya dahil etme. Yalnızca tezin benimsediği kuramsal merceğe odaklan.
+
+3. [primaryMaterial - Birincil Malzeme / Veri Kümesi]:
+- Metinde tezin ampirik tabanı olarak belirtilen TÜM birincil kaynakları, arşiv belgelerini, metin kümesini, saha örneklemini veya veri setlerini tek tek, adları, tarihleri ve aktörleriyle/türleriyle somut olarak listele.
+- KESİNLİKLE YASAK: Somut birincil kaynakları "çeşitli belgeler, örgütsel metinler, raporlar ve yayınlar" gibi genel ve soyut kategori adlarıyla özetleyip kaynakların kendisini yutma. Metinde tanımlı her bir belgeyi/veri kaynağını açıkça belirt.
+- Varsa araştırmanın dönemsel, coğrafi veya kurumsal sınırlarını/eşiklerini ve bu sınırların metinde sunulan gerekçelerini aktar.
+
+4. [methodology - Metodoloji ve Araştırma Deseni]:
+- Tezin benimsediği yöntemsel yaklaşımı (niteliksel, niceliksel veya karma desen) ve kuramsal kavramları veriye uygulayan yöntemsel araçları/düşünürleri belirt.
+- Veriye veya metinlere yöneltilen analitik soruları, inceleme şemasını, kodlama veya analiz parametrelerini açıkça yaz.
+- Varsa araştırmanın dönemsel/tarihsel momentlerini, analiz aşamalarını veya kaynak/aktör grupları arasındaki karşılaştırmalı deseni dahil et.
+
+# Dil, Üslup ve Kalite Standartları:
+- Duru, doğal, yetkin ve yaşayan bir akademik Türkçe kullan.
+- Uydurma, yapay veya bozuk terimler kesinlikle kullanma.
+- Yüzeysel ve içi boş dolgu cümlelerinden kaçın; metinde araştırmacının bizzat inşa ettiği somut verilere, kavramlara, sorulara ve hipotezlere sadık kal.
+</instructions>`;
 
 /**
  * Synthesizes the final 4-quadrant Thesis Matrix from the user's original proposal,
@@ -99,13 +135,9 @@ Tüm çelişkileri giderilmiş, soruları çözülmüş, yöntemsel ve kuramsal 
 <instructions>
 # Dil ve Üslup Kuralları (ZORUNLU)
 - Kesinlikle doğal, duru, yaşayan ve akıcı bir Türkçe kullanın.
-- Ağdalı, yapay, çeviri kokan akademik jargondan ve plaza/beyaz yaka dilinden kesinlikle kaçının.
-- 'Korpus', 'nötralize etmek', 'operasyonelleştirmek', 'rezonans', 'aksiyom', 'konsolidasyon' gibi yapay veya yabancı kelimeleri KESİNLİKLE KULLANMAYIN:
-  * 'Korpus' yerine: 'metinler', 'yazılı kaynaklar', 'arşiv', 'belge grubu' veya 'veri kümesi'.
-  * 'Nötralize etmek' yerine: 'etkisini gidermek', 'dengelemek', 'kontrol altına almak' veya 'aşmak'.
-  * 'Operasyonelleştirmek' yerine: 'somutlaştırmak', 'uygulamaya dökmek' veya 'ölçülebilir kılmak'.
+- Ağdalı, yapay, çeviri kokan akademik jargondan kesinlikle kaçının.
 - Her bir kadran doğrudan, yoğun, berrak ve yaşayan bir Türkçe ile yazılmalıdır.
-- Araştırmacının cevaplarında belirttiği özel tercihler (örneklem sayısı, aktör seçimi, kuramsal öncelik vb.) doğrudan ilgili kadranlara işlenmelidir.
+- Araştırmacının cevaplarında belirttiği özel tercihler doğrudan ilgili kadranlara işlenmelidir.
 - Genelgeçer, içi boş dolgu ifadeler kullanmayın. Somut olgu ve kavramları adlandırın.
 </instructions>`;
 
@@ -128,7 +160,7 @@ Tüm çelişkileri giderilmiş, soruları çözülmüş, yöntemsel ve kuramsal 
   );
 
   const prompt = `<original_proposal>
-${originalProposal.slice(0, 10000)}
+${originalProposal}
 </original_proposal>
 
 <search_evidence>
@@ -145,13 +177,13 @@ Yukarıdaki üç kaynağı harmanlayarak, araştırmacının kararlarını ve li
     "synthesis",
     () =>
       generateGeminiStructuredContent<ThesisMatrix>(
-        FLASH_LITE_35,
+        FLASH_38,
         systemInstruction,
         prompt,
         synthesizedMatrixJsonSchema,
         run.logger,
         {
-          thinkingConfig: { thinkingLevel: ThinkingLevel.MEDIUM },
+          thinkingConfig: { thinkingLevel: ThinkingLevel.LOW },
           zodSchema: synthesizedMatrixSchema,
           seed: GEMINI_SEED,
           payloadStage: "matrix_synthesis",
@@ -166,8 +198,6 @@ Yukarıdaki üç kaynağı harmanlayarak, araştırmacının kararlarını ve li
   return result;
 }
 
-import type { Logger } from "@/lib/logger";
-
 /**
  * Decomposes and synthesizes an initial 4-quadrant Thesis Matrix directly from a raw proposal text.
  * Used for headless matrix creation to immediately seed multi-channel academic searches.
@@ -180,28 +210,11 @@ export async function synthesizeInitialMatrixFromProposal(
   proposalText: string,
   log?: Logger,
 ): Promise<ThesisMatrix> {
-  const systemInstruction = `<role>
-Kıdemli Tez Danışmanı ve Araştırma Metodoloğu.
-Göreviniz: Araştırmacının sunduğu ham tez önerisi metnini analiz ederek YALNIZCA araştırmacının tezinde benimsediği ve açıkça belirttiği unsurları 4 temel araştırma kadranına (Problem, Kuramsal Çerçeve, Veri/Malzeme, Metodoloji) ayrıştırmaktır.
-</role>
-
-<instructions>
-1. subjectProblem: Araştırma Problemi, Aktörler ve Odak (yoğun akademik paragraf).
-2. theoreticalFramework: Teorik ve Kavramsal Çerçeve (YALNIZCA araştırmacının tezin omurgası olarak benimsediği kuramlar, düşünürler ve analitik kavramlar).
-3. primaryMaterial: Veri Kaynağı / Birincil Malzeme (metinde belirtilen arşiv, belge veya veri kümesi).
-4. methodology: Metodoloji ve Yöntem (araştırmacının uygulayacağı analiz ve okuma şeması).
-
-# KATI SADAKAT VE KISITLAMA KURALLARI (ZORUNLU):
-- Yalnızca metinde doğrudan yer alan kuramları, düşünürleri ve kavramları aktarın.
-- Metinde açıkça belirtilmeyen hiçbir kuramsal unsuru, ekolü veya harici kavramı KESİNLİKLE dışarıdan eklemeyin / inşa etmeyin.
-- İkincil literatür özetinde geçen veya başkalarına ait eleştirilen kavramları, yazar kendi tezinin kuramsal omurgası olarak benimsemediyse kuramsal çerçeveye dahil etmeyin.
-</instructions>`;
-
-  const prompt = `<proposal>\n${proposalText.slice(0, 10000)}\n</proposal>\nYukarıdaki tez taslağından 4 kadranlı akademik tez matrisini üret.`;
+  const prompt = `<proposal>\n${proposalText}\n</proposal>\nYukarıdaki tez önerisi metninin tamamını yönergeler doğrultusunda analiz ederek 4 kadranlı akademik tez matrisini üret.`;
 
   return generateGeminiStructuredContent<ThesisMatrix>(
-    FLASH_LITE_35,
-    systemInstruction,
+    FLASH_38,
+    universalDecompositionSystemInstruction,
     prompt,
     synthesizedMatrixJsonSchema,
     log,
@@ -214,3 +227,4 @@ Göreviniz: Araştırmacının sunduğu ham tez önerisi metnini analiz ederek Y
     },
   );
 }
+

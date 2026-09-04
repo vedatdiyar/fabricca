@@ -41,3 +41,4 @@ export {
   serializeDualSemanticQuery,
   type DualSemanticQuery,
 } from "./query-utils";
+export { isBookReview, isNonResearchEvent } from "./book-review-utils";

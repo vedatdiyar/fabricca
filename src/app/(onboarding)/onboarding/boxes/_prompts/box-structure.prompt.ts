@@ -36,30 +36,31 @@ export function buildBoxStructurePromptPayload(
 ## 4 Epistemolojik Kadran Standartları ve Kuralları
 
 ### KADRAN 1: SUBJECT_PROBLEM (Araştırma Problemi)
-- **Bütünleşik Vaka / Etkileşimli Aktörler (N=1):** İncelenen aktörler aynı tarihsel/coğrafi bağlam içinde etkileşim halindeyse TEK BİR ALT KUTU (N=1) altında toplanmalıdır.
-- **Karşılaştırmalı veya Bağımsız Vakalar (N>=2):** Matriste bağımsız iki farklı ülke/vaka varsa AYRI BİR ALT KUTU (N>=2) olmalıdır.
+- **Çoklu Mücadele Hatları, Çift Kanatlı Dinamikler veya Ayrık Aktör Kümeleri (KESİNLİKLE N>=2):** Araştırma problemi birbirine indirgenemeyen birden fazla mücadele/eylem alanını, kurumsal/örgütsel hattı (örneğin: yasal/parlamenter siyaset ile yasadışı/silahlı mücadele; devlet kurumları ile sivil toplumsal hareketler; sermaye örgütleri ile emek sendikaları; iktidar blokları ile muhalefet odakları) veya karşılaştırmalı vakaları eşzamanlı olarak inceliyorsa, her bir ana hat/aktör kümesi müstakil birer ALT KUTU (N>=2) olarak ayrıştırılmalıdır. Bu ayrım, literatür taramasında her iki alanın uzmanlaşmış akademik literatürünün bağımsız taranabilmesi için zorunludur.
+- **Tekil ve Homojen Vaka / Süreç (N=1):** Araştırma problemi tek bir kurumu, tekil bir aktör grubunu veya homojen bir kurumsal/toplumsal süreci inceliyorsa TEK BİR ALT KUTU (N=1) altında toplanmalıdır.
 
 ### KADRAN 2: THEORETICAL_FRAMEWORK (Teorik Çerçeve)
-- **Teorik Ayrıştırma Şartı (N>=2):** Farklı teorik gelenekler varsa her biri AYRI BİR ALT KUTU olmalıdır.
-- **Tek Teorik Çerçeve (N=1):** Tek bir teorik model varsa tek alt kutu (N=1) kullanılır.
+- **Müstakil Kuramsal Ekoller ve Bağımsız Paradigmalar (N>=2):** Matriste birden fazla bağımsız kuramsal gelenek, farklı düşünürler veya rakip paradigmalar (örneğin: Gramsciyen hegemonya ile Foucaultgil iktidar analizi; Weberci bürokrasi ile Marksist devlet kuramı vb.) bir arada kullanılıyorsa her bağımsız kuramsal gelenek müstakil birer ALT KUTU (N>=2) olmalıdır.
+- **Tekil Kuramsal Model ve Kavramsal Çerçeve (N=1):** Matriste tek bir düşünürün kuramı, tekil bir teorik model veya bir kuramın kendi kavramsal mekanizmaları (örneğin: manevra ve mevzi savaşı, kuşatma savaşı, karşı-hegemonya) işleniyorsa TEK BİR ALT KUTU (N=1) kullanılır. Aynı kuramsal modelin iç kavramsal bileşenleri yapay olarak alt kutulara bölünemez.
 
 ### KADRAN 3: METHODOLOGY (Yöntem)
-- **Ayrık Metodolojik Gelenekler ve Katmanlar (KESİNLİKLE N>=2):** Matriste birden fazla analitik yaklaşım, yöntem veya operasyonel analiz katmanı belirtilmişse (örneğin: Eleştirel Söylem Analizi ile Kolektif Eylem Çerçeveleme/Kodlama Matrisi; Söylem Analizi ile Mülakat Deseni; Nitel İçerik Analizi ile Ekonometrik Modelleme vb.) bu yaklaşımlar sentezlenmiş olsa dahi KESİNLİKLE tek bir alt kutuda birleştirilemez; her biri müstakil bir ALT KUTU (N>=2) olarak ayrıştırılmalıdır. Bir alt kutu söylemsel/dilsel analiz boyutunu (CDA vb.), diğeri tematik/eylemsel kodlama matrisi boyutunu (Snow & Benford çerçeveleme şablonu vb.) temsil etmelidir.
-- **Tek ve Yalın Metodolojik Hat (N=1):** Matriste yalnızca tek bir analiz yöntemi ve tek bir operasyonel teknik yer alıyorsa tek alt kutu (N=1) kullanılır.
+- **Müstakil Araştırma Yöntemleri ve Veri Analizi Ekolleri (N>=2):** Matriste birbirine indirgenemeyen birden fazla bağımsız araştırma yöntemi veya veri toplama/analiz ekolü açıkça belirtilmişse (örneğin: Derinlemesine Mülakat ile Arşiv/Belge Analizi; Eleştirel Söylem Analizi ile Nicel Ekonometrik Modelleme; Etnografik Gözlem ile Sayısal İçerik Analizi) her bağımsız yöntem müstakil birer ALT KUTU (N>=2) olarak ayrıştırılmalıdır.
+- **Tekil ve Bütünleşik Metodolojik Hat (N=1):** Matriste yalnızca tek bir araştırma ve analiz yöntemi (örneğin salt söylem analizi, salt arşiv incelemesi veya salt vaka analizi) ve onun kendi içsel analitik adımları, açık uçlu soruları, korpus sınırlama kriterleri veya dönemselleştirmesi (kritik momentler, kırılma noktaları) yer alıyorsa KESİNLİKLE TEK BİR ALT KUTU (N=1) kullanılır. Yöntemin iç adımları, analitik soruları, örneklem sınırlaması veya dönemleme evreleri yapay olarak ayrı metodoloji kutularına bölünemez.
 
 ### KADRAN 4: PRIMARY_MATERIAL (Birincil Kaynak)
-- **Ayrık Kaynak Türleri ve Koleksiyonlar (KESİNLİKLE N>=2):** Matriste birden fazla arşiv, kurum, yayın organı veya farklı belge türü belirtilmişse (örneğin: hem sivil toplum / meslek örgütü yayınları hem resmî bakanlık tebliğleri ve meclis tutanakları gibi) KESİNLİKLE tek bir alt kutuda eritilemez; her kaynak grubu müstakil birer ALT KUTU (N>=2) olarak ayrıştırılmalıdır.
-- **Bütünleşik Veri Seti (N=1):** Tüm kaynaklar yalnızca tek bir kurumdan veya tek bir arşiv fonundan geliyorsa tek alt kutu (N=1) kullanılır.
+- **Ayrık Kaynak Koleksiyonları ve Farklı Belge Türleri (KESİNLİKLE N>=2):** Matriste birden fazla arşiv, kurum, farklı aktör yayınları veya ayrık belge türleri belirtilmişse (örneğin: örgütsel/parti yayınları ile resmî meclis/dava tutanakları; bakanlık raporları ile sivil toplum bültenleri; mülakat transkriptleri ile basın arşivi gibi) her kaynak grubu müstakil birer ALT KUTU (N>=2) olarak ayrıştırılmalıdır.
+- **Bütünleşik Veri Seti veya Tekil Arşiv (N=1):** Tüm kaynaklar tek bir kurumdan, tek bir arşiv fonundan veya tekil bir veri tabanından geliyorsa tek alt kutu (N=1) kullanılır.
 
 ## Biçimsel ve Dil Standartları
-- **Dinamik ve Yalın Başlıklar:** Başlıklar doğrudan matristeki spesifik kavram, aktör ve olgulara odaklanmalıdır. Başlık ve açıklamalarda Türkçe terimlerin yanına parantez içinde yabancı dildeki karşılıkları veya kısaltmaları (örneğin: '(Frame Analysis)', '(DHA)') kesinlikle eklenmemeli; doğrudan duru akademik Türkçe terim kullanılmalıdır.
+- **Duru, Zengin ve İmlası Kusursuz Türkçe:** Başlık ve açıklamalarda yüksek düzeyde akademik Türkçe kullanılmalıdır. Yabancı düşünür isimlerinin Türkçe sıfatlaştırılmasında (örneğin: Gramsci -> Gramsciyen; Foucault -> Foucaultcu; Marx -> Marksist; Habermas -> Habermasçı) ve terimlerde kesinlikle yazım hatası, harf kayması veya uydurma sözcük yapılmamalıdır.
+- **Dinamik ve Yalın Başlıklar:** Başlıklar doğrudan matristeki spesifik kavram, aktör ve olgulara odaklanmalıdır. Başlık ve açıklamalarda Türkçe terimlerin yanına parantez içinde yabancı dildeki karşılıkları veya kısaltmaları kesinlikle eklenmemeli; doğrudan duru akademik Türkçe terim kullanılmalıdır.
 - **Açıklamalar:** 100-180 karakter arasında, somut ve bilgilendirici olmalıdır.
 - **Concepts Dizisi:** Sub-box seviyesinde en az 1, en fazla 4 elemandan oluşan somut akademik terimler dizisidir.
 
 ## Katı Sadakat ve Dış Bilgi Yasağı (Strict Grounding & Negative Constraints)
 - Yalnızca ilgili kadran girdisinde açıkça sağlanan kavram, düşünür, aktör, yöntem ve malzemelerden alt kutu (sub-box), başlık ve kavramlar (concepts) türetin.
 - Girdide adı geçmeyen hiçbir teorik ekolü, düşünürü, olguyu veya kavramı KESİNLİKLE dışarıdan eklemeyin / uydurmayın.
- - Pre-training bilginizdeki genel geçer kavramları girdide yoksa ASLA çıktıya dahil etmeyin.`,
+- Pre-training bilginizdeki genel geçer kavramları girdide yoksa ASLA çıktıya dahil etmeyin.`,
 
     workflowSteps: `1. Matristeki her kadranı bağımsız olarak incele.
 2. Vaka aktörlerinin etkileşimine göre alt kutu sayısını belirle (N=1 veya N>=2).

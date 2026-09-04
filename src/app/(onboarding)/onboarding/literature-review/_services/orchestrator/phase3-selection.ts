@@ -33,6 +33,35 @@ import type {
  * @param checkCancelled - Optional cancellation predicate; stops selection when true.
  * @returns The final selected article records per sub-box.
  */
+/**
+ * Calculates deterministic composite score within a jury tier.
+ * Formula: S_Final = S_Cohere * (1 + 0.15 * S_Citation)
+ *
+ * - S_Cohere in [0..1]: Cross-encoder relevance score from Cohere Rerank v4.0 Pro.
+ * - S_Citation in [0..1]: Log-normalized citation power for OpenAlex; 0 for national theses (Qdrant).
+ * - S_Recency is removed per architectural decision (penalized foundational works).
+ *
+ * @param paper - The raw paper candidate.
+ * @returns Final composite score.
+ */
+export function calculateCompositeScore(
+  paper: import("../literature-review-papers").RawPaper,
+): number {
+  const rawScore = (paper as { relevanceScore?: number }).relevanceScore;
+  const sCohere =
+    typeof rawScore === "number" && Number.isFinite(rawScore) && rawScore > 0
+      ? Math.min(1, Math.max(0, rawScore))
+      : 0.5;
+
+  let sCitation = 0;
+  if (paper.source === "openalex") {
+    const citations = paper.citedByCount ?? 0;
+    sCitation = Math.min(1.0, Math.log10(citations + 1) / 3.5);
+  }
+
+  return sCohere * (1 + 0.15 * sCitation);
+}
+
 export async function executePhase3Selection(
   fulfilledResults: SubBoxResult[],
   poolByBox: Map<number, PoolItem[]>,
@@ -60,8 +89,6 @@ export async function executePhase3Selection(
     selectedEvalsByBox.set(r.thesisBoxId, []);
   }
 
-  type ScoredEntry = { ev: JuryEvalResult; boxId: number; score: number };
-
   const getPoolMeta = (
     ev: JuryEvalResult,
   ): { poolItem: PoolItem | undefined; year: number | null; authors: string[]; doi: string | null } => {
@@ -75,48 +102,117 @@ export async function executePhase3Selection(
     };
   };
 
+  function isTitleSubset(titleA: string, titleB: string): boolean {
+    const normA = normalizeCleanTitle(titleA).toLowerCase();
+    const normB = normalizeCleanTitle(titleB).toLowerCase();
+    if (normA.length >= 10 && normB.length >= 10) {
+      if (normA.includes(normB) || normB.includes(normA)) return true;
+    }
+    return false;
+  }
+
+  function getBaseDoi(cleanDoi: string): string {
+    return cleanDoi.replace(/[-_][0-9]{2,4}$/, "").replace(/\/ch[0-9]+$/i, "");
+  }
+
   // Per-box dedup helpers (isolated per box)
   const makeBoxDedup = () => {
     const seenDois = new Set<string>();
-    const seenPapers: Array<{ title: string; year: number | null; authors: string[]; doi: string | null }> = [];
+    const seenBaseDois = new Set<string>();
+    const seenPapers: Array<{
+      title: string;
+      year: number | null;
+      authors: string[];
+      doi: string | null;
+    }> = [];
+
     return {
-      isDuplicate: (title: string, year: number | null, authors: string[], doi: string | null): boolean => {
+      isDuplicate: (
+        title: string,
+        year: number | null,
+        authors: string[],
+        doi: string | null,
+      ): boolean => {
         const cleanDoi = doi ? extractCleanDoi(doi) : null;
-        if (cleanDoi && seenDois.has(cleanDoi)) return true;
+        if (cleanDoi) {
+          if (seenDois.has(cleanDoi)) return true;
+          const baseDoi = getBaseDoi(cleanDoi);
+          if (seenBaseDois.has(baseDoi) && cleanDoi !== baseDoi) return true;
+        }
+
+        const firstA = authors?.[0]
+          ? extractSurname(authors[0]).toLowerCase()
+          : null;
+
         for (const prev of seenPapers) {
           if (cleanDoi && prev.doi && cleanDoi === prev.doi) return true;
-          if (!areTitlesDuplicateByMetric(title, prev.title, 0.90)) continue;
+
+          const firstB = prev.authors?.[0]
+            ? extractSurname(prev.authors[0]).toLowerCase()
+            : null;
+          const sameAuthor =
+            !!firstA &&
+            !!firstB &&
+            firstA !== "anonim" &&
+            firstB !== "anonim" &&
+            firstA === firstB;
+
+          // Same author title subset collapse (e.g. journal article vs full book title)
+          if (sameAuthor && isTitleSubset(title, prev.title)) return true;
+          if (!areTitlesDuplicateByMetric(title, prev.title, 0.9)) continue;
+
           const yearMatch =
             typeof year === "number" &&
             typeof prev.year === "number" &&
             Math.abs(year - prev.year) <= 1;
-          const firstA = authors?.[0] ? extractSurname(authors[0]).toLowerCase() : null;
-          const firstB = prev.authors?.[0] ? extractSurname(prev.authors[0]).toLowerCase() : null;
-          const hasAuthor = !!firstA && !!firstB && firstA !== "anonim" && firstB !== "anonim";
-          const authorMatch = hasAuthor ? firstA === firstB : false;
-          const hasMeta = (typeof year === "number" && typeof prev.year === "number") || hasAuthor;
-          if (hasMeta ? yearMatch || authorMatch : true) return true;
+          const hasMeta =
+            (typeof year === "number" && typeof prev.year === "number") ||
+            sameAuthor;
+          if (hasMeta ? yearMatch || sameAuthor : true) return true;
         }
         return false;
       },
-      markSelected: (title: string, year: number | null, authors: string[], doi: string | null): void => {
+      markSelected: (
+        title: string,
+        year: number | null,
+        authors: string[],
+        doi: string | null,
+      ): void => {
         const cleanDoi = doi ? extractCleanDoi(doi) : null;
-        if (cleanDoi) seenDois.add(cleanDoi);
+        if (cleanDoi) {
+          seenDois.add(cleanDoi);
+          seenBaseDois.add(getBaseDoi(cleanDoi));
+        }
         seenPapers.push({ title, year, authors: authors ?? [], doi: cleanDoi });
       },
     };
   };
 
-  // ── Step 2 & 3: Per-box primary + secondary selection (isolated) ──
+  // ── Step 2 & 3: Per-box Tier 1 + Tier 2 selection with multiplicative composite score ──
   for (const r of fulfilledResults) {
     if (checkCancelled?.()) break;
-    const boxEvals = juryEvaluations.filter((ev) => ev.thesisBoxId === r.thesisBoxId && ev.isRelevant);
-    const primary = boxEvals
-      .filter((ev) => ev.relevanceScore >= 80)
-      .sort((a, b) => b.relevanceScore - a.relevanceScore);
-    const secondary = boxEvals
-      .filter((ev) => ev.relevanceScore >= 75 && ev.relevanceScore < 80)
-      .sort((a, b) => b.relevanceScore - a.relevanceScore);
+    const boxEvals = juryEvaluations.filter(
+      (ev) => ev.thesisBoxId === r.thesisBoxId && ev.isRelevant,
+    );
+
+    const getScore = (ev: JuryEvalResult): number => {
+      const { poolItem } = getPoolMeta(ev);
+      return poolItem ? calculateCompositeScore(poolItem.rawPaper) : 0;
+    };
+
+    const tier1 = boxEvals
+      .filter(
+        (ev) => ev.tier === "TIER_1" || (!ev.tier && ev.relevanceScore >= 80),
+      )
+      .sort((a, b) => getScore(b) - getScore(a));
+
+    const tier2 = boxEvals
+      .filter(
+        (ev) =>
+          ev.tier === "TIER_2" ||
+          (!ev.tier && ev.relevanceScore >= 70 && ev.relevanceScore < 80),
+      )
+      .sort((a, b) => getScore(b) - getScore(a));
 
     const dedup = makeBoxDedup();
     const bucket = selectedEvalsByBox.get(r.thesisBoxId)!;
@@ -131,13 +227,13 @@ export async function executePhase3Selection(
       return true;
     };
 
-    for (const ev of primary) {
+    for (const ev of tier1) {
       if (checkCancelled?.()) break;
       if (bucket.length >= 4) break;
       tryAssign(ev);
     }
     if (bucket.length < 4) {
-      for (const ev of secondary) {
+      for (const ev of tier2) {
         if (checkCancelled?.()) break;
         if (bucket.length >= 4) break;
         tryAssign(ev);
@@ -160,12 +256,18 @@ export async function executePhase3Selection(
       const rawTitle = poolItem.rawPaper.title ?? ev.articleTitle;
       const cleanTitle = stripAltTitle(rawTitle) || rawTitle;
 
+      const compositeScore = calculateCompositeScore(poolItem.rawPaper);
+      const compositeRelevanceScore = Math.min(
+        100,
+        Math.max(1, Math.round(compositeScore * 100)),
+      );
+
       allSelectedArticles.push({
         thesisBoxId: ev.thesisBoxId,
         subBoxTitle: ev.subBoxTitle,
         originalTitle: cleanTitle,
         originalAuthors: poolItem.rawPaper.authors,
-        relevanceScore: ev.relevanceScore,
+        relevanceScore: compositeRelevanceScore,
         reasoning: ev.reasoning,
         doi: poolItem.rawPaper.doi,
         openalexId:
@@ -228,11 +330,11 @@ export async function executePhase3Selection(
       const juryArticle: JuryArticle = {
         title: stripAltTitle(art.originalTitle) || art.originalTitle,
         authors: art.originalAuthors,
-        publisher: isQdrantThesis ? art.publisher : null,
+        publisher: art.publisher ?? null,
         thesisType:
           art.poolItem.rawPaper.publicationType ||
           (isQdrantThesis ? "Tez" : "Makale"),
-        publicationYear: isQdrantThesis ? art.publicationYear : null,
+        publicationYear: art.publicationYear ?? null,
         doi: art.doi,
         openalexId: art.openalexId,
         relevanceScore: art.relevanceScore,

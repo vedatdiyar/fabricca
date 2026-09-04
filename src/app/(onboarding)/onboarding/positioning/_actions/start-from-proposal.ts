@@ -13,7 +13,6 @@ import { evaluateThesesInParallel } from "../_services/per-thesis-evaluation";
 import { analyzePositioningJury } from "../_services/analysis";
 import { savePositioningReportTransaction } from "../_services/decision-engine";
 import { invalidateOnboardingStepCache } from "@/lib/cache-tags";
-import { sanitizeJuryTheses } from "./positioning-helpers";
 
 /**
  * Unified entry action: raw proposal -> headless matrix -> 4-channel search -> jury -> persist.
@@ -157,25 +156,16 @@ export async function startOnboardingFromProposalAction(
 
     // Stage 4: Persist Positioning Report
     await run.execute(
-      "persist",
-      async () => {
-        const t0 = performance.now();
-        await sanitizeJuryTheses(juryResult, run.logger);
-        if ((juryResult.recommendedTheses?.length ?? 0) > 0) {
-          run.subStep(
-            `Data Sanitization (${juryResult.recommendedTheses!.length} titles)`,
-            performance.now() - t0,
-          );
-        }
-
-        await savePositioningReportTransaction(
-          session.userId,
-          matrixDbId,
-          juryResult,
-        );
-      },
-      { description: "Positioning Report Saved to Database" },
-    );
+       "persist",
+       async () => {
+         await savePositioningReportTransaction(
+           session.userId,
+           matrixDbId,
+           juryResult,
+         );
+       },
+       { description: "Positioning Report Saved to Database" },
+     );
 
     run.finish();
 

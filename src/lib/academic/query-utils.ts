@@ -1,24 +1,24 @@
 /**
- * Dual semantic query interface representing separated queries for
- * OpenAlex (rich semantic vector description) and hybrid title/keyword search.
+ * Semantic query interface representing the OpenAlex GTE-Large-EN vector paragraph
+ * and targeted lexical search queries for OpenAlex 100 req/s full-text search.
  */
 export interface DualSemanticQuery {
   openAlexQuery: string;
-  semanticScholarQuery: string;
+  openAlexLexicalQueries?: string[];
 }
 
 /**
- * Parses a stored semantic query string into distinct OpenAlex vector and keyword queries.
- * Supports backwards compatibility with legacy plain string queries.
+ * Parses a stored semantic query string into an OpenAlex vector query and lexical queries.
+ * Supports backwards compatibility with legacy JSON fields (`openAlexSearchPhrases`, `openAlexSearchPhrase`) and plain strings.
  *
  * @param rawQuery - Raw string from database or API.
- * @returns DualSemanticQuery containing openAlexQuery and semanticScholarQuery.
+ * @returns DualSemanticQuery containing openAlexQuery and optional openAlexLexicalQueries.
  */
 export function parseDualSemanticQuery(
   rawQuery: string | null | undefined,
 ): DualSemanticQuery {
   if (!rawQuery) {
-    return { openAlexQuery: "", semanticScholarQuery: "" };
+    return { openAlexQuery: "" };
   }
   const trimmed = rawQuery.trim();
   if (trimmed.startsWith("{") && trimmed.endsWith("}")) {
@@ -26,15 +26,24 @@ export function parseDualSemanticQuery(
       const parsed = JSON.parse(trimmed);
       if (typeof parsed === "object" && parsed !== null) {
         const oa = (parsed.openAlexQuery || parsed.openAlex || "").trim();
-        const s2 = (
-          parsed.semanticScholarQuery ||
-          parsed.semanticScholar ||
-          ""
-        ).trim();
-        if (oa || s2) {
+        let lexical: string[] | undefined;
+        if (Array.isArray(parsed.openAlexLexicalQueries)) {
+          lexical = parsed.openAlexLexicalQueries
+            .filter((p: unknown): p is string => typeof p === "string" && p.trim().length > 0)
+            .map((p: string) => p.trim());
+        } else if (Array.isArray(parsed.openAlexSearchPhrases)) {
+          // Backwards compatibility for records created with legacy field name
+          lexical = parsed.openAlexSearchPhrases
+            .filter((p: unknown): p is string => typeof p === "string" && p.trim().length > 0)
+            .map((p: string) => p.trim());
+        } else if (typeof parsed.openAlexSearchPhrase === "string" && parsed.openAlexSearchPhrase.trim()) {
+          lexical = [parsed.openAlexSearchPhrase.trim()];
+        }
+
+        if (oa) {
           return {
             openAlexQuery: oa,
-            semanticScholarQuery: s2 || oa.split(/\s+/).slice(0, 7).join(" "),
+            openAlexLexicalQueries: lexical,
           };
         }
       }
@@ -43,27 +52,34 @@ export function parseDualSemanticQuery(
     }
   }
 
-  const words = trimmed.split(/\s+/).filter(Boolean);
-  const fallbackS2 = words.length > 7 ? words.slice(0, 7).join(" ") : trimmed;
-  return {
-    openAlexQuery: trimmed,
-    semanticScholarQuery: fallbackS2,
-  };
+  return { openAlexQuery: trimmed };
 }
 
 /**
- * Serializes openAlexQuery and semanticScholarQuery into a unified JSON string for database storage.
+ * Serializes an OpenAlex query and lexical queries into a JSON string for database storage.
  *
  * @param openAlexQuery - Rich semantic paragraph query for OpenAlex.
- * @param semanticScholarQuery - Focused keyword/phrase query for hybrid search.
- * @returns JSON string containing both queries.
+ * @param openAlexLexicalQueries - Targeted lexical queries for OpenAlex 100 req/s text search.
+ * @returns JSON string containing the serialized query.
  */
 export function serializeDualSemanticQuery(
   openAlexQuery: string,
-  semanticScholarQuery: string,
+  openAlexLexicalQueries?: string[],
 ): string {
-  return JSON.stringify({
+  const payload: {
+    openAlexQuery: string;
+    openAlexLexicalQueries?: string[];
+  } = {
     openAlexQuery: openAlexQuery.trim(),
-    semanticScholarQuery: semanticScholarQuery.trim(),
-  });
+  };
+
+  if (openAlexLexicalQueries && openAlexLexicalQueries.length > 0) {
+    payload.openAlexLexicalQueries = openAlexLexicalQueries
+      .map((p) => p.trim())
+      .filter(Boolean);
+  }
+
+  return JSON.stringify(payload);
 }
+
+

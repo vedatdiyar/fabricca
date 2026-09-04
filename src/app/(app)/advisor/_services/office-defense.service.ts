@@ -4,7 +4,7 @@ import { sessions, messages, outlines } from "@/core/db/schema";
 import { HarmCategory, HarmBlockThreshold, ThinkingLevel } from "@google/genai";
 import { getAi } from "@/core/services/ai";
 import { dispatchGeminiCall } from "@/core/services/ai/gemini-scheduler";
-import { FLASH_36, GEMINI_SEED } from "@/lib/constants";
+import { FLASH_38, GEMINI_SEED } from "@/lib/constants";
 import { buildOfficeDefensePromptPayload } from "../_prompts/office-defense.prompt";
 import type { AdvisorStreamWriter } from "./stream";
 import type { PipelineResultData, JuryCritique } from "./pipeline/types";
@@ -128,7 +128,7 @@ export async function streamOfficeDefense(
   let fullText = "";
 
   const stream = await dispatchGeminiCall<GeminiContentStream>({
-    model: FLASH_36,
+    model: FLASH_38,
     lane: "interactive",
     task: async ({ model, apiKey }) => {
       const ai = getAi(apiKey);

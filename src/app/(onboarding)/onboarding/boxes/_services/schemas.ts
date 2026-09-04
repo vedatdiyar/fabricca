@@ -127,15 +127,18 @@ export const semanticQueryEntrySchema = z.object({
     .describe("Eşleştirme için alt kutu başlığı (Phase 1'deki ile aynı)."),
   openAlexQuery: z
     .string()
-    .max(2000)
+    .min(500)
+    .max(1500)
     .describe(
-      "OpenAlex GTE Large EN aramasına özel, 500-1200 karakterlik yoğun İngilizce doğal akademik araştırma paragrafı.",
+      "OpenAlex GTE Large EN aramasına özel, 1000-1450 karakterlik zengin ve yoğun İngilizce doğal akademik araştırma paragrafı (kesinlikle 1500 karakteri aşamaz).",
     ),
-  semanticScholarQuery: z
-    .string()
-    .max(500)
+  openAlexLexicalQueries: z
+    .array(z.string().min(3))
+    .min(0)
+    .max(3)
+    .default([])
     .describe(
-      "Hibrit başlık ve anahtar kelime aramasına özel, 4-8 adet odaklı anahtar kelime/tırnaklı öbek içeren yalın sorgu.",
+      "OpenAlex 100 req/s metin araması için tam 3 adet hedeflenmiş lexical sorgu (Anchor + Focus formülü, çift tırnaklı öbekler).",
     ),
 });
 
@@ -143,9 +146,7 @@ export const bulkSemanticQuerySchema = z.object({
   semanticQueries: z
     .array(semanticQueryEntrySchema)
     .min(1)
-    .describe(
-      "Her sub-box için bir openAlexQuery ve semanticScholarQuery girişi.",
-    ),
+    .describe("Her sub-box için bir openAlexQuery girişi."),
 });
 
 export type BulkSemanticQueryResponse = z.infer<typeof bulkSemanticQuerySchema>;
@@ -165,15 +166,16 @@ export const bulkSemanticQueryJsonSchema: JsonSchema = {
           openAlexQuery: {
             type: "string",
             description:
-              "OpenAlex GTE Large EN aramasına özel, 500-1200 karakter yoğun İngilizce doğal akademik araştırma paragrafı",
+              "OpenAlex GTE Large EN aramasına özel, 1000-1450 karakterlik zengin ve yoğun İngilizce doğal akademik araştırma paragrafı (kesinlikle 1500 karakteri aşamaz)",
           },
-          semanticScholarQuery: {
-            type: "string",
+          openAlexLexicalQueries: {
+            type: "array",
+            items: { type: "string" },
             description:
-              "Hibrit başlık ve anahtar kelime aramasına özel, 4-8 odaklı anahtar kelime/terim öbeği içeren sorgu",
+              "OpenAlex 100 req/s metin araması için tam 3 adet hedeflenmiş lexical sorgu (Anchor + Focus formülü, çift tırnaklı öbekler)",
           },
         },
-        required: ["subBoxTitle", "openAlexQuery", "semanticScholarQuery"],
+        required: ["subBoxTitle", "openAlexQuery", "openAlexLexicalQueries"],
       },
       minItems: 1,
     },

@@ -131,7 +131,9 @@ export function DashboardContent({
           label="Literatür Döngüsü"
           value={`Döngü #${stats.maxExpansionCycle}`}
           subtext={
-            stats.anyReadyToExpand ? "Genişletmeye hazır" : "Kaynaklar inceleniyor"
+            stats.anyReadyToExpand
+              ? "Genişletmeye hazır"
+              : "Kaynaklar inceleniyor"
           }
           icon={Sparkles}
         />

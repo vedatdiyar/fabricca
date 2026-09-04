@@ -25,7 +25,6 @@ export async function savePositioningReportTransaction(
         matrixId,
         globalStatus: analysisResult.globalStatus,
         gapAnalysisSummary: analysisResult.gapAnalysisSummary,
-        recommendedTheses: [],
         updatedAt: sql`now()`,
       })
       .onConflictDoUpdate({
@@ -33,7 +32,6 @@ export async function savePositioningReportTransaction(
         set: {
           globalStatus: analysisResult.globalStatus,
           gapAnalysisSummary: analysisResult.gapAnalysisSummary,
-          recommendedTheses: [],
           updatedAt: sql`now()`,
         },
       })

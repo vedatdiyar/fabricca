@@ -9,7 +9,7 @@
  * - CLOUDFLARE_EMBEDDINGS_LIMITS: Dakikada max 3.000 istek (3000 RPM)
  * - GEMINI_MODEL_QUOTAS: Flash Lite 15 RPM/500 RPD, Flash 5 RPM/20 RPD (free tier, per key; 3 key toplam 45/1500 ve 15/60)
  */
-import { FLASH_LITE_35, FLASH_36 } from "@/lib/constants";
+import { FLASH_LITE_35, FLASH_38 } from "@/lib/constants";
 import type { RateLimiterOptions } from "@/lib/rate-limiter";
 
 /** OpenAlex regular `/works` queries — saniyede max 100 istek (6.000 req/min). */
@@ -53,12 +53,12 @@ export interface GeminiModelQuota {
 
 export const GEMINI_MODEL_QUOTAS: Record<string, GeminiModelQuota> = {
   [FLASH_LITE_35]: { rpm: 15, rpd: 500 },
-  [FLASH_36]: { rpm: 5, rpd: 20 },
+  [FLASH_38]: { rpm: 5, rpd: 20 },
 };
 
 /** Primary model -> fallback. */
 export const GEMINI_FALLBACK_CHAINS: Record<string, string | null> = {
-  [FLASH_36]: FLASH_LITE_35,
+  [FLASH_38]: FLASH_LITE_35,
   [FLASH_LITE_35]: null,
 };
 

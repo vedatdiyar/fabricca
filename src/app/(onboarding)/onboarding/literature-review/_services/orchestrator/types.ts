@@ -26,6 +26,7 @@ export interface JuryEvalResult {
   articleTitle: string;
   openAlexId: string | null;
   isRelevant: boolean;
+  tier?: "TIER_1" | "TIER_2" | "REJECT";
   relevanceScore: number;
   reasoning: string;
 }

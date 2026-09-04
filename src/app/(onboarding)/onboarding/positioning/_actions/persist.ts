@@ -10,7 +10,6 @@ import type { ThesisMatrix } from "@/lib/types";
 import { savePositioningReportTransaction } from "../_services/decision-engine";
 import { positioningMatrixSchema } from "../_services/validation";
 import type { JuryAnalysisResult } from "../_services/analysis";
-import { sanitizeJuryTheses } from "./positioning-helpers";
 
 /**
  * Başlık ve yazar verilerini sanitize eder ve raporu veritabanına atomik olarak kaydeder.
@@ -42,8 +41,6 @@ export async function persistPositioningReportAction(
     }
 
     await run.execute("persist", async () => {
-      await sanitizeJuryTheses(juryResult, run.logger);
-
       const [matrix] = await db
         .select({ id: matrices.id })
         .from(matrices)

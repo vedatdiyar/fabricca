@@ -58,7 +58,6 @@ export async function analyzePositioningJury(
         originalContribution:
           "Çalışmanız literatürde henüz yeterince işlenmemiş, son derece bakir ve yüksek özgünlük potansiyeline sahip öncü bir alanda konumlanmaktadır.",
       },
-      recommendedTheses: [],
     };
   }
 
@@ -157,6 +156,5 @@ Katkı/Odak Alanları: ${e.contributionAreas.join(", ") || "Yok"}`;
   return {
     globalStatus: finalGlobalStatus,
     gapAnalysisSummary: synthesis.gapAnalysisSummary,
-    recommendedTheses: [],
   };
 }

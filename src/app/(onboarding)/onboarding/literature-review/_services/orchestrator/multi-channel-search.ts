@@ -1,39 +1,39 @@
 import type { Logger } from "@/lib/logger";
 import type { RawPaper, SubBoxItem } from "../literature-review-papers";
-import { searchOpenAlex, searchOpenAlexByTitleFilter } from "../openalex/client";
+import {
+  searchOpenAlex,
+  searchOpenAlexByTitleFilter,
+} from "../openalex/client";
+import { healAuthorsByTitle } from "../openalex/openalex-healing";
 import { searchTheses } from "@/core/services/thesis-search";
 
-import { parseDualSemanticQuery } from "@/lib/academic/utils";
+import {
+  parseDualSemanticQuery,
+  isBookReview,
+  isNonResearchEvent,
+} from "@/lib/academic/utils";
 
 /**
- * Builds a generic keyword query for OpenAlex `search` hybrid complement.
- * Prefers curated English keywords from `openAlexQuery`, falls
- * back to sub-box title/concepts filtered to English tokens (>3 chars).
- * Not a hardcoded book title — derived per box.
+ * Resolves fallback search phrases for OpenAlex `search` when structured queries are missing.
+ * Uses sub-box concepts or title tokens, strictly avoiding arbitrary abstract paragraph slicing.
+ *
+ * @param subBox - Sub-box item metadata.
+ * @returns Array of up to 3 focused keyword queries for OpenAlex.
  */
-function buildTitleFilterQuery(subBox: SubBoxItem, openAlexQuery?: string): string {
-  if (openAlexQuery && openAlexQuery.trim().length >= 10) {
-    // Remove very short acronyms that break title.search (HEP/DEP <4 chars)
-    const filtered = openAlexQuery
-      .split(/\s+/)
-      .filter((t) => t.replace(/[^a-zA-Z]/g, "").length >= 3)
-      .slice(0, 8)
-      .join(" ");
-    if (filtered.length >= 10) return filtered;
-  }
+function resolveSearchPhrases(subBox: SubBoxItem): string[] {
   const parts: string[] = [];
-  if (subBox.title) parts.push(subBox.title);
   if (subBox.concepts && subBox.concepts.length > 0) {
     parts.push(subBox.concepts.slice(0, 3).join(" "));
+  } else if (subBox.title) {
+    parts.push(subBox.title);
   }
   const joined = parts.join(" ").replace(/\s+/g, " ").trim();
-  // Keep only English-ish tokens >=4 chars for OpenAlex `search`
   const tokens = joined
     .split(/\s+/)
     .filter((t) => t.replace(/[^a-zA-Zçğıöşü]/g, "").length >= 4)
-    .slice(0, 8)
+    .slice(0, 6)
     .join(" ");
-  return tokens;
+  return tokens.length >= 3 ? [tokens] : [];
 }
 
 /** Maximum time to wait for any individual search provider before continuing. */
@@ -42,7 +42,6 @@ const PROVIDER_TIMEOUT_MS = 10000;
 /**
  * Wraps a provider call with a real abort — timeout actually cancels the
  * underlying `fetch` socket so quota/server resources are not wasted.
- * Previously this was a `Promise.race` that leaked the fetch.
  *
  * @param providerFn - Function receiving an AbortSignal; must forward `signal` to fetch.
  * @param fallbackValue - Value returned on timeout/abort.
@@ -70,7 +69,8 @@ async function withProviderTimeout<T>(
     if (isAbort) {
       logger?.warn("provider_timeout_aborted", {
         service: "literature",
-        filePath: "src/app/(onboarding)/onboarding/literature-review/_services/orchestrator/multi-channel-search.ts",
+        filePath:
+          "src/app/(onboarding)/onboarding/literature-review/_services/orchestrator/multi-channel-search.ts",
         data: { provider: providerName, timeoutMs },
       });
       return fallbackValue;
@@ -83,8 +83,9 @@ async function withProviderTimeout<T>(
 
 /**
  * Executes a 2-channel parallel search across:
- * 1. OpenAlex (Global scholarly works, semantic vector search + keyword title search)
- * 2. Qdrant (YÖK National Thesis Center embeddings)
+ * 1a. OpenAlex Semantic (GTE Large EN 1024d server-side vector search, per_page=50, 1 req/s)
+ * 1b. OpenAlex Lexical (Anchor + Focus keyword search, per_page=20, 100 req/s parallel)
+ * 2. Qdrant (YÖK National Thesis Center embeddings, limit=15)
  *
  * @param subBox - The sub-box item containing title, description, and semanticQuery.
  * @param logger - Shared pipeline logger.
@@ -96,7 +97,8 @@ export async function searchMultiChannelForSubBox(
   logger: Logger,
   checkCancelled?: () => boolean,
 ): Promise<RawPaper[]> {
-  const { openAlexQuery } = parseDualSemanticQuery(subBox.semanticQuery);
+  const { openAlexQuery, openAlexLexicalQueries } =
+    parseDualSemanticQuery(subBox.semanticQuery);
   const turkishQuery = `${subBox.title}: ${subBox.description}`.trim();
 
   logger.info("multi_channel_search_start", {
@@ -108,11 +110,14 @@ export async function searchMultiChannelForSubBox(
     },
   });
 
-  const titleFilterQuery = buildTitleFilterQuery(subBox, openAlexQuery);
+  const targetPhrases =
+    openAlexLexicalQueries && openAlexLexicalQueries.length > 0
+      ? openAlexLexicalQueries
+      : resolveSearchPhrases(subBox);
 
   const [openAlexResult, openAlexTitleResult, qdrantThesesResult] =
     await Promise.allSettled([
-      // 1a. OpenAlex semantic — GTE Large EN (1024d) server-side vector.
+      // 1a. OpenAlex semantic — GTE Large EN (1024d) server-side vector (per_page=50).
       (async (): Promise<RawPaper[]> => {
         if (!openAlexQuery || checkCancelled?.()) return [];
         try {
@@ -131,28 +136,38 @@ export async function searchMultiChannelForSubBox(
         }
       })(),
 
-      // 1b. OpenAlex title.search hybrid — recovers canonical books/monographs
-      // demoted by GTE ranking (e.g. Watts 2010 W2342901704). Generic per-box
-      // keyword filter, not hardcoded. Uses regular queue (100 req/s).
+      // 1b. OpenAlex lexical search (100 req/s queue) — executes targeted Anchor + Focus queries
+      // in parallel (per_page=20) to recover canonical books, monographs, and specific case literature.
       (async (): Promise<RawPaper[]> => {
-        if (!titleFilterQuery || checkCancelled?.()) return [];
+        if (targetPhrases.length === 0 || checkCancelled?.()) return [];
         try {
-          const raw = await withProviderTimeout(
-            (signal) => searchOpenAlexByTitleFilter(titleFilterQuery, 15, checkCancelled, signal),
-            [],
-            PROVIDER_TIMEOUT_MS,
-            "openalex_title",
-            logger,
+          const phraseResults = await Promise.all(
+            targetPhrases.map((phrase) =>
+              withProviderTimeout(
+                (signal) =>
+                  searchOpenAlexByTitleFilter(
+                    phrase,
+                    20,
+                    checkCancelled,
+                    signal,
+                  ),
+                [],
+                PROVIDER_TIMEOUT_MS,
+                "openalex_lexical_search",
+                logger,
+              ),
+            ),
           );
-          return raw.map((p) => ({
+          const flattened = phraseResults.flat();
+          return flattened.map((p) => ({
             ...p,
             source: "openalex" as const,
             publicationType: p.publicationType || "Makale",
           }));
         } catch (err) {
-          logger.warn("multi_channel_openalex_title_failed", {
+          logger.warn("multi_channel_openalex_lexical_failed", {
             error: err instanceof Error ? err.message : String(err),
-            data: { subBoxTitle: subBox.title, titleFilterQuery },
+            data: { subBoxTitle: subBox.title, targetPhrases },
           });
           return [];
         }
@@ -221,30 +236,48 @@ export async function searchMultiChannelForSubBox(
   const rawOpenAlexPapers =
     openAlexResult.status === "fulfilled" ? openAlexResult.value : [];
 
-  // ── Parent-book resolution for book-reviews (generic, not hardcoded) ──
-  // Top-ranked `Kitap İncelemesi` entries often hide the canonical monograph
-  // (e.g. W654994107 review → W2342901704 Watts book). Resolve to parent `book`.
+  // ── Parent-book resolution & healing for book-reviews ──
+  // Top-ranked book review entries often hide the canonical monograph
+  // (e.g. W654994107 review with 198 citations vs book entry with 2 citations).
+  // Resolve parent monograph and heal metadata while strictly PRESERVING the review's
+  // openAlexId when it has higher citations, ensuring forward citation expansion (`cites:W...`) succeeds.
   const resolvedParentBooks: RawPaper[] = [];
+  const rawReviewIdsReplaced = new Set<string>();
+
   const reviewCandidates = rawOpenAlexPapers
-    .filter((p) => p.publicationType === "Kitap İncelemesi" && p.title)
+    .filter(
+      (p) =>
+        p.title &&
+        (p.publicationType === "Kitap İncelemesi" ||
+          isBookReview(p.title, p.abstract)) &&
+        !isNonResearchEvent(p.title),
+    )
     .sort((a, b) => (b.citedByCount ?? 0) - (a.citedByCount ?? 0))
-    .slice(0, 1);
+    .slice(0, 3);
 
   if (reviewCandidates.length > 0) {
     const parentResults = await Promise.allSettled(
       reviewCandidates.map(async (review) => {
-        // Use short core title before ":" (e.g. "Activists in Office" from "Activists in Office: Kurdish...")
-        // Full title with subtitle fails OpenAlex fulltext search (returns unrelated books)
         const rawTitle = review.title ?? "";
-        const coreTitle = rawTitle.split(":")[0]?.trim() || rawTitle;
-        const titleQuery = coreTitle.slice(0, 40).trim();
-        if (!titleQuery || titleQuery.length < 8) return null;
+        // Strip common review prefixes
+        const cleanTitle = rawTitle
+          .replace(
+            /^(?:Book\s+)?Review(?:\s+of|\s+on|\s*:\s*|\s+essay\s*:\s*)/i,
+            "",
+          )
+          .trim();
+        const coreTitle = cleanTitle.split(":")[0]?.trim() || cleanTitle;
+        const titleQuery = coreTitle.slice(0, 50).trim();
+        if (!titleQuery || titleQuery.length < 5) return null;
+
         try {
           return await withProviderTimeout(
             async (signal) => {
-              const { openAlexQueue, queryOpenAlexWorks } = await import("../openalex/openalex-http");
+              const { openAlexQueue, queryOpenAlexWorks } = await import(
+                "../openalex/openalex-http"
+              );
               const params = new URLSearchParams({
-                search: titleQuery,
+                search: `"${titleQuery}"`,
                 filter: "type:book",
                 per_page: "3",
                 select:
@@ -255,31 +288,63 @@ export async function searchMultiChannelForSubBox(
               const res = (await openAlexQueue.exec(() =>
                 queryOpenAlexWorks(params, checkCancelled, signal),
               )) as RawPaper[];
-              // Prefer exact title match, else first result
-              const norm = (s: string) => s.toLowerCase().replace(/[^a-z0-9]/g, "");
+
+              const norm = (s: string) =>
+                s.toLowerCase().replace(/[^a-z0-9]/g, "");
               const targetNorm = norm(titleQuery);
-              const exact = res.find((r) => r.title && norm(r.title) === targetNorm);
+              const exact = res.find(
+                (r) => r.title && norm(r.title).includes(targetNorm),
+              );
               const chosen = exact ?? res[0];
-              if (!chosen) return null;
-              // Deduplicate if already present
-              if (rawOpenAlexPapers.some((p) => p.openAlexId && p.openAlexId === chosen.openAlexId)) return null;
-              // Propagate review's citation network to parent book for forward expansion:
-              // Watts book has 2 cites, its review has 198 — use max so expansion doesn't starve.
-              const mergedCitedByCount = Math.max(chosen.citedByCount ?? 0, review.citedByCount ?? 0);
-              // Also propagate review DOI when book has none (book often lacks DOI, review has Choice DOI)
-              const mergedDoi = chosen.doi ?? review.doi ?? null;
+
+              // Preserve the review's OpenAlex ID if it holds more citations
+              // so forward expansion (`cites:W...`) discovers citing academic works!
+              const primaryId =
+                review.openAlexId &&
+                (review.citedByCount ?? 0) >= (chosen?.citedByCount ?? 0)
+                  ? review.openAlexId
+                  : chosen?.openAlexId ?? review.openAlexId;
+
+              const maxCitations = Math.max(
+                chosen?.citedByCount ?? 0,
+                review.citedByCount ?? 0,
+              );
+              const mergedDoi = chosen?.doi ?? review.doi ?? null;
+
+              if (chosen) {
+                return {
+                  ...chosen,
+                  source: "openalex" as const,
+                  openAlexId: primaryId,
+                  publicationType: "Kitap / Monografi",
+                  authors:
+                    chosen.authors && chosen.authors.length > 0
+                      ? chosen.authors
+                      : review.authors,
+                  title: chosen.title || cleanTitle,
+                  doi: mergedDoi,
+                  citedByCount: maxCitations,
+                  _rawReviewId: review.openAlexId,
+                } as RawPaper & { _rawReviewId?: string | null };
+              }
+
+              // In-place healing if parent book record is not separately indexed
+              const healedAuthors = await healAuthorsByTitle(cleanTitle);
               return {
-                ...chosen,
+                ...review,
+                source: "openalex" as const,
+                openAlexId: review.openAlexId,
+                publicationType: "Kitap / Monografi",
+                authors:
+                  healedAuthors.length > 0 ? healedAuthors : review.authors,
+                title: cleanTitle,
                 doi: mergedDoi,
-                citedByCount: mergedCitedByCount,
-                // Keep review's openAlexId as fallback for forward expansion via alternative ID
-                // (stored in metadata for orchestrator to use both)
-                _reviewOpenAlexId: review.openAlexId,
-                _reviewDoi: review.doi,
-              } as RawPaper & { _reviewOpenAlexId?: string | null; _reviewDoi?: string | null };
+                citedByCount: maxCitations,
+                _rawReviewId: review.openAlexId,
+              } as RawPaper & { _rawReviewId?: string | null };
             },
             null,
-            5000,
+            PROVIDER_TIMEOUT_MS,
             "openalex_parent_book",
             logger,
           );
@@ -288,31 +353,21 @@ export async function searchMultiChannelForSubBox(
         }
       }),
     );
+
     for (const r of parentResults) {
       if (r.status === "fulfilled" && r.value) {
-        const v = r.value as RawPaper & { _reviewOpenAlexId?: string | null; _reviewDoi?: string | null };
-        // Stash review IDs in DOI field fallback and in openAlexId array for forward expansion:
-        // Persist both IDs in the book record's DOI/openAlexId so expansion can query citing works for either.
-        // We store the review's DOI as secondary by appending to publisher metadata if needed.
-        const bookPaper: RawPaper = {
-          ...v,
-          source: "openalex" as const,
-          publicationType: v.publicationType || "Kitap / Monografi",
-          // Prefer book DOI, but keep review DOI as fallback for S2 recommendations
-          doi: v.doi,
-          // Keep high citation count for ranking
-          citedByCount: v.citedByCount,
-        };
-        // If book lacked DOI but review had one, ensure forward expansion can use it:
-        // encode review DOI in metadata for later use (forward-expansion reads doi field, so keep it)
-        resolvedParentBooks.push(bookPaper);
+        const v = r.value as RawPaper & { _rawReviewId?: string | null };
+        if (v._rawReviewId) {
+          rawReviewIdsReplaced.add(v._rawReviewId);
+        }
+        resolvedParentBooks.push(v);
         logger.info("openalex_parent_book_resolved", {
           hidden: true,
           data: {
-            reviewTitle: v.title?.slice(0, 60),
-            parentId: v.openAlexId,
-            mergedCited: v.citedByCount,
-            reviewDoi: (v as { _reviewDoi?: string | null })._reviewDoi,
+            resolvedTitle: v.title?.slice(0, 60),
+            openAlexId: v.openAlexId,
+            mergedCitations: v.citedByCount,
+            authors: v.authors,
           },
         });
       }
@@ -320,9 +375,13 @@ export async function searchMultiChannelForSubBox(
   }
 
   const candidates: RawPaper[] = [
-    ...rawOpenAlexPapers,
+    ...rawOpenAlexPapers.filter(
+      (p) => !p.openAlexId || !rawReviewIdsReplaced.has(p.openAlexId),
+    ),
     ...resolvedParentBooks,
-    ...(openAlexTitleResult.status === "fulfilled" ? openAlexTitleResult.value : []),
+    ...(openAlexTitleResult.status === "fulfilled"
+      ? openAlexTitleResult.value
+      : []),
     ...(qdrantThesesResult.status === "fulfilled"
       ? qdrantThesesResult.value
       : []),
@@ -331,7 +390,10 @@ export async function searchMultiChannelForSubBox(
   const validCandidates = candidates.filter(
     (c): c is RawPaper & { title: string } =>
       Boolean(c.title && c.title.trim().length >= 3) &&
-      c.publicationType !== "Kitap İncelemesi",
+      c.publicationType !== "Kitap İncelemesi" &&
+      (c.publicationType === "Kitap / Monografi" ||
+        !isBookReview(c.title, c.abstract)) &&
+      !isNonResearchEvent(c.title),
   );
 
   logger.info("multi_channel_search_completed", {
@@ -342,7 +404,9 @@ export async function searchMultiChannelForSubBox(
       openAlexCount:
         openAlexResult.status === "fulfilled" ? openAlexResult.value.length : 0,
       openAlexTitleCount:
-        openAlexTitleResult.status === "fulfilled" ? openAlexTitleResult.value.length : 0,
+        openAlexTitleResult.status === "fulfilled"
+          ? openAlexTitleResult.value.length
+          : 0,
       qdrantCount:
         qdrantThesesResult.status === "fulfilled"
           ? qdrantThesesResult.value.length

@@ -1,8 +1,13 @@
-import { franc } from "franc-min";
+import {
+  initLanguageDetector,
+  detectLanguage,
+} from "@/lib/academic/language-detector";
 import { Logger } from "@/lib/logger";
 import {
   extractCleanDoi,
   parseDualSemanticQuery,
+  isBookReview,
+  isNonResearchEvent,
 } from "@/lib/academic/utils";
 import { areTitlesDuplicateByMetric } from "@/lib/academic/title-utils";
 import { extractSurname } from "@/lib/academic/filename-utils";
@@ -16,58 +21,35 @@ import type { SubBoxResult, PoolItem, JuryEvalResult } from "./types";
 
 export type { ThesisMatrixContext } from "../batch-jury";
 
-// Book Review detection regex
-const BOOK_REVIEW_TITLE_PATTERNS = [
-  /\bbook\s+review\b/i,
-  /\breview\s+article\b/i,
-  /^review:\s+/i,
-  /\bcolloque\b/i,
-  /\bby\s+[A-Z][a-z]+(\s+[A-Z][a-z]+)*\s*$/i,
-];
-
-const BOOK_REVIEW_ABSTRACT_PATTERNS = [
-  /\b(REVIEWED BY|Reviewed by)\b/i,
-  /\bPp\.\s*\d+\b/i,
-  /\$\s*\d+(\.\d+)?\s*(cloth|paper|hardcover|pb)\b/i,
-  /\bISBN\s*[\d-]+\b/i,
-];
-
-function isBookReview(
-  title: string | null | undefined,
-  abstract: string | null | undefined,
-): boolean {
-  if (title && BOOK_REVIEW_TITLE_PATTERNS.some((p) => p.test(title)))
-    return true;
-  if (
-    abstract &&
-    BOOK_REVIEW_ABSTRACT_PATTERNS.some((p) => p.test(abstract.slice(0, 300)))
-  )
-    return true;
-  return false;
-}
-
 /**
  * Determines whether a paper's language is a jury target (Turkish or English).
- * Uses lightweight deterministic `franc-min` trigram detection; undetermined (`und`)
- * is allowed through to avoid false positives on short titles.
+ * Uses ELD (Efficient Language Detector - large database) which accurately identifies
+ * language even on short academic titles (2-4 words) and abstracts with zero dependencies.
  *
  * @param title - Paper title.
- * @param abstract - Optional abstract (first 300 chars combined with title are sampled).
- * @returns True when lang is tur/eng or undetermined; false for deu/fra/spa/ita etc.
+ * @param abstract - Optional abstract.
+ * @returns True when lang is "en" or "tr" or undetermined; false for foreign languages (es, fr, de, it, pt, etc.).
  */
 export function isTargetLanguage(
   title: string,
   abstract?: string | null,
 ): boolean {
-  const sampleText = `${title} ${abstract ?? ""}`.slice(0, 300);
-  let lang: string;
-  try {
-    lang = franc(sampleText, { minLength: 10 });
-  } catch {
-    return true;
+  const cleanTitle = (title ?? "").trim();
+  if (!cleanTitle) return true;
+
+  const titleLang = detectLanguage(cleanTitle);
+  if (titleLang) {
+    if (titleLang === "en" || titleLang === "tr") return true;
+    // Foreign language in title (Spanish, French, German, Italian, Portuguese, etc.)
+    return false;
   }
-  if (lang === "und") return true;
-  return lang === "tur" || lang === "eng";
+
+  const sampleText = `${cleanTitle} ${(abstract ?? "").trim()}`.slice(0, 300).trim();
+  if (!sampleText || sampleText.length < 10) return true;
+
+  const sampleLang = detectLanguage(sampleText);
+  if (!sampleLang) return true;
+  return sampleLang === "en" || sampleLang === "tr";
 }
 
 const PERIOD_MISMATCH_RE =
@@ -148,6 +130,8 @@ export async function executePhase2Jury(
 }> {
   logger.info("literature_batch_jury_start", { hidden: true });
 
+  await initLanguageDetector();
+
   const juryInputs: JuryInputItem[] = [];
   const poolByBox = new Map<number, PoolItem[]>();
 
@@ -172,15 +156,16 @@ export async function executePhase2Jury(
         if (!title || title.trim().length < 3) return false;
 
         // Code-level pre-filters (before dedup to avoid polluting seen set)
-        if (isBookReview(title, abstract)) return false;
+        if (
+          item.rawPaper.publicationType !== "Kitap / Monografi" &&
+          isBookReview(title, abstract)
+        ) {
+          return false;
+        }
+        if (isNonResearchEvent(title)) return false;
         if (!isTargetLanguage(title, abstract)) {
-          const sampleText = `${title} ${abstract ?? ""}`.slice(0, 300);
-          let detectedLang = "und";
-          try {
-            detectedLang = franc(sampleText, { minLength: 10 });
-          } catch {
-            detectedLang = "und";
-          }
+          const sampleText = `${title} ${(abstract ?? "").trim()}`.slice(0, 300);
+          const detectedLang = detectLanguage(sampleText) || "und";
           logger.info("foreign_language_paper_dropped", {
             hidden: true,
             data: { title: title.slice(0, 120), detectedLang },
@@ -227,13 +212,30 @@ export async function executePhase2Jury(
         return true;
       });
 
-      // 2. Parallel pre-ranking: Cohere Rerank v4.0 Pro (top 18)
+      // 2. Parallel pre-ranking: Cohere Rerank v4.0 Pro (top 18 with stratified channel balance)
       let capped: PoolItem[] = [];
       const { openAlexQuery } = parseDualSemanticQuery(r.subBox.semanticQuery);
+      const boxType = r.boxType;
+      let thesisDisciplineContext = "";
+      if (typeof thesisMatrixContext === "object" && thesisMatrixContext !== null) {
+        if (boxType === "THEORETICAL_FRAMEWORK") {
+          thesisDisciplineContext = thesisMatrixContext.theoreticalFramework || "";
+        } else if (boxType === "METHODOLOGY") {
+          thesisDisciplineContext = thesisMatrixContext.methodology || "";
+        } else {
+          thesisDisciplineContext = thesisMatrixContext.subjectProblem || "";
+        }
+      } else if (typeof thesisMatrixContext === "string") {
+        thesisDisciplineContext = thesisMatrixContext;
+      }
+
       const queryParts = [
+        thesisDisciplineContext
+          ? `Disciplinary Research Context: ${thesisDisciplineContext}`
+          : "",
         r.subBox.title,
         r.subBoxDescription,
-        openAlexQuery ? `Scholarly context: ${openAlexQuery.slice(0, 400)}` : "",
+        openAlexQuery ? `Scholarly context: ${openAlexQuery}` : "",
       ].filter(Boolean);
       const queryContext = queryParts.join(". ").trim();
 
@@ -260,16 +262,54 @@ export async function executePhase2Jury(
         const rerankResults = await rerankWithCohere({
           query: queryContext,
           documents: candidateDocs,
-          topN: Math.min(18, candidateDocs.length),
+          topN: Math.min(30, candidateDocs.length),
           logger,
           silent: true,
         });
 
         if (rerankResults.length > 0) {
-          capped = rerankResults
-            .slice(0, 18)
-            .map((res) => pool[res.index])
-            .filter((item): item is PoolItem => Boolean(item));
+          // Stratified selection for jury candidate pool:
+          // Ensures balanced representation of global peer-reviewed literature (OpenAlex, up to 14)
+          // and national theses (Qdrant, up to 4), total 18 candidates.
+          // Author quota is removed per architectural decision (merit-based selection).
+          const openAlexItems: PoolItem[] = [];
+          const qdrantItems: PoolItem[] = [];
+
+          for (const res of rerankResults) {
+            const item = pool[res.index];
+            if (!item) continue;
+            // Record Cohere cross-encoder rerank score on the paper
+            item.rawPaper.relevanceScore = res.relevanceScore;
+
+            if (item.rawPaper.source === "openalex") {
+              if (openAlexItems.length < 14) {
+                openAlexItems.push(item);
+              }
+            } else if (item.rawPaper.source === "qdrant") {
+              if (qdrantItems.length < 4) {
+                qdrantItems.push(item);
+              }
+            } else {
+              if (openAlexItems.length < 14) {
+                openAlexItems.push(item);
+              }
+            }
+          }
+
+          const combined = [...openAlexItems, ...qdrantItems];
+          if (combined.length < 18) {
+            const seen = new Set(combined);
+            for (const res of rerankResults) {
+              const item = pool[res.index];
+              if (item && !seen.has(item)) {
+                item.rawPaper.relevanceScore = res.relevanceScore;
+                combined.push(item);
+                seen.add(item);
+                if (combined.length >= 18) break;
+              }
+            }
+          }
+          capped = combined;
         }
       }
 

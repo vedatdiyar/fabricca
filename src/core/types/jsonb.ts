@@ -23,7 +23,7 @@ export interface RecommendedThesisItem {
   year: number;
   university: string;
   publicationType?: "Tez" | "Makale" | "Kitap" | "Kitap Bölümü" | "Rapor";
-  sourceChannel?: "yok" | "openalex" | "semantic_scholar" | "exa";
+  sourceChannel?: "yok" | "openalex" | "exa";
   strategicRole?: StrategicRole;
   literaturePosition?: string;
   contributionArea: string;

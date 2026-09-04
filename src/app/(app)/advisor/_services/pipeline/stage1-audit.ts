@@ -7,7 +7,7 @@ import {
 } from "@/core/services/search/rag-search";
 import { ThinkingLevel } from "@google/genai";
 import { generateGeminiStructuredContent } from "@/core/services/ai";
-import { FLASH_36 } from "@/lib/constants";
+import { FLASH_38 } from "@/lib/constants";
 import { buildStage1AuditPromptPayload } from "../../_prompts/stage1-audit.prompt";
 import {
   auditReportJsonSchema,
@@ -84,7 +84,7 @@ export async function runStage1Audit(
   });
 
   const audit = await generateGeminiStructuredContent<AuditReport>(
-    FLASH_36,
+    FLASH_38,
     payload.systemInstruction,
     payload.userPrompt,
     auditReportJsonSchema,

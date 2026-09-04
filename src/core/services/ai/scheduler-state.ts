@@ -1,4 +1,4 @@
-import { getPacificDateKey } from "@/lib/rate-limiter";
+import { getPacificDateKey } from "@/lib/pacific-ttl";
 import { getGeminiKeyPool } from "./gemini-key-pool";
 import { GEMINI_MODEL_QUOTAS } from "@/core/config/rate-limits";
 
@@ -95,6 +95,10 @@ export function markKeyRpdExhausted(model: string, apiKey: string): void {
     const rpd = getRpdForModel(model);
     if (Number.isFinite(rpd)) {
       dailyKeyCounts.set(cacheKey, { dateKey: getPacificDateKey(), count: rpd });
+      // Mirror saturation to Redis+memory for other instances (fire-and-forget, single SET with TTL)
+      void import("@/lib/redis-quota")
+        .then((m) => m.saturateDailyCountAsync(`${model}::${apiKey}`, rpd).catch(() => {}))
+        .catch(() => {});
     }
   } catch (err) {
     console.warn(`[scheduler-state] markKeyRpdExhausted proactive saturation failed for ${model}, fail-open:`, err);
@@ -117,7 +121,7 @@ export function getDailyCountForKey(model: string, apiKey: string): number {
   }
 }
 
-/** Atomically increments proactive daily counter for a model::key. Fail-open, best-effort DB sync. */
+/** Atomically increments proactive daily counter for a model::key. Fail-open, best-effort Redis sync. */
 export function incrementDailyForKey(model: string, apiKey: string): number {
   try {
     const cacheKey = `${model}::${apiKey}`;
@@ -131,8 +135,8 @@ export function incrementDailyForKey(model: string, apiKey: string): number {
       entry.count += 1;
       newCount = entry.count;
     }
-    // Best-effort async DB sync for distributed consistency (fire-and-forget, fail-open)
-    void import("@/lib/daily-quota-store")
+    // Best-effort async Redis sync for distributed consistency (fire-and-forget, fail-open, Pacific TTL)
+    void import("@/lib/redis-quota")
       .then((m) => m.incrementDailyAsync(`${model}::${apiKey}`).catch(() => {}))
       .catch(() => {});
     return newCount;
@@ -174,14 +178,19 @@ export function hasDailyCapacityForModel(model: string): boolean {
   }
 }
 
-/** Async DB-aware daily capacity check for a model::key (distributed). Fail-open. */
+/** Async Redis-aware daily capacity check for a model::key (distributed). Fail-open. */
 export async function hasDailyCapacityForKeyAsync(model: string, apiKey: string): Promise<boolean> {
   try {
     if (isKeyRpdExhausted(model, apiKey)) return false;
     const rpd = getRpdForModel(model);
     if (!Number.isFinite(rpd)) return true;
-    const { getDailyCountAsync } = await import("@/lib/daily-quota-store");
+    const { getDailyCountAsync } = await import("@/lib/redis-quota");
     const count = await getDailyCountAsync(`${model}::${apiKey}`);
+    // Sync local mirror for fast sync path (candidate-selector)
+    try {
+      const today = getPacificDateKey();
+      dailyKeyCounts.set(`${model}::${apiKey}`, { dateKey: today, count });
+    } catch {}
     return count < rpd;
   } catch (err) {
     console.warn(`[scheduler-state] hasDailyCapacityForKeyAsync failed for ${model}, fail-open:`, err);

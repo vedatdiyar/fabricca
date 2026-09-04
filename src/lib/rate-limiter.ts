@@ -7,17 +7,10 @@
  * No arbitrary daily quota cuts or unrequested stopping mechanisms.
  */
 
-/** Day key for a given timezone-aware instant (formatted for Pacific midnight resets). */
-export function getPacificDateKey(date: Date = new Date()): string {
-  return new Intl.DateTimeFormat("en-CA", {
-    timeZone: "America/Los_Angeles",
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-  }).format(date);
-}
+import { getPacificDateKey } from "./pacific-ttl";
+export { getPacificDateKey };
 
-// ── Daily RPD counters (Pacific date-key, per label) — in-memory with fail-open ──
+// ── Daily RPD counters (Pacific date-key, per label) — in-memory with Redis fail-open ──
 /** In-memory daily counters keyed by `label`. Each entry tracks Pacific date and count. */
 const dailyCounters = new Map<string, { dateKey: string; count: number }>();
 
@@ -41,14 +34,14 @@ export function incrementDaily(label: string): number {
     const entry = dailyCounters.get(label);
     if (!entry || entry.dateKey !== today) {
       dailyCounters.set(label, { dateKey: today, count: 1 });
-      // Best-effort async DB sync for distributed consistency (fire-and-forget, fail-open)
-      void import("./daily-quota-store")
+      // Best-effort async Redis sync for distributed consistency (fire-and-forget, fail-open, Pacific TTL)
+      void import("./redis-quota")
         .then((m) => m.incrementDailyAsync(label).catch(() => {}))
         .catch(() => {});
       return 1;
     }
     entry.count += 1;
-    void import("./daily-quota-store")
+    void import("./redis-quota")
       .then((m) => m.incrementDailyAsync(label).catch(() => {}))
       .catch(() => {});
     return entry.count;
@@ -74,11 +67,11 @@ export function hasDailyCapacityFor(label: string, rpd?: number): boolean {
   }
 }
 
-/** Async DB-aware daily capacity check (distributed). Fail-open on DB error. */
+/** Async Redis-aware daily capacity check (distributed). Fail-open on Redis error. */
 export async function hasDailyCapacityForAsync(label: string, rpd?: number): Promise<boolean> {
   if (!rpd || rpd <= 0) return true;
   try {
-    const { hasDailyCapacityAsync } = await import("./daily-quota-store");
+    const { hasDailyCapacityAsync } = await import("./redis-quota");
     return await hasDailyCapacityAsync(label, rpd);
   } catch (err) {
     console.warn(`[rate-limiter] hasDailyCapacityForAsync failed for ${label}, fail-open:`, err);

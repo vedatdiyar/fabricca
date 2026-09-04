@@ -11,7 +11,7 @@ import {
 } from "@/core/db/schema";
 import { ThinkingLevel } from "@google/genai";
 import { generateGeminiStructuredContent } from "@/core/services/ai";
-import { FLASH_LITE_35, FLASH_36 } from "@/lib/constants";
+import { FLASH_LITE_35, FLASH_38 } from "@/lib/constants";
 import { createFlowId, Logger } from "@/lib/logger";
 import {
   performHybridRagSearch,
@@ -171,7 +171,7 @@ async function runCitationAuditTask(
   const data = await generateGeminiStructuredContent<
     OfficeReviewReport["audit"]
   >(
-    FLASH_36,
+    FLASH_38,
     payload.systemInstruction,
     payload.userPrompt,
     citationAuditJsonSchema,
@@ -229,7 +229,7 @@ async function runJuryCritiquesTask(
   const data = await generateGeminiStructuredContent<{
     juryCritiques: JuryCritique[];
   }>(
-    FLASH_36,
+    FLASH_38,
     payload.systemInstruction,
     payload.userPrompt,
     juryCritiquesJsonSchema,

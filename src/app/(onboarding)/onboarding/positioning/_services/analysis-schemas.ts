@@ -3,7 +3,6 @@ import type { JsonSchema } from "@/core/services/ai";
 import {
   strategicRoleEnum,
   gapAnalysisStructuredSchema,
-  type RecommendedThesisItem,
   type PositioningGlobalStatus,
   type GapAnalysisStructured,
 } from "./validation";
@@ -252,5 +251,4 @@ export const jurySynthesisResultJsonSchema: JsonSchema = {
 export interface JuryAnalysisResult {
   globalStatus: PositioningGlobalStatus;
   gapAnalysisSummary: GapAnalysisStructured;
-  recommendedTheses?: RecommendedThesisItem[];
 }

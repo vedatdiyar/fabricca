@@ -1,6 +1,8 @@
 /**
  * Standardized Prompt Builder for Fabricca LLM System.
- * Strictly adheres to docs/LLM_INTEGRATION.md Sections 3 & 4 (Hybrid XML + Markdown Encapsulation).
+ * Strictly adheres to docs/LLM_INTEGRATION.md Sections 3 & 4 (Hybrid XML + Markdown Encapsulation)
+ * and Sections 7 & 8 (Zero-Shot + Universality & Leakage Shield — systemInstruction stays
+ * 100% static/thesis-agnostic, thesis data only via inputContext -> <context>).
  */
 
 export interface PromptPayload {
@@ -52,7 +54,8 @@ const LANGUAGE_GUARD =
 
 /**
  * Builds a standardized, type-safe PromptPayload following the Hybrid XML and Markdown
- * encapsulation rules defined in docs/LLM_INTEGRATION.md Section 4 (Zero-Shot):
+ * encapsulation rules defined in docs/LLM_INTEGRATION.md Sections 4 and 8 (Zero-Shot &
+ * Universality/Leakage Shield):
  *
  * <role>
  * [Role and Persona]

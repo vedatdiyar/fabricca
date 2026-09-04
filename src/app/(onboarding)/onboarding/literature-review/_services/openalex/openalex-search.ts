@@ -1,5 +1,9 @@
 import type { RawPaper } from "../literature-review-papers";
-import { semanticQueue, queryOpenAlexWorks } from "./openalex-http";
+import {
+  openAlexQueue,
+  semanticQueue,
+  queryOpenAlexWorks,
+} from "./openalex-http";
 
 /**
  * ARCHITECTURE SEAL — OpenAlex Text-Only Semantic Interface
@@ -22,6 +26,7 @@ import { semanticQueue, queryOpenAlexWorks } from "./openalex-http";
  * @param query - Semantic search query text (raw, will be sanitized).
  * @param perPage - Number of results to request.
  * @param checkCancelled - Optional callback to abort the request.
+ * @param externalSignal - Optional abort signal.
  * @returns Matching raw papers (empty when sanitized query < 3 chars).
  */
 export async function searchOpenAlex(
@@ -52,13 +57,14 @@ export async function searchOpenAlex(
 }
 
 /**
- * Hybrid complement: keyword-based OpenAlex `search` to recover canonical
- * works that GTE semantic ranking demotes. Uses `search` (not `title.search`)
- * for broader recall and regular queue (100 req/s).
- * Generic: derived from sub-box keywords, not hardcoded titles.
+ * Lexical complement: OpenAlex stemmed and phrase `search` (100 req/s queue).
+ * Executes targeted Anchor + Focus queries to recover canonical monographs,
+ * authors, and specific case literature that dense vector search might dilute.
  *
- * @param keywordQuery - Short keyword phrase (3-80 chars).
- * @param perPage - Number of results to request (capped 10).
+ * @param keywordQuery - Keyword/phrase query (3-250 chars).
+ * @param perPage - Number of results to request (capped at 20).
+ * @param checkCancelled - Optional callback to abort the request.
+ * @param externalSignal - Optional abort signal.
  * @returns Matching raw papers (empty when query < 3 chars).
  */
 export async function searchOpenAlexByTitleFilter(
@@ -67,11 +73,11 @@ export async function searchOpenAlexByTitleFilter(
   checkCancelled?: () => boolean,
   externalSignal?: AbortSignal,
 ): Promise<RawPaper[]> {
-  const sanitized = keywordQuery.replace(/\s+/g, " ").trim().slice(0, 80);
+  const sanitized = keywordQuery.replace(/\s+/g, " ").trim().slice(0, 250);
   if (sanitized.length < 3) return [];
   const params = new URLSearchParams({
     search: sanitized,
-    per_page: String(Math.min(perPage, 10)),
+    per_page: String(Math.min(perPage, 20)),
     select:
       "id,title,type,authorships,relevance_score,doi,referenced_works,language,abstract_inverted_index,cited_by_count,primary_location",
   });
@@ -79,10 +85,14 @@ export async function searchOpenAlexByTitleFilter(
   const apiKey = process.env.OPENALEX_API_KEY;
   if (apiKey) params.set("api_key", apiKey);
 
-  // Uses regular queue (no semantic turnstile) — imported lazily to avoid cycle
-  const { openAlexQueue } = await import("./openalex-http");
-  const { queryOpenAlexWorks } = await import("./openalex-http");
   return (await openAlexQueue.exec(() =>
     queryOpenAlexWorks(params, checkCancelled, externalSignal),
   )) as RawPaper[];
 }
+
+/**
+ * Alias for `searchOpenAlexByTitleFilter` aligning with architectural naming standard
+ * for OpenAlex 100 req/s high-speed lexical search.
+ */
+export const searchOpenAlexLexical = searchOpenAlexByTitleFilter;
+
