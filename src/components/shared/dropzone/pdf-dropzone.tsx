@@ -21,6 +21,9 @@ export interface UnifiedPdfDropzoneProps {
   resourceTitle?: string;
   pdfStatus?: PdfStatus;
   onUploadPdf?: (file: File) => Promise<boolean>;
+  // Multi-file batch mode (primary-material collections)
+  multiple?: boolean;
+  onUploadFiles?: (files: File[]) => Promise<void>;
   className?: string;
   variant?: "compact" | "hero";
 }
@@ -40,48 +43,73 @@ export function UnifiedPdfDropzone({
   resourceTitle = "",
   pdfStatus = "NOT_UPLOADED",
   onUploadPdf,
+  multiple = false,
+  onUploadFiles,
   className,
   variant,
 }: UnifiedPdfDropzoneProps) {
   const resolvedVariant: "compact" | "hero" =
-    variant ?? (onUploadPdf || resourceTitle ? "hero" : "compact");
+    variant ?? (onUploadPdf || onUploadFiles || resourceTitle ? "hero" : "compact");
 
   const [isDragOver, setIsDragOver] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const validateAndHandle = async (file: File) => {
+  const isValidPdf = (file: File): boolean => {
     if (!file.name.toLowerCase().endsWith(".pdf")) {
-      toast.error("Lütfen geçerli bir PDF dosyası yükleyiniz.");
-      return;
+      toast.error(`"${file.name}" atlandı: lütfen geçerli bir PDF dosyası yükleyiniz.`);
+      return false;
     }
     if (file.size > 25 * 1024 * 1024) {
-      toast.error("PDF dosya boyutu maksimum 25MB olabilir.");
-      return;
+      toast.error(`"${file.name}" atlandı: PDF dosya boyutu maksimum 25MB olabilir.`);
+      return false;
     }
-    if (onUploadPdf) {
+    return true;
+  };
+
+  /**
+   * Handles one or more dropped/selected files with shared PDF validation.
+   * Batch handler takes precedence; single-upload and controlled modes keep
+   * their existing behavior for backward compatibility.
+   */
+  const handleFiles = async (fileList: FileList | File[]) => {
+    const files = Array.from(fileList);
+    if (files.length === 0) return;
+    const validFiles = files.filter(isValidPdf);
+    if (validFiles.length === 0) return;
+    if (onUploadFiles) {
       try {
         setIsUploading(true);
-        const ok = await onUploadPdf(file);
-        if (ok) toast.success("PDF başarıyla yüklendi, metin ayrıştırıldı ve RAG için vektörleştirildi.");
+        await onUploadFiles(validFiles);
       } finally {
         setIsUploading(false);
       }
       return;
     }
-    onFileSelect?.(file);
+    if (onUploadPdf) {
+      try {
+        setIsUploading(true);
+        for (const validFile of validFiles) {
+          const ok = await onUploadPdf(validFile);
+          if (ok) toast.success("PDF başarıyla yüklendi, metin ayrıştırıldı ve RAG için vektörleştirildi.");
+        }
+      } finally {
+        setIsUploading(false);
+      }
+      return;
+    }
+    const first = validFiles[0];
+    if (first) onFileSelect?.(first);
   };
 
   const handleDrop = (e: React.DragEvent) => {
     e.preventDefault();
     setIsDragOver(false);
-    const file = e.dataTransfer.files?.[0];
-    if (file) void validateAndHandle(file);
+    if (e.dataTransfer.files?.length) void handleFiles(e.dataTransfer.files);
   };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) void validateAndHandle(file);
+    if (e.target.files?.length) void handleFiles(e.target.files);
     // reset so same file can be re-selected
     if (e.target) e.target.value = "";
   };
@@ -109,6 +137,7 @@ export function UnifiedPdfDropzone({
               type="file"
               ref={fileInputRef}
               accept="application/pdf"
+              multiple={multiple}
               className="hidden"
               aria-label="PDF dosyası seçin"
               onChange={handleInputChange}
@@ -217,6 +246,7 @@ export function UnifiedPdfDropzone({
           type="file"
           ref={fileInputRef}
           accept="application/pdf"
+          multiple={multiple}
           className="hidden"
           aria-label="Akademik PDF dosyası seçin"
           disabled={isProcessing}
@@ -257,8 +287,8 @@ export function UnifiedPdfDropzone({
               <UploadCloud className="h-7 w-7" />
             </div>
             <div className="space-y-1 max-w-xs">
-              <p className="text-xs font-semibold text-foreground">PDF Dosyasını Buraya Sürükleyin</p>
-              <p className="text-[11px] text-muted-foreground">veya bilgisayarınızdan seçmek için aşağıdaki butona tıklayın.</p>
+              <p className="text-xs font-semibold text-foreground">{multiple ? "PDF Dosyalarını Buraya Sürükleyin" : "PDF Dosyasını Buraya Sürükleyin"}</p>
+              <p className="text-[11px] text-muted-foreground">{multiple ? "Tek seferde birden fazla PDF seçebilirsiniz." : "veya bilgisayarınızdan seçmek için aşağıdaki butona tıklayın."}</p>
             </div>
             <Button
               type="button"

@@ -1,0 +1,263 @@
+{
+  "generatedAt": "2026-09-05T22:31:54.421Z",
+  "description": "Son Mimari Değişiklikler Sonrası Eski DB (sources_backup.json) vs Yeni Canlı Pipeline Karşılaştırma Tablosu",
+  "summary": {
+    "box236": "Silahlı Mücadele ve PKK Hattı: %100 KORUNDU (Tezcür, Cengiz Güneş, Cengiz Güneş, Francis O'Connor)",
+    "box237": "Yasal Siyasal Mücadele ve Parti Hattı: Watts eserleri korundu, 4. sıraya Özdoğan & Ersanlı eklendi",
+    "box238": "Manevra ve Mevzi Savaşı Spektrumu: %100 KORUNDU (Daniel Egan)",
+    "box239": "Tarihsel Momentler ve Söylem Analizi: Matthew Donoghue 3. sıradan asil listeye başarıyla girdi"
+  },
+  "boxes": [
+    {
+      "boxId": 236,
+      "boxTitle": "Silahlı Mücadele ve PKK Hattı",
+      "parentTitle": "Araştırma Problemi ve Siyasal Aktör Hatları",
+      "boxType": "SUBJECT_PROBLEM",
+      "oldSources": [
+        {
+          "title": "When Democratization Radicalizes: The Kurdish Nationalist Movement in Turkey",
+          "authors": [
+            "Güneş Murat Tezcür"
+          ]
+        },
+        {
+          "title": "Explaining the PKK's Mobilization of the Kurds in Turkey: Hegemony, Myth and Violence",
+          "authors": [
+            "Cengiz Gunes"
+          ]
+        },
+        {
+          "title": "The Kurdish National Movement in Turkey",
+          "authors": [
+            "Cengiz Gunes"
+          ]
+        },
+        {
+          "title": "Armed Social Movements and Insurgency: The PKK and Its Communities of Support",
+          "authors": [
+            "Francis O'Connor"
+          ]
+        }
+      ],
+      "newSources": [
+        {
+          "title": "When Democratization Radicalizes: The Kurdish Nationalist Movement in Turkey",
+          "authors": [
+            "Güneş Murat Tezcür"
+          ],
+          "score": 100
+        },
+        {
+          "title": "Explaining the PKK's Mobilization of the Kurds in Turkey: Hegemony, Myth and Violence",
+          "authors": [
+            "Cengiz Gunes"
+          ],
+          "score": 98
+        },
+        {
+          "title": "The Kurdish National Movement in Turkey",
+          "authors": [
+            "Cengiz Gunes"
+          ],
+          "score": 91
+        },
+        {
+          "title": "Armed Social Movements and Insurgency: The PKK and Its Communities of Support",
+          "authors": [
+            "Francis O'Connor"
+          ],
+          "score": 88
+        }
+      ]
+    },
+    {
+      "boxId": 237,
+      "boxTitle": "Yasal Siyasal Mücadele ve Parti Hattı",
+      "parentTitle": "Araştırma Problemi ve Siyasal Aktör Hatları",
+      "boxType": "SUBJECT_PROBLEM",
+      "oldSources": [
+        {
+          "title": "Allies and Enemies: Pro-Kurdish Parties in Turkish Politics, 1990–94",
+          "authors": [
+            "Nicole F. Watts"
+          ]
+        },
+        {
+          "title": "Activists in Office: Pro-Kurdish Contentious Politics in Turkey",
+          "authors": [
+            "Nicole F. Watts"
+          ]
+        },
+        {
+          "title": "Activists in Office: Kurdish Politics and Protest in Turkey",
+          "authors": [
+            "Nicole F. Watts"
+          ]
+        },
+        {
+          "title": "Pro-Rebel Party Behavior During Civil Wars: The Case of the Pro-Kurdish Parties in Turkey",
+          "authors": [
+            "Pelin Ayan Musil",
+            "Jacob Maze"
+          ]
+        }
+      ],
+      "newSources": [
+        {
+          "title": "Allies and Enemies: Pro-Kurdish Parties in Turkish Politics, 1990–94",
+          "authors": [
+            "Nicole F. Watts"
+          ],
+          "score": 100
+        },
+        {
+          "title": "Activists in Office: Pro-Kurdish Contentious Politics in Turkey",
+          "authors": [
+            "Nicole F. Watts"
+          ],
+          "score": 100
+        },
+        {
+          "title": "Activists in Office: Kurdish Politics and Protest in Turkey",
+          "authors": [
+            "Nicole F. Watts"
+          ],
+          "score": 100
+        },
+        {
+          "title": "Obstacles and Opportunities: Recent Kurdish Struggles for Political Representation and Participation in Turkey",
+          "authors": [
+            "Günay Göksu Özdoğan",
+            "Büşra Ersanlı"
+          ],
+          "score": 95
+        }
+      ]
+    },
+    {
+      "boxId": 238,
+      "boxTitle": "Manevra ve Mevzi Savaşı Spektrumu",
+      "parentTitle": "Teorik Çerçeve ve Hegemonya Kuramı",
+      "boxType": "THEORETICAL_FRAMEWORK",
+      "oldSources": [
+        {
+          "title": "Rethinking War of Maneuver/War of Position: Gramsci and the Military Metaphor",
+          "authors": [
+            "Daniel Egan"
+          ]
+        },
+        {
+          "title": "The Dialectic of Position and Maneuver",
+          "authors": [
+            "Daniel Egan"
+          ]
+        },
+        {
+          "title": "Insurrection and Gramsci's War of Position",
+          "authors": [
+            "Daniel Egan"
+          ]
+        },
+        {
+          "title": "Gramsci’s War of Position as Siege Warfare: Some Lessons From History",
+          "authors": [
+            "Daniel Egan"
+          ]
+        }
+      ],
+      "newSources": [
+        {
+          "title": "Rethinking War of Maneuver/War of Position: Gramsci and the Military Metaphor",
+          "authors": [
+            "Daniel Egan"
+          ],
+          "score": 100
+        },
+        {
+          "title": "The Dialectic of Position and Maneuver",
+          "authors": [
+            "Daniel Egan"
+          ],
+          "score": 100
+        },
+        {
+          "title": "Insurrection and Gramsci's “War of Position”",
+          "authors": [
+            "Daniel Egan"
+          ],
+          "score": 97
+        },
+        {
+          "title": "Gramsci’s War of Position as Siege Warfare: Some Lessons From History",
+          "authors": [
+            "Daniel Egan"
+          ],
+          "score": 97
+        }
+      ]
+    },
+    {
+      "boxId": 239,
+      "boxTitle": "Tarihsel Momentler ve Söylem Analizi",
+      "parentTitle": "Araştırma Yöntemi ve Analitik Desen",
+      "boxType": "METHODOLOGY",
+      "oldSources": [
+        {
+          "title": "Language and Hegemony in Gramsci",
+          "authors": [
+            "Peter Ives"
+          ]
+        },
+        {
+          "title": "Critical Discourse Analysis, Discourse‐Historical Approach",
+          "authors": [
+            "Ruth Wodak"
+          ]
+        },
+        {
+          "title": "Methods of Critical Discourse Analysis",
+          "authors": [
+            "Ruth Wodak",
+            "Michaël Meyer"
+          ]
+        },
+        {
+          "title": "Critical Discourse Analysis: The Critical Study of Language",
+          "authors": [
+            "Norman Fairclough"
+          ]
+        }
+      ],
+      "newSources": [
+        {
+          "title": "Language and Hegemony in Gramsci",
+          "authors": [
+            "Peter Ives"
+          ],
+          "score": 92
+        },
+        {
+          "title": "Gramsci's Politics of Language",
+          "authors": [
+            "Peter Ives"
+          ],
+          "score": 83
+        },
+        {
+          "title": "Beyond Hegemony: Elaborating on the Use of Gramscian Concepts in Critical Discourse Analysis for Political Studies",
+          "authors": [
+            "Matthew Donoghue"
+          ],
+          "score": 80
+        },
+        {
+          "title": "Language, Agency and Hegemony: A Gramscian Response to Post‐Marxism",
+          "authors": [
+            "Peter Ives"
+          ],
+          "score": 76
+        }
+      ]
+    }
+  ]
+}

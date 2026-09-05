@@ -302,7 +302,9 @@ export async function executePhase2Jury(
             thesisBoxId: r.thesisBoxId,
             subBoxTitle: r.subBox.title,
             boxType: r.boxType,
-            description: r.subBoxDescription,
+            description: r.parentBoxTitle
+              ? `[Üst Kutu: "${r.parentBoxTitle}" — Amacı: ${r.parentBoxDescription}]\n- Alt Kutu: ${r.subBoxDescription}`
+              : r.subBoxDescription,
             concepts: r.subBox.concepts,
             semanticQuery: r.subBox.semanticQuery,
           },

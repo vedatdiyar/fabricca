@@ -10,6 +10,8 @@ export interface BatchOrchestrationResult {
 export interface SubBoxResult {
   boxType: string;
   subBoxDescription: string;
+  parentBoxTitle?: string;
+  parentBoxDescription?: string;
   subBox: SubBoxItem;
   thesisBoxId: number;
   rawPapers: RawPaper[];

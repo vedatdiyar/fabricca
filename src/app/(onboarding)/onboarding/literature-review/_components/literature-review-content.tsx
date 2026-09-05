@@ -1,15 +1,15 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { AlertCircle, Archive, BookOpen, Plus } from "lucide-react";
+import { AlertCircle, BookOpen } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import { AIBanner } from "@/components/shared/ai-banner";
 import { OnboardingStepFooter } from "@/app/(onboarding)/onboarding/_components/onboarding-step-footer";
 import { LiteratureReviewSkeleton } from "./literature-review-skeleton";
-import type { GeminiThesisBox, LiteraturePoolEntry } from "@/lib/types";
+import type { GeminiThesisBox, JuryArticle, LiteraturePoolEntry } from "@/lib/types";
 import { LiteratureArticleCard } from "./literature-article-card";
+import { PrimaryMaterialUploadCard } from "./primary-material-upload-card";
 import {
   useLiteratureReview,
   type BoxStatus,
@@ -17,50 +17,27 @@ import {
 import { getBoxTypeLabel } from "@/lib/box-constants";
 
 /**
- * Informational empty state for primary-material boxes that are excluded from auto-search.
- *
- * @returns The manual entry required banner.
- */
-function ManualEntryRequiredCard() {
-  const router = useRouter();
-  return (
-    <div className="flex flex-col items-center justify-center gap-3 p-6 text-center border border-dashed border-primary/20 rounded-md bg-primary/[0.04]">
-      <div className="flex size-10 items-center justify-center rounded-full bg-primary/10 border border-primary/20">
-        <Archive className="size-5 text-primary" />
-      </div>
-      <p className="font-sans text-xs leading-relaxed text-muted-foreground max-w-lg">
-        Bu alan birincil kaynaklar (arşiv belgeleri, saha notları, kurum içi
-        veriler) için ayrılmıştır. Otomatik taranmaz; belgelerinizi doğrudan
-        sisteme ekleyebilirsiniz.
-      </p>
-      <Button
-        type="button"
-        size="sm"
-        variant="outline"
-        className="mt-1 gap-1.5 border-primary/20 text-primary hover:bg-primary/10 hover:text-primary"
-        onClick={() => router.push("/library")}
-      >
-        <Plus className="size-3.5" />
-        Kaynak Ekle
-      </Button>
-    </div>
-  );
-}
-
-/**
  * Renders a sub-box's transient processing states while the pipeline runs.
+ * Primary-material boxes render the upload card instead of a spinner once
+ * they are flagged for manual entry.
  *
  * @param root0 - Component props.
  * @param root0.status - The current processing status of the sub-box.
  * @param root0.errorMessage - Optional error message shown on failure.
+ * @param root0.thesisBoxId - Target thesis box database ID for uploads.
+ * @param root0.articles - Already indexed documents for this box.
  * @returns The processing state UI or null when idle.
  */
 function SubBoxQuery({
   status,
   errorMessage,
+  thesisBoxId,
+  articles = [],
 }: {
   status: BoxStatus;
   errorMessage?: string;
+  thesisBoxId?: number;
+  articles?: JuryArticle[];
 }) {
   if (status === "idle" || status === "loading") {
     return (
@@ -87,7 +64,9 @@ function SubBoxQuery({
   }
 
   if (status === "manual_entry_required") {
-    return <ManualEntryRequiredCard />;
+    return (
+      <PrimaryMaterialUploadCard thesisBoxId={thesisBoxId} articles={articles} />
+    );
   }
 
   return null;
@@ -126,9 +105,6 @@ function SubBoxDone({
                 (e) => e.subBoxTitle === sub.title,
               );
               const subArticles = subEntry?.articles ?? [];
-              const isChildManual =
-                subEntry?.status === "manual_entry_required" ||
-                (!subEntry && subBox.boxType === "PRIMARY_MATERIAL");
               return (
                 <div key={`${sub.title}-${idx}`} className="relative space-y-2">
                   <span className="absolute -left-[21.5px] top-1.5 size-2 rounded-full border-2 border-primary bg-background" />
@@ -144,20 +120,10 @@ function SubBoxDone({
                     )}
                   </div>
 
-                  {isChildManual ? (
-                    <ManualEntryRequiredCard />
-                  ) : subArticles.length > 0 ? (
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-1">
-                      {[...subArticles]
-                        .sort((a, b) => b.relevanceScore - a.relevanceScore)
-                        .map((article, aIdx) => (
-                          <LiteratureArticleCard
-                            key={`${article.title}-${aIdx}`}
-                            article={article}
-                          />
-                        ))}
-                    </div>
-                  ) : null}
+                  <PrimaryMaterialUploadCard
+                    thesisBoxId={sub.id ?? subBox.id}
+                    articles={subArticles}
+                  />
                 </div>
               );
             })}
@@ -169,21 +135,10 @@ function SubBoxDone({
     // No child boxes — parent itself is the manual box
     if (isParentManual) {
       return (
-        <div className="space-y-3">
-          <ManualEntryRequiredCard />
-          {entry && entry.articles.length > 0 && (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              {[...entry.articles]
-                .sort((a, b) => b.relevanceScore - a.relevanceScore)
-                .map((article, idx) => (
-                  <LiteratureArticleCard
-                    key={`${article.title}-${idx}`}
-                    article={article}
-                  />
-                ))}
-            </div>
-          )}
-        </div>
+        <PrimaryMaterialUploadCard
+          thesisBoxId={subBox.id}
+          articles={entry?.articles ?? []}
+        />
       );
     }
 
@@ -206,9 +161,10 @@ function SubBoxDone({
 
     // Fallback — should not be reached for manual boxes but keeps empty safety net
     return (
-      <div className="space-y-3">
-        <ManualEntryRequiredCard />
-      </div>
+      <PrimaryMaterialUploadCard
+        thesisBoxId={subBox.id}
+        articles={entry?.articles ?? []}
+      />
     );
   }
 
@@ -378,6 +334,12 @@ export function LiteratureReviewContent() {
                 <SubBoxQuery
                   status={boxStatuses[subBox.title] ?? "idle"}
                   errorMessage={boxErrors[subBox.title]}
+                  thesisBoxId={subBox.id}
+                  articles={
+                    literaturePool.find(
+                      (e) => e.subBoxTitle === subBox.title,
+                    )?.articles ?? []
+                  }
                 />
               )}
             </Card>

@@ -30,6 +30,8 @@ export async function executePhase1Search(
       return {
         boxType: box.boxType ?? "PROBLEMATIZATION",
         subBoxDescription: subBox.description ?? "",
+        parentBoxTitle: box.title,
+        parentBoxDescription: box.description,
         subBox,
         thesisBoxId: subBox.thesisBoxId,
         rawPapers,
