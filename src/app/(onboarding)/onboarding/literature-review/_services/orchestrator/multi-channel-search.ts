@@ -105,7 +105,10 @@ export async function searchMultiChannelForSubBox(
   // OpenAlex. Generation-time gates should already prevent this; if one
   // slips through, block the channel and surface it loudly instead of
   // sending Turkish text to the English search index.
-  const semanticBlocked = /[çÇğĞıIöÖşŞüÜ]/.test(openAlexSemanticQuery);
+  // NOTE: ASCII "I" (U+0049) is excluded — it is valid English and only
+  // collides with Turkish dotless-I in uppercase; genuine Turkish markers
+  // (İ U+0130, ı U+0131, ç, ğ, ö, ş, ü) are all still covered.
+  const semanticBlocked = /[çÇğĞıöÖşŞüÜİ]/.test(openAlexSemanticQuery);
   if (semanticBlocked) {
     logger.error("multi_channel_semantic_blocked_non_english", {
       data: { subBoxTitle: subBox.title },

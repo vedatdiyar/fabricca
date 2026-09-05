@@ -21,8 +21,8 @@ import {
 } from "@/lib/academic/language-detector";
 import type { PipelineRun } from "@/lib/pipeline-logger";
 
-/** Turkish characters never occur in English text — fast deterministic gate. */
-const TURKISH_CHAR_RE = /[çÇğĞıIöÖşŞüÜ]/;
+/** Turkish-specific characters (ASCII "I" excluded: U+0049 is also valid English). */
+const TURKISH_CHAR_RE = /[çÇğĞıöÖşŞüÜİ]/;
 
 /**
  * Verifies every generated semantic paragraph is English: a fast
@@ -64,7 +64,8 @@ export async function generateSemanticQueriesAction(
   flowId?: string,
   pipelineRun?: PipelineRun,
 ): Promise<
-  { success: true; queries: Map<string, string> } | { error: string }
+  | { success: true; queries: Map<string, string> }
+  | { error: string; technicalError?: string }
 > {
   const log = new Logger(flowId ?? createFlowId());
   const startTime = performance.now();
@@ -98,10 +99,10 @@ export async function generateSemanticQueriesAction(
           title: sb.title,
           boxType:
             key === "subjectProblem"
-              ? "SUBJECT_PROBLEM"
+              ? "subjectProblem"
               : key === "theoreticalFramework"
-                ? "THEORETICAL_FRAMEWORK"
-                : "METHODOLOGY",
+                ? "theoreticalFramework"
+                : "methodology",
           description: sb.description ?? "",
           concepts: sb.concepts ?? [],
         });
@@ -128,7 +129,7 @@ export async function generateSemanticQueriesAction(
 
     let result: BulkSemanticQueryResponse | null = null;
     let entriesEnglish = false;
-    for (let attempt = 1; attempt <= 2; attempt++) {
+    for (let attempt = 1; attempt <= 3; attempt++) {
       const attemptResult =
         await generateGeminiStructuredContent<BulkSemanticQueryResponse>(
           FLASH_LITE_35,
@@ -163,14 +164,15 @@ export async function generateSemanticQueriesAction(
       return {
         error:
           "Semantik arama sorguları İngilizce üretilemediği için kaydedilmedi. Lütfen tekrar deneyin.",
+        technicalError: "Generated semantic queries failed English language validation",
       };
     }
 
     const queries = new Map<string, string>();
     for (const entry of result.semanticQueries) {
       const queryLength = entry.openAlexSemanticQuery?.length ?? 0;
-      if (queryLength > 0 && queryLength < 1000) {
-        log.warn("semantic_query_short", {
+      if (queryLength < 500 || queryLength > 1500) {
+        log.warn("semantic_query_char_length_out_of_bounds", {
           service: "boxes",
           data: { subBoxTitle: entry.subBoxTitle, charLength: queryLength },
         });
@@ -196,13 +198,21 @@ export async function generateSemanticQueriesAction(
 
     return { success: true, queries };
   } catch (err) {
+    const durationMs = performance.now() - startTime;
+    pipelineRun?.subStep(
+      "Semantic Query Synthesis (Gemini Flash)",
+      durationMs,
+      "FAILED",
+    );
     log.error("semantic_query_generation_failed", {
       service: "boxes",
       error: err instanceof Error ? err : new Error(String(err)),
+      hidden: Boolean(pipelineRun),
     });
     return {
       error:
         "Semantik arama sorguları oluşturulurken beklenmeyen bir hata oluştu.",
+      technicalError: err instanceof Error ? err.message : String(err),
     };
   }
 }

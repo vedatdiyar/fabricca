@@ -39,14 +39,18 @@ export async function generateAndMapBoxesAction(
           flowId ?? run.flowId,
           run,
         );
-        if ("error" in structRes) throw new Error(structRes.error);
+        if ("error" in structRes) {
+          throw new Error(structRes.technicalError ?? structRes.error);
+        }
 
         const queryRes = await generateSemanticQueriesAction(
           structRes.structure,
           run.flowId,
           run,
         );
-        if ("error" in queryRes) throw new Error(queryRes.error);
+        if ("error" in queryRes) {
+          throw new Error(queryRes.technicalError ?? queryRes.error);
+        }
 
         const quadrants = structureToQuadrants(structRes.structure);
         const mapped = mapToProductionShape(quadrants);
@@ -64,11 +68,9 @@ export async function generateAndMapBoxesAction(
 
     return { success: true, boxes };
   } catch (err) {
+    void err;
     return {
-      error:
-        err instanceof Error && err.message
-          ? err.message
-          : "Konu kutuları oluşturulurken beklenmeyen bir hata oluştu.",
+      error: "Konu kutuları oluşturulurken beklenmeyen bir hata oluştu.",
     };
   }
 }

@@ -129,7 +129,7 @@ export const semanticQueryEntrySchema = z.object({
     .string()
     .min(500)
     .max(1500)
-    .refine((v) => !/[çÇğĞıIöÖşŞüÜ]/.test(v), {
+    .refine((v) => !/[çÇğĞıöÖşŞüÜİ]/.test(v), {
       message:
         "openAlexSemanticQuery must be English and contain no Turkish characters.",
     })
@@ -169,8 +169,10 @@ export const bulkSemanticQueryJsonSchema: JsonSchema = {
           },
           openAlexSemanticQuery: {
             type: "string",
+            minLength: 500,
+            maxLength: 1500,
             description:
-              "Dense English academic research paragraph for OpenAlex GTE Large EN search, 5+-1 sentences and 170-210 words (~1000-1250 characters), never exceeding 1500 characters. English only, never Turkish",
+              "Dense English academic research paragraph for OpenAlex GTE Large EN search, 5+-1 sentences and 170-210 words (~1000-1250 characters), length MUST be 500-1500 characters. ABSOLUTE LANGUAGE RULE: the entire value MUST be English with zero exceptions — not a single Turkish word, suffix, or letter (ç, ğ, ı, İ, ö, ş, ü) is allowed; any Turkish character invalidates the whole response. Translate all Turkish context terms (including party, institution, and actor names) into their canonical English scholarly equivalents.",
           },
           openAlexLexicalQueries: {
             type: "array",

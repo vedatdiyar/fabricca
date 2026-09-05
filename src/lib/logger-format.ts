@@ -173,8 +173,7 @@ export function formatStageLine(options: StageLineOptions): string {
       options.durationMs !== undefined
         ? ` (${formatDuration(options.durationMs)})`
         : "";
-    const reason = options.error ? extractReason(options.error) : "Failed";
-    rightPart = `${C_RED}✖ ${reason}${dur}${C_RESET}`;
+    rightPart = `${C_RED}✖ Failed${dur}${C_RESET}`;
   } else {
     const dur =
       options.durationMs !== undefined
@@ -188,7 +187,16 @@ export function formatStageLine(options: StageLineOptions): string {
     : options.description;
 
   const content = formatLeaderLine(rawDescription, rightPart, 46);
-  return `  ${badgeStr} ${sep} ${content}`;
+  const mainLine = `  ${badgeStr} ${sep} ${content}`;
+
+  if (status === "FAILED" && options.error != null) {
+    const cleanReason = extractReason(options.error);
+    const reasonIndent = "".padEnd(BADGE_WIDTH, " ");
+    const reasonLine = `\n  ${reasonIndent} ${sep}   ${C_DIM}↳ reason: ${cleanReason}${C_RESET}`;
+    return `${mainLine}${reasonLine}`;
+  }
+
+  return mainLine;
 }
 
 export interface PipelineFinishOptions {
@@ -242,8 +250,13 @@ export function formatLogLine(options: SingleLineLogOptions): string {
     ? `${C_CYAN}[${options.service}]${C_RESET} `
     : "";
 
-  const annotation = options.summary
-    ? ` ${C_DIM}${options.summary}${C_RESET}`
+  let cleanSummary = options.summary;
+  if (cleanSummary && cleanSummary.length > 55) {
+    cleanSummary = `${cleanSummary.slice(0, 52)}...`;
+  }
+
+  const annotation = cleanSummary
+    ? ` ${C_DIM}${cleanSummary}${C_RESET}`
     : "";
 
   let rightPart = "";
@@ -269,7 +282,7 @@ export function formatLogLine(options: SingleLineLogOptions): string {
  * @returns Clean readable single-line message.
  */
 export function extractReason(error: unknown): string {
-  if (!error) return "Bilinmeyen hata";
+  if (!error) return "Unknown error";
 
   let raw = "";
   if (error instanceof Error) {
@@ -307,7 +320,7 @@ export function extractReason(error: unknown): string {
             : "";
           const metricMatch = msg.match(/limit:\s*(\d+)/i);
           const limitStr = metricMatch ? `${metricMatch[1]} RPM` : "15 RPM";
-          return `Gemini Kota Limiti Aşıldı (429 ${limitStr}${retrySec ? `, ${retrySec} sonra tekrar` : ""})`;
+          return `Gemini rate limit exceeded (429 ${limitStr}${retrySec ? `, retry after ${retrySec}` : ""})`;
         }
 
         if (
@@ -316,7 +329,7 @@ export function extractReason(error: unknown): string {
           msg.includes("503") ||
           msg.includes("high demand")
         ) {
-          return "Gemini Sunucu Yoğunluğu (503 Service Unavailable)";
+          return "Gemini service unavailable (503 high demand)";
         }
 
         if (msg) {
@@ -328,8 +341,8 @@ export function extractReason(error: unknown): string {
             .replace(/\s+/g, " ")
             .trim();
           if (cleanMsg.length > 0) {
-            return cleanMsg.length > 120
-              ? `${cleanMsg.slice(0, 117)}...`
+            return cleanMsg.length > 90
+              ? `${cleanMsg.slice(0, 87)}...`
               : cleanMsg;
           }
         }
@@ -353,7 +366,7 @@ export function extractReason(error: unknown): string {
       : "";
     const metricMatch = raw.match(/limit:\s*(\d+)/i);
     const limitStr = metricMatch ? `${metricMatch[1]} RPM` : "15 RPM";
-    return `Gemini Kota Limiti Aşıldı (429 ${limitStr}${retrySec ? `, ${retrySec} sonra tekrar` : ""})`;
+    return `Gemini rate limit exceeded (429 ${limitStr}${retrySec ? `, retry after ${retrySec}` : ""})`;
   }
 
   if (
@@ -361,7 +374,7 @@ export function extractReason(error: unknown): string {
     raw.includes("high demand") ||
     raw.includes("UNAVAILABLE")
   ) {
-    return "Gemini Sunucu Yoğunluğu (503 Service Unavailable)";
+    return "Gemini service unavailable (503 high demand)";
   }
 
   // Clean URLs and excessive whitespace
@@ -371,8 +384,8 @@ export function extractReason(error: unknown): string {
     .replace(/\s+/g, " ")
     .trim();
 
-  if (sanitized.length > 120) {
-    return `${sanitized.slice(0, 117)}...`;
+  if (sanitized.length > 90) {
+    return `${sanitized.slice(0, 87)}...`;
   }
-  return sanitized || "Hata oluştu";
+  return sanitized || "Operation failed";
 }

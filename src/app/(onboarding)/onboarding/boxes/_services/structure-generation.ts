@@ -26,7 +26,8 @@ export async function runBoxStructureAction(
   flowId?: string,
   pipelineRun?: PipelineRun,
 ): Promise<
-  { success: true; structure: RawBoxStructureResponse } | { error: string }
+  | { success: true; structure: RawBoxStructureResponse }
+  | { error: string; technicalError?: string }
 > {
   const log = new Logger(flowId ?? createFlowId());
   const startTime = performance.now();
@@ -78,12 +79,20 @@ export async function runBoxStructureAction(
 
     return { success: true, structure };
   } catch (err) {
+    const durationMs = performance.now() - startTime;
+    pipelineRun?.subStep(
+      "4-Quadrant Box Structure (Gemini Flash)",
+      durationMs,
+      "FAILED",
+    );
     log.error("box_structure_generation_failed", {
       service: "boxes",
       error: err instanceof Error ? err : new Error(String(err)),
+      hidden: Boolean(pipelineRun),
     });
     return {
       error: "Konu kutusu yapısı oluşturulurken beklenmeyen bir hata oluştu.",
+      technicalError: err instanceof Error ? err.message : String(err),
     };
   }
 }
