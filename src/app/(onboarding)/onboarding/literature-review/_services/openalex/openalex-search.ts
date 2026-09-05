@@ -143,9 +143,9 @@ export async function searchOpenAlexByTitleFilter(
     const salientWords = rawRemaining
       .split(" ")
       .filter((w) => w.length > 2 && !STOP_WORDS.has(w.toLowerCase()));
-    // Use the primary salient anchor word (e.g. "language", "discourse", "maneuver")
-    // and sort by citations to surface the author's most canonical works without over-constraining OpenAlex boolean AND
-    const primaryKeyword = salientWords[0] || "";
+    // Combine remaining salient words into a unified search phrase (e.g. "discourse analysis", "Antonio Gramsci")
+    // rather than truncating to a single token, preserving full conceptual context in OpenAlex BM25 proximity scoring.
+    const salientPhrase = salientWords.join(" ").trim();
 
     const authorParams = new URLSearchParams({
       filter: `raw_author_name.search:${authorName}`,
@@ -154,8 +154,8 @@ export async function searchOpenAlexByTitleFilter(
       select:
         "id,title,type,authorships,relevance_score,doi,referenced_works,language,abstract_inverted_index,cited_by_count,primary_location",
     });
-    if (primaryKeyword.length >= 3) {
-      authorParams.set("search", primaryKeyword);
+    if (salientPhrase.length >= 3) {
+      authorParams.set("search", salientPhrase);
     }
     if (apiKey) authorParams.set("api_key", apiKey);
 
