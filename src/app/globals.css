@@ -36,6 +36,8 @@
 }
 
 :root {
+  color-scheme: dark;
+
   /* --- Derin Zümrüt Zemin ve Yüksek Kontrastlı Yazı --- */
   --background: oklch(0.167 0.009 169); /* Derin, asil zümrüt-siyah (#0b100e) */
   --foreground: oklch(
@@ -156,6 +158,27 @@
   [role="tab"],
   [role="link"] {
     cursor: pointer;
+  }
+
+  /* Autofill dark theme styling */
+  input:-webkit-autofill,
+  input:-webkit-autofill:hover,
+  input:-webkit-autofill:focus,
+  input:-webkit-autofill:active,
+  textarea:-webkit-autofill,
+  textarea:-webkit-autofill:hover,
+  textarea:-webkit-autofill:focus,
+  textarea:-webkit-autofill:active,
+  select:-webkit-autofill,
+  select:-webkit-autofill:hover,
+  select:-webkit-autofill:focus,
+  select:-webkit-autofill:active {
+    -webkit-box-shadow: 0 0 0 1000px #0b100e inset !important;
+    -webkit-box-shadow: 0 0 0 1000px oklch(0.167 0.009 169) inset !important;
+    -webkit-text-fill-color: #d8dfdc !important;
+    -webkit-text-fill-color: oklch(0.897 0.009 169) !important;
+    caret-color: oklch(0.897 0.009 169) !important;
+    transition: background-color 5000s ease-in-out 0s;
   }
 }
 

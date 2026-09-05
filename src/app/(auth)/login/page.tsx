@@ -67,43 +67,43 @@ export default function LoginPage() {
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,_var(--tw-gradient-stops))] from-primary/10 via-transparent to-transparent pointer-events-none" />
       <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-primary/10 rounded-full blur-3xl pointer-events-none" />
 
-      <div className="relative mx-auto flex w-full max-w-sm flex-col items-center space-y-6 z-10">
-        <div className="flex flex-row items-center gap-6 text-left justify-center w-full">
+      <div className="relative mx-auto flex w-full max-w-md flex-col items-center space-y-6 z-10 px-4 sm:px-0">
+        <div className="flex flex-row items-center gap-5 text-left justify-center w-full">
           <Image
             src="/logo.svg"
             alt="Fabricca"
-            width={80}
-            height={80}
+            width={84}
+            height={84}
             priority
             className="h-20 w-20 shrink-0"
           />
           <div className="space-y-1">
-            <h1 className="font-logo text-xl font-semibold tracking-tight text-foreground">
+            <h1 className="font-logo text-2xl sm:text-3xl font-semibold tracking-tight text-foreground">
               Fabricca
             </h1>
-            <p className="text-sm font-normal leading-relaxed text-muted-foreground">
+            <p className="text-sm sm:text-base font-normal leading-relaxed text-muted-foreground">
               Dijital Tez Asistanı
             </p>
           </div>
         </div>
 
-        <Card className="w-full">
-          <CardHeader className="space-y-1.5 pb-4">
-            <CardTitle className="font-serif text-sm font-semibold tracking-tight text-foreground">
+        <Card className="w-full border-border/60 bg-card/85 shadow-xl backdrop-blur-sm">
+          <CardHeader className="space-y-2 p-6 pb-2">
+            <CardTitle className="font-serif text-lg sm:text-xl font-semibold tracking-tight text-foreground">
               Giriş Yap
             </CardTitle>
-            <CardDescription className="text-xs text-muted-foreground">
+            <CardDescription className="text-sm text-muted-foreground leading-normal">
               Akademik çalışmanıza devam etmek için bilgilerinizi girin.
             </CardDescription>
           </CardHeader>
-          <CardContent className="space-y-4">
+          <CardContent className="p-6 pt-3 space-y-5">
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="space-y-2">
                 <Label
                   htmlFor="username"
-                  className="text-xs font-medium text-muted-foreground flex items-center gap-2"
+                  className="text-sm font-medium text-foreground/90 flex items-center gap-2"
                 >
-                  <User className="size-3.5" />
+                  <User className="size-4 text-muted-foreground" />
                   Kullanıcı Adı
                 </Label>
                 <Input
@@ -114,15 +114,15 @@ export default function LoginPage() {
                   onChange={(e) => setUsername(e.target.value)}
                   required
                   autoComplete="username"
-                  className="bg-background/20 border-border/40 transition-all duration-200"
+                  className="h-10 text-sm px-3.5 bg-background/60 hover:bg-background/80 focus:bg-background text-foreground border-border/60 transition-all duration-200 focus-visible:border-primary/60 focus-visible:ring-primary/20"
                 />
               </div>
               <div className="space-y-2">
                 <Label
                   htmlFor="password"
-                  className="text-xs font-medium text-muted-foreground flex items-center gap-2"
+                  className="text-sm font-medium text-foreground/90 flex items-center gap-2"
                 >
-                  <Lock className="size-3.5" />
+                  <Lock className="size-4 text-muted-foreground" />
                   Şifre
                 </Label>
                 <div className="relative flex items-center">
@@ -133,21 +133,21 @@ export default function LoginPage() {
                     onChange={(e) => setPassword(e.target.value)}
                     required
                     autoComplete="current-password"
-                    className="bg-background/20 border-border/40 transition-all duration-200 pr-10"
+                    className="h-10 text-sm px-3.5 bg-background/60 hover:bg-background/80 focus:bg-background text-foreground border-border/60 transition-all duration-200 pr-10 focus-visible:border-primary/60 focus-visible:ring-primary/20"
                   />
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3 text-muted-foreground hover:text-foreground transition-colors [&_svg]:size-3.5"
+                    className="absolute right-3 p-1 text-muted-foreground hover:text-foreground transition-colors"
                     tabIndex={-1}
                     aria-label={
                       showPassword ? "Şifreyi gizle" : "Şifreyi göster"
                     }
                   >
                     {showPassword ? (
-                      <EyeOff className="size-3.5" />
+                      <EyeOff className="size-4" />
                     ) : (
-                      <Eye className="size-3.5" />
+                      <Eye className="size-4" />
                     )}
                   </button>
                 </div>
@@ -155,7 +155,8 @@ export default function LoginPage() {
 
               <Button
                 type="submit"
-                className="w-full mt-2 transition-all duration-200 active:scale-95"
+                size="lg"
+                className="w-full h-10 text-sm font-medium mt-2 transition-all duration-200 active:scale-95 shadow-sm shadow-primary/20 cursor-pointer"
                 disabled={isPending}
               >
                 {isPending ? (
@@ -188,10 +189,10 @@ export default function LoginPage() {
               </Button>
             </form>
 
-            <div className="flex gap-2 p-3 bg-muted/10 border border-border/40 rounded-md text-xs text-muted-foreground leading-relaxed select-none">
-              <ShieldAlert className="h-4 w-4 text-warning shrink-0 mt-1" />
+            <div className="flex items-start gap-2.5 p-3.5 bg-muted/20 border border-border/50 rounded-lg text-xs leading-relaxed text-muted-foreground select-none">
+              <ShieldAlert className="size-4 text-warning shrink-0 mt-0.5" />
               <span>
-                <strong>Erişim Kısıtlaması:</strong> Bu platform dışarıdan kayda
+                <strong className="font-medium text-foreground/90">Erişim Kısıtlaması:</strong> Bu platform dışarıdan kayda
                 kapalıdır. Yalnızca yetkilendirilmiş akademisyenler giriş
                 yapabilir.
               </span>
@@ -199,7 +200,7 @@ export default function LoginPage() {
           </CardContent>
         </Card>
 
-        <span className="text-[10px] text-muted-foreground select-none">
+        <span className="text-xs text-muted-foreground/75 select-none tracking-wide">
           Fabricca v1.0.0 • Kapalı Akademik Sistem
         </span>
       </div>

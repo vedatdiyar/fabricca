@@ -59,7 +59,7 @@ export default function RootLayout({
     <html
       lang="tr"
       suppressHydrationWarning
-      className={`${fontSans.variable} ${fontSerif.variable} ${fontMono.variable} ${fontFredoka.variable}`}
+      className={`${fontSans.variable} ${fontSerif.variable} ${fontMono.variable} ${fontFredoka.variable} dark`}
     >
       <body>
         <QueryProvider>

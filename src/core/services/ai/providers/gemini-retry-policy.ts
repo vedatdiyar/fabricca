@@ -111,7 +111,7 @@ export function createGeminiRetryPolicy(
         if (isOverload) {
           // Server overload (503 / high demand) affects model capacity.
           // Fail fast immediately on the first attempt so dispatchGeminiCall can failover
-          // to the configured fallback model (e.g. gemini-3.6-flash) without stalling.
+          // to the configured fallback model (e.g. gemini-3.7-flash) without stalling.
           return false;
         }
       }

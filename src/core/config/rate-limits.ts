@@ -7,9 +7,15 @@
  * - CROSSREF_LIMITS: Saniyede max 10 istek (600 RPM), concurrency 3
  * - COHERE_LIMITS: Dakikada max 10 istek (10 RPM)
  * - CLOUDFLARE_EMBEDDINGS_LIMITS: Dakikada max 3.000 istek (3000 RPM)
- * - GEMINI_MODEL_QUOTAS: Flash Lite 15 RPM/500 RPD, Flash 5 RPM/20 RPD (free tier, per key; 3 key toplam 45/1500 ve 15/60)
+ * - GEMINI_MODEL_QUOTAS: Flash Lite 15 RPM/500 RPD, Flash 5 RPM/20 RPD (free tier, per key; 3 key toplam 45/1500 ve 15/60).
+ *   Fallback models inherit their sibling's quota (3.7 Flash: 5/20, 3.1 Flash-Lite: 15/500).
  */
-import { FLASH_LITE_35, FLASH_38 } from "@/lib/constants";
+import {
+  FLASH_LITE_35,
+  FLASH_38,
+  FLASH_LITE_31,
+  FLASH_37,
+} from "@/lib/constants";
 import type { RateLimiterOptions } from "@/lib/rate-limiter";
 
 /** OpenAlex regular `/works` queries — saniyede max 100 istek (6.000 req/min). */
@@ -53,7 +59,6 @@ export const SEMANTIC_SCHOLAR_LIMITS: RateLimiterOptions = {
   minIntervalMs: 1100,
 };
 
-
 /** Per-model Gemini quota (per key, free tier). */
 export interface GeminiModelQuota {
   rpm: number;
@@ -63,12 +68,16 @@ export interface GeminiModelQuota {
 export const GEMINI_MODEL_QUOTAS: Record<string, GeminiModelQuota> = {
   [FLASH_LITE_35]: { rpm: 15, rpd: 500 },
   [FLASH_38]: { rpm: 5, rpd: 20 },
+  [FLASH_37]: { rpm: 5, rpd: 20 },
+  [FLASH_LITE_31]: { rpm: 15, rpd: 500 },
 };
 
-/** Primary model -> fallback. */
+/** Primary model -> fallback (single-hop; fallback models are terminal). */
 export const GEMINI_FALLBACK_CHAINS: Record<string, string | null> = {
-  [FLASH_38]: FLASH_LITE_35,
-  [FLASH_LITE_35]: null,
+  [FLASH_38]: FLASH_37,
+  [FLASH_37]: null,
+  [FLASH_LITE_35]: FLASH_LITE_31,
+  [FLASH_LITE_31]: null,
 };
 
 export const GEMINI_FALLBACK_OPERATIONS = [
