@@ -141,14 +141,13 @@ export async function clearDownstreamDbAction(
           await tx.delete(outlines).where(eq(outlines.matrixId, matrix.id));
           await tx.delete(boxes).where(eq(boxes.matrixId, matrix.id));
         }
-      } else if (fromStep === "boxes") {
+      } else if (fromStep === "outline") {
         const [matrix] = await tx
           .select({ id: matrices.id })
           .from(matrices)
           .where(eq(matrices.userId, userId));
 
         if (matrix) {
-          await tx.delete(outlines).where(eq(outlines.matrixId, matrix.id));
           await tx
             .delete(sources)
             .where(
@@ -160,8 +159,9 @@ export async function clearDownstreamDbAction(
                   .where(eq(boxes.matrixId, matrix.id)),
               ),
             );
+          await tx.delete(boxes).where(eq(boxes.matrixId, matrix.id));
         }
-      } else if (fromStep === "outline") {
+      } else if (fromStep === "boxes") {
         const [matrix] = await tx
           .select({ id: matrices.id })
           .from(matrices)

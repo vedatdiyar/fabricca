@@ -79,17 +79,17 @@ export const STEP_CACHE_DEPENDENCIES: Record<
       TQ_KEYS.onboardingSteps,
     ] as const,
   },
-  boxes: {
-    nextJsTags: [CACHE_TAGS.thesisBoxes, CACHE_TAGS.thesisOutline] as const,
+  outline: {
+    nextJsTags: [CACHE_TAGS.thesisOutline, CACHE_TAGS.thesisBoxes] as const,
     tanStackKeys: [
-      TQ_KEYS.boxes,
       TQ_KEYS.outline,
+      TQ_KEYS.boxes,
       TQ_KEYS.onboardingSteps,
     ] as const,
   },
-  outline: {
-    nextJsTags: [CACHE_TAGS.thesisOutline] as const,
-    tanStackKeys: [TQ_KEYS.outline, TQ_KEYS.onboardingSteps] as const,
+  boxes: {
+    nextJsTags: [CACHE_TAGS.thesisBoxes] as const,
+    tanStackKeys: [TQ_KEYS.boxes, TQ_KEYS.onboardingSteps] as const,
   },
 };
 

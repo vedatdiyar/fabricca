@@ -87,11 +87,11 @@ export function BoxesContainer() {
       </div>
 
       <OnboardingStepFooter
-        onBack={() => router.push("/onboarding/positioning")}
-        backLabel="Konumlandırmaya Dön"
+        onBack={() => router.push("/onboarding/outline")}
+        backLabel="Tez Planına Dön"
         backDisabled={proceeding}
         onNext={handleProceed}
-        nextLabel="Tez Planına Geç"
+        nextLabel="Literatür Taramasına Geç"
         nextDisabled={proceeding}
         nextLoading={proceeding}
         nextLoadingText="Kaydediliyor..."

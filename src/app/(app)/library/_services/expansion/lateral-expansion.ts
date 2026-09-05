@@ -1,11 +1,10 @@
 import { db } from "@/core/db";
 import { boxes, sources } from "@/core/db/schema";
-import { eq, inArray } from "drizzle-orm";
+import { eq, inArray, and, ne } from "drizzle-orm";
 import type { CandidateSource } from "./types";
 import type { Logger } from "@/lib/logger";
-import { fetchOpenAlexForwardCitations } from "./openalex-expansion-client";
+import { fetchSemanticScholarRecommendations } from "./semanticscholar-expansion-client";
 import { rerankWithCohere } from "@/core/services/ai/cohere";
-import { parseDualSemanticQuery } from "@/lib/academic/utils";
 
 /**
  * Normalizes a title string for deduplication.
@@ -21,22 +20,27 @@ function normalizeTitle(title: string): string {
 }
 
 /**
- * Executes forward expansion using OpenAlex forward citation fetching
- * and Cohere Rerank against the Thesis Matrix.
+ * Executes lateral literature expansion using Semantic Scholar Recommendations API v1.0
+ * with positive active seeds and optional negative sibling box seeds, followed by
+ * Cohere Rerank v4.0 against the Sub-Box thematic context.
  *
  * @param boxId - Target Sub-Box ID.
- * @param activeSeedIds - List of active seed source IDs.
- * @param targetCount - Number of forward candidates required (2 + shortfall).
- * @param logger - Optional logger for structured event tracking.
+ * @param activeSeedIds - IDs of the active seed sources.
+ * @param targetCount - Number of lateral candidates required.
+ * @param logger - Optional structured logger.
+ * @param negativeSeedDois - Optional explicit negative seed DOIs (e.g. from sibling boxes).
  * @returns Array of selected CandidateSource items.
  */
-export async function executeForwardExpansion(
+export async function executeLateralExpansion(
   boxId: number,
   activeSeedIds: number[],
   targetCount: number,
   logger?: Logger,
+  negativeSeedDois?: string[],
 ): Promise<CandidateSource[]> {
-  if (targetCount <= 0 || activeSeedIds.length === 0) return [];
+  if (targetCount <= 0 || activeSeedIds.length === 0) {
+    return [];
+  }
 
   // 1. Fetch box information and linked Thesis Matrix
   const boxRows = await db
@@ -44,40 +48,65 @@ export async function executeForwardExpansion(
       id: boxes.id,
       title: boxes.title,
       description: boxes.description,
-      semanticQuery: boxes.semanticQuery,
-      concepts: boxes.concepts,
       matrixId: boxes.matrixId,
     })
     .from(boxes)
     .where(eq(boxes.id, boxId));
 
   const box = boxRows[0];
-
   let thesisContextQuery = box?.title ?? "";
   if (box?.description) {
     thesisContextQuery += `. ${box.description}`;
   }
 
-  // 2. Fetch seed sources metadata (DOIs and OpenAlex IDs)
+  // 2. Fetch seed sources metadata (DOIs and CorpusIds)
   const seedSources = await db
     .select({
       id: sources.id,
       doi: sources.doi,
-      openalexId: sources.openalexId,
       title: sources.title,
     })
     .from(sources)
     .where(inArray(sources.id, activeSeedIds));
 
-  const seedDois = seedSources
+  const positiveDois = seedSources
     .map((s) => s.doi?.trim())
     .filter((d): d is string => Boolean(d && d.length > 5));
 
-  const openAlexSeedIds = seedSources
-    .map((s) => s.openalexId?.trim())
-    .filter((id): id is string => Boolean(id && id.length > 3));
+  if (positiveDois.length === 0) {
+    logger?.info("lateral_expansion_skipped_no_seed_dois", {
+      service: "literature",
+      hidden: true,
+      data: { boxId, reason: "no_usable_seed_dois" },
+    });
+    return [];
+  }
 
-  // 3. Collect existing box source titles and DOIs to prevent re-expansion duplication
+  // 3. Collect negative seed DOIs from sibling boxes if not explicitly provided
+  let negativeDois = negativeSeedDois;
+  if (!negativeDois && box?.matrixId) {
+    try {
+      const siblingSources = await db
+        .select({ doi: sources.doi })
+        .from(sources)
+        .innerJoin(boxes, eq(sources.boxId, boxes.id))
+        .where(
+          and(
+            eq(boxes.matrixId, box.matrixId),
+            ne(boxes.id, boxId),
+          ),
+        )
+        .limit(20);
+
+      negativeDois = siblingSources
+        .map((s) => s.doi?.trim())
+        .filter((d): d is string => Boolean(d && d.length > 5));
+    } catch {
+      negativeDois = [];
+    }
+  }
+
+  // 4. Collect existing box source titles and DOIs to prevent re-expansion duplication
   const existingBoxSources = await db
     .select({
       title: sources.title,
@@ -93,26 +122,17 @@ export async function executeForwardExpansion(
     existingBoxSources.map((s) => s.doi?.toLowerCase().trim()).filter(Boolean),
   );
 
-  // 4. Query OpenAlex Forward Citations
-  const openAlexSeedQuery =
-    openAlexSeedIds.length > 0 ? openAlexSeedIds : seedDois;
+  // 5. Query Semantic Scholar Recommendations API
+  const s2Candidates = await fetchSemanticScholarRecommendations({
+    positiveIds: positiveDois,
+    negativeIds: negativeDois ?? [],
+    limit: 50,
+  });
 
-  const parsedDualQuery = parseDualSemanticQuery(box?.semanticQuery);
-  const searchQueryText =
-    parsedDualQuery.openAlexSemanticQuery.substring(0, 150) ||
-    thesisContextQuery.substring(0, 150) ||
-    "academic research literature";
-
-  const openAlexCandidates = await fetchOpenAlexForwardCitations(
-    openAlexSeedQuery,
-    searchQueryText,
-    60,
-  );
-
-  // 5. Deduplicate candidates against existing sources
+  // 6. Deduplicate candidates against existing sources
   const candidateMap = new Map<string, CandidateSource>();
 
-  for (const c of openAlexCandidates) {
+  for (const c of s2Candidates) {
     if (!c.title || c.title.trim().length < 5) continue;
     const normTitle = normalizeTitle(c.title);
     if (existingTitles.has(normTitle)) continue;
@@ -124,7 +144,7 @@ export async function executeForwardExpansion(
   const candidateList = Array.from(candidateMap.values());
 
   if (candidateList.length === 0) {
-    logger?.info("forward_expansion_success", {
+    logger?.info("lateral_expansion_success", {
       service: "literature",
       hidden: true,
       blank: "none",
@@ -136,7 +156,7 @@ export async function executeForwardExpansion(
   let selectedCandidates: CandidateSource[] = [];
   let rerankUsed = false;
 
-  // 6. Rerank candidate pool using Cohere Rerank v4.0 Pro
+  // 7. Rerank candidate pool using Cohere Rerank v4.0 Pro
   if (process.env.COHERE_API_KEY) {
     try {
       const documents = candidateList.map(
@@ -169,24 +189,30 @@ export async function executeForwardExpansion(
         .map((s) => s.candidate);
       rerankUsed = true;
     } catch {
-      // Fallback to sorting by citation count if Cohere is offline
+      // Fallback to sorting by influential citations if Cohere is offline
     }
   }
 
   if (!rerankUsed) {
-    candidateList.sort((a, b) => (b.citationCount ?? 0) - (a.citationCount ?? 0));
+    candidateList.sort((a, b) => {
+      const scoreA =
+        (a.influentialCitationCount ?? 0) * 5 + (a.citationCount ?? 0);
+      const scoreB =
+        (b.influentialCitationCount ?? 0) * 5 + (b.citationCount ?? 0);
+      return scoreB - scoreA;
+    });
     selectedCandidates = candidateList.slice(0, targetCount);
   }
 
-  logger?.info("forward_expansion_success", {
+  logger?.info("lateral_expansion_success", {
     service: "literature",
     hidden: true,
     blank: "none",
     data: {
       boxId,
-      openAlexCandidates: openAlexCandidates.length,
+      s2RawCount: s2Candidates.length,
       poolSize: candidateList.length,
-      rerank: rerankUsed ? "cohere" : "fallback",
+      rerank: rerankUsed ? "cohere" : "influential_citations",
       selectedCount: selectedCandidates.length,
     },
   });

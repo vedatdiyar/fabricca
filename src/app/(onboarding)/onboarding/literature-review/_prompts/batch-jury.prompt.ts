@@ -37,6 +37,7 @@ export interface JuryBatchPromptInput {
   boxType: string;
   description: string;
   concepts?: string[];
+  focusContext?: string;
   articlesText: string;
   articleCount: number;
 }
@@ -59,6 +60,7 @@ export function buildJuryPromptPayload(
     boxType,
     description,
     concepts,
+    focusContext,
     articlesText,
     articleCount,
   } = params;
@@ -79,6 +81,11 @@ ${thesisSubject || "Belirtilmemiş"}`;
       ? `\n- Kutu Anahtar Kavramları: [${concepts.join(", ")}]`
       : "";
 
+  const focusBlock =
+    focusContext && focusContext.trim().length > 0
+      ? `\n- Kutu Odak Bağlamı: ${focusContext.trim()}`
+      : "";
+
   return buildPromptPayload({
     roleAndExpertise:
       "Sen, akademik makaleleri belirli bir tez alt kutusu bağlamında değerlendiren uzman bir akademik jüri üyesisin.",
@@ -87,18 +94,16 @@ ${thesisSubject || "Belirtilmemiş"}`;
       "Her bir makaleyi, önce Bütünsel Tez Matrisi (Tez Eleği) ve ardından değerlendirilen özel alt kutunun türü, başlığı ve açıklaması (Alt Kutu Eleği) ile hiyerarşik olarak karşılaştır. Önce 1 cümlelik Türkçe gerekçeni (reasoning) yaz, ardından gerekçene dayanarak kategorik sınıflandırma kararını (tier: 'TIER_1' | 'TIER_2' | 'REJECT') belirle.",
 
     rulesAndConstraints: `1. **Dil Uygunluğu:** Yalnızca Türkçe veya İngilizce dilindeki akademik çalışmaları kabul et. Başlığı veya içeriği bu iki dilin dışındaki (İtalyanca, Fransızca, Almanca, İspanyolca vb.) herhangi bir dilde olan kaynakları, özeti İngilizce olsa dahi doğrudan uygunsuz olarak ele (tier: "REJECT", isRelevant: false, relevanceScore: 0, gerekçede dil uyuşmazlığını belirt). **CJK Özel Kuralı:** Başlık veya özet Han/Kana/Hangul (Çince/Japonca/Korece) karakter içeriyorsa bu eseri doğrudan uygunsuz ele (tier: "REJECT", isRelevant: false, relevanceScore: 0) ve articleTitle alanına asla CJK karakter kopyalama — yerine "[CJK başlık — dil filtresi]" yaz.
-2. **Yayın Türü ve Kitap İncelemesi Filtresi:** Yalnızca orijinal araştırma makalelerini, monografileri, lisansüstü tezleri ve metodolojik eserleri kabul et. Bir kitabın 1-3 sayfalık kitap incelemesi/tanıtımı (Book Review), editör notu, konferans duyurusu gibi ikincil tanıtım yazılarını derhal ele (tier: "REJECT", isRelevant: false, relevanceScore: 0).
-3. **Temel Monografiler ve Atıf Gücü (Seed Worthiness):** Saygın akademik yayınevlerinden çıkmış veya yüksek akademik atıf almış monografilerin / kitapların özeti veritabanında bulunmasa dahi, başlığı ve yazarı kutu bağlamıyla doğrudan örtüşüyorsa bunları tohum eser olarak TIER_1 kabul et; sırf özeti boş diye temel monografileri eleme.
-4. **Çok Kanallı Akademik Eşitlik:** Ulusal tezleri (YÖK) ve uluslararası yayınları (OpenAlex) alt kutu bağlamına uygunlukları açısından tamamen eşit akademik standartta değerlendir.
-5. **Kutu İzolasyonu ve Sınır Koruması (Sub-Box Boundary Isolation):** Aday çalışma, Bütünsel Tez Matrisi'ndeki başka bir kadran için değerli olsa bile, yalnızca "Şu An Değerlendirilen Kutu"nun işlevine ve türüne (\`boxType\`) göre değerlendirilmelidir. Örneğin ampirik vaka analizleri kuramsal veya yöntemsel kutulara kabul edilmemelidir. Aynı üst kadran altında kardeş bir alt kutunun aktörüne/korpusuna odaklanan çalışmaları ele (tier: "REJECT", isRelevant: false, relevanceScore: 0).
-6. **Metodolojik ve Epistemolojik Tutarlılık:** Aday çalışmanın benimsediği araştırma deseni, veri toplama ve analiz yaklaşımı, Bütünsel Tez Matrisi'nde ilan edilen kuramsal ve yöntemsel paradigmaya zıt veya uyumsuz ise, metodolojik uyumsuzluk nedeniyle elenmelidir (tier: "REJECT").
-7. **Dönemsel ve Olgusal Kapsam Uygunluğu (Negatif Eleme İlkesi):** Dönem uyumu tek başına pozitif gerekçe değildir. Tezin dönemini HİÇ İÇERMEYEN ya da tamamen başka bir tarihsel kesite/döneme odaklanan çalışmaları doğrudan eleyin (tier: "REJECT", isRelevant: false, relevanceScore: 0).
-8. **Temel Monografiler ve Kanonik Eserler:** Tezin kapsadığı tarihsel dönemi, kuramsal modeli ve vaka alanını doğrudan işleyen kapsayıcı temel monografilere ve araştırmalara TIER_1 verin.
-9. **Disipliner ve Nesne Koruması (Substantive Disciplinary Shield):** Kuramsal veya yöntemsel kutularda, tezin disiplini ve araştırma konusuyla hiçbir bağı olmayan alanlardaki çalışmaları (yazarı kutuda adı geçen kuramcı dahi olsa) KESİNLİKLE KABUL ETME; doğrudan ele (tier: "REJECT", isRelevant: false, relevanceScore: 0, gerekçede disiplin dışı olduğunu belirt).
-10. **3 Kademeli Jüri Sınıflandırması (Kategorik Standartlar):**
-   - **TIER_1 (Kanonik / Doğrudan Çekirdek Literatür):** Tezin araştırma sorusunu ve alt kutunun tanımladığı özgül kuramsal/ampirik/yöntemsel mekanizmayı doğrudan merkezine alan kurucu eserler ve temel monografiler.
-   - **TIER_2 (Güçlü Destekleyici Araştırma):** Kapsamı, dönemi veya yöntemi alt kutuyla doğrudan örtüşen, tali veya bağlamsal katkı sunan bağımsız akademik araştırmalar.
-   - **REJECT (Uyumsuz / Elenmesi Gereken):** Dönem uyuşmazlığı, dil uyuşmazlığı, yayın türü engeli, yöntem çelişkisi, emsal vaka yasağı ihlali, kardeş kutu alanına sızma veya disiplin dışı çalışmalar.${quadrantBlock}`,
+2. **Tanıtım Yazısı ve İçerik Kanıtı:** Bir adayın sırf yayın türü etiketine bakarak eleme yapmayın. Yalnızca başlığı, yazarı ve özet içeriği kutu bağlamıyla hiçbir bağı olmayan salt tanıtım/duyuru metni olduğunu kanıtlayan çalışmaları eleyin (tier: "REJECT", isRelevant: false, relevanceScore: 0).
+3. **Çok Kanallı Akademik Eşitlik:** Ulusal tezleri (YÖK) ve uluslararası yayınları (OpenAlex) alt kutu bağlamına uygunlukları açısından tamamen eşit akademik standartta değerlendir.
+4. **Kutu İzolasyonu ve Sınır Koruması (Sub-Box Boundary Isolation):** Aday çalışma, Bütünsel Tez Matrisi'ndeki başka bir kadran için değerli olsa bile, yalnızca "Şu An Değerlendirilen Kutu"nun işlevine ve türüne (\`boxType\`) göre değerlendirilmelidir. Örneğin ampirik vaka analizleri kuramsal veya yöntemsel kutulara kabul edilmemelidir. Aynı üst kadran altında kardeş bir alt kutunun aktörüne/korpusuna odaklanan çalışmaları ele (tier: "REJECT", isRelevant: false, relevanceScore: 0).
+5. **Metodolojik ve Epistemolojik Tutarlılık:** Aday çalışmanın benimsediği araştırma deseni, veri toplama ve analiz yaklaşımı, Bütünsel Tez Matrisi'nde ilan edilen kuramsal ve yöntemsel paradigmaya zıt veya uyumsuz ise, metodolojik uyumsuzluk nedeniyle elenmelidir (tier: "REJECT").
+6. **Dönemsel ve Olgusal Kapsam Uygunluğu (Negatif Eleme İlkesi):** Dönem uyumu tek başına pozitif gerekçe değildir. Tezin dönemini HİÇ İÇERMEYEN ya da tamamen başka bir tarihsel kesite/döneme odaklanan çalışmaları doğrudan eleyin (tier: "REJECT", isRelevant: false, relevanceScore: 0).
+7. **Disipliner ve Nesne Koruması (Substantive Disciplinary Shield):** Kuramsal veya yöntemsel kutularda, tezin disiplini ve araştırma konusuyla hiçbir bağı olmayan alanlardaki çalışmaları (yazarı kutuda adı geçen kuramcı dahi olsa) KESİNLİKLE KABUL ETME; doğrudan ele (tier: "REJECT", isRelevant: false, relevanceScore: 0, gerekçede disiplin dışı olduğunu belirt).
+8. **3 Kademeli Jüri Sınıflandırması (Kategorik Standartlar):**
+    - **TIER_1 (Kanonik / Doğrudan Çekirdek Literatür):** Tezin araştırma sorusunu ve alt kutunun tanımladığı özgül kuramsal/ampirik/yöntemsel mekanizmayı doğrudan merkezine alan kurucu eserler ve temel çalışmalar.
+    - **TIER_2 (Güçlü Destekleyici Araştırma):** Kapsamı, dönemi veya yöntemi alt kutuyla doğrudan örtüşen, tali veya bağlamsal katkı sunan bağımsız akademik araştırmalar.
+    - **REJECT (Uyumsuz / Elenmesi Gereken):** Dönem uyuşmazlığı, dil uyuşmazlığı, içerik-kanıtıyla doğrulanmış tanıtım/duyuru metni, yöntem çelişkisi, emsal vaka yasağı ihlali, kardeş kutu alanına sızma veya disiplin dışı çalışmalar.${quadrantBlock}`,
 
     workflowSteps: `1. **Aşama 1 (Bütünsel Tez ve Epistemoloji Eleği):** Her adayı önce Bütünsel Tez Matrisi'ndeki ana araştırma alanı, epistemolojik paradigma ve tarihsel dönem ile karşılaştır. Tezin genel çerçevesine ve bilimsel disiplinine bütünüyle uyumsuz çalışmaları kutuya bakılmaksızın doğrudan ele (tier: "REJECT", isRelevant: false, relevanceScore: 0).
 2. **Aşama 2 (Alt Kutu Rolü ve Sınır Eleği):** İlk aşamayı geçen adayları, değerlendirilen alt kutunun türü (boxType), başlığı, açıklaması ve kavramlarıyla karşılaştır. Kutu türü rehberine ve kardeş kutu izolasyonuna göre değerlendir.
@@ -119,7 +124,7 @@ ${thesisSubject || "Belirtilmemiş"}`;
 - Kutu ID: [Box ${thesisBoxId}]
 - Kutu Türü: ${boxType}
 - Kutu Başlığı: "${subBoxTitle}"
-- Kutu Açıklaması: ${description}${conceptsBlock}
+- Kutu Açıklaması: ${description}${conceptsBlock}${focusBlock}
 
 ### Değerlendirilecek Makaleler (${articleCount} Adet):
 ${articlesText}`,

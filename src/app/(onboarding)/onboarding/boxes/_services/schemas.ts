@@ -125,12 +125,16 @@ export const semanticQueryEntrySchema = z.object({
   subBoxTitle: z
     .string()
     .describe("Eşleştirme için alt kutu başlığı (Phase 1'deki ile aynı)."),
-  openAlexQuery: z
+  openAlexSemanticQuery: z
     .string()
     .min(500)
     .max(1500)
+    .refine((v) => !/[çÇğĞıIöÖşŞüÜ]/.test(v), {
+      message:
+        "openAlexSemanticQuery must be English and contain no Turkish characters.",
+    })
     .describe(
-      "OpenAlex GTE Large EN aramasına özel, 1000-1450 karakterlik zengin ve yoğun İngilizce doğal akademik araştırma paragrafı (kesinlikle 1500 karakteri aşamaz).",
+      "Dense English academic research paragraph for OpenAlex GTE Large EN search, 5+-1 sentences and 170-210 words (~1000-1250 characters), never exceeding 1500 characters. English only — never Turkish.",
     ),
   openAlexLexicalQueries: z
     .array(z.string().min(3))
@@ -146,7 +150,7 @@ export const bulkSemanticQuerySchema = z.object({
   semanticQueries: z
     .array(semanticQueryEntrySchema)
     .min(1)
-    .describe("Her sub-box için bir openAlexQuery girişi."),
+    .describe("Her sub-box için bir openAlexSemanticQuery girişi."),
 });
 
 export type BulkSemanticQueryResponse = z.infer<typeof bulkSemanticQuerySchema>;
@@ -163,10 +167,10 @@ export const bulkSemanticQueryJsonSchema: JsonSchema = {
             type: "string",
             description: "Eşleştirme için alt kutu başlığı",
           },
-          openAlexQuery: {
+          openAlexSemanticQuery: {
             type: "string",
             description:
-              "OpenAlex GTE Large EN aramasına özel, 1000-1450 karakterlik zengin ve yoğun İngilizce doğal akademik araştırma paragrafı (kesinlikle 1500 karakteri aşamaz)",
+              "Dense English academic research paragraph for OpenAlex GTE Large EN search, 5+-1 sentences and 170-210 words (~1000-1250 characters), never exceeding 1500 characters. English only, never Turkish",
           },
           openAlexLexicalQueries: {
             type: "array",
@@ -175,7 +179,7 @@ export const bulkSemanticQueryJsonSchema: JsonSchema = {
               "OpenAlex 100 req/s metin araması için tam 3 adet hedeflenmiş lexical sorgu (Anchor + Focus formülü, çift tırnaklı öbekler)",
           },
         },
-        required: ["subBoxTitle", "openAlexQuery", "openAlexLexicalQueries"],
+        required: ["subBoxTitle", "openAlexSemanticQuery", "openAlexLexicalQueries"],
       },
       minItems: 1,
     },

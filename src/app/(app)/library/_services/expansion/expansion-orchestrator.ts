@@ -3,22 +3,24 @@ import { boxes, sources, matrices } from "@/core/db/schema";
 import { eq, inArray, count, and } from "drizzle-orm";
 import { Logger, createFlowId } from "@/lib/logger";
 import { sanitizeTargetedArticles } from "@/core/services/academic";
-import type { ExpansionResult } from "./types";
+import type { CandidateSource, ExpansionResult } from "./types";
 import { executeBackwardExpansion } from "./backward-expansion";
 import { executeForwardExpansion } from "./forward-expansion";
+import { executeLateralExpansion } from "./lateral-expansion";
 import { persistExpansionResult } from "./expansion-persistence";
 import { calculateTimelineMetrics } from "@/core/services/timeline/timeline-engine";
 
 /**
  * Main orchestrator for Sub-Box automatic literature expansion.
- * Executes backward + forward expansion algorithm, inserts new sources into DB,
- * updates box activeSeedIds, and increments expansionCycle. When the active seed
- * sources expose no usable identifiers (DOI / OpenAlex ID), only backward
- * expansion runs and all candidates come from the parsed reference lists.
+ * Executes Tri-Directional expansion algorithm:
+ * 1. Backward Expansion (Foundations / historical references) - Target: 1
+ * 2. Forward Expansion (Successors / OpenAlex forward citations) - Target: 1
+ * 3. Lateral Expansion (Conceptual peers / Semantic Scholar Recommendations API) - Target: 2 + shortfalls
  *
  * Enforces:
  * 1. Global Literature Source Ceiling (80 Master / 180 Doctorate).
  * 2. Academic Calendar Freeze Date (Literature frozen in Phase >= 2).
+ * 3. Sub-Box thematic isolation using sibling box seed DOIs as negative seeds in S2.
  *
  * @param boxId - Sub-Box ID to expand literature for.
  * @returns ExpansionResult detailing previous and new active seed source IDs.
@@ -134,30 +136,81 @@ export async function runLiteratureExpansion(
     (s) => s.doi || s.openalexId,
   );
 
-  // 2. Execute Backward Expansion (Target: 2, or 4 when no usable identifiers)
-  const backwardResult = await executeBackwardExpansion(
-    boxId,
-    activeSeedIds,
-    hasUsableIdentifiers ? 2 : 4,
-    logger,
-  );
+  // 2. Execute Tri-Directional Expansion (Backward, Forward, Lateral S2)
+  // Target: 4 total candidates (1 Backward + 1 Forward + 2 Lateral S2)
+  // When active seeds expose no usable identifiers, all 4 come from Backward.
+  let allSelectedCandidates: CandidateSource[] = [];
 
-  // 3. Execute Forward Expansion (Target: 2 + backward shortfall) only when seeds
-  // carry usable identifiers; otherwise all sources must come from backward.
-  const forwardCandidates = hasUsableIdentifiers
-    ? await executeForwardExpansion(
+  if (!hasUsableIdentifiers) {
+    const backwardResult = await executeBackwardExpansion(
+      boxId,
+      activeSeedIds,
+      4,
+      logger,
+    );
+    allSelectedCandidates = backwardResult.selectedCandidates;
+  } else {
+    // 2a. Backward Expansion (Target: 1 foundational source)
+    const backwardResult = await executeBackwardExpansion(
+      boxId,
+      activeSeedIds,
+      1,
+      logger,
+    );
+    const backwardShortfall = Math.max(
+      0,
+      1 - backwardResult.selectedCandidates.length,
+    );
+
+    // 2b. Forward Expansion via OpenAlex (Target: 1 citing source)
+    const forwardCandidates = await executeForwardExpansion(
+      boxId,
+      activeSeedIds,
+      1,
+      logger,
+    );
+    const forwardShortfall = Math.max(0, 1 - forwardCandidates.length);
+
+    // 2c. Lateral Expansion via Semantic Scholar Recommendations (Target: 2 + shortfalls)
+    const lateralTarget = 2 + backwardShortfall + forwardShortfall;
+    const lateralCandidates = await executeLateralExpansion(
+      boxId,
+      activeSeedIds,
+      lateralTarget,
+      logger,
+    );
+
+    allSelectedCandidates = [
+      ...backwardResult.selectedCandidates,
+      ...forwardCandidates,
+      ...lateralCandidates,
+    ];
+
+    // Resilience: If still under quota of 4, attempt to fill remaining slots from Forward
+    if (allSelectedCandidates.length < 4) {
+      const remainingNeeded = 4 - allSelectedCandidates.length;
+      const extraForward = await executeForwardExpansion(
         boxId,
         activeSeedIds,
-        2 + backwardResult.shortfall,
+        remainingNeeded,
         logger,
-      )
-    : [];
+      );
+      for (const ef of extraForward) {
+        if (
+          !allSelectedCandidates.some(
+            (c) =>
+              c.title.toLowerCase().trim() === ef.title.toLowerCase().trim(),
+          )
+        ) {
+          allSelectedCandidates.push(ef);
+          if (allSelectedCandidates.length >= 4) break;
+        }
+      }
+    }
+  }
 
-  // Combine candidates (Total target: 4)
-  const allSelectedCandidates = [
-    ...backwardResult.selectedCandidates,
-    ...forwardCandidates,
-  ];
+  // Cap strictly at 4 candidates
+  allSelectedCandidates = allSelectedCandidates.slice(0, 4);
 
   if (allSelectedCandidates.length === 0) {
     logger.error("literature_expansion_no_candidates", {

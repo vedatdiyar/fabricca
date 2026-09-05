@@ -5,35 +5,27 @@ import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { useQueryClient } from "@tanstack/react-query";
 import { useLoadingOverlay } from "@/core/providers/loading-overlay-provider";
-import { OUTLINE_GENERATION_STEPS } from "@/app/(onboarding)/onboarding/_services/loading-steps";
-import {
-  OUTLINE_GENERATION_PIPELINE,
-  stageIndexOf,
-} from "@/lib/pipeline-definitions";
-import { createFlowId } from "@/lib/logger";
 import { getStepTanStackKeys } from "@/lib/onboarding-cache";
 import { clearDownstreamDbAction } from "../actions";
-import {
-  generateOutlineAction,
-  persistOutlineAction,
-} from "@/app/(onboarding)/onboarding/outline/_services/generator";
-import { useLoadingOverlaySteps } from "./use-loading-overlay-steps";
+import { fetchUncachedBoxesWithFullShape } from "@/app/(onboarding)/onboarding/_services/fetch-actions";
+import type { SubBoxInput } from "@/app/(onboarding)/onboarding/literature-review/_services/literature-review-papers";
+import { useLiteratureContinue } from "./use-literature-continue";
 
 /**
- * Handles the boxes-step confirmation: clears downstream data, generates and
- * persists the thesis outline, then navigates to the outline page.
+ * Handles the boxes-step confirmation: clears downstream data, runs the
+ * literature pipeline, then navigates to the literature review page.
  *
  * @returns The proceed-from-boxes handler.
  */
 export function useBoxesContinue() {
   const router = useRouter();
   const queryClient = useQueryClient();
-  const { showLoading, hideLoading } = useLoadingOverlay();
-  const { completeStep, activateStep } = useLoadingOverlaySteps();
+  const { hideLoading } = useLoadingOverlay();
+  const { runLiteraturePipeline } = useLiteratureContinue();
 
   /**
-   * Clears downstream data for the boxes step, generates the thesis outline
-   * with a loading overlay, then navigates to the outline display page.
+   * Confirms the boxes and runs the literature review pipeline,
+   * then navigates to the literature review page.
    *
    * @returns A success flag with an optional error message.
    */
@@ -41,21 +33,9 @@ export function useBoxesContinue() {
     success: boolean;
     error?: string;
   }> => {
-    const steps = OUTLINE_GENERATION_STEPS.map((s) => ({ ...s }));
-    activateStep(0, steps);
-
-    showLoading(
-      "Tez Planı Oluşturuluyor",
-      "Tez matrisiniz analiz edilerek bilim dalınız tespit ediliyor ve bölüm/alt bölüm yapısı oluşturuluyor.",
-      steps,
-    );
-
     try {
-      const flowId = createFlowId();
-
       const clearResult = await clearDownstreamDbAction("boxes");
       if ("error" in clearResult) {
-        hideLoading();
         toast.error(clearResult.error);
         return { success: false, error: clearResult.error };
       }
@@ -64,37 +44,32 @@ export function useBoxesContinue() {
       for (const key of boxesTqKeys)
         queryClient.invalidateQueries({ queryKey: key });
 
-      const genResult = await generateOutlineAction(flowId);
-      if ("error" in genResult) {
-        hideLoading();
-        toast.error(genResult.error);
-        return { success: false, error: genResult.error };
+      const boxes = await fetchUncachedBoxesWithFullShape();
+      const subBoxInputs: SubBoxInput[] = boxes.map((box) => ({
+        id: box.id ?? 0,
+        title: box.title,
+        description: box.description,
+        boxType: box.boxType,
+        subBoxes: (box.subBoxes ?? []).map((sb) => ({
+          title: sb.title,
+          description: sb.description,
+          thesisBoxId: sb.id ?? 0,
+          semanticQuery: sb.semanticQuery ?? "",
+        })),
+      }));
+
+      const litResult = await runLiteraturePipeline(subBoxInputs);
+      if (litResult.error) {
+        return { success: false, error: litResult.error };
       }
-
-      await completeStep(
-        stageIndexOf(OUTLINE_GENERATION_PIPELINE, "generate"),
-        steps,
-      );
-
-      const persistResult = await persistOutlineAction(
-        genResult.outline,
-        flowId,
-      );
-      if ("error" in persistResult) {
-        hideLoading();
-        toast.error(persistResult.error);
-        return { success: false, error: persistResult.error };
-      }
-
-      await completeStep(
-        stageIndexOf(OUTLINE_GENERATION_PIPELINE, "persist"),
-        steps,
-      );
 
       queryClient.invalidateQueries({ queryKey: ["onboarding-steps"] });
+      if (litResult.data) {
+        queryClient.setQueryData(["literature-pool"], litResult.data);
+      }
 
       hideLoading();
-      router.push("/onboarding/outline");
+      router.push("/onboarding/literature-review");
 
       return { success: true };
     } catch (err) {
@@ -104,14 +79,7 @@ export function useBoxesContinue() {
       toast.error(message);
       return { success: false, error: message };
     }
-  }, [
-    router,
-    queryClient,
-    showLoading,
-    hideLoading,
-    completeStep,
-    activateStep,
-  ]);
+  }, [queryClient, runLiteraturePipeline, hideLoading, router]);
 
   return { proceedFromBoxes };
 }

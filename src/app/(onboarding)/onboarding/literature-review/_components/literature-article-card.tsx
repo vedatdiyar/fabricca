@@ -1,7 +1,6 @@
 "use client";
 
 import { Card } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import type { JuryArticle } from "@/lib/types";
 import { formatAuthorDisplayString } from "@/lib/academic/author-formatter";
 import { stripAltTitle } from "@/lib/academic/title-utils";
@@ -21,19 +20,6 @@ function cleanDisplayTitle(title: string): string {
   if (stripped) return stripped;
   const separatorIndex = title.indexOf(" / ");
   return separatorIndex === -1 ? title : title.slice(0, separatorIndex).trim();
-}
-
-/**
- * Maps a raw thesis degree string to a compact badge label.
- *
- * @param thesisType - The raw thesis type value.
- * @returns A short uppercase degree label.
- */
-function getThesisDegreeLabel(thesisType: string): string {
-  const normalized = thesisType.toLowerCase();
-  if (normalized.includes("doktora")) return "DOKTORA";
-  if (normalized.includes("yüksek")) return "YÜKSEK LİSANS";
-  return thesisType.toUpperCase();
 }
 
 /**
@@ -98,14 +84,6 @@ export function LiteratureArticleCard({ article }: LiteratureArticleCardProps) {
         >
           {displayTitle}
         </h4>
-        {article.thesisType && (
-          <Badge
-            variant="outline"
-            className="shrink-0 px-2 py-0.5 rounded-md text-xs font-medium border-primary/20 bg-primary/10 text-primary"
-          >
-            {getThesisDegreeLabel(article.thesisType)}
-          </Badge>
-        )}
       </div>
       {hasMetadata && (
         <div className="font-sans text-xs text-muted-foreground leading-relaxed truncate">

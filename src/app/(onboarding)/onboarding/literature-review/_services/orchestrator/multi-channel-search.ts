@@ -3,8 +3,9 @@ import type { RawPaper, SubBoxItem } from "../literature-review-papers";
 import {
   searchOpenAlex,
   searchOpenAlexByTitleFilter,
+  searchOpenAlexBooks,
 } from "../openalex/client";
-import { healAuthorsByTitle } from "../openalex/openalex-healing";
+import { healAuthorsByTitle, normalizeHealedTitle } from "../openalex/openalex-healing";
 import { searchTheses } from "@/core/services/thesis-search";
 
 import {
@@ -85,7 +86,7 @@ async function withProviderTimeout<T>(
  * Executes a 2-channel parallel search across:
  * 1a. OpenAlex Semantic (GTE Large EN 1024d server-side vector search, per_page=50, 1 req/s)
  * 1b. OpenAlex Lexical (Anchor + Focus keyword search, per_page=20, 100 req/s parallel)
- * 2. Qdrant (YÖK National Thesis Center embeddings, limit=15)
+ * 2. Qdrant (YOK National Thesis Center embeddings, EN semantic paragraph, limit=15)
  *
  * @param subBox - The sub-box item containing title, description, and semanticQuery.
  * @param logger - Shared pipeline logger.
@@ -97,16 +98,26 @@ export async function searchMultiChannelForSubBox(
   logger: Logger,
   checkCancelled?: () => boolean,
 ): Promise<RawPaper[]> {
-  const { openAlexQuery, openAlexLexicalQueries } =
+  const { openAlexSemanticQuery, openAlexLexicalQueries } =
     parseDualSemanticQuery(subBox.semanticQuery);
-  const turkishQuery = `${subBox.title}: ${subBox.description}`.trim();
+
+  // Defense in depth: a non-English semantic paragraph must never reach
+  // OpenAlex. Generation-time gates should already prevent this; if one
+  // slips through, block the channel and surface it loudly instead of
+  // sending Turkish text to the English search index.
+  const semanticBlocked = /[çÇğĞıIöÖşŞüÜ]/.test(openAlexSemanticQuery);
+  if (semanticBlocked) {
+    logger.error("multi_channel_semantic_blocked_non_english", {
+      data: { subBoxTitle: subBox.title },
+    });
+  }
+  const safeSemanticQuery = semanticBlocked ? "" : openAlexSemanticQuery;
 
   logger.info("multi_channel_search_start", {
     hidden: true,
     data: {
       subBoxTitle: subBox.title,
-      hasOpenAlexQuery: Boolean(openAlexQuery),
-      hasTurkishQuery: Boolean(turkishQuery),
+      hasOpenAlexQuery: Boolean(safeSemanticQuery),
     },
   });
 
@@ -119,9 +130,9 @@ export async function searchMultiChannelForSubBox(
     await Promise.allSettled([
       // 1a. OpenAlex semantic — GTE Large EN (1024d) server-side vector (per_page=50).
       (async (): Promise<RawPaper[]> => {
-        if (!openAlexQuery || checkCancelled?.()) return [];
+        if (!safeSemanticQuery || checkCancelled?.()) return [];
         try {
-          const raw = await searchOpenAlex(openAlexQuery, 50, checkCancelled);
+          const raw = await searchOpenAlex(safeSemanticQuery, 50, checkCancelled);
           return raw.map((p) => ({
             ...p,
             source: "openalex" as const,
@@ -138,27 +149,44 @@ export async function searchMultiChannelForSubBox(
 
       // 1b. OpenAlex lexical search (100 req/s queue) — executes targeted Anchor + Focus queries
       // in parallel (per_page=20) to recover canonical books, monographs, and specific case literature.
+      // Plus a dedicated book lane reusing the first two anchors with `filter=type:book`
+      // ranked by citations, so monographs surface even when articles dominate relevance.
       (async (): Promise<RawPaper[]> => {
         if (targetPhrases.length === 0 || checkCancelled?.()) return [];
         try {
-          const phraseResults = await Promise.all(
-            targetPhrases.map((phrase) =>
-              withProviderTimeout(
-                (signal) =>
-                  searchOpenAlexByTitleFilter(
-                    phrase,
-                    20,
-                    checkCancelled,
-                    signal,
-                  ),
-                [],
-                PROVIDER_TIMEOUT_MS,
-                "openalex_lexical_search",
-                logger,
+          const bookAnchors = targetPhrases.slice(0, 2);
+          const [phraseResults, bookResults] = await Promise.all([
+            Promise.all(
+              targetPhrases.map((phrase) =>
+                withProviderTimeout(
+                  (signal) =>
+                    searchOpenAlexByTitleFilter(
+                      phrase,
+                      20,
+                      checkCancelled,
+                      signal,
+                    ),
+                  [],
+                  PROVIDER_TIMEOUT_MS,
+                  "openalex_lexical_search",
+                  logger,
+                ),
               ),
             ),
-          );
-          const flattened = phraseResults.flat();
+            Promise.all(
+              bookAnchors.map((phrase) =>
+                withProviderTimeout(
+                  (signal) =>
+                    searchOpenAlexBooks(phrase, 10, checkCancelled, signal),
+                  [],
+                  PROVIDER_TIMEOUT_MS,
+                  "openalex_book_lane",
+                  logger,
+                ),
+              ),
+            ),
+          ]);
+          const flattened = [...phraseResults.flat(), ...bookResults.flat()];
           return flattened.map((p) => ({
             ...p,
             source: "openalex" as const,
@@ -173,14 +201,17 @@ export async function searchMultiChannelForSubBox(
         }
       })(),
 
-      // 2. Qdrant — text → HF `multilingual-e5-base` 768d → Cosine (768/Cosine). Isolated from OpenAlex GTE 1024d space.
+      // 2. Qdrant — EN semantic paragraph → HF `multilingual-e5-base` 768d → Cosine (768/Cosine).
+      // Isolated from OpenAlex GTE 1024d space. The semantic paragraph (not title:description)
+      // feeds this lane: measured 2026-09-05, Box 217 query ranks Okudan 2014 thesis #6,
+      // while the TR short query misses it outside top-30.
       (async (): Promise<RawPaper[]> => {
-        if (!turkishQuery || checkCancelled?.()) return [];
+        if (!safeSemanticQuery || checkCancelled?.()) return [];
         try {
           const theses = await withProviderTimeout(
             (signal) =>
               searchTheses(
-                turkishQuery,
+                safeSemanticQuery,
                 logger,
                 {
                   limit: 15,
@@ -236,11 +267,14 @@ export async function searchMultiChannelForSubBox(
   const rawOpenAlexPapers =
     openAlexResult.status === "fulfilled" ? openAlexResult.value : [];
 
-  // ── Parent-book resolution & healing for book-reviews ──
-  // Top-ranked book review entries often hide the canonical monograph
+  // ── Parent-work resolution & healing for review proxies ──
+  // Review-suspected entries often carry a canonical work's reception
   // (e.g. W654994107 review with 198 citations vs book entry with 2 citations).
-  // Resolve parent monograph and heal metadata while strictly PRESERVING the review's
-  // openAlexId when it has higher citations, ensuring forward citation expansion (`cites:W...`) succeeds.
+  // Every reception-bearing candidate (>= 10 citations) enters resolution:
+  // when a parent record is found, title/authors heal to the real work while the
+  // most-cited record ID is preserved for forward citation expansion (`cites:W...`).
+  // When no parent exists, the record itself is kept as proxy with healed
+  // title/authors — nothing is ever dropped for carrying a review marker.
   const resolvedParentBooks: RawPaper[] = [];
   const rawReviewIdsReplaced = new Set<string>();
 
@@ -249,20 +283,24 @@ export async function searchMultiChannelForSubBox(
       (p) =>
         p.title &&
         (p.publicationType === "Kitap İncelemesi" ||
-          isBookReview(p.title, p.abstract)) &&
-        !isNonResearchEvent(p.title),
+          isBookReview(p.title, p.abstract, p.authors)) &&
+        !isNonResearchEvent(p.title) &&
+        (p.citedByCount ?? 0) >= 10,
     )
-    .sort((a, b) => (b.citedByCount ?? 0) - (a.citedByCount ?? 0))
-    .slice(0, 3);
+    .sort((a, b) => (b.citedByCount ?? 0) - (a.citedByCount ?? 0));
 
   if (reviewCandidates.length > 0) {
     const parentResults = await Promise.allSettled(
       reviewCandidates.map(async (review) => {
         const rawTitle = review.title ?? "";
-        // Strip common review prefixes
+        // Strip common review prefixes and trailing dash-author suffix ("Title – Author").
         const cleanTitle = rawTitle
           .replace(
             /^(?:Book\s+)?Review(?:\s+of|\s+on|\s*:\s*|\s+essay\s*:\s*)/i,
+            "",
+          )
+          .replace(
+            /\s+[–—-]\s+[A-ZÇĞİÖŞÜ][a-zçğıöşü]+(?:\s+[A-ZÇĞİÖŞÜ][a-zçğıöşü]+){1,2}\s*$/,
             "",
           )
           .trim();
@@ -298,7 +336,9 @@ export async function searchMultiChannelForSubBox(
               const chosen = exact ?? res[0];
 
               // Preserve the review's OpenAlex ID if it holds more citations
-              // so forward expansion (`cites:W...`) discovers citing academic works!
+              // so forward expansion (`cites:W...`) discovers citing academic works.
+              // The kept ID may belong to any record type; title/authors below are
+              // always healed to the real work, so type never drives the outcome.
               const primaryId =
                 review.openAlexId &&
                 (review.citedByCount ?? 0) >= (chosen?.citedByCount ?? 0)
@@ -309,19 +349,41 @@ export async function searchMultiChannelForSubBox(
                 chosen?.citedByCount ?? 0,
                 review.citedByCount ?? 0,
               );
-              const mergedDoi = chosen?.doi ?? review.doi ?? null;
+              // When a parent book is resolved, its DOI is the canonical monograph DOI.
+              // We do not drop it when forward citation expansion keeps the review ID.
+              const mergedDoi = chosen?.doi ?? null;
 
               if (chosen) {
+                const baseChosenTitle = normalizeHealedTitle(chosen.title || "");
+                const cleanCore = cleanTitle.split(":")[0]?.trim().toLowerCase();
+                const chosenCore = (chosen.title || "").split(":")[0]?.trim().toLowerCase();
+                let healedTitle = baseChosenTitle || cleanTitle;
+                if (
+                  cleanTitle.includes(":") &&
+                  !baseChosenTitle.includes(":") &&
+                  cleanCore &&
+                  chosenCore &&
+                  (cleanCore === chosenCore ||
+                    cleanCore.includes(chosenCore) ||
+                    chosenCore.includes(cleanCore))
+                ) {
+                  healedTitle = normalizeHealedTitle(cleanTitle);
+                }
+
+                const healedAuthors =
+                  chosen.authors && chosen.authors.length > 0
+                    ? chosen.authors
+                    : review.authors;
                 return {
                   ...chosen,
                   source: "openalex" as const,
                   openAlexId: primaryId,
                   publicationType: "Kitap / Monografi",
                   authors:
-                    chosen.authors && chosen.authors.length > 0
-                      ? chosen.authors
-                      : review.authors,
-                  title: chosen.title || cleanTitle,
+                    healedAuthors.length > 0
+                      ? healedAuthors
+                      : await healAuthorsByTitle(healedTitle),
+                  title: healedTitle,
                   doi: mergedDoi,
                   citedByCount: maxCitations,
                   _rawReviewId: review.openAlexId,
@@ -329,7 +391,8 @@ export async function searchMultiChannelForSubBox(
               }
 
               // In-place healing if parent book record is not separately indexed
-              const healedAuthors = await healAuthorsByTitle(cleanTitle);
+              const healedTitle = normalizeHealedTitle(cleanTitle);
+              const healedAuthors = await healAuthorsByTitle(healedTitle);
               return {
                 ...review,
                 source: "openalex" as const,
@@ -337,8 +400,8 @@ export async function searchMultiChannelForSubBox(
                 publicationType: "Kitap / Monografi",
                 authors:
                   healedAuthors.length > 0 ? healedAuthors : review.authors,
-                title: cleanTitle,
-                doi: mergedDoi,
+                title: healedTitle || cleanTitle,
+                doi: null,
                 citedByCount: maxCitations,
                 _rawReviewId: review.openAlexId,
               } as RawPaper & { _rawReviewId?: string | null };
@@ -390,9 +453,11 @@ export async function searchMultiChannelForSubBox(
   const validCandidates = candidates.filter(
     (c): c is RawPaper & { title: string } =>
       Boolean(c.title && c.title.trim().length >= 3) &&
-      c.publicationType !== "Kitap İncelemesi" &&
-      (c.publicationType === "Kitap / Monografi" ||
-        !isBookReview(c.title, c.abstract)) &&
+      // Review-suspected records are never dropped by type: reception-bearing
+      // proxies (>= 10 citations) flow downstream where title/authors are healed
+      // and content decides. Only low-signal review noise is skipped here.
+      (!isBookReview(c.title, c.abstract, c.authors) ||
+        (c.citedByCount ?? 0) >= 10) &&
       !isNonResearchEvent(c.title),
   );
 

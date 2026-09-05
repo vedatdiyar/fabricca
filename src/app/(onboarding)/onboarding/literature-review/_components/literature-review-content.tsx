@@ -386,8 +386,8 @@ export function LiteratureReviewContent() {
       </div>
 
       <OnboardingStepFooter
-        onBack={() => router.push("/onboarding/outline")}
-        backLabel="Tez Planına Dön"
+        onBack={() => router.push("/onboarding/boxes")}
+        backLabel="Konu Kutularına Dön"
         backDisabled={confirming}
         onNext={handleFinalize}
         nextLabel="Onayla ve Tamamla"

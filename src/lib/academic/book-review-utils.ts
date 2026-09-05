@@ -12,6 +12,90 @@ const BOOK_REVIEW_TITLE_PATTERNS = [
   /\bby\s+[A-Z][a-z]+(\s+[A-Z][a-z]+)*\s*$/i,
 ];
 
+/**
+ * Trailing dash + person name used by journals for reviews
+ * ("<Book Title> – <Book Author>"). Requires 2-3 capitalized words so
+ * single-word subtitles ("- Turkey") and long subtitles are excluded.
+ */
+const DASH_AUTHOR_RE =
+  /\s+[–—-]\s+([A-ZÇĞİÖŞÜ][a-zçğıöşü]+(?:\s+[A-ZÇĞİÖŞÜ][a-zçğıöşü]+){1,2})\s*$/;
+
+const GENERIC_SUBTITLE_WORDS = new Set([
+  "volume",
+  "volumes",
+  "vol",
+  "edition",
+  "part",
+  "chapter",
+  "section",
+  "introduction",
+  "conclusion",
+  "preface",
+  "foreword",
+  "afterword",
+  "appendix",
+  "companion",
+  "handbook",
+  "reader",
+  "guide",
+  "overview",
+  "collection",
+  "essays",
+  "studies",
+  "library",
+  "series",
+]);
+
+function normalizePersonToken(value: string): string {
+  return value
+    .toLocaleLowerCase("en")
+    .replace(/[^a-zçğıöşü]+/gi, "");
+}
+
+function isGenericSubtitle(trailing: string): boolean {
+  return trailing
+    .split(/\s+/)
+    .some((word) =>
+      GENERIC_SUBTITLE_WORDS.has(normalizePersonToken(word)),
+    );
+}
+
+function isSelfReference(
+  trailing: string,
+  authors: readonly string[],
+): boolean {
+  const trailingNorm = normalizePersonToken(trailing);
+  const trailingSurname = normalizePersonToken(
+    trailing.split(/\s+/).slice(-1)[0] ?? "",
+  );
+  return authors.some((author) => {
+    const authorNorm = normalizePersonToken(author);
+    if (!authorNorm) return false;
+    if (authorNorm === trailingNorm) return true;
+    const authorSurname = normalizePersonToken(
+      author.trim().split(/\s+/).slice(-1)[0] ?? "",
+    );
+    return (
+      authorSurname.length > 2 &&
+      (authorSurname === trailingSurname || authorNorm.includes(trailingNorm))
+    );
+  });
+}
+
+function isDashAuthorReview(
+  title: string,
+  authors?: readonly string[] | null,
+): boolean {
+  const match = title.match(DASH_AUTHOR_RE);
+  if (!match?.[1]) return false;
+  const trailing = match[1].trim();
+  if (isGenericSubtitle(trailing)) return false;
+  if (authors && authors.length > 0 && isSelfReference(trailing, authors)) {
+    return false;
+  }
+  return true;
+}
+
 const NON_RESEARCH_EVENT_TITLE_PATTERNS = [
   /\bcolloque\b/i,
   /\bconference\b/i,
@@ -32,17 +116,22 @@ const BOOK_REVIEW_ABSTRACT_PATTERNS = [
 ];
 
 /**
- * Determines whether a paper is a book review based on title or abstract indicators.
+ * Determines whether a paper is a book review based on title, abstract, or dash-author signals.
  *
  * @param title - Paper title.
  * @param abstract - Optional paper abstract.
+ * @param authors - Optional paper author list used to guard the dash-author signal.
  * @returns True when the candidate is an academic book review.
  */
 export function isBookReview(
   title: string | null | undefined,
   abstract: string | null | undefined,
+  authors?: readonly string[] | null,
 ): boolean {
   if (title && BOOK_REVIEW_TITLE_PATTERNS.some((p) => p.test(title))) {
+    return true;
+  }
+  if (title && isDashAuthorReview(title, authors)) {
     return true;
   }
   if (

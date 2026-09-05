@@ -15,7 +15,41 @@ import type { RawQuadrants } from "./box-mapper";
 import { fetchThesisMatrix } from "@/app/(onboarding)/onboarding/_services/fetch-actions";
 
 import { serializeDualSemanticQuery } from "@/lib/academic/utils";
+import {
+  initLanguageDetector,
+  detectLanguage,
+} from "@/lib/academic/language-detector";
 import type { PipelineRun } from "@/lib/pipeline-logger";
+
+/** Turkish characters never occur in English text — fast deterministic gate. */
+const TURKISH_CHAR_RE = /[çÇğĞıIöÖşŞüÜ]/;
+
+/**
+ * Verifies every generated semantic paragraph is English: a fast
+ * Turkish-character gate first, then eld language detection. Detector
+ * failures fail open only when the character gate already passed.
+ *
+ * @param entries - Semantic query entries returned by the generator.
+ * @returns True when every entry is English, false otherwise.
+ */
+async function areEntriesEnglish(
+  entries: BulkSemanticQueryResponse["semanticQueries"],
+): Promise<boolean> {
+  for (const entry of entries) {
+    const text = entry.openAlexSemanticQuery ?? "";
+    if (!text || TURKISH_CHAR_RE.test(text)) return false;
+  }
+  try {
+    await initLanguageDetector();
+    for (const entry of entries) {
+      const lang = detectLanguage(entry.openAlexSemanticQuery);
+      if (lang !== null && lang !== "en") return false;
+    }
+  } catch {
+    // Character gate already passed; detector errors fail open.
+  }
+  return true;
+}
 
 /**
  * Phase 2: generates English semantic queries for every sub-box in a single Gemini call.
@@ -92,28 +126,59 @@ export async function generateSemanticQueriesAction(
       subBoxes: subBoxEntries,
     });
 
-    const result =
-      await generateGeminiStructuredContent<BulkSemanticQueryResponse>(
-        FLASH_LITE_35,
-        payload.systemInstruction,
-        payload.userPrompt,
-        bulkSemanticQueryJsonSchema,
-        log,
-        {
-          thinkingConfig: { thinkingLevel: ThinkingLevel.MEDIUM },
-          zodSchema: bulkSemanticQuerySchema,
-          seed: GEMINI_SEED,
-          payloadStage: "semantic_query_generation",
-          quiet: true,
+    let result: BulkSemanticQueryResponse | null = null;
+    let entriesEnglish = false;
+    for (let attempt = 1; attempt <= 2; attempt++) {
+      const attemptResult =
+        await generateGeminiStructuredContent<BulkSemanticQueryResponse>(
+          FLASH_LITE_35,
+          payload.systemInstruction,
+          payload.userPrompt,
+          bulkSemanticQueryJsonSchema,
+          log,
+          {
+            thinkingConfig: { thinkingLevel: ThinkingLevel.MEDIUM },
+            zodSchema: bulkSemanticQuerySchema,
+            seed: GEMINI_SEED,
+            payloadStage: "semantic_query_generation",
+            quiet: true,
+          },
+        );
+      result = attemptResult;
+      entriesEnglish = await areEntriesEnglish(attemptResult.semanticQueries);
+      if (entriesEnglish) break;
+      log.warn("semantic_query_non_english_retry", {
+        service: "boxes",
+        data: {
+          attempt,
+          entryCount: attemptResult.semanticQueries.length,
         },
-      );
+      });
+    }
+
+    if (!result || !entriesEnglish) {
+      log.error("semantic_query_non_english_rejected", {
+        service: "boxes",
+      });
+      return {
+        error:
+          "Semantik arama sorguları İngilizce üretilemediği için kaydedilmedi. Lütfen tekrar deneyin.",
+      };
+    }
 
     const queries = new Map<string, string>();
     for (const entry of result.semanticQueries) {
+      const queryLength = entry.openAlexSemanticQuery?.length ?? 0;
+      if (queryLength > 0 && queryLength < 1000) {
+        log.warn("semantic_query_short", {
+          service: "boxes",
+          data: { subBoxTitle: entry.subBoxTitle, charLength: queryLength },
+        });
+      }
       queries.set(
         entry.subBoxTitle,
         serializeDualSemanticQuery(
-          entry.openAlexQuery,
+          entry.openAlexSemanticQuery,
           entry.openAlexLexicalQueries,
         ),
       );

@@ -45,16 +45,6 @@ export default async function OnboardingPage() {
     redirect("/onboarding/positioning");
   }
 
-  const [box] = await db
-    .select({ id: boxes.id })
-    .from(boxes)
-    .where(eq(boxes.matrixId, matrix.id))
-    .limit(1);
-
-  if (!box) {
-    redirect("/onboarding/boxes");
-  }
-
   const [outlineRow] = await db
     .select({ id: outlines.id })
     .from(outlines)
@@ -62,6 +52,16 @@ export default async function OnboardingPage() {
     .limit(1);
 
   if (!outlineRow) {
+    redirect("/onboarding/outline");
+  }
+
+  const [box] = await db
+    .select({ id: boxes.id })
+    .from(boxes)
+    .where(eq(boxes.matrixId, matrix.id))
+    .limit(1);
+
+  if (!box) {
     redirect("/onboarding/boxes");
   }
 
@@ -75,7 +75,7 @@ export default async function OnboardingPage() {
     .limit(1);
 
   if (!lit) {
-    redirect("/onboarding/outline");
+    redirect("/onboarding/boxes");
   }
 
   redirect("/onboarding/literature-review");

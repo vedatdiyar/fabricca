@@ -52,17 +52,6 @@ export function isTargetLanguage(
   return sampleLang === "en" || sampleLang === "tr";
 }
 
-const PERIOD_MISMATCH_RE =
-  /\b(2011[-–]2017|2005[-–]2015|2001[-–]2017|2007[-–]8|post[-–]2000|since\s+2000|AKP['’]?s|AK\s+Parti['’]?nin|AK\s+Parti['’]?s)\b/i;
-
-function isPeriodMismatch(
-  boxType: string,
-  title: string | null | undefined,
-): boolean {
-  if (boxType !== "SUBJECT_PROBLEM") return false;
-  return PERIOD_MISMATCH_RE.test(title ?? "");
-}
-
 /**
  * Hybrid fallback scorer when Cohere Rerank is unavailable (429/5xx/timeout/10 RPM).
  * Prevents old highly-cited but off-topic papers from dominating.
@@ -111,7 +100,7 @@ function buildPool(r: SubBoxResult): PoolItem[] {
  * Applies:
  * 1. Title and DOI deduplication across all 4 channels.
  * 2. Abstract depth and monograph verification (seed worthiness).
- * 3. Pre-filters for book reviews, foreign language titles, and period mismatches.
+ * 3. Pre-filters for low-signal review noise, foreign language titles, and period mismatches.
  * 4. Cohere Rerank v4.0 Pro semantic pre-ranking against sub-box context (top 18).
  * 5. Structured Gemini Flash Lite academic jury evaluation with Holistic Thesis Matrix & Box Isolation.
  *
@@ -146,6 +135,11 @@ export async function executePhase2Jury(
         };
       }
 
+      // Semantic paragraph reused for Cohere pre-ranking context below.
+      // Period fit is judged solely by the LLM jury (title + abstract
+      // against the box focus context) — no deterministic pre-filtering.
+      const { openAlexSemanticQuery } = parseDualSemanticQuery(r.subBox.semanticQuery);
+
       // 1. Cross-channel deduplication & code-level pre-filters
       // DOI exact match + metric-based title dedup (Jaccard/Levenshtein >=0.90) with year/author guard
       const seenDois = new Set<string>();
@@ -155,12 +149,12 @@ export async function executePhase2Jury(
         const abstract = item.rawPaper.abstract ?? "";
         if (!title || title.trim().length < 3) return false;
 
-        // Code-level pre-filters (before dedup to avoid polluting seen set)
-        if (
-          item.rawPaper.publicationType !== "Kitap / Monografi" &&
-          isBookReview(title, abstract)
-        ) {
-          return false;
+        // Code-level pre-filters (before dedup to avoid polluting seen set).
+        // Review-suspected records are never dropped by type: reception-bearing
+        // proxies (high citations) flow to the jury where content decides, while
+        // low-signal review noise without citations is skipped as content-poor.
+        if (isBookReview(title, abstract, item.rawPaper.authors)) {
+          if ((item.rawPaper.citedByCount ?? 0) < 10) return false;
         }
         if (isNonResearchEvent(title)) return false;
         if (!isTargetLanguage(title, abstract)) {
@@ -172,7 +166,6 @@ export async function executePhase2Jury(
           });
           return false;
         }
-        if (isPeriodMismatch(r.boxType, title)) return false;
 
         const doi = extractCleanDoi(item.rawPaper.doi ?? "");
         if (doi && seenDois.has(doi)) return false;
@@ -214,28 +207,16 @@ export async function executePhase2Jury(
 
       // 2. Parallel pre-ranking: Cohere Rerank v4.0 Pro (top 18 with stratified channel balance)
       let capped: PoolItem[] = [];
-      const { openAlexQuery } = parseDualSemanticQuery(r.subBox.semanticQuery);
-      const boxType = r.boxType;
-      let thesisDisciplineContext = "";
-      if (typeof thesisMatrixContext === "object" && thesisMatrixContext !== null) {
-        if (boxType === "THEORETICAL_FRAMEWORK") {
-          thesisDisciplineContext = thesisMatrixContext.theoreticalFramework || "";
-        } else if (boxType === "METHODOLOGY") {
-          thesisDisciplineContext = thesisMatrixContext.methodology || "";
-        } else {
-          thesisDisciplineContext = thesisMatrixContext.subjectProblem || "";
-        }
-      } else if (typeof thesisMatrixContext === "string") {
-        thesisDisciplineContext = thesisMatrixContext;
-      }
 
+      // Rerank query is intentionally language-balanced: sub-box title +
+      // description + English scholarly paragraph. The long Turkish matrix
+      // context is excluded here (measured 2026-09-05: including it pushed the
+      // thesis-article score gap from 0.083 to 0.187 and filled 7/10 top slots
+      // with theses). Matrix context still reaches the LLM jury downstream.
       const queryParts = [
-        thesisDisciplineContext
-          ? `Disciplinary Research Context: ${thesisDisciplineContext}`
-          : "",
         r.subBox.title,
         r.subBoxDescription,
-        openAlexQuery ? `Scholarly context: ${openAlexQuery}` : "",
+        openAlexSemanticQuery ? `Scholarly context: ${openAlexSemanticQuery}` : "",
       ].filter(Boolean);
       const queryContext = queryParts.join(". ").trim();
 
@@ -323,6 +304,7 @@ export async function executePhase2Jury(
             boxType: r.boxType,
             description: r.subBoxDescription,
             concepts: r.subBox.concepts,
+            semanticQuery: r.subBox.semanticQuery,
           },
           articles: capped.map((p) => p.rawPaper),
         },

@@ -20,11 +20,11 @@ export function SemanticQueryPreview({
 }: SemanticQueryPreviewProps) {
   if (!subBox.semanticQuery) return null;
 
-  const { openAlexQuery } = parseDualSemanticQuery(subBox.semanticQuery);
+  const { openAlexSemanticQuery } = parseDualSemanticQuery(subBox.semanticQuery);
 
   const handleCopyQuery = (e: React.MouseEvent) => {
     e.stopPropagation();
-    navigator.clipboard.writeText(openAlexQuery || subBox.semanticQuery || "");
+    navigator.clipboard.writeText(openAlexSemanticQuery || subBox.semanticQuery || "");
     toast.success("RAG arama sorgusu kopyalandı.");
   };
 
@@ -62,7 +62,7 @@ export function SemanticQueryPreview({
               OpenAlex (GTE-Large-EN Vektör Paragrafı)
             </span>
             <p className="font-mono text-xs text-foreground select-all leading-relaxed">
-              {openAlexQuery || subBox.semanticQuery}
+              {openAlexSemanticQuery || subBox.semanticQuery}
             </p>
           </div>
         </div>

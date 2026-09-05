@@ -13,12 +13,12 @@ const STEPS = [
     label: "Konumlandırma",
     route: "/onboarding/positioning",
   },
-  { key: "boxes", label: "Konu Kutuları", route: "/onboarding/boxes" },
   {
     key: "outline",
     label: "Tez Planı",
     route: "/onboarding/outline",
   },
+  { key: "boxes", label: "Konu Kutuları", route: "/onboarding/boxes" },
   {
     key: "literature-review",
     label: "Literatür Tarama",

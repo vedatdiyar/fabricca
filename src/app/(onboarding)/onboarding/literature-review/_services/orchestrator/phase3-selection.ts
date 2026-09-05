@@ -54,12 +54,18 @@ export function calculateCompositeScore(
       : 0.5;
 
   let sCitation = 0;
+  let canonicalBonus = 0;
   if (paper.source === "openalex") {
     const citations = paper.citedByCount ?? 0;
     sCitation = Math.min(1.0, Math.log10(citations + 1) / 3.5);
+    if (citations >= 50) {
+      canonicalBonus = 0.05;
+    } else if (citations >= 20) {
+      canonicalBonus = 0.02;
+    }
   }
 
-  return sCohere * (1 + 0.15 * sCitation);
+  return sCohere * (1 + 0.25 * sCitation + canonicalBonus);
 }
 
 export async function executePhase3Selection(

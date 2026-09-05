@@ -27,7 +27,7 @@ export default async function LiteratureReviewPage() {
 
   const boxes = await fetchBoxesWithFullShape();
   if (!boxes || boxes.length === 0) {
-    redirect("/onboarding/positioning");
+    redirect("/onboarding/outline");
   }
 
   return (

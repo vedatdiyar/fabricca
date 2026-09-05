@@ -133,7 +133,10 @@ export function isSuspectedBookReview(work: Record<string, unknown>): boolean {
 }
 
 /**
- * Parses OpenAlex work records into RawPaper objects, filtering by type, language, and book-review heuristics.
+ * Parses OpenAlex work records into RawPaper objects, filtering by language only.
+ * Nothing is dropped by type: review/chapter records may carry a canonical work's
+ * citations and authorship signals, so they flow downstream where the parent-book
+ * resolver heals title/authors and keeps the most-cited record ID.
  *
  * @param results - The raw OpenAlex work records to parse.
  * @returns The parsed raw papers.
@@ -142,19 +145,8 @@ export function parseOpenAlexResults(
   results: Record<string, unknown>[],
 ): RawPaper[] {
   results = results.filter((work) => {
-    const type = work.type as string | undefined;
     const lang = work.language as string | undefined;
-    // Keep book-review as well for parent-book resolution (filtered later if unresolved)
-    const isArticleOrBook =
-      type === "article" ||
-      type === "book-chapter" ||
-      type === "book" ||
-      type === "book-review";
-    const isAllowedLang = !lang || lang === "en" || lang === "tr";
-    // Strict review heuristics only for non-explicit book-review types (kept for resolution)
-    if (type === "book-review") return isAllowedLang;
-    const isReview = isSuspectedBookReview(work);
-    return isArticleOrBook && isAllowedLang && !isReview;
+    return !lang || lang === "en" || lang === "tr";
   });
 
   return results.map((work) => {
@@ -213,7 +205,7 @@ export function parseOpenAlexResults(
     const workType = work.type as string | undefined;
     const isBook = workType === "book" || workType === "monograph";
     const isSection = workType === "book-chapter";
-    const isReview = workType === "book-review";
+    const isReview = workType === "book-review" || isSuspectedBookReview(work);
     const publicationType = isBook
       ? "Kitap / Monografi"
       : isSection

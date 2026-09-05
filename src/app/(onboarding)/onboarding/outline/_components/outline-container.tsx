@@ -95,11 +95,11 @@ function OutlineEditor({
       />
 
       <OnboardingStepFooter
-        onBack={() => router.push("/onboarding/boxes")}
-        backLabel="Konu Kutularına Dön"
+        onBack={() => router.push("/onboarding/positioning")}
+        backLabel="Konumlandırmaya Dön"
         backDisabled={confirming}
         onNext={handleConfirm}
-        nextLabel="Literatür Taramasına Geç"
+        nextLabel="Konu Kutularına Geç"
         nextDisabled={confirming}
         nextLoading={confirming}
         nextLoadingText="Kaydediliyor..."

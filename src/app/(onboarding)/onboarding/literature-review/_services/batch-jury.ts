@@ -11,7 +11,10 @@ import {
 } from "../_prompts/batch-jury.prompt";
 import { ThinkingLevel, HarmCategory, HarmBlockThreshold } from "@google/genai";
 import { Logger } from "@/lib/logger";
-import { extractOpenAlexId } from "@/lib/academic/utils";
+import {
+  extractOpenAlexId,
+  parseDualSemanticQuery,
+} from "@/lib/academic/utils";
 import { z } from "zod";
 import type { RawPaper } from "./literature-review-papers";
 
@@ -23,6 +26,7 @@ export interface JuryBoxContext {
   boxType: string;
   description: string;
   concepts?: string[];
+  semanticQuery?: string;
 }
 
 export interface JuryInputItem {
@@ -301,6 +305,9 @@ export async function evaluateMultiBoxJury(
       logger,
       task: async (taskItem, globalIdx, target) => {
         const { box, chunk } = taskItem;
+        // Box focus paragraph (period, actors, scope) as dynamic jury
+        // context — the LLM judges period fit from title + abstract.
+        const { openAlexSemanticQuery } = parseDualSemanticQuery(box.semanticQuery);
         const articlesText = chunk
           .map((a, idx) => {
             const sourceLabel =
@@ -309,9 +316,6 @@ export async function evaluateMultiBoxJury(
                 : a.source === "exa"
                   ? "DergiPark"
                   : "OpenAlex";
-
-            const typeLabel =
-              a.publicationType || (a.source === "qdrant" ? "Tez" : "Makale");
 
             // Defensive: strip any residual CJK even after pre-filter (e.g. publisher field)
             const safeTitle = (a.title ?? "(başlık yok)").replace(
@@ -328,11 +332,6 @@ export async function evaluateMultiBoxJury(
               "(belirtilmemiş)"
             ).replace(new RegExp(CJK_RE, "g"), "");
 
-            const citationBadge =
-              a.citedByCount && a.citedByCount > 0
-                ? ` [${a.citedByCount} Akademik Atıf - Yüksek Etki]`
-                : "";
-
             let abstractText = "";
             if (
               safeAbstract &&
@@ -345,12 +344,12 @@ export async function evaluateMultiBoxJury(
                   ? truncateAtSentence(safeAbstract, 2500)
                   : safeAbstract;
             } else {
-              abstractText = `(Özet metni bulunmamaktadır. Bu eser ${safePublisher} tarafından yayımlanmış ${typeLabel} formatında bir çalışmadır${citationBadge}. Başlığı, yazarı ve konu uyumu üzerinden değerlendiriniz.)`;
+              abstractText = `(Özet metni bulunmamaktadır. ${safePublisher} tarafından yayımlanmış bir çalışmadır. Başlığı, yazarı ve konu uyumu üzerinden değerlendiriniz.)`;
             }
 
             return (
               `  Çalışma ${idx + 1}: "${safeTitle}"\n` +
-              `     Tür: ${typeLabel} | Kaynak: ${sourceLabel} | Yıl: ${a.year || "(belirtilmemiş)"}${citationBadge}\n` +
+              `     Kaynak: ${sourceLabel} | Yıl: ${a.year || "(belirtilmemiş)"}\n` +
               `     Yazarlar: ${a.authors.slice(0, 3).join(", ") || "(bilinmiyor)"}${a.authors.length > 3 ? " et al." : ""}\n` +
               `     Yayıncı/Kurum: ${safePublisher}\n` +
               `     Özet/İçerik: ${abstractText}`
@@ -366,6 +365,7 @@ export async function evaluateMultiBoxJury(
           boxType: box.boxType,
           description: box.description,
           concepts: box.concepts,
+          focusContext: openAlexSemanticQuery || undefined,
           articlesText,
           articleCount: chunk.length,
         });

@@ -45,6 +45,15 @@ export const CLOUDFLARE_EMBEDDINGS_LIMITS: RateLimiterOptions = {
   rpm: 3000,
 };
 
+/** Semantic Scholar Recommendations API — 1 req/s turnstile (1100 ms gap, 60 RPM, concurrency 1). */
+export const SEMANTIC_SCHOLAR_LIMITS: RateLimiterOptions = {
+  label: "semantic_scholar",
+  rpm: 60,
+  concurrency: 1,
+  minIntervalMs: 1100,
+};
+
+
 /** Per-model Gemini quota (per key, free tier). */
 export interface GeminiModelQuota {
   rpm: number;
