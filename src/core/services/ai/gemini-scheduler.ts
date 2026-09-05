@@ -23,6 +23,7 @@ import {
   isTimeoutError,
   extractQuotaDetails,
   extractRetryDelayMs,
+  SchemaValidationError,
 } from "./llm-errors";
 import {
   markKeyRpdExhausted,
@@ -176,6 +177,15 @@ export async function dispatchGeminiCall<T>(
         }
         return result;
       } catch (error) {
+        // Schema validation failures are terminal model-output defects, not key
+        // or quota problems. Rethrow immediately: no key state mutation, no key
+        // rotation, no model fallback. The pipeline aborts with the error.
+        if (
+          error instanceof SchemaValidationError ||
+          (error instanceof Error && error.name === "SchemaValidationError")
+        ) {
+          throw error;
+        }
         const currentKeyIdx = keyIndicesToTry[i];
         const quotaDetails = extractQuotaDetails(error);
         const retryDelayMs = extractRetryDelayMs(error);

@@ -20,7 +20,7 @@ import {
   isDailyQuotaExceeded,
 } from "@/lib/rate-limiter";
 import { getAi } from "./gemini-client";
-import { logRawLlmCall } from "./gemini-debug-logger";
+import { logFailedLlmOutput, logRawLlmCall } from "./gemini-debug-logger";
 import { DEFAULT_GEMINI_SAFETY_SETTINGS } from "./gemini-config";
 import { createGeminiRetryPolicy } from "./gemini-retry-policy";
 
@@ -54,6 +54,8 @@ function guardCjkOutput(
 
 /**
  * Validates parsed JSON against optional Zod schema, logging failures.
+ * Validation failures are terminal: the original SchemaValidationError is
+ * rethrown untouched so the key scheduler can fail fast without key rotation.
  */
 function validateParsed<T>(
   parsed: unknown,
@@ -61,28 +63,44 @@ function validateParsed<T>(
   logger: Logger | undefined,
   model: string,
   projectIndex: number,
+  rawText?: string,
 ): asserts parsed is T {
   try {
     validateStructuredOutput(parsed, zodSchema);
   } catch (err) {
     if (err instanceof SchemaValidationError) {
+      const issues = err.zodError.issues.map((i) => ({
+        path: i.path.join("."),
+        message: i.message,
+      }));
+      const first = issues[0];
+      const summary =
+        `(${issues.length} schema issue${issues.length === 1 ? "" : "s"}` +
+        (first ? `, first: ${first.path}: ${first.message}` : "") +
+        `)`;
+      void (async () => {
+        if (rawText) {
+          await logFailedLlmOutput({
+            stage: "gemini",
+            modelName: model,
+            outputText: rawText,
+            issues,
+          });
+        }
+      })();
       logger?.error("ai_schema_validation_failed", {
         service: "gemini",
         filePath: "src/core/services/ai/providers/gemini-provider.ts",
         data: {
+          summary,
           model,
           projectIndex: projectIndex + 1,
-          errorCount: err.zodError.issues.length,
-          issues: err.zodError.issues.map((i) => ({
-            path: i.path.join("."),
-            message: i.message,
-          })),
+          errorCount: issues.length,
+          issues,
         },
-        error: new Error(`Zod validation failed: ${err.zodError.message}`),
+        error: err,
       });
-      throw new Error(
-        "AI response did not match the expected structural schema. Please try again.",
-      );
+      throw err;
     }
     throw err;
   }
@@ -232,6 +250,7 @@ export async function generateStructuredContent<T>(
             logger,
             model,
             projectIndex,
+            text,
           );
 
           const taskDurationMs = performance.now() - taskStartTime;
