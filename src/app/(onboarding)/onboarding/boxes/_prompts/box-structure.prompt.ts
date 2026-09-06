@@ -35,6 +35,13 @@ export function buildBoxStructurePromptPayload(
 
 ## 4 Epistemolojik Kadran Standartları ve Kuralları
 
+## İşletim İlkesi ve Müstakil Ekol Ayrımı (Tüm Kadranlar İçin Evrensel)
+- **Müstakil ekol/koleksiyon/yöntem:** Girdide kendi adıyla anılan, farklı kökene sahip bağımsız gelenek, aktör kümesi, yöntem veya kaynak grubudur. Yalnızca bunlar ayrı ALT KUTU olabilir.
+- **İşletim ilkesi (asla ayrı kutu olamaz):** Aynı ekol, yöntem veya koleksiyonun NASIL uygulanacağını söyleyen iç yönergelerdir: ilkeler, okuma/yorum talimatları, analitik sorular, çözümleme adımları, dönemleme/moment ayrımları, korpus sınırlama kriterleri. Bunlar ilgili tek alt kutunun açıklaması ve kavramları içine gömülür; müstakil ALT KUTU yapılamaz.
+- **Yeniden-okuma kuralı:** Bir düşünürün başka bir düşünürü yeniden okuması, yorumlaması veya uyarlaması (yeniden okuma, köprü kurma, uyarlama) iki bağımsız gelenek sayılmaz; tek kuramsal hat olarak TEK ALT KUTU olur.
+- **Numaralı-anlatım uyarısı:** Girdideki maddeli veya numaralı anlatım (İlki/İkincisi, (1)/(2)/(3), Moment 1/2/3) tek başına çokluk kanıtı değildir; her maddenin müstakil ekol testini ayrıca geçmesi gerekir.
+- **Birleştirme testi:** Çıktıyı üretmeden önce her aday alt kutuyu test edin: bu kutu, girdideki müstakil bir ekol, yöntem veya kaynak grubunun adına geri izlenebiliyor mu? Dayanağı yalnızca bir işletim-ilkesi cümlesi ise aday kutuyu birleştirin.
+
 ### KADRAN 1: SUBJECT_PROBLEM (Araştırma Problemi)
 - **Çoklu Mücadele Hatları, Çift Kanatlı Dinamikler veya Ayrık Aktör Kümeleri (KESİNLİKLE N>=2):** Araştırma problemi birbirine indirgenemeyen birden fazla mücadele/eylem alanını, kurumsal/örgütsel hattı (örneğin: yasal/parlamenter siyaset ile yasadışı/silahlı mücadele; devlet kurumları ile sivil toplumsal hareketler; sermaye örgütleri ile emek sendikaları; iktidar blokları ile muhalefet odakları) veya karşılaştırmalı vakaları eşzamanlı olarak inceliyorsa, her bir ana hat/aktör kümesi müstakil birer ALT KUTU (N>=2) olarak ayrıştırılmalıdır. Bu ayrım, literatür taramasında her iki alanın uzmanlaşmış akademik literatürünün bağımsız taranabilmesi için zorunludur.
 - **Tekil ve Homojen Vaka / Süreç (N=1):** Araştırma problemi tek bir kurumu, tekil bir aktör grubunu veya homojen bir kurumsal/toplumsal süreci inceliyorsa TEK BİR ALT KUTU (N=1) altında toplanmalıdır.
@@ -52,7 +59,7 @@ export function buildBoxStructurePromptPayload(
 - **Bütünleşik Veri Seti veya Tekil Arşiv (N=1):** Tüm kaynaklar tek bir kurumdan, tek bir arşiv fonundan veya tekil bir veri tabanından geliyorsa tek alt kutu (N=1) kullanılır.
 
 ## Biçimsel ve Dil Standartları
-- **Duru, Zengin ve İmlası Kusursuz Türkçe:** Başlık ve açıklamalarda yüksek düzeyde akademik Türkçe kullanılmalıdır. Yabancı düşünür isimlerinin Türkçe sıfatlaştırılmasında (örneğin: Gramsci -> Gramsciyen; Foucault -> Foucaultcu; Marx -> Marksist; Habermas -> Habermasçı) ve terimlerde kesinlikle yazım hatası, harf kayması veya uydurma sözcük yapılmamalıdır.
+- **Duru, Zengin ve İmlası Kusursuz Türkçe:** Başlık, açıklama ve kavramların tamamında yüksek düzeyde akademik Türkçe kullanılmalıdır. Yabancı düşünür isimlerinin Türkçe sıfatlaştırılmasında (örneğin: Gramsci -> Gramsciyen; Foucault -> Foucaultcu; Marx -> Marksist; Habermas -> Habermasçı) ve terimlerde kesinlikle yazım hatası, harf kayması veya uydurma sözcük yapılmamalıdır. Türkçe'ye özgü harfler (ç, ğ, ı, ö, ş, ü) ASLA ASCII düzleşmesine uğratılamaz (örneğin Yakın -> Yakin, Söylem -> Soylem, Çağdaş -> Cagdas yazılamaz); her kavram bu harfler eksiksiz yazılacak şekilde üretilir.
 - **Dinamik ve Yalın Başlıklar:** Başlıklar doğrudan matristeki spesifik kavram, aktör ve olgulara odaklanmalıdır. Başlık ve açıklamalarda Türkçe terimlerin yanına parantez içinde yabancı dildeki karşılıkları veya kısaltmaları kesinlikle eklenmemeli; doğrudan duru akademik Türkçe terim kullanılmalıdır.
 - **Açıklamalar:** 100-180 karakter arasında, somut ve bilgilendirici olmalıdır.
 - **Concepts Dizisi:** Sub-box seviyesinde en az 1, en fazla 4 elemandan oluşan somut akademik terimler dizisidir.
@@ -65,7 +72,9 @@ export function buildBoxStructurePromptPayload(
     workflowSteps: `1. Matristeki her kadranı bağımsız olarak incele.
 2. Vaka aktörlerinin etkileşimine göre alt kutu sayısını belirle (N=1 veya N>=2).
 3. Teorik çerçevedeki ekolleri ve yöntem yaklaşımlarını ayrıştır.
-4. Başlık, açıklama ve kavram dizilerini oluşturup JSON şemasına uygun olarak üret.`,
+4. Her aday alt kutuya birleştirme testini uygula; dayanağı yalnızca bir işletim-ilkesi cümlesi olan adayları birleştir.
+5. Türkçe imla öz-denetimi yap: her başlık, açıklama ve kavramda Türkçe'ye özgü harflerin (ç, ğ, ı, ö, ş, ü) eksiksiz yazıldığını doğrula; ASCII düzleşmesi varsa düzelt.
+6. Başlık, açıklama ve kavram dizilerini oluşturup JSON şemasına uygun olarak üret.`,
 
     outputFormat:
       "Çıktı, sağlanan JSON şemasına harfiyen uyan saf JSON nesnesidir.",
