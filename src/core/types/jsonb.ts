@@ -107,7 +107,11 @@ export interface PipelineResult {
 }
 
 export type JuryCritiqueCategory =
-  "LOGIC_LEAP" | "UNBACKED_CLAIM" | "METHODOLOGICAL_GAP";
+  | "LOGIC_LEAP"
+  | "UNBACKED_CLAIM"
+  | "METHODOLOGICAL_GAP"
+  | "CONCEPT_STRETCHING"
+  | "REDUCTIONIST_CONFLATION";
 
 export interface JuryCritique {
   id: string;

@@ -4,7 +4,7 @@ import { chunks, sources, boxes } from "@/core/db/schema";
 import { generateVectorEmbeddings } from "@/core/services/ai/cloudflare-ai";
 import type { Logger } from "@/lib/logger";
 import { RAG_CONFIG } from "./config";
-import type { DenseCandidate } from "./types";
+import type { BoxTypeFilter, DenseCandidate } from "./types";
 
 /**
  * Returns whether a vector is the all-zero fallback produced on API failure.
@@ -30,9 +30,13 @@ export interface DenseSearchResult {
  */
 export async function searchDense(
   denseQueryText: string,
-  options: { resourceIds?: number[]; logger?: Logger } = {},
+  options: {
+    resourceIds?: number[];
+    logger?: Logger;
+    boxTypeFilter?: BoxTypeFilter;
+  } = {},
 ): Promise<DenseSearchResult> {
-  const { resourceIds, logger } = options;
+  const { resourceIds, logger, boxTypeFilter } = options;
 
   let queryEmbedding: number[] | null = null;
   try {
@@ -61,6 +65,7 @@ export async function searchDense(
         title: sources.title,
         authors: sources.authors,
         publicationYear: sources.publicationYear,
+        boxType: boxes.boxType,
         embedding: chunks.embedding,
       })
       .from(chunks)
@@ -71,6 +76,11 @@ export async function searchDense(
       sql`${boxes.boxType} <> 'RELATED_THESES'`,
       sql`${chunks.chunkType} NOT IN ('AUTHOR_BIO', 'REFERENCES')`,
     ];
+    if (boxTypeFilter === "PRIMARY_MATERIAL_ONLY") {
+      denseConditions.push(sql`${boxes.boxType} = 'PRIMARY_MATERIAL'`);
+    } else if (boxTypeFilter === "SECONDARY_LITERATURE_ONLY") {
+      denseConditions.push(sql`${boxes.boxType} <> 'PRIMARY_MATERIAL'`);
+    }
     if (resourceIds && resourceIds.length > 0) {
       denseConditions.push(sql`${chunks.sourceId} IN ${resourceIds}`);
     }

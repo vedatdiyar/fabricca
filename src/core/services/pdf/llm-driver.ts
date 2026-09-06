@@ -5,6 +5,7 @@ import { GEMINI_SEED, FLASH_LITE_35 } from "@/lib/constants";
 import {
   buildPdfParserPromptPayload,
   buildPdfReferencesPromptPayload,
+  buildPrimaryMaterialParserPromptPayload,
 } from "./prompts/pdf-parser.prompt";
 import {
   DocumentMetadataZodSchema,
@@ -48,13 +49,17 @@ export function isFormalBibliographicEntry(raw: string): boolean {
  *
  * @param firstPagesText - Combined text of document's first pages.
  * @param logger - Optional logger instance.
+ * @param options - Optional parser tuning (e.g. isPrimaryMaterial).
  * @returns Extracted metadata object.
  */
 export async function extractDocumentMetadata(
   firstPagesText: string,
   logger?: Logger,
+  options?: { isPrimaryMaterial?: boolean },
 ): Promise<DocumentAnalysisResult["metadata"]> {
-  const payload = buildPdfParserPromptPayload(firstPagesText);
+  const payload = options?.isPrimaryMaterial
+    ? buildPrimaryMaterialParserPromptPayload(firstPagesText)
+    : buildPdfParserPromptPayload(firstPagesText);
 
   try {
     const res = await generateGeminiStructuredContent<{

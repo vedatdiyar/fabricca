@@ -1,6 +1,7 @@
 import { sql, eq } from "drizzle-orm";
 import { db } from "@/core/db";
 import { chunks, sources, boxes } from "@/core/db/schema";
+import type { BoxTypeFilter } from "./types";
 
 export { buildLexicalTsQuery } from "./tsquery";
 
@@ -16,12 +17,14 @@ export interface LexicalCandidate {
   title: string;
   authors: string[] | null;
   publicationYear: number | null;
+  boxType?: string | null;
 }
 
 /** Options controlling the lexical search query. */
 export interface LexicalSearchOptions {
   resourceIds?: number[];
   topK?: number;
+  boxTypeFilter?: BoxTypeFilter;
 }
 
 /**
@@ -35,13 +38,18 @@ export async function searchLexical(
   tsQuery: string,
   options: LexicalSearchOptions = {},
 ): Promise<LexicalCandidate[]> {
-  const { resourceIds, topK = 30 } = options;
+  const { resourceIds, topK = 30, boxTypeFilter } = options;
 
   const conditions = [
     sql`${chunks.searchVector} @@ (to_tsquery('turkish', ${tsQuery}) || to_tsquery('english', ${tsQuery}))`,
     sql`${boxes.boxType} <> 'RELATED_THESES'`,
     sql`${chunks.chunkType} NOT IN ('AUTHOR_BIO', 'REFERENCES')`,
   ];
+  if (boxTypeFilter === "PRIMARY_MATERIAL_ONLY") {
+    conditions.push(sql`${boxes.boxType} = 'PRIMARY_MATERIAL'`);
+  } else if (boxTypeFilter === "SECONDARY_LITERATURE_ONLY") {
+    conditions.push(sql`${boxes.boxType} <> 'PRIMARY_MATERIAL'`);
+  }
   if (resourceIds && resourceIds.length > 0) {
     conditions.push(sql`${chunks.sourceId} IN ${resourceIds}`);
   }
@@ -60,6 +68,7 @@ export async function searchLexical(
       title: sources.title,
       authors: sources.authors,
       publicationYear: sources.publicationYear,
+      boxType: boxes.boxType,
     })
     .from(chunks)
     .innerJoin(sources, eq(chunks.sourceId, sources.id))

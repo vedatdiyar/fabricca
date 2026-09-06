@@ -27,6 +27,7 @@ export interface ExtractedPdfContent {
  * @param originalFileName - Original file name.
  * @param log - Logger instance.
  * @param preloadedBuffer - Optional pre-fetched PDF buffer (skips R2 read when provided).
+ * @param options - Optional parser tuning (e.g. isPrimaryMaterial).
  * @returns The PDF buffer, parsed chunks, parsed references, and extracted metadata.
  */
 export async function fetchAndExtractPdf(
@@ -34,6 +35,7 @@ export async function fetchAndExtractPdf(
   originalFileName: string,
   log: Logger,
   preloadedBuffer?: Buffer,
+  options?: { isPrimaryMaterial?: boolean },
 ): Promise<ExtractedPdfContent> {
   let buffer: Buffer;
 
@@ -55,41 +57,47 @@ export async function fetchAndExtractPdf(
     });
   }
 
+  const isPrimaryMaterial = options?.isPrimaryMaterial ?? false;
+
   // tempKey is always used for Mistral OCR presigned URL (file is in R2 regardless of read path).
   const { chunks, references, metadata } = await parsePdfToChunks(
     buffer,
     originalFileName,
     tempKey,
     log,
+    { isPrimaryMaterial },
   );
-
-  // Tier 2: Check if crucial fields (publisher, year, containerTitle, DOI) are missing, and enrich via Crossref
-  const isMissingGaps =
-    !metadata.publisher ||
-    !metadata.publicationYear ||
-    !metadata.containerTitle ||
-    !metadata.doi;
 
   let finalMetadata = { ...metadata };
 
-  if (isMissingGaps && metadata.title) {
-    const enriched = await enrichWithCrossref({
-      title: metadata.title,
-      authors: metadata.authors,
-      doi: metadata.doi,
-      logger: log,
-    });
+  // Tier 2: Check if crucial fields (publisher, year, containerTitle, DOI) are missing, and enrich via Crossref
+  // Skipped entirely for primary empirical materials (interview transcripts, survey data, archival records)
+  if (!isPrimaryMaterial) {
+    const isMissingGaps =
+      !metadata.publisher ||
+      !metadata.publicationYear ||
+      !metadata.containerTitle ||
+      !metadata.doi;
 
-    if (enriched) {
-      finalMetadata = {
+    if (isMissingGaps && metadata.title) {
+      const enriched = await enrichWithCrossref({
         title: metadata.title,
         authors: metadata.authors,
-        containerTitle: metadata.containerTitle || enriched.containerTitle,
-        documentType: metadata.documentType || enriched.documentType,
-        publisher: metadata.publisher || enriched.publisher,
-        publicationYear: metadata.publicationYear ?? enriched.publicationYear,
-        doi: metadata.doi || enriched.doi,
-      };
+        doi: metadata.doi,
+        logger: log,
+      });
+
+      if (enriched) {
+        finalMetadata = {
+          title: metadata.title,
+          authors: metadata.authors,
+          containerTitle: metadata.containerTitle || enriched.containerTitle,
+          documentType: metadata.documentType || enriched.documentType,
+          publisher: metadata.publisher || enriched.publisher,
+          publicationYear: metadata.publicationYear ?? enriched.publicationYear,
+          doi: metadata.doi || enriched.doi,
+        };
+      }
     }
   }
 

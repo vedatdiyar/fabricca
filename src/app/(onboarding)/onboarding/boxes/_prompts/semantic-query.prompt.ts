@@ -86,7 +86,11 @@ Anahtar Kavramlar (Concepts): [${conceptsText}]`;
        * Tematik boyutlar, süreçler, olgusal niteleyiciler, tarihsel dönemler ve coğrafya tırnaksız (serbest sözcük) olarak yazılmalıdır. Tırnaksız sözcükler OpenAlex tarafından köklerine ayrılarak (stemming) ve alaka (BM25/proximity) esnekliğiyle taranır.
         * Sentetik/çeviri tamlamaların tırnak içine alınması durumunda arama motoru sıfır (0) sonuç döndürür.
         * **Evrensel Kanoniklik Testi**: Tırnaklı her öbek, uluslararası indeksli literatürde bağımsız doğrulanabilir kanonik varlık olmalıdır (kişi tam adı / tescilli eser başlığı / resmi kurum adı / kalıplaşmış şemsiye kavram). \`concepts\` içinden gelen araştırmacı-içi analitik yönerge veya serbest kavramlaştırma bu testi geçemezse KESİNLİKLE tırnaklanamaz; gerekiyorsa tırnaksız serbest sözcük olarak yazılır veya kişi-adı çapasıyla değiştirilir.
-     - **YASAK (CRITICAL)**: Asla yıldız (\`*\`) veya soru işareti (\`?\`) gibi joker karakterler (wildcards) KULLANMAYIN (OpenAlex'te HTTP 400 Bad Request hatasına yol açar).
+      - **YASAK (CRITICAL)**: Asla yıldız (\`*\`) veya soru işareti (\`?\`) gibi joker karakterler (wildcards) KULLANMAYIN (OpenAlex'te HTTP 400 Bad Request hatasına yol açar).
+      - **TEKİL YAZAR KURALI (STRICT SINGLE-AUTHOR PROHIBITION, CRITICAL)**:
+        * Her bir sözcüksel arama sorgusunda en fazla BİR (1) adet kişi/yazar tam adı çift tırnak içinde yer alabilir.
+        * İki veya daha fazla kişi/yazar adının aynı sorgu içinde tırnaklanması (\`"Author A" "Author B"\`) KESİNLİKLE YASAKTIR.
+        * Gerekçe: akademik arama motorlarında iki yazar adının aynı anda tırnaklanması, bir yazarın külliyatında diğer yazarın adının aranmasına (yazar çakışması) ve arama havuzunun sıfır sonuçla çökmesine yol açar.
    - **Sözcüksel Sorgu Uzunluğu ve Aşırı Kısıtlama Yasağı (Concise: 2-4 Terms)**:
      - OpenAlex arama motorunda boşluklar örtük AND mantığıyla çalışır. Bir sorguya 5-8 kelime (aktör + kısaltma + tüm kavramlar + dönem + coğrafya) yığmak, ilgili makalelerin neredeyse tamamını eleyerek sıfır veya yetersiz sonuca yol açar.
      - Her sorgu **öz ve hedeflenmiş (toplam 2 ila 4 terim)** olmalıdır (örn. 1 tırnaklı kanonik çapa + 1-2 tırnaksız bağlam/süreç sözcüğü).
@@ -99,10 +103,11 @@ Anahtar Kavramlar (Concepts): [${conceptsText}]`;
        * **Query 1 (Kanonik Şemsiye Terim Çapası)**: Literatürdeki yerleşik çok kelimeli şemsiye aktör/alan adı tırnaklı çapa olarak + coğrafi/dönemsel bağlam (toplam 2-4 kelime, örn. \`"<Canonical Umbrella Term>" <Geography>\`).
        * **Query 2 (1. Temel Kurum/Parti: Kısaltma + Resmi İngilizce Tam Adı veya Coğrafya)**: İncelenen temel aktörün kısaltması ve literatürdeki resmi İngilizce karşılığı (\`"<Acronym>" "<Official Full English Name>"\`) ya da doğrudan coğrafi bağlamı (\`"<Acronym>" <Geography>\`).
        * **Query 3 (2. Temel Kurum/Parti veya Spesifik Çapa + Coğrafya/Süreç)**: Varsa incelenen 2. aktörün kısaltması ve resmi adı (\`"<2nd Acronym>" "<Official English Name>"\`) ya da \`"<2nd Acronym>" <Geography>\` (toplam 2-3 kelime).
-     - **THEORETICAL_FRAMEWORK**:
-       * Query 1: \`"<1. Kuramcı Adı>" "<Kanonik Eser veya Çekirdek Kuramsal Mekanizma>"\`
-       * Query 2: \`"<2. Kuramcı Adı (veya 1. Kuramcının Adı)>" "<Özgül Analitik Boyut>"\`
-       * Query 3: \`"<Kanonik Kuramsal Kavram>" <serbest ilişki sözcüğü>\` — buradaki tırnaklı kavram Evrensel Kanoniklik Testini geçmelidir; geçemezse tırnak kaldırılarak tırnaksız serbest sözcük yazılır veya sorgu kuramcı-adı çapasına döndürülür. 3 sorgudan en az 2'si kuramcı-adı çapası taşır.
+      - **THEORETICAL_FRAMEWORK**:
+        * Query 1: \`"<Primary Author/Theorist Name>" <broad discipline-wide canonical concept>\` (Tırnaklı tek yazar adı + tırnaksız şemsiye kavram).
+        * Query 2: \`"<Secondary Author/Theorist Name or Primary Author>" <substantive analytical focus>\` (Varsa tırnaklı 2. yazar veya 1. yazar adı + tırnaksız analitik odak).
+        * Query 3: \`"<Canonical School or Umbrella Entity>" <relational process term>\` (Tescilli tırnaklı ekol/kavram + tırnaksız süreç terimi; buradaki tırnaklı kavram Evrensel Kanoniklik Testini geçmelidir, geçemezse tırnak kaldırılarak tırnaksız serbest sözcük yazılır veya sorgu kuramcı-adı çapasına döndürülür).
+        * 3 sorgudan en az 2'si kuramcı-adı çapası taşır; hiçbir sorguda iki yazar adı yan yana tırnaklanamaz.
      - **METHODOLOGY**:
         * **Kanonik Ekol ve Kurucu Metodolog Çapalaması**: Yöntem ekolünün uluslararası literatürdeki kurucu metodoloğu/başyapıtı ile alt kutuda veya matriste belirtilen analitik yazarlar dengeli biçimde hedeflenmelidir.
         * **Query 1 (Kurucu Yöntem Ekolü / Kurucu Başyapıt)**: İncelenen kanonik yöntem/analiz ekolünün tescilli adı çift tırnaklı + kuramsal diyalog kavramı (örn. \`"<Kanonik Yöntem Ekolü>" <hegemony / power / framing>\`, toplam 2-3 kelime) VEYA doğrudan o yöntemin uluslararası alandaki kurucu metodoloğunun tam adı tırnaklı çapa olarak (örn. \`"<Kurucu Metodolog Adı>" <key method concept>\`).
@@ -116,7 +121,7 @@ Anahtar Kavramlar (Concepts): [${conceptsText}]`;
 2. Kutu türü izolasyon kurallarına tam uyarak zengin ve terminolojik olarak yoğun \`openAlexSemanticQuery\` araştırma paragrafını (5±1 cümle, 170-210 kelime, ≈1000-1250 karakter, bürokratik dolgusuz) oluşturun.
 3. Her alt kutu için ilgili kutu türünün (\`boxType\`) Kadran Bazlı Evrensel Arama Yapısına (Kural 5) göre tam 3 adet hedeflenmiş \`openAlexLexicalQueries\` sorgusu hazırlayın:
    - **SUBJECT_PROBLEM için**: Query 1'de kanonik şemsiye kavram tırnaklı + coğrafya; Query 2'de temel kurum/aktör tekil kısaltması ve resmi tam adı veya coğrafya; Query 3'te varsa ikinci aktör/kurum veya tematik süreç sözcüğü. Asla birden fazla kısaltmayı tek tırnak içinde birleştirmeyin ("A B C" yasaktır).
-   - **THEORETICAL_FRAMEWORK için**: Query 1 ve 2'de kutuda veya matriste adı geçen kuramcıların tam adları tırnaklı çapa olarak; Query 3'te kanonik kuramsal kavram tırnaklı veya serbest sözcük (en az 2 sorgu kuramcı adı taşımalıdır).
+    - **THEORETICAL_FRAMEWORK için**: Query 1'de tırnaklı tek kuramcı adı + tırnaksız şemsiye kavram; Query 2'de varsa 2. yazar veya 1. yazar adı tırnaklı + tırnaksız analitik odak; Query 3'te tescilli ekol/kavram tırnaklı + tırnaksız süreç terimi (en az 2 sorgu kuramcı adı taşımalıdır; hiçbir sorguda iki yazar adı yan yana tırnaklanamaz).
    - **METHODOLOGY için**: Query 1'de yöntemin kanonik ekolü veya kurucu metodoloğu; Query 2 ve 3'te kutuda/matriste adı geçen analitik yöntem yazarları tırnaklı çapa olarak (örn. "<Author Name>" <key concept>). Asla vaka dönemi/tarihsel moment kelimeleri eklenemez ve asla "close reading", "comparative research design" gibi jenerik desen kalıpları tırnaklanamaz.
    - Genel kısıt: Hiçbir sorguda wildcard (*, ?) ve sentetik yapay çeviri tamlamaları tırnaklanamaz; her sorgu öz ve hedeflenmiş (2-4 terim) olmalıdır.
 4. Çıktıyı vermeden önce her \`openAlexSemanticQuery\`’yi cümle ve kelime sayısıyla doğrulayın: 4 cümleden kısaysa kuramcı/kavram ekleyerek zenginleştirin; 210 kelimeyi aştıysa kısaltın. Karakter saymaya çalışmayın. Çıktıdan önce her tırnaklı öbeği Evrensel Kanoniklik Testinden geçirin: kanonik değilse tırnağı kaldırın veya kuramcı/yazar-adı çapasıyla değiştirin; hiçbir sorguda araştırmacı-içi yönergeyi tırnaklı bırakmayın.`,

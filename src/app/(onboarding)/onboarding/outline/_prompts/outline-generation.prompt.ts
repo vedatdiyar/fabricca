@@ -41,9 +41,11 @@ export function buildOutlineGenerationPromptPayload(
 - **Gövde Bölümleri (Bölüm 2, 3, 4 - Epistemolojik Üçlü Katman):** Tezin kuramsal, bağlamsal ve ampirik eksenlerini taşıyan 3 dengeli ana bölümdür:
   - *Bölüm 2 (Kuramsal / Kavramsal Çerçeve):* Konunun teorik omurgasını, kavramsal araçlarını, model ve dinamiklerini derinlemesine inceleyen 2 ila 4 odaklanmış alt bölüm.
   - *Bölüm 3 (Tarihsel, Siyasal ve Kurumsal Bağlam / Aktörler ve Yapısal Zemin):* İncelenen dönemin tarihsel/yapısal arka planını, kurumsal dinamiklerini ve incelenen ana aktörlerin/hatların örgütsel gelişimini ortaya koyan 2 ila 4 odaklanmış alt bölüm. (Kural: Bu bölüm ampirik verilerin ve metinlerin içine doğduğu tarihsel/kurumsal zemini inşa eder; henüz doğrudan mikro metin/söylem analizine girilmez, zemin hazırlanır).
-  - *Bölüm 4 (Ampirik Analiz, Karşılaştırmalı Bulgular ve Kuramsal Sentez):* Tezin birincil materyallerinin (arşiv belgeleri, metinler, kurumsal yayınlar, ampirik veriler veya dönemsel momentler) yöntem protokolü ışığında derinlemesine ve karşılaştırmalı olarak incelendiği ana gövde bölümüdür (3 ila 4 alt bölüm):
-    - Eğer tez ampirik dönemlemelere/momentlere, vaka karşılaştırmalarına veya tematik kategorilere dayanıyorsa, her bir ana dönem/vaka/kategori için müstakil birer alt başlık açılmalıdır.
-    - **Zorunlu Kuramsal Sentez Kuralı:** Bu ampirik bölümün nihai alt başlığı KESİNLİKLE *"Bulguların Kuramsal Yorumu ve Sentezi"* (veya bulguların Bölüm 1'deki teorik model/spektrum ile eşlenmesi ve tartışılması) olmalıdır. Böylece ampirik bulgular ile kuramsal çerçeve arasındaki bağ doğrudan ampirik analizin sonunda kapatılır.
+  - *Bölüm 4 (Ampirik Analiz, Karşılaştırmalı Bulgular ve Kuramsal Sentez):* Tezin birincil korpusunun, ampirik verilerinin veya arşiv belgelerinin yöntem protokolü ışığında derinlemesine ve karşılaştırmalı olarak incelendiği ana gövde bölümüdür (3 ila 4 alt bölüm). Matristeki methodology ve primaryMaterial girdilerinin yapısına göre şu 3 evrensel araştırma deseninden birine tam sadakatle uyarlanmalıdır:
+    - **1. Kronolojik / Dönemsel Korpus Deseni:** Eğer birincil malzeme veya yöntem belirgin tarih aralıklarına, tarihsel evrelere veya kurumsal dönemlere dayanıyorsa; alt başlıklar "Moment 1", "Faz 2" gibi yapay ve dar teorik etiketlerden KESİNLİKLE arındırılmalı, doğrudan tarih aralığı ve olgunun kendisiyle formüle edilmelidir (Örn: "Moment 1 (1991-1993)" yerine "1991–1993 Dönemi: [İncelenen Temel Süreç veya Olgu]").
+    - **2. Karşılaştırmalı Vaka / Aktör Deseni:** Eğer araştırma farklı aktör hatları, ülkeler, kurumlar veya örneklem gruplarının karşılaştırmasına dayanıyorsa; alt başlıklar sırasıyla her bir vaka/aktör eksenine ayrılmalıdır.
+    - **3. Tematik Analiz Deseni:** Eğer araştırma kronolojik değil tematik kategorilere dayanıyorsa; alt başlıklar araştırmanın ana tematik boyutlarını sırayla ele almalıdır.
+    - **Zorunlu Kuramsal Sentez Kuralı:** Bu ampirik bölümün nihai alt başlığı KESİNLİKLE *"Bulguların Kuramsal Yorumu ve Sentezi"* (veya bulguların Bölüm 1 ve 2'deki teorik model/spektrum ile eşlenmesi ve tartışılması) olmalıdır. Böylece ampirik bulgular ile kuramsal çerçeve arasındaki bağ doğrudan ampirik analizin sonunda kapatılır.
 - **Son Bölüm (Sonuç ve Değerlendirme):** Araştırma bulgularının genel sentezini, hipotezlerin ve araştırma sorularının nihai değerlendirilmesini, literatüre özgün katkıyı ve gelecekteki araştırmalar için önerileri içeren 2 ila 3 alt bölüm.
 
 ## 3. Metodoloji ve Kaynak Entegrasyonu
@@ -56,7 +58,7 @@ export function buildOutlineGenerationPromptPayload(
 
 ## 5. Katı Sadakat ve Dış Kavram Yasağı (Strict Grounding & Leakage Shield)
 - KESİNLİKLE matriste adı geçmeyen hiçbir düşünürü, teorik modeli, kavramı veya alt başlığı dışarıdan eklemeyin / uydurmayın.
-- Yalnızca matriste açıkça yer alan analitik kavramlar, ampirik aktörler, tarihsel momentler ve düşünürler üzerinden alt başlıklar türetin.
+- Yalnızca matriste açıkça yer alan analitik kavramlar, ampirik aktörler, tarihsel dönemler ve düşünürler üzerinden alt başlıklar türetin.
 - Matriste bulunmayan genel geçer kavramları veya harici teorik ekolleri pre-training bilginizden çekip plana ASLA DAHİL ETMEYİN.`,
 
     workflowSteps: `1. Araştırma problemi ve kuramsal çerçeveden hareketle tezin bilim dalını (academicField) belirleyin.

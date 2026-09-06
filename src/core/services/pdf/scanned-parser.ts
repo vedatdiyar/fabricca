@@ -58,16 +58,21 @@ export async function parseScannedPdf(
     .map((p) => `=== PAGE ${p.pageNumber} ===\n${p.markdownContent}`)
     .join("\n\n");
 
-  // Bibliography detection
-  const bibPages = findBibliographyPages(pages, (p) => p.markdownContent);
+  // Bibliography detection (skipped for primary empirical material)
+  const isPrimary = options.isPrimaryMaterial ?? false;
+  const bibPages = isPrimary
+    ? []
+    : findBibliographyPages(pages, (p) => p.markdownContent);
 
   // Parallel: metadata + references extraction via Gemini Flash-Lite
-  const metadataPromise = extractDocumentMetadata(first5PagesText, logger);
+  const metadataPromise = extractDocumentMetadata(first5PagesText, logger, {
+    isPrimaryMaterial: isPrimary,
+  });
 
   let referencesPromise: Promise<DocumentAnalysisResult["references"]> =
     Promise.resolve([]);
 
-  if (bibPages.length > 0) {
+  if (!isPrimary && bibPages.length > 0) {
     const batches = buildReferenceBatches(
       bibPages,
       (p) => `=== PAGE ${p.pageNumber} ===\n${p.markdownContent}`,

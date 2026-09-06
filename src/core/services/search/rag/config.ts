@@ -16,6 +16,12 @@ export const RAG_CONFIG = {
   rerankCandidatePool: 30,
   /** Default final result count returned to the caller. */
   finalTopK: 5,
+  /** Bimodal retrieval quota: primary empirical material budget. */
+  bimodalPrimaryTopK: 3,
+  /** Bimodal retrieval quota: secondary academic literature budget. */
+  bimodalSecondaryTopK: 4,
+  /** Bimodal retrieval quota: total budget (primary + secondary). */
+  bimodalTotalTopK: 7,
   /** Maximum number of tokens AND-ed into a single FTS query (keeps queries precise). */
   lexicalMaxQueryTokens: 8,
   /** Minimum Cohere rerank score (primary gate). Cross-lingual retrieval scores range 0.60–0.97; 0.60 accommodates cross-lingual matches. */

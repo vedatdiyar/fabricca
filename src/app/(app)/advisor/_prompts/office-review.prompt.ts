@@ -87,7 +87,8 @@ export function buildCitationAuditPromptPayload(
    - Metindeki iddia kaynakta yer almıyorsa, kaynakla çelişiyorsa veya atıf yapılan sayfanın sınırlarını aşıyorsa \`CRITICAL\` olarak işaretle (\`status: "MISMATCH"\` veya \`status: "UNVERIFIED"\`). \`message\` alanında bu iddianın kaynak metinde geçmediğini, sayfa dışı bir yargı veya temellendirilmemiş aşırı bir genelleme olduğunu açıkça belirt.
    - Kaynak doğru ve doğrulanmışsa \`NOTE\` veya \`WARNING\` ile \`status: "VERIFIED"\` olarak belirt.
 2. **Dahili İndeks ve Chunk Numarası Yasağı:** Sistem tarafından arka planda sağlanan kaynak parçası numaralarını veya dahili indeksleri (ör. 'Kaynak #1', 'Parça #2', '[Chunk 1]') KESİNLİKLE raporda kullanıcıya gösterme veya metne dahil etme. Kaynak referansı verirken yalnızca eserin yazarını, yayın yılını ve ilgili sayfa/sayfa aralığını kullan (Örn: 'Yazar (2020, ss. 3-4)' veya 'Yazarın 2020 tarihli çalışmasında...').
-3. **Akademik Dil:** Tüm açıklamalar yüksek düzey, net ve akademik Türkçe ile olmalıdır.`,
+3. **Akademik Dil:** Tüm açıklamalar yüksek düzey, net ve akademik Türkçe ile olmalıdır.
+4. **Epistemolojik Ayrım (Birincil Veri vs. Akademik Literatür):** Bağlamda \`[TÜR: BİRİNCİL ARAŞTIRMA VERİSİ / AMPİRİK KANIT]\` etiketi taşıyan parçalar, araştırmacının sahadan veya arşivden topladığı ampirik verilerdir (mülakat dökümleri, anket bulguları, kurum kararları, mahkeme/arşiv tutanakları). Taslakta bu belgelerden yapılan doğrudan alıntıları ve olgusal göndermeleri ampirik kanıt olarak doğrula (\`VERIFIED\`); bunları literatürdeki kanıtlanmamış bir kuramsal iddia gibi hatalı değerlendirip \`MISMATCH\` veya \`UNVERIFIED\` şerhi düşme.`,
 
     workflowSteps: `1. Taslak metindeki tüm atıf ve iddiaları tespit et.
 2. Bunları Kütüphane Kaynak Bağlamı ve Notlar ile satır satır denetle.
@@ -204,7 +205,13 @@ export const juryCritiquesJsonSchema: JsonSchema = {
           },
           category: {
             type: "string",
-            enum: ["LOGIC_LEAP", "UNBACKED_CLAIM", "METHODOLOGICAL_GAP"],
+            enum: [
+              "LOGIC_LEAP",
+              "UNBACKED_CLAIM",
+              "METHODOLOGICAL_GAP",
+              "CONCEPT_STRETCHING",
+              "REDUCTIONIST_CONFLATION",
+            ],
           },
           suggestedDefensePoint: {
             type: "string",
@@ -230,7 +237,13 @@ export const juryCritiquesJsonSchema: JsonSchema = {
 export function buildJuryCritiquesPromptPayload(
   params: OfficeReviewPromptInput,
 ): PromptPayload {
-  const { draftText, outlineTitle, outlineDescription } = params;
+  const {
+    draftText,
+    outlineTitle,
+    outlineDescription,
+    ragContext,
+    notesContext,
+  } = params;
 
   return buildPromptPayload({
     roleAndExpertise:
@@ -241,14 +254,20 @@ export function buildJuryCritiquesPromptPayload(
 
     rulesAndConstraints: `1. **Jüri Şerhleri ve Sokratik İtirazlar (Mavi Kalem):**
    - Tez savunmasında jüri üyelerinin sorabileceği en az 1, en fazla 3 kritik itiraz/şerh noktası belirle.
-   - Kategoriler: \`LOGIC_LEAP\` (Mantık Sıçraması), \`UNBACKED_CLAIM\` (Temellendirilmemiş İddia), \`METHODOLOGICAL_GAP\` (Metodolojik Boşluk).
-   - Her şerh için öğrencinin savunmada hocaya sunabileceği güçlü bir savunma argümanı (\`suggestedDefensePoint\`) öner.
-   - **Teknik Kod Yasağı:** \`critique\`, \`title\` veya \`suggestedDefensePoint\` metinlerinin içerisine "(LOGIC_LEAP)", "(UNBACKED_CLAIM)", "(METHODOLOGICAL_GAP)" gibi teknik kodları veya İngilizce etiketleri ASLA YAZMA. Kategori yalnızca \`category\` JSON alanında tutulacaktır.
+   - Taslağı yalnızca havada değil; sağlanan Kütüphane Kaynak ve RAG Bağlamı ile Kullanıcı Notları bağlamındaki kuramsal ve ampirik zeminle karşılaştırarak değerlendir.
+   - Beş evrensel denetim eksenini tart:
+     1) \`LOGIC_LEAP\` (Mantık Sıçraması ve Teleolojik Kurgu): Öncüllerden sonuca usulsüz geçiş, döngüsel gerekçelendirme veya olguyu önceden varsayılmış bir sona bağlayan amaçsal anlatı.
+     2) \`UNBACKED_CLAIM\` (Temellendirilmemiş İddia ve Ampirik Kanıt Açığı): Sağlanan bağlamda karşılığı bulunmayan genelleme, kanıt eşiğini aşan iddia veya dayanağı gösterilmemiş olgusal yargı.
+     3) \`METHODOLOGICAL_GAP\` (Metodolojik Boşluk ve Yöntemsel Sınırlar): Seçilen desen, örneklem, veri toplama veya analiz tekniğinin iddianın kapsamını taşımaması; geçerlik, güvenirlik ve genellenebilirlik sınırlarının belirtilmemesi.
+     4) \`CONCEPT_STRETCHING\` (Kavramsal Aşırı Esnetme ve Bağlam Dışı Kuram Transferi): Belirli bir tarihsel, toplumsal, felsefi veya kurumsal bağlamda formüle edilmiş bir kuram veya kavramın; sınır koşulları ve bağlamsal özgüllükleri hesaba katılmaksızın farklı bir ampirik sahaya mekanik biçimde uyarlanması ve açıklayıcı gücünün zayıflatılması.
+     5) \`REDUCTIONIST_CONFLATION\` (İndirgemeci Özdeşleştirme ve Göreli Özerklik İhmali): Farklı kurumsal mantıklara, yasal veya tarihsel sınırlara ya da eylem alanlarına sahip aktörlerin, kurumların, söylemlerin veya dinamiklerin; aralarındaki iç gerilimler, özerklik alanları ve çatışmalar yok sayılarak birbirinin basit bir uzantısı veya yekpare bir blok gibi ele alınması.
+   - Her şerh için öğrencinin savunmada kullanabileceği somut bir kuramsal nüans, sınırlandırma cümlesi veya ayrıştırma argümanı (\`suggestedDefensePoint\`) üret; bu alan boş veya genel bir teselli cümlesi olamaz.
+   - **Teknik Kod Yasağı:** \`critique\`, \`title\` veya \`suggestedDefensePoint\` metinlerinin içerisine "(LOGIC_LEAP)", "(UNBACKED_CLAIM)", "(METHODOLOGICAL_GAP)", "(CONCEPT_STRETCHING)", "(REDUCTIONIST_CONFLATION)" gibi teknik kodları veya İngilizce etiketleri ASLA YAZMA. Kategori yalnızca \`category\` JSON alanında tutulacaktır.
 2. **Akademik Dil:** %100 duru, akıcı, yapıcı ve yüksek düzey akademik Türkçe ile ifade et.`,
 
-    workflowSteps: `1. Taslak metindeki iddiaların kuramsal ve mantıksal tutarlılığını tart.
-2. 1-3 adet jüri itiraz şerhi formüle et.
-3. Her şerh için savunma argümanı geliştir.
+    workflowSteps: `1. Taslak metindeki iddiaların kuramsal ve mantıksal tutarlılığını, sağlanan kütüphane ve not bağlamıyla birlikte tart.
+2. Beş evrensel denetim ekseni arasından 1-3 adet jüri itiraz şerhi formüle et.
+3. Her şerh için somut bir kuramsal nüans veya sınırlandırma içeren savunma argümanı geliştir.
 4. JSON çıktısını üret.`,
 
     outputFormat: `- Yanıt kesinlikle belirtilen JSON şemasına uygun tek bir nesne olmalıdır.`,
@@ -258,7 +277,10 @@ Başlık: ${outlineTitle || "Genel Tez Bölümü"}
 ${outlineDescription ? `Açıklama: ${outlineDescription}` : ""}
 
 ### ÖĞRENCİNİN TASLAK METNİ:
-${draftText}`,
+${draftText}
+
+${ragContext ? `### KÜTÜPHANE KAYNAK VE RAG BAĞLAMI:\n${ragContext}\n` : ""}
+${notesContext ? `### KULLANICI NOTLARI VE ALINTI FİŞLERİ BAĞLAMI:\n${notesContext}\n` : ""}`,
 
     taskTrigger:
       "Öğrencinin taslağı için jüri şerhlerini ve savunma önerilerini belirle ve Jury Critiques JSON nesnesini üret.",

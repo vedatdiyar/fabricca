@@ -2,7 +2,7 @@ import { eq, desc, and } from "drizzle-orm";
 import { db } from "@/core/db";
 import { annotations, sources } from "@/core/db/schema";
 import {
-  performHybridRagSearch,
+  performBimodalRagSearch,
   type RagSearchResultItem,
 } from "@/core/services/search/rag-search";
 import { ThinkingLevel } from "@google/genai";
@@ -68,7 +68,7 @@ export async function runStage1Audit(
   sourceContext: string;
   annotationContext: string;
 }> {
-  const sources = await performHybridRagSearch({ query: draft, topK: 7 });
+  const sources = await performBimodalRagSearch({ query: draft, topK: 7 });
 
   const sourceContext =
     sources.length === 0

@@ -19,11 +19,21 @@ const CATEGORY_LABELS: Record<string, { label: string; color: string }> = {
     label: "Metodolojik Boşluk",
     color: "bg-warning/10 text-warning border-warning/20",
   },
+  CONCEPT_STRETCHING: {
+    label: "Kavramsal Aşırı Esnetme",
+    color:
+      "bg-purple-500/10 text-purple-600 dark:text-purple-400 border-purple-500/20",
+  },
+  REDUCTIONIST_CONFLATION: {
+    label: "İndirgemeci Özdeşleştirme",
+    color:
+      "bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border-indigo-500/20",
+  },
 };
 
 function cleanEnumCodes(text: string): string {
   return text.replace(
-    /\s*\((LOGIC_LEAP|UNBACKED_CLAIM|METHODOLOGICAL_GAP|MISMATCH|UNVERIFIED|CRITICAL|WARNING|NOTE)\)/gi,
+    /\s*\((LOGIC_LEAP|UNBACKED_CLAIM|METHODOLOGICAL_GAP|CONCEPT_STRETCHING|REDUCTIONIST_CONFLATION|MISMATCH|UNVERIFIED|CRITICAL|WARNING|NOTE)\)/gi,
     "",
   );
 }

@@ -1,6 +1,6 @@
 import { eq } from "drizzle-orm";
 import { db } from "@/core/db";
-import { sources } from "@/core/db/schema";
+import { sources, boxes } from "@/core/db/schema";
 import { getSession } from "@/lib/session";
 import { createFlowId, Logger } from "@/lib/logger";
 import { formatApaPdfFileName } from "@/lib/academic/utils";
@@ -10,6 +10,7 @@ import { cleanupTempKey } from "./pdf-service";
 import type { LibraryResourceItem } from "@/app/(app)/library/_lib/types";
 import { resolveCreateTarget, resolveUpgradeTarget } from "./upload-target";
 import { buildCompletionResourceItem } from "./upload-result-mapper";
+import { hydrateSemanticScholarIds } from "@/core/services/academic/s2-hydrator";
 import {
   validateDuplicatePdf,
   handleUploadFailureRollback,
@@ -92,15 +93,37 @@ export async function completePdfUploadCore(
       };
     }
 
+    // Determine whether the target is in a PRIMARY_MATERIAL box (to bypass Crossref and reference extraction)
+    let isPrimaryMaterial = false;
+    try {
+      if (createMode) {
+        const targetBox = await db.query.boxes.findFirst({
+          where: eq(boxes.id, params.boxId),
+          columns: { boxType: true },
+        });
+        isPrimaryMaterial = targetBox?.boxType === "PRIMARY_MATERIAL";
+      } else {
+        const existing = await db.query.sources.findFirst({
+          where: eq(sources.id, params.resourceId),
+          with: { box: { columns: { boxType: true } } },
+        });
+        isPrimaryMaterial = existing?.box?.boxType === "PRIMARY_MATERIAL";
+      }
+    } catch {
+      isPrimaryMaterial = false;
+    }
+
     const preloadedBuffer = pdfBuffer ? Buffer.from(pdfBuffer) : undefined;
 
     const { buffer, chunks, metadata, parsedReferences } =
-      await fetchAndExtractPdf(tempKey, fileName, log, preloadedBuffer);
+      await fetchAndExtractPdf(tempKey, fileName, log, preloadedBuffer, {
+        isPrimaryMaterial,
+      });
 
     const apaFileName = formatApaPdfFileName(
       metadata.authors,
       metadata.publicationYear,
-      metadata.title,
+      metadata.title || fileName.replace(/\.pdf$/i, ""),
     );
 
     const resolution = createMode
@@ -188,6 +211,9 @@ export async function completePdfUploadCore(
             },
       },
     );
+
+    // Fire-and-forget: backfill the Semantic Scholar id without blocking the response.
+    void hydrateSemanticScholarIds([target.targetResourceId]).catch(() => {});
 
     return {
       success: true,

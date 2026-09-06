@@ -9,6 +9,8 @@ export const SEMANTIC_SCHOLAR_RECOMMENDATIONS_BASE_URL =
   "https://api.semanticscholar.org/recommendations/v1" as const;
 export const SEMANTIC_SCHOLAR_RECOMMENDATIONS_URL =
   `${SEMANTIC_SCHOLAR_RECOMMENDATIONS_BASE_URL}/papers/` as const;
+export const SEMANTIC_SCHOLAR_GRAPH_BASE_URL =
+  "https://api.semanticscholar.org/graph/v1" as const;
 export const COHERE_RERANK_URL = "https://api.cohere.com/v2/rerank" as const;
 export const HF_EMBEDDING_BASE_URL = "https://router.huggingface.co" as const;
 export const HF_E5_MODEL = "intfloat/multilingual-e5-base" as const;

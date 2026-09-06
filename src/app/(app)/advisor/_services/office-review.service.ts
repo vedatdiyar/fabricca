@@ -14,7 +14,7 @@ import { generateGeminiStructuredContent } from "@/core/services/ai";
 import { FLASH_LITE_35, FLASH_38 } from "@/lib/constants";
 import { createFlowId, Logger } from "@/lib/logger";
 import {
-  performHybridRagSearch,
+  performBimodalRagSearch,
   type RagSearchResultItem,
 } from "@/core/services/search/rag-search";
 import {
@@ -248,7 +248,7 @@ async function runJuryCritiquesTask(
 
 /**
  * Runs Danışmanın Çalışma Odası Stage 1 Review:
- * 1. Hybrid RAG retrieval + Outline/Annotation Grounding.
+ * 1. Bimodal RAG retrieval + Outline/Annotation Grounding.
  * 2. 3 Concurrent (Parallel) LLM Tasks via Promise.all.
  * 3. Immediate DB persistence into `sessions` and `messages`.
  *
@@ -269,11 +269,11 @@ export async function runOfficeReview(
     { service: "advisor" },
   );
 
-  // Step 2: Hybrid RAG Search
+  // Step 2: Bimodal RAG Search (3 primary + 4 literature, fallback to 7 literature)
   const ragSources = await logger.time(
-    "hybrid_rag_search",
+    "bimodal_rag_search",
     () =>
-      performHybridRagSearch({
+      performBimodalRagSearch({
         query: draftText,
         resourceIds: pinnedSourceIds.length > 0 ? pinnedSourceIds : undefined,
         topK: 7,

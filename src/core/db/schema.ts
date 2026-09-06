@@ -229,6 +229,7 @@ export const sources = pgTable(
     publicationYear: integer(),
     doi: text(),
     openalexId: text("openalex_id"),
+    semanticScholarId: text("semantic_scholar_id"),
     isRead: boolean().default(false).notNull(),
     pdfUrl: text("pdf_url"),
     pdfFileName: text("pdf_file_name"),

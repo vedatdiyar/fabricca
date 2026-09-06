@@ -8,6 +8,7 @@ import { executeBackwardExpansion } from "./backward-expansion";
 import { executeForwardExpansion } from "./forward-expansion";
 import { executeLateralExpansion } from "./lateral-expansion";
 import { persistExpansionResult } from "./expansion-persistence";
+import { hydrateSemanticScholarIds } from "@/core/services/academic/s2-hydrator";
 import { calculateTimelineMetrics } from "@/core/services/timeline/timeline-engine";
 
 /**
@@ -262,6 +263,11 @@ export async function runLiteratureExpansion(
   });
 
   const newActiveSeedIds = insertedSources.map((s) => s.id);
+
+  // Fire-and-forget: backfill Semantic Scholar ids for the next expansion cycle.
+  if (newActiveSeedIds.length > 0) {
+    void hydrateSemanticScholarIds(newActiveSeedIds).catch(() => {});
+  }
 
   logger.info("literature_db_write_success", {
     service: "literature",

@@ -198,12 +198,14 @@ function dedupeRawPapers(papers: RawPaper[]): RawPaper[] {
 export const searchOpenAlexLexical = searchOpenAlexByTitleFilter;
 
 /**
- * Book lane: same lexical `search` as the standard channel, but scoped to
- * `filter=type:book` and ranked by `cited_by_count:desc` so canonical monographs
- * surface even when tens of thousands of articles mention the same terms.
- * Because `search` only covers title/abstract/fulltext (never bylines), quoted
- * author names additionally run through `raw_author_name.search` scoped to books —
- * otherwise author-anchored queries could never match a book record.
+ * Book lane: same lexical `search` as the standard channel, ranked by
+ * `cited_by_count:desc` so canonical monographs surface even when tens of
+ * thousands of articles mention the same terms. No `type:book` restriction is
+ * applied: canonical works tagged as `book-chapter` or `article` (e.g. highly
+ * cited monographs) must enter the pool fairly. Because `search` only covers
+ * title/abstract/fulltext (never bylines), quoted author names additionally
+ * run through `raw_author_name.search` — otherwise author-anchored queries
+ * could never match a monograph record.
  * Type is used here only for retrieval access, never for judging records.
  *
  * @param keywordQuery - Keyword/phrase query (3-250 chars).
@@ -228,10 +230,9 @@ export async function searchOpenAlexBooks(
 
   const searchPromises: Promise<RawPaper[]>[] = [];
 
-  // 1. Keyword search scoped to books, most-cited first
+  // 1. Keyword search, most-cited first (no type restriction)
   const keywordParams = new URLSearchParams({
     search: sanitized,
-    filter: "type:book",
     sort: "cited_by_count:desc",
     per_page: String(targetPerPage),
     select: selectFields,
@@ -244,12 +245,12 @@ export async function searchOpenAlexBooks(
   );
 
   // 2. Author branch: quoted person names match bylines (search never sees authors),
-  // scoped to books and ranked by citations to surface the author's monographs.
+  // ranked by citations to surface the author's monographs.
   const authorMatches = [...sanitized.matchAll(AUTHOR_NAME_PATTERN)];
   for (const match of authorMatches) {
     const authorName = match[1];
     const authorParams = new URLSearchParams({
-      filter: `raw_author_name.search:"${authorName}",type:book`,
+      filter: `raw_author_name.search:"${authorName}"`,
       sort: "cited_by_count:desc",
       per_page: String(targetPerPage),
       select: selectFields,

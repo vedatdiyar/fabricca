@@ -90,6 +90,8 @@ export async function assembleRagResults(
         parentContent,
         relevanceScore,
         denseScore,
+        boxType: candidate.boxType ?? null,
+        isPrimaryMaterial: candidate.boxType === "PRIMARY_MATERIAL",
         isPartialMatch: isFallback,
         ...(debugMeta ? { debug: debugMeta } : {}),
       };

@@ -91,9 +91,18 @@ export function ResourceDetail({
   onUploadPdf,
   onDeletePdf,
 }: ResourceDetailProps) {
-  const [activeWorkspaceTab, setActiveWorkspaceTab] = useState<
-    "critique" | "notes"
-  >("critique");
+  const isPrimary = resource.boxType === "PRIMARY_MATERIAL";
+  const [manualTab, setManualTab] = useState<"critique" | "notes" | null>(null);
+  const [prevResourceId, setPrevResourceId] = useState(resource.id);
+
+  if (prevResourceId !== resource.id) {
+    setPrevResourceId(resource.id);
+    setManualTab(null);
+  }
+
+  const activeWorkspaceTab = manualTab ?? (isPrimary ? "notes" : "critique");
+  const setActiveWorkspaceTab = (tab: "critique" | "notes") => setManualTab(tab);
+
   const [noteToDeleteId, setNoteToDeleteId] = useState<number | null>(null);
   const [pdfToDeleteId, setPdfToDeleteId] = useState<number | null>(null);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
@@ -148,7 +157,7 @@ export function ResourceDetail({
           {/* Segmented Workspace Navigation Tabs */}
           <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border/40 pb-3">
             <div className="flex items-center gap-1.5 bg-muted/50 p-1 rounded-md border border-border">
-              {/* Tab 1: 5 Boyutlu Eser Analizi (Öncelikli) */}
+              {/* Tab 1: 5 Boyutlu Eser Analizi veya Belge & Veri Özeti */}
               <button
                 type="button"
                 onClick={() => setActiveWorkspaceTab("critique")}
@@ -159,7 +168,9 @@ export function ResourceDetail({
                 }`}
               >
                 <Sparkles className="size-3.5 text-primary shrink-0" />
-                <span>5 Boyutlu Eser Analizi</span>
+                <span>
+                  {isPrimary ? "Belge & Veri Özeti" : "5 Boyutlu Eser Analizi"}
+                </span>
                 <span
                   className={`text-xs px-1.5 py-0.5 rounded font-mono border ${
                     activeWorkspaceTab === "critique"
@@ -182,7 +193,11 @@ export function ResourceDetail({
                 }`}
               >
                 <BookMarked className="size-3.5 text-primary shrink-0" />
-                <span>Alıntı Fişleri & Notlar</span>
+                <span>
+                  {isPrimary
+                    ? "Alıntılar & Ampirik Kanıtlar"
+                    : "Alıntı Fişleri & Notlar"}
+                </span>
                 <span
                   className={`text-xs px-1.5 py-0.5 rounded font-mono border ${
                     activeWorkspaceTab === "notes"
@@ -227,7 +242,9 @@ export function ResourceDetail({
                   <div className="flex items-center gap-2">
                     <BookMarked className="h-4 w-4 text-primary" />
                     <h3 className="font-serif text-base font-medium tracking-tight text-foreground">
-                      Kayıtlı Alıntı Fişleri
+                      {isPrimary
+                        ? "Kayıtlı Ampirik Alıntılar ve Kanıtlar"
+                        : "Kayıtlı Alıntı Fişleri"}
                     </h3>
                   </div>
                   <Badge
@@ -242,11 +259,14 @@ export function ResourceDetail({
                   <div className="flex flex-col items-center justify-center h-36 rounded-md border border-dashed border-border p-6 text-center text-muted-foreground">
                     <Sparkles className="h-6 w-6 opacity-40 mb-2" />
                     <p className="text-sm font-medium">
-                      Henüz bu eser için not veya alıntı fişi girilmemiş.
+                      {isPrimary
+                        ? "Henüz bu birincil belge için alıntı veya kanıt fişi eklenmemiş."
+                        : "Henüz bu eser için not veya alıntı fişi girilmemiş."}
                     </p>
                     <p className="text-xs text-muted-foreground mt-1">
-                      Yukarıdaki formu kullanarak ilk sayfa numaralı alıntınızı
-                      ekleyebilirsiniz.
+                      {isPrimary
+                        ? "Yukarıdaki formu kullanarak tezinizde ampirik veri/kanıt olarak kullanacağınız doğrudan alıntıları ekleyebilirsiniz."
+                        : "Yukarıdaki formu kullanarak ilk sayfa numaralı alıntınızı ekleyebilirsiniz."}
                     </p>
                   </div>
                 ) : (

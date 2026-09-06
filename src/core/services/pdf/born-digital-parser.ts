@@ -78,8 +78,11 @@ export async function parseBornDigitalPdf(
     .map((p) => `=== PAGE ${p.page + 1} ===\n${p.markdown}`)
     .join("\n\n");
 
-  // Bibliography detection (shared with scanned path)
-  const bibPages = findBibliographyPages(targetPages, (p) => p.markdown);
+  // Bibliography detection (skipped for primary empirical material)
+  const isPrimary = options.isPrimaryMaterial ?? false;
+  const bibPages = isPrimary
+    ? []
+    : findBibliographyPages(targetPages, (p) => p.markdown);
 
   // Step 3: Parallel Gemini Flash-Lite extraction (Metadata + 1-Page Chunked References)
   const pdfParseContentStart = performance.now();
@@ -88,12 +91,14 @@ export async function parseBornDigitalPdf(
     data: { fileName },
   });
 
-  const metadataPromise = extractDocumentMetadata(first5PagesText, logger);
+  const metadataPromise = extractDocumentMetadata(first5PagesText, logger, {
+    isPrimaryMaterial: isPrimary,
+  });
 
   let referencesPromise: Promise<DocumentAnalysisResult["references"]> =
     Promise.resolve([]);
 
-  if (bibPages.length > 0) {
+  if (!isPrimary && bibPages.length > 0) {
     const batches = buildReferenceBatches(
       bibPages,
       (p) => `=== PAGE ${p.page + 1} ===\n${p.markdown}`,

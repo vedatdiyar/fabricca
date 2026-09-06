@@ -1,6 +1,6 @@
 import { formatRagSourceContext } from "@/app/(app)/advisor/_services/pipeline/context";
 import {
-  performHybridRagSearch,
+  performBimodalRagSearch,
   type RagSearchResultItem,
 } from "@/core/services/search/rag-search";
 
@@ -26,7 +26,7 @@ export async function prepareTurnContext(
 
   // Fast-Path: Skip heavy RAG literature search for direct database action queries
   if (!isAction) {
-    sources = await performHybridRagSearch({ query, topK: 7 });
+    sources = await performBimodalRagSearch({ query, topK: 7 });
   }
 
   let contextText = "";

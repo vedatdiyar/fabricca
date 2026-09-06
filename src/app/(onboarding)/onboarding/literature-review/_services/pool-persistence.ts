@@ -4,6 +4,7 @@ import { sources } from "@/core/db/schema";
 import { normalizeTitle } from "@/lib/academic/utils";
 import type { LiteraturePoolEntry, JuryArticle } from "@/lib/types";
 import type { NewSource } from "@/core/db/schema";
+import { hydrateSemanticScholarIds } from "@/core/services/academic/s2-hydrator";
 
 export type TxClient = Parameters<Parameters<typeof db.transaction>[0]>[0];
 
@@ -79,7 +80,7 @@ export async function persistSubBoxEntry(
   thesisBoxId: number,
   articles: JuryArticle[],
 ): Promise<void> {
-  await db.transaction(async (tx) => {
+  const createdIds = await db.transaction(async (tx) => {
     const limit = 4;
     const sorted = [...articles].sort(
       (a, b) => b.relevanceScore - a.relevanceScore,
@@ -89,9 +90,19 @@ export async function persistSubBoxEntry(
     const { toInsert } = await insertLiteratureBatch(tx, thesisBoxId, sliced);
 
     if (toInsert.length > 0) {
-      await tx.insert(sources).values(toInsert);
+      const created = await tx
+        .insert(sources)
+        .values(toInsert)
+        .returning({ id: sources.id });
+      return created.map((r) => r.id);
     }
+    return [];
   });
+
+  // Fire-and-forget: never blocks onboarding confirmation.
+  if (createdIds.length > 0) {
+    void hydrateSemanticScholarIds(createdIds).catch(() => {});
+  }
 }
 
 /**
@@ -121,8 +132,8 @@ export async function persistLiteraturePool(
     entryArticleMap.set(entry.thesisBoxId, list);
   }
 
-  await db.transaction(async (tx) => {
-    await Promise.all(
+  const createdIds = await db.transaction(async (tx) => {
+    const nested = await Promise.all(
       literaturePool.map(async (entry) => {
         const articles = entryArticleMap.get(entry.thesisBoxId) ?? [];
 
@@ -133,9 +144,20 @@ export async function persistLiteraturePool(
         );
 
         if (toInsert.length > 0) {
-          await tx.insert(sources).values(toInsert);
+          const created = await tx
+            .insert(sources)
+            .values(toInsert)
+            .returning({ id: sources.id });
+          return created.map((r) => r.id);
         }
+        return [];
       }),
     );
+    return nested.flat();
   });
+
+  // Fire-and-forget: never blocks onboarding confirmation.
+  if (createdIds.length > 0) {
+    void hydrateSemanticScholarIds(createdIds).catch(() => {});
+  }
 }

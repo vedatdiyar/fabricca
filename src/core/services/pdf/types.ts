@@ -7,6 +7,8 @@ export interface PdfParseOptions {
   startPage?: number;
   /** 1-based inclusive end page (default: last page). */
   endPage?: number;
+  /** When true, flags that the document is primary empirical research data (archival, interview, survey, official record) and skips formal bibliography/Crossref journal extraction. */
+  isPrimaryMaterial?: boolean;
 }
 
 /** Result shape for the high-level parsePdfToChunks adapter. */

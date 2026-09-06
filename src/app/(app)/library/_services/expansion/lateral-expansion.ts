@@ -20,6 +20,17 @@ function normalizeTitle(title: string): string {
 }
 
 /**
+ * Extracts the numeric OpenAlex work id for MAG lookup.
+ *
+ * @param openalexId - Raw OpenAlex id or URL.
+ * @returns Numeric id string, or null when unparseable.
+ */
+function extractOpenAlexNumericId(openalexId: string): string | null {
+  const match = openalexId.trim().match(/W(\d+)\s*$/i);
+  return match?.[1] ? match[1] : null;
+}
+
+/**
  * Executes lateral literature expansion using Semantic Scholar Recommendations API v1.0
  * with positive active seeds and optional negative sibling box seeds, followed by
  * Cohere Rerank v4.0 against the Sub-Box thematic context.
@@ -59,25 +70,43 @@ export async function executeLateralExpansion(
     thesisContextQuery += `. ${box.description}`;
   }
 
-  // 2. Fetch seed sources metadata (DOIs and CorpusIds)
+  // 2. Fetch seed source identities (hydrated S2 id first, then DOI, then MAG numeric id)
   const seedSources = await db
     .select({
       id: sources.id,
       doi: sources.doi,
+      openalexId: sources.openalexId,
+      semanticScholarId: sources.semanticScholarId,
       title: sources.title,
     })
     .from(sources)
     .where(inArray(sources.id, activeSeedIds));
 
-  const positiveDois = seedSources
-    .map((s) => s.doi?.trim())
-    .filter((d): d is string => Boolean(d && d.length > 5));
+  const positiveIds: string[] = [];
+  for (const s of seedSources) {
+    const hydrated = s.semanticScholarId?.trim();
+    if (hydrated && hydrated.length > 4) {
+      positiveIds.push(hydrated);
+      continue;
+    }
+    const doi = s.doi?.trim();
+    if (doi && doi.length > 5) {
+      positiveIds.push(doi.startsWith("DOI:") ? doi : `DOI:${doi}`);
+      continue;
+    }
+    const numericId = s.openalexId
+      ? extractOpenAlexNumericId(s.openalexId)
+      : null;
+    if (numericId) {
+      positiveIds.push(`MAG:${numericId}`);
+    }
+  }
 
-  if (positiveDois.length === 0) {
-    logger?.info("lateral_expansion_skipped_no_seed_dois", {
+  if (positiveIds.length === 0) {
+    logger?.info("lateral_expansion_skipped_no_seed_ids", {
       service: "literature",
       hidden: true,
-      data: { boxId, reason: "no_usable_seed_dois" },
+      data: { boxId, reason: "no_usable_seed_ids" },
     });
     return [];
   }
@@ -124,7 +153,7 @@ export async function executeLateralExpansion(
 
   // 5. Query Semantic Scholar Recommendations API
   const s2Candidates = await fetchSemanticScholarRecommendations({
-    positiveIds: positiveDois,
+    positiveIds,
     negativeIds: negativeDois ?? [],
     limit: 50,
   });

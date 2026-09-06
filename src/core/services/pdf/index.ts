@@ -131,6 +131,7 @@ export async function parsePdfToDocumentAnalysis(
  * @param fileName - Original file name (used for logging).
  * @param r2Key - R2 object key of the PDF. Required for scanned PDF processing via Mistral OCR.
  * @param logger - Optional logger instance.
+ * @param options - Optional parser tuning (e.g. isPrimaryMaterial, page ranges).
  * @returns Chunks, parsed references, and extracted metadata.
  */
 export async function parsePdfToChunks(
@@ -138,12 +139,13 @@ export async function parsePdfToChunks(
   fileName: string,
   r2Key: string,
   logger?: Logger,
+  options: PdfParseOptions = {},
 ): Promise<PdfChunkParseResult> {
   const analysis = await parsePdfToDocumentAnalysis(
     pdfBuffer,
     fileName,
     r2Key,
-    {},
+    options,
     logger,
   );
 

@@ -39,8 +39,51 @@ export interface RagSourceContextOptions {
 }
 
 /**
- * Renders a unified Turkish RAG context block ("--- KAYNAK PARÇASI ---") for a
- * list of retrieved sources, deduplicating repeated paragraphs across blocks.
+ * Renders a single RAG source block, registering emitted paragraphs for dedup.
+ *
+ * @param source - The RAG retrieval result to render.
+ * @param displayIndex - 1-based global ordinal used in the "KAYNAK PARÇASI" tag.
+ * @param emittedParagraphs - Shared set of already-rendered paragraphs.
+ * @param includeRangeNote - Whether to append the audit in-range page note.
+ * @returns The rendered source block.
+ */
+function renderRagSourceBlock(
+  source: RagSearchResultItem,
+  displayIndex: number,
+  emittedParagraphs: Set<string>,
+  includeRangeNote: boolean,
+): string {
+  const authors = source.resourceAuthors.join(", ");
+  const year = source.resourceYear ? `Yıl: ${source.resourceYear}` : "Yıl bilinmiyor";
+  const pageRef = formatPageReference(source);
+  const rangeNote = includeRangeNote ? buildRangeNote(source) : "";
+  const sectionStr = source.sectionTitle ? ` | Bölüm: ${source.sectionTitle}` : "";
+  const partialTag = source.isPartialMatch ? " [DOLAYLI İLGİLİ]" : "";
+  const windowText =
+    source.parentContent && source.parentContent.length > 0
+      ? source.parentContent
+      : source.content;
+  const paragraphText = windowText
+    .split(/\n{2,}/)
+    .map((paragraph) => paragraph.trim())
+    .filter((paragraph) => paragraph.length > 0)
+    .filter((paragraph) => {
+      if (emittedParagraphs.has(paragraph)) return false;
+      emittedParagraphs.add(paragraph);
+      return true;
+    })
+    .join("\n\n");
+  const typeTag = source.isPrimaryMaterial
+    ? "TÜR: BİRİNCİL ARAŞTIRMA VERİSİ / AMPİRİK KANIT"
+    : "TÜR: AKADEMİK LİTERATÜR";
+  return `--- KAYNAK PARÇASI #${displayIndex}${partialTag} [${typeTag}] ---
+[${source.isPrimaryMaterial ? "Belge/Materyal" : "Eser"}: "${source.resourceTitle}" | ${source.isPrimaryMaterial ? "Orijin/Kaynak/Yazar" : "Yazar"}: ${authors} | ${year} | ${pageRef}${rangeNote}${sectionStr} | Alakalılık Skoru: ${(source.relevanceScore * 100).toFixed(1)}%]
+${paragraphText}`;
+}
+
+/**
+ * Renders bimodal Turkish RAG context grouped under two explicit headings:
+ * primary empirical material first, then academic/theoretical literature.
  *
  * @param sources - The RAG retrieval results to render.
  * @param options - Optional rendering controls.
@@ -59,38 +102,36 @@ export function formatRagSourceContext(
   }
 
   const emittedParagraphs = new Set<string>();
+  const includeRangeNote = options.includeRangeNote ?? false;
+  const primary = sources.filter((s) => s.isPrimaryMaterial);
+  const secondary = sources.filter((s) => !s.isPrimaryMaterial);
+  let displayIndex = 0;
+  const renderGroup = (group: RagSearchResultItem[]): string =>
+    group
+      .map((source) => {
+        displayIndex += 1;
+        return renderRagSourceBlock(
+          source,
+          displayIndex,
+          emittedParagraphs,
+          includeRangeNote,
+        );
+      })
+      .join("\n\n");
 
-  context += sources
-    .map((source, idx) => {
-      const authors = source.resourceAuthors.join(", ");
-      const year = source.resourceYear
-        ? `Yıl: ${source.resourceYear}`
-        : "Yıl bilinmiyor";
-      const pageRef = formatPageReference(source);
-      const rangeNote = options.includeRangeNote ? buildRangeNote(source) : "";
-      const sectionStr = source.sectionTitle
-        ? ` | Bölüm: ${source.sectionTitle}`
-        : "";
-      const partialTag = source.isPartialMatch ? " [DOLAYLI İLGİLİ]" : "";
-      const windowText =
-        source.parentContent && source.parentContent.length > 0
-          ? source.parentContent
-          : source.content;
-      const paragraphText = windowText
-        .split(/\n{2,}/)
-        .map((paragraph) => paragraph.trim())
-        .filter((paragraph) => paragraph.length > 0)
-        .filter((paragraph) => {
-          if (emittedParagraphs.has(paragraph)) return false;
-          emittedParagraphs.add(paragraph);
-          return true;
-        })
-        .join("\n\n");
-      return `--- KAYNAK PARÇASI #${idx + 1}${partialTag} ---
-[Eser: "${source.resourceTitle}" | Yazar: ${authors} | ${year} | ${pageRef}${rangeNote}${sectionStr} | Alakalılık Skoru: ${(source.relevanceScore * 100).toFixed(1)}%]
-${paragraphText}`;
-    })
-    .join("\n\n");
+  const sections: string[] = [];
+  if (primary.length > 0) {
+    sections.push(
+      `### BİRİNCİL ARAŞTIRMA VERİLERİ (SAHA / ARŞİV KORPUSU / AMPİRİK KANITLAR):\n${renderGroup(primary)}`,
+    );
+  }
+  if (secondary.length > 0) {
+    sections.push(
+      `### AKADEMİK LİTERATÜR VE KURAMSAL ÇERÇEVE:\n${renderGroup(secondary)}`,
+    );
+  }
+
+  context += sections.join("\n\n");
 
   return context;
 }
