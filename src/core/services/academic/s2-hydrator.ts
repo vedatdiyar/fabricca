@@ -2,15 +2,29 @@ import { eq, inArray } from "drizzle-orm";
 import { db } from "@/core/db";
 import { sources } from "@/core/db/schema";
 import { createRateLimiter } from "@/lib/rate-limiter";
-import { SEMANTIC_SCHOLAR_LIMITS } from "@/core/config/rate-limits";
-import { SEMANTIC_SCHOLAR_GRAPH_BASE_URL } from "@/core/config/endpoints";
+import {
+  SEMANTIC_SCHOLAR_LIMITS,
+  OPENALEX_REGULAR_LIMITS,
+} from "@/core/config/rate-limits";
+import {
+  SEMANTIC_SCHOLAR_GRAPH_BASE_URL,
+  OPENALEX_BASE_URL,
+} from "@/core/config/endpoints";
+import { OPENALEX_USER_AGENT } from "@/lib/api-utils";
 import { Logger } from "@/lib/logger";
+import { extractCleanDoi, extractOpenAlexId } from "@/lib/academic/utils";
+import { calculateTitleSimilarity } from "./crossref-enrichment";
 
 /**
  * Turnstile queue for Semantic Scholar Graph API identity resolution.
  * Reuses the recommendations 1 req / 1.1s budget to prevent 429 responses.
  */
 const s2HydratorQueue = createRateLimiter(SEMANTIC_SCHOLAR_LIMITS);
+
+/**
+ * Queue for OpenAlex regular identity resolution calls (allows up to 100 req/s).
+ */
+const openAlexHydratorQueue = createRateLimiter(OPENALEX_REGULAR_LIMITS);
 
 const PAPER_ID_PATTERN = /^[0-9a-f]{40}$/i;
 const OPENALEX_NUMERIC_PATTERN = /W(\d+)\s*$/i;
@@ -134,19 +148,151 @@ async function resolvePaperId(seed: {
   return null;
 }
 
+interface ResolvedOpenAlex {
+  openalexId: string | null;
+  doi?: string | null;
+}
+
 /**
- * Backfills missing Semantic Scholar paper ids for the given sources without blocking the caller.
+ * Resolves an OpenAlex Work ID using:
+ * 1. Direct DOI lookup (/works/https://doi.org/{doi})
+ * 2. Title + Author search (/works?filter=title.search:{title},raw_author_name.search:{author})
+ * 3. Title-only fallback search (/works?filter=title.search:{title})
+ *
+ * Validates candidate title similarity (>= 0.70) to prevent false positives.
+ *
+ * @param seed - Seed metadata with doi, title, and authors.
+ * @returns Resolved OpenAlex ID and optional canonical DOI.
+ */
+async function resolveOpenAlexId(seed: {
+  doi: string | null;
+  title: string;
+  authors: string[] | null;
+}): Promise<ResolvedOpenAlex> {
+  const apiKey = process.env.OPENALEX_API_KEY?.trim();
+  const headers: Record<string, string> = {
+    "User-Agent": OPENALEX_USER_AGENT,
+  };
+
+  // 1. Direct DOI lookup
+  const cleanDoi = extractCleanDoi(seed.doi);
+  if (cleanDoi) {
+    try {
+      const url = new URL(
+        `${OPENALEX_BASE_URL}/works/https://doi.org/${encodeURIComponent(cleanDoi)}`,
+      );
+      url.searchParams.set("select", "id,doi,title");
+      if (apiKey) url.searchParams.set("api_key", apiKey);
+
+      const response = await openAlexHydratorQueue.exec(async () =>
+        fetch(url.toString(), {
+          headers,
+          signal: AbortSignal.timeout(10000),
+        }),
+      );
+
+      if (response.ok) {
+        const data = (await response.json()) as { id?: string; doi?: string };
+        const id = extractOpenAlexId(data.id);
+        if (id) {
+          return {
+            openalexId: id,
+            doi: extractCleanDoi(data.doi) || cleanDoi,
+          };
+        }
+      }
+    } catch {
+      // Fallback to title search
+    }
+  }
+
+  // 2. Title + Author search
+  const cleanTitle = seed.title.trim();
+  if (cleanTitle.length >= 5) {
+    const sanitizedTitle = cleanTitle
+      .replace(/[,|:]/g, " ")
+      .replace(/\s+/g, " ")
+      .trim();
+
+    const firstAuthor = seed.authors?.[0]?.trim();
+    let authorLastName = "";
+    if (firstAuthor) {
+      const nameParts = firstAuthor.split(/\s+/).filter(Boolean);
+      const rawLast = nameParts[nameParts.length - 1] || firstAuthor;
+      authorLastName = rawLast.replace(/[,|:]/g, " ").trim();
+    }
+
+    const filterAttempts: string[] = [];
+    if (authorLastName && authorLastName.length >= 2) {
+      filterAttempts.push(
+        `title.search:${sanitizedTitle},raw_author_name.search:${authorLastName}`,
+      );
+    }
+    filterAttempts.push(`title.search:${sanitizedTitle}`);
+
+    for (const filterQuery of filterAttempts) {
+      try {
+        const params = new URLSearchParams({
+          filter: filterQuery,
+          per_page: "3",
+          select: "id,title,authorships,doi",
+        });
+        if (apiKey) params.set("api_key", apiKey);
+
+        const url = `${OPENALEX_BASE_URL}/works?${params.toString().replace(/\+/g, "%20")}`;
+        const response = await openAlexHydratorQueue.exec(async () =>
+          fetch(url, {
+            headers,
+            signal: AbortSignal.timeout(10000),
+          }),
+        );
+
+        if (response.ok) {
+          const data = (await response.json()) as {
+            results?: Array<{ id?: string; title?: string; doi?: string }>;
+          };
+          const candidates = data.results ?? [];
+
+          for (const candidate of candidates) {
+            if (!candidate.title) continue;
+            const similarity = calculateTitleSimilarity(
+              cleanTitle,
+              candidate.title,
+            );
+            if (similarity >= 0.70) {
+              const id = extractOpenAlexId(candidate.id);
+              if (id) {
+                return {
+                  openalexId: id,
+                  doi: extractCleanDoi(candidate.doi) || cleanDoi,
+                };
+              }
+            }
+          }
+        }
+      } catch {
+        continue;
+      }
+    }
+  }
+
+  return { openalexId: null };
+}
+
+/**
+ * Backfills missing Semantic Scholar and OpenAlex identifiers for the given sources without blocking the caller.
+ * Runs in background (fire-and-forget) to ensure immediate responsiveness for the user.
  *
  * @param sourceIds - Source row ids to hydrate.
  * @returns Resolves when all candidates are processed.
  */
-export async function hydrateSemanticScholarIds(
+export async function hydrateSourceAcademicIdentifiers(
   sourceIds: number[],
 ): Promise<void> {
   const uniqueIds = [...new Set(sourceIds.filter((id) => id > 0))];
   if (uniqueIds.length === 0) return;
 
-  const log = new Logger("s2-hydrator");
+  const log = new Logger("academic-hydrator");
   const startedAt = performance.now();
 
   try {
@@ -162,35 +308,89 @@ export async function hydrateSemanticScholarIds(
       .from(sources)
       .where(inArray(sources.id, uniqueIds));
 
-    let hydrated = 0;
+    let hydratedS2 = 0;
+    let hydratedOpenAlex = 0;
+
     for (const row of rows) {
-      if (row.semanticScholarId?.trim()) continue;
-      const paperId = await resolvePaperId({
-        doi: row.doi,
-        openalexId: row.openalexId,
-        title: row.title,
-        authors: row.authors,
-      });
-      if (!paperId) continue;
-      await db
-        .update(sources)
-        .set({ semanticScholarId: paperId })
-        .where(eq(sources.id, row.id));
-      hydrated += 1;
+      let currentDoi = row.doi;
+      let currentOpenalexId = row.openalexId;
+      let currentS2Id = row.semanticScholarId;
+
+      let needsUpdate = false;
+      const updatePayload: {
+        openalexId?: string;
+        semanticScholarId?: string;
+        doi?: string;
+        updatedAt?: Date;
+      } = {};
+
+      // 1. Resolve OpenAlex ID if missing
+      if (!currentOpenalexId?.trim()) {
+        const resolvedOpenAlex = await resolveOpenAlexId({
+          doi: currentDoi,
+          title: row.title,
+          authors: row.authors,
+        });
+
+        if (resolvedOpenAlex.openalexId) {
+          currentOpenalexId = resolvedOpenAlex.openalexId;
+          updatePayload.openalexId = currentOpenalexId;
+          needsUpdate = true;
+          hydratedOpenAlex += 1;
+        }
+
+        if (resolvedOpenAlex.doi && !currentDoi?.trim()) {
+          currentDoi = resolvedOpenAlex.doi;
+          updatePayload.doi = currentDoi;
+          needsUpdate = true;
+        }
+      }
+
+      // 2. Resolve Semantic Scholar ID if missing
+      if (!currentS2Id?.trim()) {
+        const paperId = await resolvePaperId({
+          doi: currentDoi,
+          openalexId: currentOpenalexId,
+          title: row.title,
+          authors: row.authors,
+        });
+
+        if (paperId) {
+          currentS2Id = paperId;
+          updatePayload.semanticScholarId = currentS2Id;
+          needsUpdate = true;
+          hydratedS2 += 1;
+        }
+      }
+
+      // 3. Persist back to database
+      if (needsUpdate) {
+        updatePayload.updatedAt = new Date();
+        await db
+          .update(sources)
+          .set(updatePayload)
+          .where(eq(sources.id, row.id));
+      }
     }
 
-    log.info("s2_hydration_success", {
+    log.info("academic_identifiers_hydration_success", {
       service: "literature",
       data: {
         requested: uniqueIds.length,
-        hydrated,
+        hydratedS2,
+        hydratedOpenAlex,
         durationMs: Math.round(performance.now() - startedAt),
       },
     });
   } catch (err) {
-    log.error("s2_hydration_failed", {
+    log.error("academic_identifiers_hydration_failed", {
       service: "literature",
       error: err,
     });
   }
 }
+
+/**
+ * Backward-compatible alias for hydrateSourceAcademicIdentifiers.
+ */
+export const hydrateSemanticScholarIds = hydrateSourceAcademicIdentifiers;

@@ -38,7 +38,7 @@ export const synthesizedMatrixSchema = z.object({
     .string()
     .min(100)
     .describe(
-      "Metodoloji ve Araştırma Deseni: Yöntemsel yaklaşımı, veriyi analiz etmede kullanılan kavramsal/yöntemsel araçları, analitik soruları, analiz aşamalarını/momentlerini ve karşılaştırma desenini açıklayan metodoloji paragrafı.",
+      "Metodoloji ve Araştırma Deseni: Yöntemsel yaklaşımı, veriyi analiz etmede kullanılan kavramsal/yöntemsel araçları, analitik soruları, analiz aşamalarını/dönemlerini ve karşılaştırma desenini açıklayan metodoloji paragrafı.",
     ),
 });
 
@@ -63,7 +63,7 @@ export const synthesizedMatrixJsonSchema: JsonSchema = {
     methodology: {
       type: "string",
       description:
-        "Metodoloji ve Araştırma Deseni: Yöntemsel yaklaşımı, veriyi analiz etmede kullanılan kavramsal/yöntemsel araçları, analitik soruları, analiz aşamalarını/momentlerini ve karşılaştırma desenini açıklayan metodoloji paragrafı.",
+        "Metodoloji ve Araştırma Deseni: Yöntemsel yaklaşımı, veriyi analiz etmede kullanılan kavramsal/yöntemsel araçları, analitik soruları, analiz aşamalarını/dönemlerini ve karşılaştırma desenini açıklayan metodoloji paragrafı.",
     },
   },
   required: [
@@ -101,7 +101,7 @@ Aşağıdaki 4 kurala KESİNLİKLE ve TAVİZSİZ uymalısın:
 4. [methodology - Metodoloji ve Araştırma Deseni]:
 - Tezin benimsediği yöntemsel yaklaşımı (niteliksel, niceliksel veya karma desen) ve kuramsal kavramları veriye uygulayan yöntemsel araçları/düşünürleri belirt.
 - Veriye veya metinlere yöneltilen analitik soruları, inceleme şemasını, kodlama veya analiz parametrelerini açıkça yaz.
-- Varsa araştırmanın dönemsel/tarihsel momentlerini, analiz aşamalarını veya kaynak/aktör grupları arasındaki karşılaştırmalı deseni dahil et.
+- Varsa araştırmanın dönemsel/tarihsel dilimlerini, analiz aşamalarını veya kaynak/aktör grupları arasındaki karşılaştırmalı deseni dahil et.
 
 # Dil, Üslup ve Kalite Standartları:
 - Duru, doğal, yetkin ve yaşayan bir akademik Türkçe kullan.

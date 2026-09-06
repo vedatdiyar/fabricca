@@ -104,7 +104,7 @@ function buildSectionJsonSchemaProperty(): JsonSchemaProperty {
           additionalProperties: false,
         },
         description:
-          "Alt bölümler. Giriş ve gövde bölümleri altında konuyu yapılandıran alt bölümler yer alır.",
+          "Alt bölümler. Giriş en fazla 3 alt bölüm içerir; ampirik bölüm karşılaştırma ve kuramsal değerlendirme ile kapanır.",
       },
     },
     required: ["title", "description", "sortOrder", "subSections"],

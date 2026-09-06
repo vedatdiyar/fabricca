@@ -12,6 +12,7 @@ import {
   getOwnedSource,
 } from "@/core/services/box/ownership";
 import { mapSourceToResource } from "@/app/(app)/library/_services/resource-mapper";
+import { hydrateSemanticScholarIds } from "@/core/services/academic/s2-hydrator";
 
 /**
  * Server Action: Sets (or toggles) the read status of a library resource.
@@ -198,6 +199,9 @@ export async function updateLibraryResourceAction(input: {
       service: "library",
       data: { resourceId: updated.id, title: updated.title },
     });
+
+    // Fire-and-forget: re-hydrate academic IDs in case title/author/doi was updated
+    void hydrateSemanticScholarIds([updated.id]).catch(() => {});
 
     return {
       success: true,
