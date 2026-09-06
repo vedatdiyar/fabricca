@@ -67,6 +67,8 @@ export interface JuryArticle {
   title: string;
   authors: string[];
   publisher: string | null;
+  containerTitle?: string | null;
+  documentType?: string | null;
   thesisType?: string | null;
   publicationYear: number | null;
   doi: string | null;

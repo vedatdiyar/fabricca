@@ -18,6 +18,8 @@ export async function fetchPreloadedPool(
       boxTitle: boxes.title,
       boxType: boxes.boxType,
       title: sources.title,
+      containerTitle: sources.containerTitle,
+      documentType: sources.documentType,
       openalexId: sources.openalexId,
       doi: sources.doi,
       publisher: sources.publisher,
@@ -37,6 +39,8 @@ export async function fetchPreloadedPool(
     const list = existing?.articles ?? [];
     list.push({
       title: row.title,
+      containerTitle: row.containerTitle,
+      documentType: row.documentType,
       comparisonNote: null,
       openalexId: row.openalexId ?? null,
       doi: row.doi,

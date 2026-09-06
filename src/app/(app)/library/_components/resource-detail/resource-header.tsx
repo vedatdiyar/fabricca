@@ -69,25 +69,21 @@ function getDocumentTypeConfig(docType?: string) {
 }
 
 /**
- * Determines the primary academic source venue (Journal name, Parent Book, or Publishing House).
+ * Cleans publisher string from common platform prefixes.
  */
-function getPrimarySourceVenue(resource: LibraryResourceItem): string | null {
-  if (resource.containerTitle && resource.containerTitle.trim()) {
-    return resource.containerTitle.trim();
-  }
-
+function getCleanedPublisher(publisher?: string | null): string | null {
   if (
-    resource.publisher &&
-    resource.publisher.trim() &&
-    resource.publisher !== "Belirtilmemiş"
+    !publisher ||
+    !publisher.trim() ||
+    publisher === "Belirtilmemiş"
   ) {
-    let pub = resource.publisher.trim();
-    if (pub.includes("Informa UK")) pub = "Taylor & Francis / Routledge";
-    if (pub.includes("(CUP)")) pub = "Cambridge University Press";
-    return pub;
+    return null;
   }
 
-  return null;
+  let pub = publisher.trim();
+  if (pub.includes("Informa UK")) pub = "Taylor & Francis / Routledge";
+  if (pub.includes("(CUP)")) pub = "Cambridge University Press";
+  return pub;
 }
 
 /**
@@ -108,7 +104,17 @@ export function ResourceHeader({
 }: ResourceHeaderProps) {
   const boxBadge = getBoxTypeBadgeConfig(resource.boxType);
   const docTypeConfig = getDocumentTypeConfig(resource.documentType);
-  const sourceVenue = getPrimarySourceVenue(resource);
+  const cleanedPublisher = getCleanedPublisher(resource.publisher);
+  const containerTitle = resource.containerTitle?.trim() || null;
+  const isBookChapter = resource.documentType?.toLowerCase().includes("chapter");
+  const isJournalArticle =
+    resource.documentType?.toLowerCase().includes("article") ||
+    resource.documentType?.toLowerCase().includes("journal");
+  const containerLabel = isBookChapter
+    ? "Kitap:"
+    : isJournalArticle
+      ? "Dergi:"
+      : "Üst Eser:";
 
   return (
     <div className="space-y-2.5 border-b border-border/40 pb-3.5">
@@ -241,7 +247,25 @@ export function ResourceHeader({
           </div>
         )}
 
-        {sourceVenue && (
+        {/* 1. Üst Eser (Kitap veya Dergi) */}
+        {containerTitle && (
+          <>
+            <span className="text-muted-foreground font-bold select-none">
+              •
+            </span>
+            <div className="flex items-center gap-1">
+              <span className="font-medium text-foreground">
+                {containerLabel}
+              </span>
+              <span className="text-foreground italic">
+                {containerTitle}
+              </span>
+            </div>
+          </>
+        )}
+
+        {/* 2. Yayıncı (Yayınevi) */}
+        {cleanedPublisher && (
           <>
             <span className="text-muted-foreground font-bold select-none">
               •
@@ -249,7 +273,7 @@ export function ResourceHeader({
             <div className="flex items-center gap-1">
               <span className="font-medium text-foreground">Yayıncı:</span>
               <span className="text-foreground">
-                {sourceVenue}
+                {cleanedPublisher}
                 {resource.publicationYear
                   ? ` (${resource.publicationYear})`
                   : ""}
@@ -258,7 +282,8 @@ export function ResourceHeader({
           </>
         )}
 
-        {!sourceVenue && resource.publicationYear && (
+        {/* 3. Yayıncı yoksa sadece Yıl */}
+        {!cleanedPublisher && resource.publicationYear && (
           <>
             <span className="text-muted-foreground font-bold select-none">
               •

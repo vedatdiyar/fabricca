@@ -74,25 +74,56 @@ export function LiteratureArticleCard({ article }: LiteratureArticleCardProps) {
   const hasMetadata = Boolean(authorDisplay);
   const displayTitle = cleanDisplayTitle(article.title);
   const institutionDisplay = cleanInstitutionName(article.publisher);
+  const containerTitle = article.containerTitle?.trim();
+  const isBookChapter =
+    article.documentType?.toLowerCase().includes("chapter") ||
+    article.thesisType?.toLowerCase().includes("chapter") ||
+    Boolean(
+      containerTitle &&
+        article.publisher &&
+        containerTitle !== article.publisher,
+    );
 
   return (
-    <Card className="p-4 space-y-2 rounded-md border-border/60 hover:border-primary/30 transition-all bg-card/60">
-      <div className="flex items-start justify-between gap-2.5">
+    <Card className="flex flex-col justify-between p-4 rounded-md border-border/60 hover:border-primary/30 transition-all bg-card/60 gap-2.5 min-h-[96px]">
+      <div className="space-y-1 min-w-0">
         <h4
-          className="font-serif text-sm font-semibold leading-snug break-words hyphens-auto min-w-0 tracking-tight text-foreground"
+          className="font-serif text-sm font-semibold leading-snug break-words hyphens-auto min-w-0 tracking-tight text-foreground line-clamp-2"
           title={article.title}
         >
           {displayTitle}
         </h4>
+
+        {isBookChapter && containerTitle && (
+          <p
+            className="font-sans text-xs text-muted-foreground truncate"
+            title={`içinde: ${containerTitle}`}
+          >
+            <span className="text-foreground/70 italic font-serif">içinde:</span>{" "}
+            <span className="italic font-medium text-foreground/90">
+              {containerTitle}
+            </span>
+          </p>
+        )}
       </div>
+
       {hasMetadata && (
-        <div className="font-sans text-xs text-muted-foreground leading-relaxed truncate">
-          <span>{authorDisplay}</span>
+        <div className="flex items-center justify-between text-xs text-muted-foreground pt-2 border-t border-border/40 gap-2">
+          <span
+            className="truncate font-normal text-muted-foreground"
+            title={authorDisplay}
+          >
+            {authorDisplay}
+          </span>
           {institutionDisplay &&
-            article.authors &&
-            article.authors.length > 0 &&
-            institutionDisplay !== authorDisplay && (
-              <span> · {institutionDisplay}</span>
+            institutionDisplay !== authorDisplay &&
+            institutionDisplay !== containerTitle && (
+              <span
+                className="truncate text-foreground/80 shrink-0 text-[11px] font-medium max-w-[45%]"
+                title={institutionDisplay}
+              >
+                {institutionDisplay}
+              </span>
             )}
         </div>
       )}
