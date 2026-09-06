@@ -1,10 +1,7 @@
 import type { Logger } from "@/lib/logger";
 import type { ThesisDetails } from "@/lib/types";
 import { getQdrantClient } from "./qdrant-client";
-import {
-  getE5QueryEmbedding,
-  HfDeprecatedEndpointError,
-} from "./hf-embedding";
+import { getE5QueryEmbedding, HfDeprecatedEndpointError } from "./hf-embedding";
 import { mapPayloadToDetails } from "./thesis-mapper";
 
 export { getE5QueryEmbedding };
@@ -72,8 +69,14 @@ export async function searchTheses(
   const client = getQdrantClient();
 
   try {
-    if (externalSignal?.aborted) throw new DOMException("Aborted", "AbortError");
-    const embedding = await getE5QueryEmbedding(query, logger, silent, externalSignal);
+    if (externalSignal?.aborted)
+      throw new DOMException("Aborted", "AbortError");
+    const embedding = await getE5QueryEmbedding(
+      query,
+      logger,
+      silent,
+      externalSignal,
+    );
     const queryStart = performance.now();
     const effectiveThreshold = resolveThesisThreshold(
       query,

@@ -32,7 +32,10 @@ function getRpdForModel(model: string): number {
     const quota = GEMINI_MODEL_QUOTAS[model];
     return quota?.rpd ?? Infinity;
   } catch (err) {
-    console.warn(`[scheduler-state] getRpdForModel failed for ${model}, fail-open:`, err);
+    console.warn(
+      `[scheduler-state] getRpdForModel failed for ${model}, fail-open:`,
+      err,
+    );
     return Infinity;
   }
 }
@@ -81,7 +84,10 @@ export function isKeyRpdExhausted(model: string, apiKey: string): boolean {
       }
     }
   } catch (err) {
-    console.warn(`[scheduler-state] isKeyRpdExhausted proactive check failed for ${model}, fail-open:`, err);
+    console.warn(
+      `[scheduler-state] isKeyRpdExhausted proactive check failed for ${model}, fail-open:`,
+      err,
+    );
   }
   return false;
 }
@@ -94,14 +100,22 @@ export function markKeyRpdExhausted(model: string, apiKey: string): void {
   try {
     const rpd = getRpdForModel(model);
     if (Number.isFinite(rpd)) {
-      dailyKeyCounts.set(cacheKey, { dateKey: getPacificDateKey(), count: rpd });
+      dailyKeyCounts.set(cacheKey, {
+        dateKey: getPacificDateKey(),
+        count: rpd,
+      });
       // Mirror saturation to Redis+memory for other instances (fire-and-forget, single SET with TTL)
       void import("@/lib/redis-quota")
-        .then((m) => m.saturateDailyCountAsync(`${model}::${apiKey}`, rpd).catch(() => {}))
+        .then((m) =>
+          m.saturateDailyCountAsync(`${model}::${apiKey}`, rpd).catch(() => {}),
+        )
         .catch(() => {});
     }
   } catch (err) {
-    console.warn(`[scheduler-state] markKeyRpdExhausted proactive saturation failed for ${model}, fail-open:`, err);
+    console.warn(
+      `[scheduler-state] markKeyRpdExhausted proactive saturation failed for ${model}, fail-open:`,
+      err,
+    );
   }
 }
 
@@ -116,7 +130,10 @@ export function getDailyCountForKey(model: string, apiKey: string): number {
     if (!entry || entry.dateKey !== today) return 0;
     return entry.count;
   } catch (err) {
-    console.warn(`[scheduler-state] getDailyCountForKey failed for ${model}, fail-open:`, err);
+    console.warn(
+      `[scheduler-state] getDailyCountForKey failed for ${model}, fail-open:`,
+      err,
+    );
     return 0;
   }
 }
@@ -141,7 +158,10 @@ export function incrementDailyForKey(model: string, apiKey: string): number {
       .catch(() => {});
     return newCount;
   } catch (err) {
-    console.warn(`[scheduler-state] incrementDailyForKey failed for ${model}, fail-open:`, err);
+    console.warn(
+      `[scheduler-state] incrementDailyForKey failed for ${model}, fail-open:`,
+      err,
+    );
     return 0;
   }
 }
@@ -159,7 +179,10 @@ export function hasDailyCapacityForKey(model: string, apiKey: string): boolean {
     if (!Number.isFinite(rpd)) return true;
     return getDailyCountForKey(model, apiKey) < rpd;
   } catch (err) {
-    console.warn(`[scheduler-state] hasDailyCapacityForKey failed for ${model}, fail-open:`, err);
+    console.warn(
+      `[scheduler-state] hasDailyCapacityForKey failed for ${model}, fail-open:`,
+      err,
+    );
     return true;
   }
 }
@@ -173,13 +196,19 @@ export function hasDailyCapacityForModel(model: string): boolean {
     }
     return false;
   } catch (err) {
-    console.warn(`[scheduler-state] hasDailyCapacityForModel failed for ${model}, fail-open:`, err);
+    console.warn(
+      `[scheduler-state] hasDailyCapacityForModel failed for ${model}, fail-open:`,
+      err,
+    );
     return true;
   }
 }
 
 /** Async Redis-aware daily capacity check for a model::key (distributed). Fail-open. */
-export async function hasDailyCapacityForKeyAsync(model: string, apiKey: string): Promise<boolean> {
+export async function hasDailyCapacityForKeyAsync(
+  model: string,
+  apiKey: string,
+): Promise<boolean> {
   try {
     if (isKeyRpdExhausted(model, apiKey)) return false;
     const rpd = getRpdForModel(model);
@@ -193,7 +222,10 @@ export async function hasDailyCapacityForKeyAsync(model: string, apiKey: string)
     } catch {}
     return count < rpd;
   } catch (err) {
-    console.warn(`[scheduler-state] hasDailyCapacityForKeyAsync failed for ${model}, fail-open:`, err);
+    console.warn(
+      `[scheduler-state] hasDailyCapacityForKeyAsync failed for ${model}, fail-open:`,
+      err,
+    );
     return true;
   }
 }

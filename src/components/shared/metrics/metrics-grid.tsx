@@ -9,7 +9,10 @@ export interface MetricsGridProps {
   variant?: "default" | "outline-tight";
 }
 
-const variantClasses: Record<NonNullable<MetricsGridProps["variant"]>, string> = {
+const variantClasses: Record<
+  NonNullable<MetricsGridProps["variant"]>,
+  string
+> = {
   default: "grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4",
   // xl breakpoint used by outline-metrics-strip
   "outline-tight": "grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4",
@@ -28,5 +31,7 @@ export function MetricsGrid({
   className,
   variant = "default",
 }: MetricsGridProps) {
-  return <div className={cn(variantClasses[variant], className)}>{children}</div>;
+  return (
+    <div className={cn(variantClasses[variant], className)}>{children}</div>
+  );
 }

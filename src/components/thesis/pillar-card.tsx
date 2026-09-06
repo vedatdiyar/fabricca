@@ -63,7 +63,12 @@ export function PillarCard({
         )}
       >
         {/* Left: icon + badge + title stack */}
-        <div className={cn("flex items-start gap-3 min-w-0 flex-1", variant === "muted" && "flex-col w-full gap-0")}>
+        <div
+          className={cn(
+            "flex items-start gap-3 min-w-0 flex-1",
+            variant === "muted" && "flex-col w-full gap-0",
+          )}
+        >
           {variant === "muted" ? (
             <>
               <div className="flex items-center justify-between gap-2 w-full">
@@ -77,7 +82,9 @@ export function PillarCard({
                   {badgeLabel}
                 </Badge>
                 {headerActions ? (
-                  <div className="flex items-center gap-1 shrink-0">{headerActions}</div>
+                  <div className="flex items-center gap-1 shrink-0">
+                    {headerActions}
+                  </div>
                 ) : null}
               </div>
               <h2 className="font-serif text-base font-semibold tracking-tight text-foreground leading-snug mt-1.5">
@@ -95,7 +102,8 @@ export function PillarCard({
                 <div
                   className={cn(
                     "flex h-8 w-8 shrink-0 items-center justify-center rounded-md border",
-                    iconWrapperClassName ?? "bg-primary/10 text-primary border-primary/20",
+                    iconWrapperClassName ??
+                      "bg-primary/10 text-primary border-primary/20",
                   )}
                 >
                   <Icon className={iconClassName} />
@@ -105,18 +113,28 @@ export function PillarCard({
                 <div className="flex items-center gap-2">
                   <Badge
                     variant="outline"
-                    className={cn("border", badgeClassName ?? "bg-secondary text-secondary-foreground border-border")}
+                    className={cn(
+                      "border",
+                      badgeClassName ??
+                        "bg-secondary text-secondary-foreground border-border",
+                    )}
                   >
                     {badgeLabel}
                   </Badge>
                 </div>
-                <h3 className="font-serif text-base font-semibold tracking-tight text-foreground">{title}</h3>
+                <h3 className="font-serif text-base font-semibold tracking-tight text-foreground">
+                  {title}
+                </h3>
                 {description ? (
-                  <p className="font-sans text-xs text-muted-foreground">{description}</p>
+                  <p className="font-sans text-xs text-muted-foreground">
+                    {description}
+                  </p>
                 ) : null}
               </div>
               {headerActions ? (
-                <div className="flex items-center gap-1 shrink-0">{headerActions}</div>
+                <div className="flex items-center gap-1 shrink-0">
+                  {headerActions}
+                </div>
               ) : null}
             </>
           )}
@@ -126,7 +144,11 @@ export function PillarCard({
       </div>
 
       {/* Body */}
-      <div className={cn("flex flex-1 flex-col p-4 sm:p-5 pt-4", contentClassName)}>{children}</div>
+      <div
+        className={cn("flex flex-1 flex-col p-4 sm:p-5 pt-4", contentClassName)}
+      >
+        {children}
+      </div>
 
       {/* Footer */}
       {footer ? (

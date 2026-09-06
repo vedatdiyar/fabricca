@@ -44,7 +44,9 @@ function getPacificMidnightResetISOFallback(): string {
     if (nextM === 3) return nextD >= secondSundayMarch;
     return nextD < firstSundayNov;
   })();
-  return new Date(Date.UTC(nextY, nextM - 1, nextD, isPDT ? 7 : 8, 0, 0)).toISOString();
+  return new Date(
+    Date.UTC(nextY, nextM - 1, nextD, isPDT ? 7 : 8, 0, 0),
+  ).toISOString();
 }
 
 const UNEXPECTED_MESSAGE =
@@ -76,12 +78,18 @@ export function handleActionError(
     const resetsAt = getPacificMidnightResetISOFallback();
     const label = (error as { label?: string }).label ?? "unknown";
     log.warn("action_daily_quota_exceeded", {
-      data: { code: "AI_PROVIDER_ERROR", label, resetsAt, quotaType: "RPD" as const },
+      data: {
+        code: "AI_PROVIDER_ERROR",
+        label,
+        resetsAt,
+        quotaType: "RPD" as const,
+      },
       error,
     });
     return {
       success: false,
-      error: "Yapay zeka hizmetinin günlük kullanım kotası doldu. Kota Pasifik saatiyle gece yarısı sıfırlanacak. Lütfen yarın tekrar deneyin.",
+      error:
+        "Yapay zeka hizmetinin günlük kullanım kotası doldu. Kota Pasifik saatiyle gece yarısı sıfırlanacak. Lütfen yarın tekrar deneyin.",
       code: "AI_PROVIDER_ERROR",
       quotaType: "RPD",
       resetsAt,
@@ -110,7 +118,9 @@ export function handleActionError(
       error: error.userMessage,
       code: error.code,
       ...(error.quotaType ? { quotaType: error.quotaType } : {}),
-      ...(error.retryAfterMs !== undefined ? { retryAfterMs: error.retryAfterMs } : {}),
+      ...(error.retryAfterMs !== undefined
+        ? { retryAfterMs: error.retryAfterMs }
+        : {}),
       ...(error.resetsAt ? { resetsAt: error.resetsAt } : {}),
       ...(error.meta ? { meta: error.meta } : {}),
     };

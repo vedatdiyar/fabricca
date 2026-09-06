@@ -5,8 +5,7 @@ import { Search } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 
-export interface SearchInputProps
-  extends React.InputHTMLAttributes<HTMLInputElement> {
+export interface SearchInputProps extends React.InputHTMLAttributes<HTMLInputElement> {
   wrapperClassName?: string;
   iconClassName?: string;
   rightElement?: React.ReactNode;
@@ -21,7 +20,10 @@ export interface SearchInputProps
  * @returns Search input markup.
  */
 export const SearchInput = React.forwardRef<HTMLInputElement, SearchInputProps>(
-  ({ className, wrapperClassName, iconClassName, rightElement, ...props }, ref) => {
+  (
+    { className, wrapperClassName, iconClassName, rightElement, ...props },
+    ref,
+  ) => {
     return (
       <div className={cn("relative", wrapperClassName)}>
         <Search

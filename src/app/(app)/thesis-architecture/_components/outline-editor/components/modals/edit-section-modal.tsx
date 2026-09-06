@@ -64,49 +64,49 @@ export function EditSectionModal({
       showSeparator={false}
       footerLayout="end"
     >
-          {/* Title */}
-          <div className="space-y-1.5">
-            <label className="font-sans text-xs font-medium text-foreground">
-              Bölüm Başlığı <span className="text-destructive">*</span>
-            </label>
-            <Input
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              className="text-xs"
-            />
-          </div>
+      {/* Title */}
+      <div className="space-y-1.5">
+        <label className="font-sans text-xs font-medium text-foreground">
+          Bölüm Başlığı <span className="text-destructive">*</span>
+        </label>
+        <Input
+          value={title}
+          onChange={(e) => setTitle(e.target.value)}
+          className="text-xs"
+        />
+      </div>
 
-          {/* Sort Order */}
-          <div className="space-y-1.5">
-            <label className="font-sans text-xs font-medium text-foreground">
-              Sıralama İndeksi
-            </label>
-            <Input
-              type="number"
-              value={sortOrder}
-              onChange={(e) => setSortOrder(Number(e.target.value))}
-              className="text-xs font-mono"
-            />
-          </div>
+      {/* Sort Order */}
+      <div className="space-y-1.5">
+        <label className="font-sans text-xs font-medium text-foreground">
+          Sıralama İndeksi
+        </label>
+        <Input
+          type="number"
+          value={sortOrder}
+          onChange={(e) => setSortOrder(Number(e.target.value))}
+          className="text-xs font-mono"
+        />
+      </div>
 
-          {/* Description / Scope */}
-          <div className="space-y-1.5">
-            <label className="font-sans text-xs font-medium text-foreground">
-              Yazım Kapsamı & Tartışma Odağı
-            </label>
-            <Textarea
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              onKeyDown={(e) => {
-                if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {
-                  e.preventDefault();
-                  handleSubmit();
-                }
-              }}
-              rows={5}
-              className="w-full text-xs"
-            />
-          </div>
+      {/* Description / Scope */}
+      <div className="space-y-1.5">
+        <label className="font-sans text-xs font-medium text-foreground">
+          Yazım Kapsamı & Tartışma Odağı
+        </label>
+        <Textarea
+          value={description}
+          onChange={(e) => setDescription(e.target.value)}
+          onKeyDown={(e) => {
+            if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {
+              e.preventDefault();
+              handleSubmit();
+            }
+          }}
+          rows={5}
+          className="w-full text-xs"
+        />
+      </div>
     </FormDialog>
   );
 }

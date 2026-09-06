@@ -20,11 +20,15 @@ export function SemanticQueryPreview({
 }: SemanticQueryPreviewProps) {
   if (!subBox.semanticQuery) return null;
 
-  const { openAlexSemanticQuery } = parseDualSemanticQuery(subBox.semanticQuery);
+  const { openAlexSemanticQuery } = parseDualSemanticQuery(
+    subBox.semanticQuery,
+  );
 
   const handleCopyQuery = (e: React.MouseEvent) => {
     e.stopPropagation();
-    navigator.clipboard.writeText(openAlexSemanticQuery || subBox.semanticQuery || "");
+    navigator.clipboard.writeText(
+      openAlexSemanticQuery || subBox.semanticQuery || "",
+    );
     toast.success("RAG arama sorgusu kopyalandı.");
   };
 

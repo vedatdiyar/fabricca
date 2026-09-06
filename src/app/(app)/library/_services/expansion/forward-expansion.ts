@@ -174,7 +174,9 @@ export async function executeForwardExpansion(
   }
 
   if (!rerankUsed) {
-    candidateList.sort((a, b) => (b.citationCount ?? 0) - (a.citationCount ?? 0));
+    candidateList.sort(
+      (a, b) => (b.citationCount ?? 0) - (a.citationCount ?? 0),
+    );
     selectedCandidates = candidateList.slice(0, targetCount);
   }
 

@@ -43,6 +43,8 @@ export function msUntilNextPacificMidnight(now: Date = new Date()): number {
 }
 
 /** Seconds until next Pacific midnight (minimum 1). */
-export function secondsUntilNextPacificMidnight(now: Date = new Date()): number {
+export function secondsUntilNextPacificMidnight(
+  now: Date = new Date(),
+): number {
   return Math.ceil(msUntilNextPacificMidnight(now) / 1000);
 }

@@ -54,10 +54,14 @@ function renderRagSourceBlock(
   includeRangeNote: boolean,
 ): string {
   const authors = source.resourceAuthors.join(", ");
-  const year = source.resourceYear ? `Yıl: ${source.resourceYear}` : "Yıl bilinmiyor";
+  const year = source.resourceYear
+    ? `Yıl: ${source.resourceYear}`
+    : "Yıl bilinmiyor";
   const pageRef = formatPageReference(source);
   const rangeNote = includeRangeNote ? buildRangeNote(source) : "";
-  const sectionStr = source.sectionTitle ? ` | Bölüm: ${source.sectionTitle}` : "";
+  const sectionStr = source.sectionTitle
+    ? ` | Bölüm: ${source.sectionTitle}`
+    : "";
   const partialTag = source.isPartialMatch ? " [DOLAYLI İLGİLİ]" : "";
   const windowText =
     source.parentContent && source.parentContent.length > 0

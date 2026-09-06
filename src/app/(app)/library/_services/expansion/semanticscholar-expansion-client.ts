@@ -67,14 +67,15 @@ function buildS2RetryOptions() {
  * @param item - Raw recommendation item from S2.
  * @returns Normalized CandidateSource item.
  */
-function mapS2ItemToCandidateSource(item: S2RecommendationItem): CandidateSource {
+function mapS2ItemToCandidateSource(
+  item: S2RecommendationItem,
+): CandidateSource {
   const rawDoi = item.externalIds?.DOI?.trim();
   const cleanDoi = rawDoi?.replace(/^https?:\/\/doi\.org\//i, "");
 
   const authors =
-    item.authors
-      ?.map((a) => a.name.trim())
-      .filter((name) => name.length > 0) ?? [];
+    item.authors?.map((a) => a.name.trim()).filter((name) => name.length > 0) ??
+    [];
 
   const rawPdfUrl = item.openAccessPdf?.url?.trim();
   const pdfUrl = rawPdfUrl && rawPdfUrl.length > 5 ? rawPdfUrl : undefined;

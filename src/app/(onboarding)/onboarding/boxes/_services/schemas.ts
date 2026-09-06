@@ -181,7 +181,11 @@ export const bulkSemanticQueryJsonSchema: JsonSchema = {
               "OpenAlex 100 req/s metin araması için tam 3 adet hedeflenmiş lexical sorgu (Anchor + Focus formülü, çift tırnaklı öbekler)",
           },
         },
-        required: ["subBoxTitle", "openAlexSemanticQuery", "openAlexLexicalQueries"],
+        required: [
+          "subBoxTitle",
+          "openAlexSemanticQuery",
+          "openAlexLexicalQueries",
+        ],
       },
       minItems: 1,
     },

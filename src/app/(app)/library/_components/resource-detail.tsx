@@ -101,7 +101,8 @@ export function ResourceDetail({
   }
 
   const activeWorkspaceTab = manualTab ?? (isPrimary ? "notes" : "critique");
-  const setActiveWorkspaceTab = (tab: "critique" | "notes") => setManualTab(tab);
+  const setActiveWorkspaceTab = (tab: "critique" | "notes") =>
+    setManualTab(tab);
 
   const [noteToDeleteId, setNoteToDeleteId] = useState<number | null>(null);
   const [pdfToDeleteId, setPdfToDeleteId] = useState<number | null>(null);

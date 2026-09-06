@@ -72,46 +72,45 @@ export function EditMatrixColumnModal({
       }
       footerLayout="spread"
     >
-
-        {/* Guide questions in modal */}
-        <div className="rounded-md border border-border/40 bg-muted/20 p-3 space-y-1.5">
-          <p className="text-xs font-semibold text-foreground flex items-center gap-1.5">
-            <HelpCircle className="size-3.5 text-primary" />
-            <span>Bu Sütunu Yapılandırırken Dikkat Edilecek Hususlar:</span>
-          </p>
-          <div className="space-y-1 pl-5">
-            {card.guidingQuestions.map((q, idx) => (
-              <p
-                key={`guide-${idx}-${q.slice(0, 10)}`}
-                className="text-xs text-muted-foreground list-item"
-              >
-                {q}
-              </p>
-            ))}
-          </div>
+      {/* Guide questions in modal */}
+      <div className="rounded-md border border-border/40 bg-muted/20 p-3 space-y-1.5">
+        <p className="text-xs font-semibold text-foreground flex items-center gap-1.5">
+          <HelpCircle className="size-3.5 text-primary" />
+          <span>Bu Sütunu Yapılandırırken Dikkat Edilecek Hususlar:</span>
+        </p>
+        <div className="space-y-1 pl-5">
+          {card.guidingQuestions.map((q, idx) => (
+            <p
+              key={`guide-${idx}-${q.slice(0, 10)}`}
+              className="text-xs text-muted-foreground list-item"
+            >
+              {q}
+            </p>
+          ))}
         </div>
+      </div>
 
-        {/* Textarea */}
-        <div className="flex-1 min-h-[300px] flex flex-col space-y-2">
-          <Textarea
-            value={value}
-            onChange={(e) => onValueChange(e.target.value)}
-            onKeyDown={(e) => {
-              if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {
-                e.preventDefault();
-                onSave();
-              }
-            }}
-            rows={14}
-            className="flex-1 w-full p-4 font-sans text-sm leading-relaxed resize-none"
-            placeholder={card.placeholder}
-          />
-          <div className="flex items-center justify-end text-xs text-muted-foreground px-1">
-            <span>
-              {countWords(value)} kelime • {value.length} karakter
-            </span>
-          </div>
+      {/* Textarea */}
+      <div className="flex-1 min-h-[300px] flex flex-col space-y-2">
+        <Textarea
+          value={value}
+          onChange={(e) => onValueChange(e.target.value)}
+          onKeyDown={(e) => {
+            if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {
+              e.preventDefault();
+              onSave();
+            }
+          }}
+          rows={14}
+          className="flex-1 w-full p-4 font-sans text-sm leading-relaxed resize-none"
+          placeholder={card.placeholder}
+        />
+        <div className="flex items-center justify-end text-xs text-muted-foreground px-1">
+          <span>
+            {countWords(value)} kelime • {value.length} karakter
+          </span>
         </div>
+      </div>
     </FormDialog>
   );
 }

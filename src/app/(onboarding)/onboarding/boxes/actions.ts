@@ -22,11 +22,15 @@ export async function persistBoxesAction(
  * Runs Phase 1 + Phase 2 and maps the result to production-shaped boxes.
  *
  * @param flowId - Optional shared flow identifier of the box generation pipeline run.
- * @returns The production-shaped boxes or an error message.
+ * @returns The production-shaped boxes, or a Turkish UI error plus the
+ * technical reason and flowId for log correlation.
  */
 export async function generateAndMapBoxesAction(
   flowId?: string,
-): Promise<{ success: true; boxes: GeminiThesisBox[] } | { error: string }> {
+): Promise<
+  | { success: true; boxes: GeminiThesisBox[] }
+  | { error: string; technicalError?: string; flowId?: string }
+> {
   const run = flowId
     ? PipelineRun.resume(BOX_GENERATION_PIPELINE, flowId)
     : PipelineRun.create(BOX_GENERATION_PIPELINE);
@@ -68,9 +72,11 @@ export async function generateAndMapBoxesAction(
 
     return { success: true, boxes };
   } catch (err) {
-    void err;
+    const technicalError = err instanceof Error ? err.message : String(err);
     return {
       error: "Konu kutuları oluşturulurken beklenmeyen bir hata oluştu.",
+      technicalError,
+      flowId: run.flowId,
     };
   }
 }

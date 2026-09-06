@@ -22,7 +22,10 @@ export function getDailyCount(label: string): number {
     if (!entry || entry.dateKey !== today) return 0;
     return entry.count;
   } catch (err) {
-    console.warn(`[rate-limiter] getDailyCount failed for ${label}, fail-open:`, err);
+    console.warn(
+      `[rate-limiter] getDailyCount failed for ${label}, fail-open:`,
+      err,
+    );
     return 0;
   }
 }
@@ -46,7 +49,10 @@ export function incrementDaily(label: string): number {
       .catch(() => {});
     return entry.count;
   } catch (err) {
-    console.warn(`[rate-limiter] incrementDaily failed for ${label}, fail-open:`, err);
+    console.warn(
+      `[rate-limiter] incrementDaily failed for ${label}, fail-open:`,
+      err,
+    );
     return 0;
   }
 }
@@ -62,19 +68,28 @@ export function hasDailyCapacityFor(label: string, rpd?: number): boolean {
   try {
     return getDailyCount(label) < rpd;
   } catch (err) {
-    console.warn(`[rate-limiter] hasDailyCapacityFor failed for ${label}, fail-open:`, err);
+    console.warn(
+      `[rate-limiter] hasDailyCapacityFor failed for ${label}, fail-open:`,
+      err,
+    );
     return true;
   }
 }
 
 /** Async Redis-aware daily capacity check (distributed). Fail-open on Redis error. */
-export async function hasDailyCapacityForAsync(label: string, rpd?: number): Promise<boolean> {
+export async function hasDailyCapacityForAsync(
+  label: string,
+  rpd?: number,
+): Promise<boolean> {
   if (!rpd || rpd <= 0) return true;
   try {
     const { hasDailyCapacityAsync } = await import("./redis-quota");
     return await hasDailyCapacityAsync(label, rpd);
   } catch (err) {
-    console.warn(`[rate-limiter] hasDailyCapacityForAsync failed for ${label}, fail-open:`, err);
+    console.warn(
+      `[rate-limiter] hasDailyCapacityForAsync failed for ${label}, fail-open:`,
+      err,
+    );
     return true;
   }
 }
@@ -251,7 +266,11 @@ export function createRateLimiter(options: RateLimiterOptions): RateLimiter {
 
   async function run<T>(fn: () => Promise<T>): Promise<T> {
     // Proactive RPD gate — fail fast if daily quota exhausted (sync, fail-open)
-    if (options.rpd && options.rpd > 0 && !hasDailyCapacityFor(options.label, options.rpd)) {
+    if (
+      options.rpd &&
+      options.rpd > 0 &&
+      !hasDailyCapacityFor(options.label, options.rpd)
+    ) {
       throw new DailyQuotaExceededError(options.label);
     }
     await waitForToken();
@@ -264,7 +283,10 @@ export function createRateLimiter(options: RateLimiterOptions): RateLimiter {
         try {
           incrementDaily(options.label);
         } catch (err) {
-          console.warn(`[rate-limiter:${options.label}] incrementDaily after success failed, fail-open:`, err);
+          console.warn(
+            `[rate-limiter:${options.label}] incrementDaily after success failed, fail-open:`,
+            err,
+          );
         }
       }
       return result;
@@ -292,7 +314,10 @@ export function createRateLimiter(options: RateLimiterOptions): RateLimiter {
         if (!options.rpd || options.rpd <= 0) return true;
         return hasDailyCapacityFor(options.label, options.rpd);
       } catch (err) {
-        console.warn(`[rate-limiter:${options.label}] hasDailyCapacity failed, fail-open:`, err);
+        console.warn(
+          `[rate-limiter:${options.label}] hasDailyCapacity failed, fail-open:`,
+          err,
+        );
         return true;
       }
     },
@@ -301,7 +326,10 @@ export function createRateLimiter(options: RateLimiterOptions): RateLimiter {
         if (!options.rpd || options.rpd <= 0) return true;
         return await hasDailyCapacityForAsync(options.label, options.rpd);
       } catch (err) {
-        console.warn(`[rate-limiter:${options.label}] hasDailyCapacityAsync failed, fail-open:`, err);
+        console.warn(
+          `[rate-limiter:${options.label}] hasDailyCapacityAsync failed, fail-open:`,
+          err,
+        );
         return true;
       }
     },
@@ -309,7 +337,10 @@ export function createRateLimiter(options: RateLimiterOptions): RateLimiter {
       try {
         return getDailyCount(options.label);
       } catch (err) {
-        console.warn(`[rate-limiter:${options.label}] getDailyCount failed, fail-open:`, err);
+        console.warn(
+          `[rate-limiter:${options.label}] getDailyCount failed, fail-open:`,
+          err,
+        );
         return 0;
       }
     },
@@ -317,7 +348,10 @@ export function createRateLimiter(options: RateLimiterOptions): RateLimiter {
       try {
         return incrementDaily(options.label);
       } catch (err) {
-        console.warn(`[rate-limiter:${options.label}] incrementDaily failed, fail-open:`, err);
+        console.warn(
+          `[rate-limiter:${options.label}] incrementDaily failed, fail-open:`,
+          err,
+        );
         return 0;
       }
     },

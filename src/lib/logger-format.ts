@@ -251,13 +251,11 @@ export function formatLogLine(options: SingleLineLogOptions): string {
     : "";
 
   let cleanSummary = options.summary;
-  if (cleanSummary && cleanSummary.length > 55) {
-    cleanSummary = `${cleanSummary.slice(0, 52)}...`;
+  if (cleanSummary && cleanSummary.length > 160) {
+    cleanSummary = `${cleanSummary.slice(0, 157)}...`;
   }
 
-  const annotation = cleanSummary
-    ? ` ${C_DIM}${cleanSummary}${C_RESET}`
-    : "";
+  const annotation = cleanSummary ? ` ${C_DIM}${cleanSummary}${C_RESET}` : "";
 
   let rightPart = "";
   if (options.durationMs !== undefined && options.durationMs !== null) {
@@ -277,6 +275,8 @@ export function formatLogLine(options: SingleLineLogOptions): string {
 /**
  * Converts an unknown error value into a clean, human-readable single-line message.
  * Strips raw Google RPC JSON dumps, URL links, and massive stack payloads.
+ * Dispatch-failure and quota-enriched errors render as full Turkish sentences
+ * (up to 280 chars); generic errors keep the legacy compact English form.
  *
  * @param error - Error value of any type.
  * @returns Clean readable single-line message.
@@ -284,6 +284,58 @@ export function formatLogLine(options: SingleLineLogOptions): string {
 export function extractReason(error: unknown): string {
   if (!error) return "Unknown error";
 
+  // Scheduler dispatch failure: message is already the human-readable
+  // fallback-chain reason — return it whole instead of truncating.
+  const dispatchMeta =
+    typeof error === "object" && error !== null
+      ? (error as Record<string, unknown>).dispatchMeta
+      : undefined;
+  if (
+    dispatchMeta !== undefined &&
+    typeof dispatchMeta === "object" &&
+    dispatchMeta !== null &&
+    error instanceof Error
+  ) {
+    const clean = error.message.replace(/\s+/g, " ").trim();
+    return clean.length > 280 ? `${clean.slice(0, 277)}...` : clean;
+  }
+
+  // Quota-enriched provider error (AiProviderError shape, structural check to
+  // avoid a logger -> errors import cycle): render Turkish guidance.
+  if (typeof error === "object" && error !== null) {
+    const record = error as Record<string, unknown>;
+    const quotaType =
+      typeof record.quotaType === "string" ? record.quotaType : undefined;
+    if (
+      quotaType === "RPM" ||
+      quotaType === "RPD" ||
+      quotaType === "CONCURRENCY"
+    ) {
+      const retryAfterMs =
+        typeof record.retryAfterMs === "number"
+          ? record.retryAfterMs
+          : undefined;
+      const retrySec =
+        retryAfterMs !== undefined
+          ? `~${Math.max(1, Math.round(retryAfterMs / 1000))}s`
+          : undefined;
+      if (quotaType === "RPD") {
+        const resetsAt =
+          typeof record.resetsAt === "string" ? record.resetsAt : undefined;
+        const clean = resetsAt
+          ? `Günlük limit doldu (RPD, ${resetsAt} sıfırlanır). Yarın tekrar deneyin.`
+          : "Günlük limit doldu (RPD). Yarın tekrar deneyin.";
+        return clean;
+      }
+      if (quotaType === "CONCURRENCY") {
+        return "Anlık istek yoğunluğu limiti doldu. Kısa süre sonra tekrar deneyin.";
+      }
+      const clean = retrySec
+        ? `Dakikalık limit doldu (429, ${retrySec} sonra tekrar deneyin).`
+        : "Dakikalık limit doldu (429). Kısa süre sonra tekrar deneyin.";
+      return clean;
+    }
+  }
   let raw = "";
   if (error instanceof Error) {
     raw = error.message;

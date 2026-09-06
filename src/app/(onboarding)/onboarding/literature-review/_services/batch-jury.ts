@@ -68,7 +68,7 @@ const juryEvaluationSchema = z
     relevanceScore: z.number().int().min(0).max(100).optional(),
   })
   .transform((data) => {
-    const isRelevant = data.isRelevant ?? (data.tier !== "REJECT");
+    const isRelevant = data.isRelevant ?? data.tier !== "REJECT";
     const relevanceScore =
       data.relevanceScore ??
       (data.tier === "TIER_1" ? 95 : data.tier === "TIER_2" ? 80 : 0);
@@ -117,7 +117,8 @@ const juryJsonSchema: JsonSchema = {
           },
           isRelevant: {
             type: "boolean",
-            description: "Makale tez ve alt kutu bağlamıyla doğrudan alakalı mı?",
+            description:
+              "Makale tez ve alt kutu bağlamıyla doğrudan alakalı mı?",
           },
           relevanceScore: {
             type: "integer",
@@ -307,7 +308,9 @@ export async function evaluateMultiBoxJury(
         const { box, chunk } = taskItem;
         // Box focus paragraph (period, actors, scope) as dynamic jury
         // context — the LLM judges period fit from title + abstract.
-        const { openAlexSemanticQuery } = parseDualSemanticQuery(box.semanticQuery);
+        const { openAlexSemanticQuery } = parseDualSemanticQuery(
+          box.semanticQuery,
+        );
         const articlesText = chunk
           .map((a, idx) => {
             const sourceLabel =
@@ -415,7 +418,8 @@ export async function evaluateMultiBoxJury(
     for (let i = 0; i < globalTasks.length; i++) {
       const taskItem = globalTasks[i];
       const evals = chunkResults[i] ?? [];
-      const boxEvals = cleanEvaluationsByBox.get(taskItem.box.thesisBoxId) ?? [];
+      const boxEvals =
+        cleanEvaluationsByBox.get(taskItem.box.thesisBoxId) ?? [];
       boxEvals.push(...evals);
       cleanEvaluationsByBox.set(taskItem.box.thesisBoxId, boxEvals);
     }
@@ -445,10 +449,6 @@ export async function evaluateSingleBoxJury(
   input: JuryInputItem,
   logger?: Logger,
 ): Promise<SingleBoxJuryResult> {
-  const [result] = await evaluateMultiBoxJury(
-    thesisContext,
-    [input],
-    logger,
-  );
+  const [result] = await evaluateMultiBoxJury(thesisContext, [input], logger);
   return result ?? { thesisBoxId: input.box.thesisBoxId, evaluations: [] };
 }

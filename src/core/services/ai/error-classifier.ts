@@ -71,7 +71,11 @@ export function isServerOverloadError(error: unknown): boolean {
   return (
     message.includes("503") ||
     message.includes("unavailable") ||
-    message.includes("high demand")
+    message.includes("high demand") ||
+    message.includes("high-demand") ||
+    message.includes("overload") ||
+    message.includes("overloaded") ||
+    message.includes("capacity")
   );
 }
 

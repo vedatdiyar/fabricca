@@ -17,7 +17,6 @@ export const HF_E5_MODEL = "intfloat/multilingual-e5-base" as const;
 export const HF_E5_ENDPOINT =
   `${HF_EMBEDDING_BASE_URL}/hf-inference/models/${HF_E5_MODEL}/pipeline/feature-extraction` as const;
 
-
 /**
  * Resolves the HF embedding endpoint, allowing env override for rotation/fallback.
  * `HF_EMBEDDING_ENDPOINT` env var takes precedence; falls back to the canonical Router URL.

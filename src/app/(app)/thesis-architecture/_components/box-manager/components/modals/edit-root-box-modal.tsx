@@ -41,7 +41,10 @@ export function EditRootBoxModal({
       open={open}
       onOpenChange={onOpenChange}
       title="Ana Araştırma Sütununu Düzenle"
-      badge={{ label: shortLabel, className: `text-[10px] font-semibold px-2 py-0.5 ${badgeColor}` }}
+      badge={{
+        label: shortLabel,
+        className: `text-[10px] font-semibold px-2 py-0.5 ${badgeColor}`,
+      }}
       subtitle="Ana Eksen Düzenleme"
       size="md"
       isSaving={isSaving}
@@ -54,11 +57,17 @@ export function EditRootBoxModal({
         <label className="font-sans text-xs font-medium text-foreground">
           Eksen Başlığı <span className="text-destructive">*</span>
         </label>
-        <Input value={title} onChange={(e) => setTitle(e.target.value)} className="font-sans" />
+        <Input
+          value={title}
+          onChange={(e) => setTitle(e.target.value)}
+          className="font-sans"
+        />
       </div>
 
       <div className="space-y-1.5">
-        <label className="font-sans text-xs font-medium text-foreground">Eksen Açıklaması</label>
+        <label className="font-sans text-xs font-medium text-foreground">
+          Eksen Açıklaması
+        </label>
         <Textarea
           value={description}
           onChange={(e) => setDescription(e.target.value)}

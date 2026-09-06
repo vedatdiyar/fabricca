@@ -266,4 +266,3 @@ export async function searchOpenAlexBooks(
   const resultsArrays = await Promise.all(searchPromises);
   return dedupeRawPapers(resultsArrays.flat());
 }
-

@@ -139,23 +139,36 @@ export function FormDialog({
                   variant="outline"
                   className={cn(
                     "border px-2 py-0.5 text-[11px] font-medium",
-                    badge.className ?? "border-border bg-secondary text-secondary-foreground",
+                    badge.className ??
+                      "border-border bg-secondary text-secondary-foreground",
                   )}
                 >
                   {badge.label}
                 </Badge>
               )}
               {subtitle && (
-                <span className="text-xs text-muted-foreground font-sans">{subtitle}</span>
+                <span className="text-xs text-muted-foreground font-sans">
+                  {subtitle}
+                </span>
               )}
             </div>
           )}
-          <DialogTitle className={cn("font-serif text-base font-semibold text-foreground flex items-center gap-2", titleClassName)}>
+          <DialogTitle
+            className={cn(
+              "font-serif text-base font-semibold text-foreground flex items-center gap-2",
+              titleClassName,
+            )}
+          >
             {TitleIcon && <TitleIcon className="h-4 w-4" />}
             <span>{title}</span>
           </DialogTitle>
           {description && (
-            <DialogDescription className={cn("font-sans text-xs text-muted-foreground", descriptionClassName)}>
+            <DialogDescription
+              className={cn(
+                "font-sans text-xs text-muted-foreground",
+                descriptionClassName,
+              )}
+            >
               {description}
             </DialogDescription>
           )}
@@ -164,7 +177,14 @@ export function FormDialog({
         {showSeparator && <Separator className="bg-border/40" />}
 
         {children && (
-          <div className={cn(scrollable ? "flex-1 overflow-y-auto space-y-4 pr-1" : "space-y-4 py-2", !showSeparator && "pt-0")}>
+          <div
+            className={cn(
+              scrollable
+                ? "flex-1 overflow-y-auto space-y-4 pr-1"
+                : "space-y-4 py-2",
+              !showSeparator && "pt-0",
+            )}
+          >
             {children}
           </div>
         )}
@@ -206,7 +226,8 @@ export function FormDialog({
                         disabled={isSaving}
                         className={cn(
                           "text-xs font-medium gap-1.5",
-                          saveVariant === "default" && "bg-primary text-primary-foreground hover:bg-primary/90",
+                          saveVariant === "default" &&
+                            "bg-primary text-primary-foreground hover:bg-primary/90",
                         )}
                       >
                         {isSaving ? (
@@ -221,7 +242,12 @@ export function FormDialog({
                 </>
               ) : (
                 <>
-                  <Button variant={cancelVariant ?? "outline"} size="sm" onClick={handleCancel} disabled={isSaving}>
+                  <Button
+                    variant={cancelVariant ?? "outline"}
+                    size="sm"
+                    onClick={handleCancel}
+                    disabled={isSaving}
+                  >
                     {cancelLabel}
                   </Button>
                   <div className="flex items-center gap-2">
@@ -234,7 +260,8 @@ export function FormDialog({
                         disabled={isSaving}
                         className={cn(
                           "font-medium",
-                          saveVariant === "default" && "bg-primary text-primary-foreground hover:bg-primary/90",
+                          saveVariant === "default" &&
+                            "bg-primary text-primary-foreground hover:bg-primary/90",
                         )}
                       >
                         {isSaving ? (

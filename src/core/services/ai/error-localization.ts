@@ -37,7 +37,12 @@ function getPacificMidnightResetISO(from: Date = new Date()): string {
 
   // Next PT day at 00:00 wall time
   const nextY = m === 12 && d === 31 ? y + 1 : y;
-  const nextM = m === 12 && d === 31 ? 1 : d === new Date(y, m, 0).getDate() ? (m % 12) + 1 : m;
+  const nextM =
+    m === 12 && d === 31
+      ? 1
+      : d === new Date(y, m, 0).getDate()
+        ? (m % 12) + 1
+        : m;
   const nextD = d === new Date(y, m, 0).getDate() ? 1 : d + 1;
 
   // Determine if next PT midnight falls in PDT (DST) period.
@@ -63,7 +68,9 @@ function getPacificMidnightResetISO(from: Date = new Date()): string {
 
   const pdt = isPDT(nextY, nextM, nextD);
   const offsetHours = pdt ? 7 : 8; // midnight PT = 07:00 UTC (PDT) or 08:00 UTC (PST)
-  return new Date(Date.UTC(nextY, nextM - 1, nextD, offsetHours, 0, 0)).toISOString();
+  return new Date(
+    Date.UTC(nextY, nextM - 1, nextD, offsetHours, 0, 0),
+  ).toISOString();
 }
 
 /**
@@ -72,13 +79,18 @@ function getPacificMidnightResetISO(from: Date = new Date()): string {
 function deriveQuotaType(error: unknown): QuotaType | undefined {
   if (isRpdError(error)) return "RPD";
   if (isRateLimitError(error)) {
-    const msg = error instanceof Error ? error.message.toLowerCase() : String(error).toLowerCase();
-    if (msg.includes("concurrency") || msg.includes("concurrent")) return "CONCURRENCY";
+    const msg =
+      error instanceof Error
+        ? error.message.toLowerCase()
+        : String(error).toLowerCase();
+    if (msg.includes("concurrency") || msg.includes("concurrent"))
+      return "CONCURRENCY";
     return "RPM";
   }
   if (error instanceof Error) {
     const msg = error.message.toLowerCase();
-    if (msg.includes("concurrency") || msg.includes("concurrent")) return "CONCURRENCY";
+    if (msg.includes("concurrency") || msg.includes("concurrent"))
+      return "CONCURRENCY";
   }
   return undefined;
 }
@@ -97,7 +109,8 @@ export function toAiProviderError(
 ): AiProviderError {
   if (error instanceof AiProviderError) {
     // Already enriched — ensure quota fields are present even if created via legacy path
-    if (error.quotaType !== undefined || error.retryAfterMs !== undefined) return error;
+    if (error.quotaType !== undefined || error.retryAfterMs !== undefined)
+      return error;
     const quotaType = deriveQuotaType(error.cause ?? error);
     const retryAfterMs = extractRetryDelayMs(error.cause ?? error) ?? undefined;
     const resetsAt =

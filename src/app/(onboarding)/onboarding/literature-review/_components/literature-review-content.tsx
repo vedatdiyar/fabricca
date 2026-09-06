@@ -7,7 +7,11 @@ import { Badge } from "@/components/ui/badge";
 import { AIBanner } from "@/components/shared/ai-banner";
 import { OnboardingStepFooter } from "@/app/(onboarding)/onboarding/_components/onboarding-step-footer";
 import { LiteratureReviewSkeleton } from "./literature-review-skeleton";
-import type { GeminiThesisBox, JuryArticle, LiteraturePoolEntry } from "@/lib/types";
+import type {
+  GeminiThesisBox,
+  JuryArticle,
+  LiteraturePoolEntry,
+} from "@/lib/types";
 import { LiteratureArticleCard } from "./literature-article-card";
 import { PrimaryMaterialUploadCard } from "./primary-material-upload-card";
 import {
@@ -65,7 +69,10 @@ function SubBoxQuery({
 
   if (status === "manual_entry_required") {
     return (
-      <PrimaryMaterialUploadCard thesisBoxId={thesisBoxId} articles={articles} />
+      <PrimaryMaterialUploadCard
+        thesisBoxId={thesisBoxId}
+        articles={articles}
+      />
     );
   }
 
@@ -336,9 +343,8 @@ export function LiteratureReviewContent() {
                   errorMessage={boxErrors[subBox.title]}
                   thesisBoxId={subBox.id}
                   articles={
-                    literaturePool.find(
-                      (e) => e.subBoxTitle === subBox.title,
-                    )?.articles ?? []
+                    literaturePool.find((e) => e.subBoxTitle === subBox.title)
+                      ?.articles ?? []
                   }
                 />
               )}

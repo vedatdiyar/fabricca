@@ -64,6 +64,7 @@ export async function runBoxStructureAction(
           seed: GEMINI_SEED,
           thesisMatrix: matrix,
           payloadStage: "box_structure_generation",
+          operation: "box_structure_generation",
           quiet: true,
         },
       );
@@ -84,6 +85,7 @@ export async function runBoxStructureAction(
       "4-Quadrant Box Structure (Gemini Flash)",
       durationMs,
       "FAILED",
+      { error: err },
     );
     log.error("box_structure_generation_failed", {
       service: "boxes",

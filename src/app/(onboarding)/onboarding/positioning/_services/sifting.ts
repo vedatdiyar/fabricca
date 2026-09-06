@@ -95,8 +95,10 @@ export async function searchAndSiftTheses(
     logger,
     pipelineRun,
   );
-  const [[yokRes1, yokRes2], [openAlexRes1, openAlexRes2]] =
-    [yokResults, openAlexResults] as const;
+  const [[yokRes1, yokRes2], [openAlexRes1, openAlexRes2]] = [
+    yokResults,
+    openAlexResults,
+  ] as const;
 
   const candidates: SiftedThesis[] = [];
   const seenTitles = new Set<string>();

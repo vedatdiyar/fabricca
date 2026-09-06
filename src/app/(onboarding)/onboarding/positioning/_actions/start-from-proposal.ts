@@ -156,16 +156,16 @@ export async function startOnboardingFromProposalAction(
 
     // Stage 4: Persist Positioning Report
     await run.execute(
-       "persist",
-       async () => {
-         await savePositioningReportTransaction(
-           session.userId,
-           matrixDbId,
-           juryResult,
-         );
-       },
-       { description: "Positioning Report Saved to Database" },
-     );
+      "persist",
+      async () => {
+        await savePositioningReportTransaction(
+          session.userId,
+          matrixDbId,
+          juryResult,
+        );
+      },
+      { description: "Positioning Report Saved to Database" },
+    );
 
     run.finish();
 

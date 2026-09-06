@@ -42,14 +42,14 @@ export function MetricCard({
   cardClassName,
 }: MetricCardProps) {
   return (
-    <Card
-      className={cn("border border-border bg-card", cardClassName)}
-    >
+    <Card className={cn("border border-border bg-card", cardClassName)}>
       <CardContent
         className={cn("flex items-center justify-between p-3", className)}
       >
         <div className="space-y-0.5 min-w-0 flex-1">
-          {topSlot ? <div className="flex items-center gap-1.5">{topSlot}</div> : null}
+          {topSlot ? (
+            <div className="flex items-center gap-1.5">{topSlot}</div>
+          ) : null}
           <p className={labelClassName}>{label}</p>
           <p className={valueClassName}>{value}</p>
           {subtext !== undefined && subtext !== null && subtext !== "" ? (

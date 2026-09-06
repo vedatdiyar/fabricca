@@ -119,12 +119,7 @@ export async function executeLateralExpansion(
         .select({ doi: sources.doi })
         .from(sources)
         .innerJoin(boxes, eq(sources.boxId, boxes.id))
-        .where(
-          and(
-            eq(boxes.matrixId, box.matrixId),
-            ne(boxes.id, boxId),
-          ),
-        )
+        .where(and(eq(boxes.matrixId, box.matrixId), ne(boxes.id, boxId)))
         .limit(20);
 
       negativeDois = siblingSources

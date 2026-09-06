@@ -38,7 +38,9 @@ export function usePrimaryMaterialUpload(
     async (files: File[]) => {
       if (files.length === 0) return;
       if (!thesisBoxId) {
-        toast.error("Konu kutusu bulunamadı. Sayfayı yenileyip tekrar deneyin.");
+        toast.error(
+          "Konu kutusu bulunamadı. Sayfayı yenileyip tekrar deneyin.",
+        );
         return;
       }
       if (isUploading) return;

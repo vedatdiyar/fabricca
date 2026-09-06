@@ -28,8 +28,7 @@ export interface RefMetadata {
   citedByCount: number;
 }
 
-export type LiteratureSourceChannel =
-  "openalex" | "exa" | "qdrant";
+export type LiteratureSourceChannel = "openalex" | "exa" | "qdrant";
 
 export interface RawPaper {
   source: LiteratureSourceChannel;

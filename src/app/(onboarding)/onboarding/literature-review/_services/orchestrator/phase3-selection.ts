@@ -75,7 +75,6 @@ export async function executePhase3Selection(
   logger: Logger,
   checkCancelled?: () => boolean,
 ): Promise<SubBoxResultToPersist[]> {
-
   const poolLookup = new Map<string, PoolItem>();
   for (const [boxId, pool] of poolByBox) {
     for (const item of pool) {
@@ -97,7 +96,12 @@ export async function executePhase3Selection(
 
   const getPoolMeta = (
     ev: JuryEvalResult,
-  ): { poolItem: PoolItem | undefined; year: number | null; authors: string[]; doi: string | null } => {
+  ): {
+    poolItem: PoolItem | undefined;
+    year: number | null;
+    authors: string[];
+    doi: string | null;
+  } => {
     const poolKey = `${ev.thesisBoxId}::${normalizeCleanTitle(ev.articleTitle)}`;
     const poolItem = poolLookup.get(poolKey);
     return {
@@ -121,7 +125,7 @@ export async function executePhase3Selection(
     return cleanDoi.replace(/[-_][0-9]{2,4}$/, "").replace(/\/ch[0-9]+$/i, "");
   }
 
-  // Per-box dedup helpers (isolated per box)
+  // Per-box dedup helpers (isolated per box) - prevents identical works or title subsets
   const makeBoxDedup = () => {
     const seenDois = new Set<string>();
     const seenBaseDois = new Set<string>();
@@ -163,7 +167,7 @@ export async function executePhase3Selection(
             firstB !== "anonim" &&
             firstA === firstB;
 
-          // Same author title subset collapse (e.g. journal article vs full book title)
+          // Same author title subset collapse (e.g. reprint/chapter vs full book title)
           if (sameAuthor && isTitleSubset(title, prev.title)) return true;
           if (!areTitlesDuplicateByMetric(title, prev.title, 0.9)) continue;
 
@@ -207,17 +211,11 @@ export async function executePhase3Selection(
     };
 
     const tier1 = boxEvals
-      .filter(
-        (ev) => ev.tier === "TIER_1" || (!ev.tier && ev.relevanceScore >= 80),
-      )
+      .filter((ev) => ev.tier === "TIER_1")
       .sort((a, b) => getScore(b) - getScore(a));
 
     const tier2 = boxEvals
-      .filter(
-        (ev) =>
-          ev.tier === "TIER_2" ||
-          (!ev.tier && ev.relevanceScore >= 70 && ev.relevanceScore < 80),
-      )
+      .filter((ev) => ev.tier === "TIER_2")
       .sort((a, b) => getScore(b) - getScore(a));
 
     const dedup = makeBoxDedup();
@@ -233,6 +231,7 @@ export async function executePhase3Selection(
       return true;
     };
 
+    // Fill quota from Tier 1, then fallback to Tier 2 based on composite relevance
     for (const ev of tier1) {
       if (checkCancelled?.()) break;
       if (bucket.length >= 4) break;

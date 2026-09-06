@@ -29,10 +29,7 @@ interface OpenAlexHealCandidate {
  */
 export function normalizeHealedTitle(title: string): string {
   const cleaned = (title ?? "")
-    .replace(
-      /^(?:Book\s+)?Review(?:\s+of|\s+on|\s*:\s*|\s+essay\s*:\s*)/i,
-      "",
-    )
+    .replace(/^(?:Book\s+)?Review(?:\s+of|\s+on|\s*:\s*|\s+essay\s*:\s*)/i, "")
     .replace(/\s*\.\s*$/, "")
     .replace(/\s+/g, " ")
     .trim();
@@ -101,112 +98,111 @@ export async function healAuthorsByTitle(title: string): Promise<string[]> {
     return [];
   }
 
-    const STOP_WORDS = new Set([
-      "a",
-      "an",
-      "the",
-      "and",
-      "or",
-      "in",
-      "on",
-      "at",
-      "to",
-      "for",
-      "of",
-      "with",
-      "by",
-    ]);
-    const tokenize = (s: string) =>
-      s
-        .toLowerCase()
-        .replace(/[^a-z0-9\s]/g, " ")
-        .split(/\s+/)
-        .filter((w) => w.length > 1 && !STOP_WORDS.has(w));
+  const STOP_WORDS = new Set([
+    "a",
+    "an",
+    "the",
+    "and",
+    "or",
+    "in",
+    "on",
+    "at",
+    "to",
+    "for",
+    "of",
+    "with",
+    "by",
+  ]);
+  const tokenize = (s: string) =>
+    s
+      .toLowerCase()
+      .replace(/[^a-z0-9\s]/g, " ")
+      .split(/\s+/)
+      .filter((w) => w.length > 1 && !STOP_WORDS.has(w));
 
-    const targetTokens = new Set(tokenize(cleanSearchTitle));
+  const targetTokens = new Set(tokenize(cleanSearchTitle));
 
-    const validCandidates: {
-      authors: string[];
-      citations: number;
-      score: number;
-    }[] = [];
+  const validCandidates: {
+    authors: string[];
+    citations: number;
+    score: number;
+  }[] = [];
 
-    for (const work of rawResults) {
-      const authorships = Array.isArray(work.authorships)
-        ? (work.authorships as { author?: { display_name?: string } }[])
-        : [];
-      const allAuthors = authorships
-        .map((a) => a.author?.display_name ?? "")
-        .filter(Boolean);
+  for (const work of rawResults) {
+    const authorships = Array.isArray(work.authorships)
+      ? (work.authorships as { author?: { display_name?: string } }[])
+      : [];
+    const allAuthors = authorships
+      .map((a) => a.author?.display_name ?? "")
+      .filter(Boolean);
 
-      if (allAuthors.length === 0) continue;
+    if (allAuthors.length === 0) continue;
 
-      const sourceName = work.primary_location?.source?.display_name ?? "";
-      const isReviewRecord =
-        work.type === "book-review" ||
-        sourceName.toLowerCase().includes("review") ||
-        work.title?.toLowerCase().includes("review on") ||
-        work.title?.toLowerCase().includes("review of");
+    const sourceName = work.primary_location?.source?.display_name ?? "";
+    const isReviewRecord =
+      work.type === "book-review" ||
+      sourceName.toLowerCase().includes("review") ||
+      work.title?.toLowerCase().includes("review on") ||
+      work.title?.toLowerCase().includes("review of");
 
-      // Reviewer-first convention: on review records the reviewer is listed first
-      // and the work's author last (e.g. [Dwight Fee, Norman Fairclough]).
-      // Drop the leading reviewer so the resolved authors belong to the real work.
-      const authors =
-        isReviewRecord && allAuthors.length > 1
-          ? allAuthors.slice(1)
-          : allAuthors;
+    // Reviewer-first convention: on review records the reviewer is listed first
+    // and the work's author last (e.g. [Dwight Fee, Norman Fairclough]).
+    // Drop the leading reviewer so the resolved authors belong to the real work.
+    const authors =
+      isReviewRecord && allAuthors.length > 1
+        ? allAuthors.slice(1)
+        : allAuthors;
 
-      const candTokens = tokenize(work.title ?? "");
-      if (candTokens.length === 0) continue;
+    const candTokens = tokenize(work.title ?? "");
+    if (candTokens.length === 0) continue;
 
-      const intersection = candTokens.filter((t) => targetTokens.has(t)).length;
-      const union = new Set([...candTokens, ...targetTokens]).size;
-      const jaccard = union > 0 ? intersection / union : 0;
-      // Containment: the canonical record often has a shorter title (main title
-      // without subtitle) fully contained in the query. Jaccard alone punishes
-      // short true titles, so the better of the two similarities decides.
-      const containment =
-        candTokens.length > 0 ? intersection / candTokens.length : 0;
-      const similarity = Math.max(jaccard, containment);
+    const intersection = candTokens.filter((t) => targetTokens.has(t)).length;
+    const union = new Set([...candTokens, ...targetTokens]).size;
+    const jaccard = union > 0 ? intersection / union : 0;
+    // Containment: the canonical record often has a shorter title (main title
+    // without subtitle) fully contained in the query. Jaccard alone punishes
+    // short true titles, so the better of the two similarities decides.
+    const containment =
+      candTokens.length > 0 ? intersection / candTokens.length : 0;
+    const similarity = Math.max(jaccard, containment);
 
-      if (intersection === 0) continue;
+    if (intersection === 0) continue;
 
-      // Similarity heavily weighted against raw citations to prevent unrelated long titles from hijacking resolution.
-      // Review records participate with a halved score: their authorships are noisier,
-      // but they must not be skipped since they often carry the work's citations.
-      const citations = work.cited_by_count ?? 0;
-      const typeWeight = isReviewRecord ? 0.5 : 1;
-      const score =
-        Math.pow(similarity, 2) * (Math.log10(citations + 2) + 1) * typeWeight;
+    // Similarity heavily weighted against raw citations to prevent unrelated long titles from hijacking resolution.
+    // Review records participate with a halved score: their authorships are noisier,
+    // but they must not be skipped since they often carry the work's citations.
+    const citations = work.cited_by_count ?? 0;
+    const typeWeight = isReviewRecord ? 0.5 : 1;
+    const score =
+      Math.pow(similarity, 2) * (Math.log10(citations + 2) + 1) * typeWeight;
 
-      validCandidates.push({
-        authors,
-        citations,
-        score,
-      });
+    validCandidates.push({
+      authors,
+      citations,
+      score,
+    });
+  }
+
+  if (validCandidates.length === 0) return [];
+
+  const authorScoresMap: Record<string, number> = {};
+  const authorMap: Record<string, string[]> = {};
+
+  for (const c of validCandidates) {
+    const authorKey = c.authors.join(", ");
+    authorScoresMap[authorKey] = (authorScoresMap[authorKey] ?? 0) + c.score;
+    authorMap[authorKey] = c.authors;
+  }
+
+  let bestAuthorKey = "";
+  let maxScore = -1;
+
+  for (const [key, score] of Object.entries(authorScoresMap)) {
+    if (score > maxScore) {
+      maxScore = score;
+      bestAuthorKey = key;
     }
+  }
 
-    if (validCandidates.length === 0) return [];
-
-    const authorScoresMap: Record<string, number> = {};
-    const authorMap: Record<string, string[]> = {};
-
-    for (const c of validCandidates) {
-      const authorKey = c.authors.join(", ");
-      authorScoresMap[authorKey] =
-        (authorScoresMap[authorKey] ?? 0) + c.score;
-      authorMap[authorKey] = c.authors;
-    }
-
-    let bestAuthorKey = "";
-    let maxScore = -1;
-
-    for (const [key, score] of Object.entries(authorScoresMap)) {
-      if (score > maxScore) {
-        maxScore = score;
-        bestAuthorKey = key;
-      }
-    }
-
-    return authorMap[bestAuthorKey] ?? [];
+  return authorMap[bestAuthorKey] ?? [];
 }

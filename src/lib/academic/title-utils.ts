@@ -249,7 +249,7 @@ export function normalizedLevenshteinSimilarity(
 export function areTitlesDuplicateByMetric(
   titleA: string,
   titleB: string,
-  threshold = 0.90,
+  threshold = 0.9,
 ): boolean {
   const jaccard = jaccardSimilarity(titleA, titleB);
   if (jaccard >= threshold) return true;

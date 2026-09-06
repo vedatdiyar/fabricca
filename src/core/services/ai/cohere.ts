@@ -110,7 +110,9 @@ export async function rerankWithCohere(
       try {
         return await withRetry(
           async (): Promise<Response> => {
-            const attemptSignal = AbortSignal.timeout(COHERE_ATTEMPT_TIMEOUT_MS);
+            const attemptSignal = AbortSignal.timeout(
+              COHERE_ATTEMPT_TIMEOUT_MS,
+            );
             const compositeSignal =
               typeof AbortSignal.any === "function"
                 ? AbortSignal.any([overallController.signal, attemptSignal])

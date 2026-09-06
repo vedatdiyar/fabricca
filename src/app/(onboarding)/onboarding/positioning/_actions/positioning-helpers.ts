@@ -36,4 +36,3 @@ export function parsePositioningMatrixInput(matrixInput: ThesisMatrix):
 
   return { success: true, data: parsed.data };
 }
-

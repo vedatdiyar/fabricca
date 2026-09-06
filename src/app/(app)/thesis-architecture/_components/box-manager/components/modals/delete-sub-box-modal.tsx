@@ -42,10 +42,12 @@ export function DeleteSubBoxModal({
       footerClassName="pt-2"
     >
       <div className="p-3 rounded-md bg-destructive/10 border border-destructive/20 text-xs space-y-1">
-        <p className="font-semibold text-destructive">&quot;{box.title}&quot;</p>
+        <p className="font-semibold text-destructive">
+          &quot;{box.title}&quot;
+        </p>
         <p className="text-muted-foreground text-[11px]">
-          Bu işlem geri alınamaz. Ancak kutuya bağlı kaynaklar ve görevler veri güvenliği için kütüphanede
-          korunacaktır.
+          Bu işlem geri alınamaz. Ancak kutuya bağlı kaynaklar ve görevler veri
+          güvenliği için kütüphanede korunacaktır.
         </p>
       </div>
     </FormDialog>

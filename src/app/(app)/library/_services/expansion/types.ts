@@ -55,7 +55,6 @@ export interface S2RecommendationsResponse {
   recommendedPapers: S2RecommendationItem[];
 }
 
-
 /**
  * Result returned by the Literature Expansion Orchestrator.
  */

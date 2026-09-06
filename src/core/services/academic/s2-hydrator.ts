@@ -12,6 +12,7 @@ import {
 } from "@/core/config/endpoints";
 import { OPENALEX_USER_AGENT } from "@/lib/api-utils";
 import { Logger } from "@/lib/logger";
+import { formatStageLine } from "@/lib/logger-format";
 import { extractCleanDoi, extractOpenAlexId } from "@/lib/academic/utils";
 import { calculateTitleSimilarity } from "./crossref-enrichment";
 
@@ -133,9 +134,7 @@ async function resolvePaperId(seed: {
           if (Array.isArray(papers) && papers.length > 0) {
             const first = papers[0];
             if (typeof first === "object" && first !== null) {
-              return toValidPaperId(
-                (first as Record<string, unknown>).paperId,
-              );
+              return toValidPaperId((first as Record<string, unknown>).paperId);
             }
           }
         }
@@ -259,7 +258,7 @@ async function resolveOpenAlexId(seed: {
               cleanTitle,
               candidate.title,
             );
-            if (similarity >= 0.70) {
+            if (similarity >= 0.7) {
               const id = extractOpenAlexId(candidate.id);
               if (id) {
                 return {
@@ -373,18 +372,51 @@ export async function hydrateSourceAcademicIdentifiers(
       }
     }
 
+    const durationMs = Math.round(performance.now() - startedAt);
+    const description =
+      `Academic Identifiers Hydration (${uniqueIds.length} sources, ` +
+      `S2:${hydratedS2}, OpenAlex:${hydratedOpenAlex})`;
+
+    // Stage-line indent (same │ column as pipeline stages) in dev;
+    // hidden structured entry preserves the prod JSON log.
+    if (process.env.NODE_ENV === "development") {
+      console.log(
+        formatStageLine({
+          isSubStep: true,
+          description,
+          durationMs,
+          status: "SUCCESS",
+        }),
+      );
+    }
     log.info("academic_identifiers_hydration_success", {
       service: "literature",
+      durationMs,
+      hidden: true,
       data: {
         requested: uniqueIds.length,
         hydratedS2,
         hydratedOpenAlex,
-        durationMs: Math.round(performance.now() - startedAt),
+        durationMs,
       },
     });
   } catch (err) {
+    const durationMs = Math.round(performance.now() - startedAt);
+    if (process.env.NODE_ENV === "development") {
+      console.log(
+        formatStageLine({
+          isSubStep: true,
+          description: "Academic Identifiers Hydration",
+          durationMs,
+          status: "FAILED",
+          error: err,
+        }),
+      );
+    }
     log.error("academic_identifiers_hydration_failed", {
       service: "literature",
+      durationMs,
+      hidden: true,
       error: err,
     });
   }

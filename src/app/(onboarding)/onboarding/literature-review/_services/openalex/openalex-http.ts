@@ -49,12 +49,12 @@ export async function fetchWithOpenAlexRetry(
     const timeoutSignal = AbortSignal.timeout(OPENALEX_EXECUTION_TIMEOUT_MS);
     const signal = externalSignal
       ? // Node 20+ / modern runtimes support AbortSignal.any
-        typeof (AbortSignal as unknown as { any?: (s: AbortSignal[]) => AbortSignal }).any ===
-        "function"
-        ? (AbortSignal as unknown as { any: (s: AbortSignal[]) => AbortSignal }).any([
-            externalSignal,
-            timeoutSignal,
-          ])
+        typeof (
+          AbortSignal as unknown as { any?: (s: AbortSignal[]) => AbortSignal }
+        ).any === "function"
+        ? (
+            AbortSignal as unknown as { any: (s: AbortSignal[]) => AbortSignal }
+          ).any([externalSignal, timeoutSignal])
         : externalSignal
       : timeoutSignal;
 
@@ -110,7 +110,11 @@ export async function queryOpenAlexWorks(
   const url = `${OPENALEX_BASE_URL}/works?${params.toString().replace(/\+/g, "%20")}`;
 
   try {
-    const response = await fetchWithOpenAlexRetry(url, checkCancelled, externalSignal);
+    const response = await fetchWithOpenAlexRetry(
+      url,
+      checkCancelled,
+      externalSignal,
+    );
     if (!response) return [];
 
     const data = (await response.json()) as {

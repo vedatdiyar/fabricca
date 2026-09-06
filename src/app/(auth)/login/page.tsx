@@ -192,9 +192,11 @@ export default function LoginPage() {
             <div className="flex items-start gap-2.5 p-3.5 bg-muted/20 border border-border/50 rounded-lg text-xs leading-relaxed text-muted-foreground select-none">
               <ShieldAlert className="size-4 text-warning shrink-0 mt-0.5" />
               <span>
-                <strong className="font-medium text-foreground/90">Erişim Kısıtlaması:</strong> Bu platform dışarıdan kayda
-                kapalıdır. Yalnızca yetkilendirilmiş akademisyenler giriş
-                yapabilir.
+                <strong className="font-medium text-foreground/90">
+                  Erişim Kısıtlaması:
+                </strong>{" "}
+                Bu platform dışarıdan kayda kapalıdır. Yalnızca yetkilendirilmiş
+                akademisyenler giriş yapabilir.
               </span>
             </div>
           </CardContent>

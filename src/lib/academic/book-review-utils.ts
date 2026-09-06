@@ -47,17 +47,13 @@ const GENERIC_SUBTITLE_WORDS = new Set([
 ]);
 
 function normalizePersonToken(value: string): string {
-  return value
-    .toLocaleLowerCase("en")
-    .replace(/[^a-zçğıöşü]+/gi, "");
+  return value.toLocaleLowerCase("en").replace(/[^a-zçğıöşü]+/gi, "");
 }
 
 function isGenericSubtitle(trailing: string): boolean {
   return trailing
     .split(/\s+/)
-    .some((word) =>
-      GENERIC_SUBTITLE_WORDS.has(normalizePersonToken(word)),
-    );
+    .some((word) => GENERIC_SUBTITLE_WORDS.has(normalizePersonToken(word)));
 }
 
 function isSelfReference(

@@ -16,7 +16,11 @@ export interface SkeletonGridProps {
  * @param props - Component props.
  * @returns Skeleton grid markup.
  */
-export function SkeletonGrid({ count, className, children }: SkeletonGridProps) {
+export function SkeletonGrid({
+  count,
+  className,
+  children,
+}: SkeletonGridProps) {
   return (
     <div className={cn(className)}>
       {Array.from({ length: count }).map((_, idx) => (

@@ -23,18 +23,25 @@ function getRedis(): UpstashRedisType | null {
   if (!url || !token) {
     if (!warnedMissingEnv) {
       warnedMissingEnv = true;
-      console.warn("[redis-quota] UPSTASH env missing — using in-memory fallback (local/CI).");
+      console.warn(
+        "[redis-quota] UPSTASH env missing — using in-memory fallback (local/CI).",
+      );
     }
     redisClient = null;
     return null;
   }
   try {
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
-    const { Redis } = require("@upstash/redis") as typeof import("@upstash/redis");
+    /* eslint-disable @typescript-eslint/no-require-imports */
+    const { Redis } =
+      require("@upstash/redis") as typeof import("@upstash/redis");
+    /* eslint-enable @typescript-eslint/no-require-imports */
     redisClient = new Redis({ url, token, enableTelemetry: false });
     return redisClient;
   } catch (err) {
-    console.warn("[redis-quota] Redis init failed, using memory fallback:", err);
+    console.warn(
+      "[redis-quota] Redis init failed, using memory fallback:",
+      err,
+    );
     redisClient = null;
     return null;
   }
@@ -109,7 +116,10 @@ export async function getDailyCountAsync(serviceKey: string): Promise<number> {
     memoryFallback.set(serviceKey, { dateKey, count });
     return count;
   } catch (err) {
-    console.warn(`[redis-quota] getDailyCountAsync failed for ${serviceKey}, fail-open with memory:`, err);
+    console.warn(
+      `[redis-quota] getDailyCountAsync failed for ${serviceKey}, fail-open with memory:`,
+      err,
+    );
     const entry = memoryFallback.get(serviceKey);
     if (!entry || entry.dateKey !== dateKey) return 0;
     return entry.count;
@@ -121,7 +131,10 @@ export async function getDailyCountAsync(serviceKey: string): Promise<number> {
  * Returns new count (or current count if already at/over limit — does not increment past limit).
  * Fail-open: on Redis error, increments memory fallback.
  */
-export async function incrementDailyAsync(serviceKey: string, rpdLimit?: number): Promise<number> {
+export async function incrementDailyAsync(
+  serviceKey: string,
+  rpdLimit?: number,
+): Promise<number> {
   const dateKey = getPacificDateKey();
   const redis = getRedis();
   const ttlMs = msUntilNextPacificMidnight();
@@ -133,7 +146,12 @@ export async function incrementDailyAsync(serviceKey: string, rpdLimit?: number)
       memoryFallback.set(serviceKey, { dateKey, count: 1 });
       return 1;
     }
-    if (rpdLimit !== undefined && rpdLimit > 0 && Number.isFinite(rpdLimit) && entry.count >= rpdLimit) {
+    if (
+      rpdLimit !== undefined &&
+      rpdLimit > 0 &&
+      Number.isFinite(rpdLimit) &&
+      entry.count >= rpdLimit
+    ) {
       return entry.count;
     }
     entry.count += 1;
@@ -144,7 +162,11 @@ export async function incrementDailyAsync(serviceKey: string, rpdLimit?: number)
     const redisKey = buildRedisKey(serviceKey, dateKey);
     // If rpdLimit provided, use atomic limit check; otherwise plain INCR+PEXPIRE
     if (rpdLimit !== undefined && rpdLimit > 0 && Number.isFinite(rpdLimit)) {
-      const result = (await redis.eval(INCR_WITH_LIMIT_SCRIPT, [redisKey], [String(rpdLimit), String(ttlMs)])) as number;
+      const result = (await redis.eval(
+        INCR_WITH_LIMIT_SCRIPT,
+        [redisKey],
+        [String(rpdLimit), String(ttlMs)],
+      )) as number;
       const count = Number(result);
       memoryFallback.set(serviceKey, { dateKey, count });
       return count;
@@ -160,7 +182,10 @@ export async function incrementDailyAsync(serviceKey: string, rpdLimit?: number)
     memoryFallback.set(serviceKey, { dateKey, count: Number(newCount) });
     return Number(newCount);
   } catch (err) {
-    console.warn(`[redis-quota] incrementDailyAsync failed for ${serviceKey}, using memory fallback:`, err);
+    console.warn(
+      `[redis-quota] incrementDailyAsync failed for ${serviceKey}, using memory fallback:`,
+      err,
+    );
     const entry = memoryFallback.get(serviceKey);
     if (!entry || entry.dateKey !== dateKey) {
       memoryFallback.set(serviceKey, { dateKey, count: 1 });
@@ -174,13 +199,19 @@ export async function incrementDailyAsync(serviceKey: string, rpdLimit?: number)
 /**
  * Checks if service key has capacity (count < rpd). Fail-open.
  */
-export async function hasDailyCapacityAsync(serviceKey: string, rpd: number): Promise<boolean> {
+export async function hasDailyCapacityAsync(
+  serviceKey: string,
+  rpd: number,
+): Promise<boolean> {
   if (!rpd || rpd <= 0) return true;
   try {
     const count = await getDailyCountAsync(serviceKey);
     return count < rpd;
   } catch (err) {
-    console.warn(`[redis-quota] hasDailyCapacityAsync failed for ${serviceKey}, fail-open:`, err);
+    console.warn(
+      `[redis-quota] hasDailyCapacityAsync failed for ${serviceKey}, fail-open:`,
+      err,
+    );
     return true;
   }
 }
@@ -193,7 +224,10 @@ export function getDailyCountSync(serviceKey: string): number {
     if (!entry || entry.dateKey !== dateKey) return 0;
     return entry.count;
   } catch (err) {
-    console.warn(`[redis-quota] getDailyCountSync failed for ${serviceKey}, fail-open:`, err);
+    console.warn(
+      `[redis-quota] getDailyCountSync failed for ${serviceKey}, fail-open:`,
+      err,
+    );
     return 0;
   }
 }
@@ -212,7 +246,10 @@ export function incrementDailySync(serviceKey: string): number {
     void incrementDailyAsync(serviceKey).catch(() => {});
     return entry.count;
   } catch (err) {
-    console.warn(`[redis-quota] incrementDailySync failed for ${serviceKey}, fail-open:`, err);
+    console.warn(
+      `[redis-quota] incrementDailySync failed for ${serviceKey}, fail-open:`,
+      err,
+    );
     return 0;
   }
 }
@@ -222,7 +259,10 @@ export function hasDailyCapacitySync(serviceKey: string, rpd: number): boolean {
   try {
     return getDailyCountSync(serviceKey) < rpd;
   } catch (err) {
-    console.warn(`[redis-quota] hasDailyCapacitySync failed for ${serviceKey}, fail-open:`, err);
+    console.warn(
+      `[redis-quota] hasDailyCapacitySync failed for ${serviceKey}, fail-open:`,
+      err,
+    );
     return true;
   }
 }
@@ -243,7 +283,10 @@ export async function clearDailyQuota(serviceKey: string): Promise<void> {
     const redisKey = buildRedisKey(serviceKey, dateKey);
     await redis.del(redisKey);
   } catch (err) {
-    console.warn(`[redis-quota] clearDailyQuota failed for ${serviceKey}:`, err);
+    console.warn(
+      `[redis-quota] clearDailyQuota failed for ${serviceKey}:`,
+      err,
+    );
   }
 }
 
@@ -254,7 +297,10 @@ export function saturateDailyCountSync(serviceKey: string, rpd: number): void {
 }
 
 /** Async helper to saturate Redis count to RPD (fire-and-forget, sets key directly with TTL). */
-export async function saturateDailyCountAsync(serviceKey: string, rpd: number): Promise<void> {
+export async function saturateDailyCountAsync(
+  serviceKey: string,
+  rpd: number,
+): Promise<void> {
   const dateKey = getPacificDateKey();
   const redis = getRedis();
   if (!redis) {
@@ -267,7 +313,10 @@ export async function saturateDailyCountAsync(serviceKey: string, rpd: number): 
     await redis.set(redisKey, rpd, { px: ttlMs });
     memoryFallback.set(serviceKey, { dateKey, count: rpd });
   } catch (err) {
-    console.warn(`[redis-quota] saturateDailyCountAsync failed for ${serviceKey}:`, err);
+    console.warn(
+      `[redis-quota] saturateDailyCountAsync failed for ${serviceKey}:`,
+      err,
+    );
     saturateDailyCountSync(serviceKey, rpd);
   }
 }

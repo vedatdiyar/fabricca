@@ -114,4 +114,3 @@ export function buildPrimaryMaterialParserPromptPayload(
       "Analyze the primary material first pages in <context> and extract metadata according to <instructions> into structured JSON.",
   });
 }
-

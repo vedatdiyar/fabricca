@@ -34,7 +34,8 @@ export interface RagSearchResultItem {
 }
 
 /** Box-type partition for bimodal RAG retrieval (primary empirical material vs. secondary literature). */
-export type BoxTypeFilter = "PRIMARY_MATERIAL_ONLY" | "SECONDARY_LITERATURE_ONLY";
+export type BoxTypeFilter =
+  "PRIMARY_MATERIAL_ONLY" | "SECONDARY_LITERATURE_ONLY";
 
 /** Hybrid RAG search options: query, optional resource filter, topK, and debug provenance. */
 export interface RagSearchOptions {

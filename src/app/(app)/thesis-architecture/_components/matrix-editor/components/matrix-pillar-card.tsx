@@ -66,7 +66,9 @@ export function MatrixPillarCard({
       }
       footer={
         <span className="font-sans">
-          {wordCount > 0 ? `${wordCount} kelime • ${charCount} karakter` : "0 kelime"}
+          {wordCount > 0
+            ? `${wordCount} kelime • ${charCount} karakter`
+            : "0 kelime"}
         </span>
       }
       contentClassName="space-y-3"
@@ -80,16 +82,20 @@ export function MatrixPillarCard({
           role="button"
           tabIndex={0}
           onClick={() => onEdit(card.key)}
-          onKeyDown={(e) => (e.key === "Enter" || e.key === " ") && onEdit(card.key)}
+          onKeyDown={(e) =>
+            (e.key === "Enter" || e.key === " ") && onEdit(card.key)
+          }
           className="flex flex-1 cursor-pointer flex-col items-center justify-center rounded-md border border-dashed border-border/60 bg-muted/10 p-8 text-center hover:border-primary/40 hover:bg-muted/20 transition-colors min-h-[280px] space-y-2 group"
         >
           <div className="flex h-10 w-10 items-center justify-center rounded-full bg-muted/30 text-muted-foreground group-hover:text-primary transition-colors">
             <FileText className="h-5 w-5" />
           </div>
-          <p className="font-serif text-sm font-medium text-foreground">Bu sütun henüz doldurulmadı</p>
+          <p className="font-serif text-sm font-medium text-foreground">
+            Bu sütun henüz doldurulmadı
+          </p>
           <p className="font-sans text-xs text-muted-foreground max-w-sm">
-            Tezinizin bu ayağını yapılandırmak için buraya veya sağ üstteki &quot;Düzenle&quot; butonuna
-            tıklayın.
+            Tezinizin bu ayağını yapılandırmak için buraya veya sağ üstteki
+            &quot;Düzenle&quot; butonuna tıklayın.
           </p>
         </div>
       )}

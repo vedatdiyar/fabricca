@@ -2,7 +2,14 @@
 
 import * as React from "react";
 import { useRef, useState } from "react";
-import { UploadCloud, FileText, AlertCircle, Sparkles, Layers, Database } from "lucide-react";
+import {
+  UploadCloud,
+  FileText,
+  AlertCircle,
+  Sparkles,
+  Layers,
+  Database,
+} from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { LoadingSpinner } from "@/components/shared/loading-spinner";
@@ -49,7 +56,8 @@ export function UnifiedPdfDropzone({
   variant,
 }: UnifiedPdfDropzoneProps) {
   const resolvedVariant: "compact" | "hero" =
-    variant ?? (onUploadPdf || onUploadFiles || resourceTitle ? "hero" : "compact");
+    variant ??
+    (onUploadPdf || onUploadFiles || resourceTitle ? "hero" : "compact");
 
   const [isDragOver, setIsDragOver] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
@@ -57,11 +65,15 @@ export function UnifiedPdfDropzone({
 
   const isValidPdf = (file: File): boolean => {
     if (!file.name.toLowerCase().endsWith(".pdf")) {
-      toast.error(`"${file.name}" atlandı: lütfen geçerli bir PDF dosyası yükleyiniz.`);
+      toast.error(
+        `"${file.name}" atlandı: lütfen geçerli bir PDF dosyası yükleyiniz.`,
+      );
       return false;
     }
     if (file.size > 25 * 1024 * 1024) {
-      toast.error(`"${file.name}" atlandı: PDF dosya boyutu maksimum 25MB olabilir.`);
+      toast.error(
+        `"${file.name}" atlandı: PDF dosya boyutu maksimum 25MB olabilir.`,
+      );
       return false;
     }
     return true;
@@ -91,7 +103,10 @@ export function UnifiedPdfDropzone({
         setIsUploading(true);
         for (const validFile of validFiles) {
           const ok = await onUploadPdf(validFile);
-          if (ok) toast.success("PDF başarıyla yüklendi, metin ayrıştırıldı ve RAG için vektörleştirildi.");
+          if (ok)
+            toast.success(
+              "PDF başarıyla yüklendi, metin ayrıştırıldı ve RAG için vektörleştirildi.",
+            );
         }
       } finally {
         setIsUploading(false);
@@ -114,16 +129,24 @@ export function UnifiedPdfDropzone({
     if (e.target) e.target.value = "";
   };
 
-  const isProcessing = isSubmitting || isUploading || pdfStatus === "PROCESSING";
+  const isProcessing =
+    isSubmitting || isUploading || pdfStatus === "PROCESSING";
 
   // ── HERO variant (pdf-upload-dropzone) ────────────────────────────────
   if (resolvedVariant === "hero") {
     return (
-      <div className={cn("flex flex-1 min-h-0 flex-col justify-between gap-4", className)}>
+      <div
+        className={cn(
+          "flex flex-1 min-h-0 flex-col justify-between gap-4",
+          className,
+        )}
+      >
         <Card
           className={cn(
             "flex-1 flex flex-col justify-center items-center border border-dashed transition-all relative overflow-hidden",
-            isDragOver ? "border-primary bg-primary/10 shadow-inner" : "border-border/80 bg-muted/10 hover:bg-muted/20 hover:border-border",
+            isDragOver
+              ? "border-primary bg-primary/10 shadow-inner"
+              : "border-border/80 bg-muted/10 hover:bg-muted/20 hover:border-border",
           )}
           onDragOver={(e) => {
             e.preventDefault();
@@ -150,8 +173,8 @@ export function UnifiedPdfDropzone({
                     PDF Dokümanı İşleniyor ve İndeksleniyor
                   </p>
                   <p className="text-xs text-muted-foreground leading-relaxed">
-                    Metin katmanı ayrıştırılıyor, Cloudflare R2 bulut arşivine aktarılıyor ve anlamsal arama için
-                    vektörleştiriliyor.
+                    Metin katmanı ayrıştırılıyor, Cloudflare R2 bulut arşivine
+                    aktarılıyor ve anlamsal arama için vektörleştiriliyor.
                   </p>
                 </div>
               </div>
@@ -161,16 +184,24 @@ export function UnifiedPdfDropzone({
                   <UploadCloud className="size-8" />
                 </div>
                 <div className="space-y-1.5 max-w-md">
-                  <h3 className="font-serif text-base font-semibold tracking-tight text-foreground">PDF Dokümanı Yükle</h3>
+                  <h3 className="font-serif text-base font-semibold tracking-tight text-foreground">
+                    PDF Dokümanı Yükle
+                  </h3>
                   <p className="text-xs text-muted-foreground leading-relaxed">
-                    <span className="font-medium text-foreground">&quot;{resourceTitle}&quot;</span> eserine ait tam metin
-                    PDF dosyasını buraya sürükleyip bırakın veya cihazınızdan seçin.
+                    <span className="font-medium text-foreground">
+                      &quot;{resourceTitle}&quot;
+                    </span>{" "}
+                    eserine ait tam metin PDF dosyasını buraya sürükleyip
+                    bırakın veya cihazınızdan seçin.
                   </p>
                 </div>
                 {pdfStatus === "FAILED" && (
                   <div className="flex items-center gap-2 text-xs text-destructive bg-destructive/10 px-3 py-2 rounded-md border border-destructive/20">
                     <AlertCircle className="size-4 shrink-0" />
-                    <span>Son yükleme denemesi başarısız oldu. Lütfen tekrar deneyiniz.</span>
+                    <span>
+                      Son yükleme denemesi başarısız oldu. Lütfen tekrar
+                      deneyiniz.
+                    </span>
                   </div>
                 )}
                 <div className="pt-2 flex flex-col items-center gap-2">
@@ -184,7 +215,9 @@ export function UnifiedPdfDropzone({
                     <FileText className="h-4 w-4 text-primary" />
                     Cihazdan PDF Seç
                   </Button>
-                  <span className="text-[11px] text-muted-foreground font-mono">Maksimum 25 MB • Yalnızca PDF formatı</span>
+                  <span className="text-[11px] text-muted-foreground font-mono">
+                    Maksimum 25 MB • Yalnızca PDF formatı
+                  </span>
                 </div>
               </div>
             )}
@@ -196,8 +229,12 @@ export function UnifiedPdfDropzone({
               <Layers className="size-3.5" />
             </div>
             <div className="space-y-0.5 min-w-0">
-              <h4 className="text-xs font-medium text-foreground">Metin & OCR Ayrıştırma</h4>
-              <p className="text-[11px] text-muted-foreground leading-snug">Sayfa yapısı ve akademik metin blokları taranır.</p>
+              <h4 className="text-xs font-medium text-foreground">
+                Metin & OCR Ayrıştırma
+              </h4>
+              <p className="text-[11px] text-muted-foreground leading-snug">
+                Sayfa yapısı ve akademik metin blokları taranır.
+              </p>
             </div>
           </div>
           <div className="flex items-start gap-2.5 p-3 rounded-lg bg-card/50 border border-border/50 text-left">
@@ -205,7 +242,9 @@ export function UnifiedPdfDropzone({
               <Database className="size-3.5" />
             </div>
             <div className="space-y-0.5 min-w-0">
-              <h4 className="text-xs font-medium text-foreground">Cloudflare R2 Arşivi</h4>
+              <h4 className="text-xs font-medium text-foreground">
+                Cloudflare R2 Arşivi
+              </h4>
               <p className="text-[11px] text-muted-foreground leading-snug">
                 Yüksek güvenlikli bulut depolama ile her an erişilebilir.
               </p>
@@ -216,7 +255,9 @@ export function UnifiedPdfDropzone({
               <Sparkles className="size-3.5" />
             </div>
             <div className="space-y-0.5 min-w-0">
-              <h4 className="text-xs font-medium text-foreground">BGE-M3 Vektör & RAG</h4>
+              <h4 className="text-xs font-medium text-foreground">
+                BGE-M3 Vektör & RAG
+              </h4>
               <p className="text-[11px] text-muted-foreground leading-snug">
                 Anlamsal arama ve 5 boyutlu yapay zeka analizi aktifleşir.
               </p>
@@ -229,7 +270,12 @@ export function UnifiedPdfDropzone({
 
   // ── COMPACT variant (legacy pdf-dropzone) ─────────────────────────────
   return (
-    <Card className={cn("border border-dashed border-border bg-muted/20 mt-1", className)}>
+    <Card
+      className={cn(
+        "border border-dashed border-border bg-muted/20 mt-1",
+        className,
+      )}
+    >
       <CardContent
         onDragOver={(e) => {
           e.preventDefault();
@@ -256,9 +302,12 @@ export function UnifiedPdfDropzone({
           <div className="flex w-full flex-col items-center">
             <LoadingSpinner size="sm" className="min-h-0 py-4" />
             <div className="space-y-1">
-              <p className="font-sans text-sm font-semibold text-foreground">Klasik Kaynak Yükleme Pipeline Çalışıyor...</p>
+              <p className="font-sans text-sm font-semibold text-foreground">
+                Klasik Kaynak Yükleme Pipeline Çalışıyor...
+              </p>
               <p className="text-xs text-muted-foreground">
-                {statusMessage || "PDF künyesi çıkarılıp Cloudflare R2'ye yükleniyor, Cloudflare AI & Neon pgvector ile vektörleştiriliyor."}
+                {statusMessage ||
+                  "PDF künyesi çıkarılıp Cloudflare R2'ye yükleniyor, Cloudflare AI & Neon pgvector ile vektörleştiriliyor."}
               </p>
             </div>
           </div>
@@ -268,8 +317,12 @@ export function UnifiedPdfDropzone({
               <FileText className="h-7 w-7" />
             </div>
             <div className="space-y-1">
-              <p className="text-xs font-semibold text-foreground truncate max-w-xs">{selectedFile.name}</p>
-              <p className="text-[10px] text-muted-foreground">{(selectedFile.size / (1024 * 1024)).toFixed(2)} MB</p>
+              <p className="text-xs font-semibold text-foreground truncate max-w-xs">
+                {selectedFile.name}
+              </p>
+              <p className="text-[10px] text-muted-foreground">
+                {(selectedFile.size / (1024 * 1024)).toFixed(2)} MB
+              </p>
             </div>
             <Button
               type="button"
@@ -287,8 +340,16 @@ export function UnifiedPdfDropzone({
               <UploadCloud className="h-7 w-7" />
             </div>
             <div className="space-y-1 max-w-xs">
-              <p className="text-xs font-semibold text-foreground">{multiple ? "PDF Dosyalarını Buraya Sürükleyin" : "PDF Dosyasını Buraya Sürükleyin"}</p>
-              <p className="text-[11px] text-muted-foreground">{multiple ? "Tek seferde birden fazla PDF seçebilirsiniz." : "veya bilgisayarınızdan seçmek için aşağıdaki butona tıklayın."}</p>
+              <p className="text-xs font-semibold text-foreground">
+                {multiple
+                  ? "PDF Dosyalarını Buraya Sürükleyin"
+                  : "PDF Dosyasını Buraya Sürükleyin"}
+              </p>
+              <p className="text-[11px] text-muted-foreground">
+                {multiple
+                  ? "Tek seferde birden fazla PDF seçebilirsiniz."
+                  : "veya bilgisayarınızdan seçmek için aşağıdaki butona tıklayın."}
+              </p>
             </div>
             <Button
               type="button"

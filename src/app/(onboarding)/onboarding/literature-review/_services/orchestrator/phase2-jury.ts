@@ -44,7 +44,9 @@ export function isTargetLanguage(
     return false;
   }
 
-  const sampleText = `${cleanTitle} ${(abstract ?? "").trim()}`.slice(0, 300).trim();
+  const sampleText = `${cleanTitle} ${(abstract ?? "").trim()}`
+    .slice(0, 300)
+    .trim();
   if (!sampleText || sampleText.length < 10) return true;
 
   const sampleLang = detectLanguage(sampleText);
@@ -59,7 +61,9 @@ export function isTargetLanguage(
  * @param paper - Candidate RawPaper (relevanceScore, citedByCount, year).
  * @returns Deterministic score in [0..1] (weighted: 70% semantic, 20% citation, 10% recency).
  */
-export function calculateFallbackScore(paper: import("../literature-review-papers").RawPaper): number {
+export function calculateFallbackScore(
+  paper: import("../literature-review-papers").RawPaper,
+): number {
   // semanticScore [0..1] — channel base relevance; fallback 0.5 when missing
   const rawSemantic = (paper as { relevanceScore?: number }).relevanceScore;
   const semanticScore =
@@ -68,7 +72,10 @@ export function calculateFallbackScore(paper: import("../literature-review-paper
       : 0.5;
 
   // citationScore [0..1] — log-normalized to suppress extremes (10k citations ≈ 1.0)
-  const citationScore = Math.min(1, Math.log10((paper.citedByCount ?? 0) + 1) / 4);
+  const citationScore = Math.min(
+    1,
+    Math.log10((paper.citedByCount ?? 0) + 1) / 4,
+  );
 
   // recencyScore [0..1] — favors last 3y (1.0) → 10y+ (0.2) linear decay
   const currentYear = new Date().getFullYear();
@@ -77,7 +84,7 @@ export function calculateFallbackScore(paper: import("../literature-review-paper
   let recencyScore: number;
   if (age <= 3) recencyScore = 1.0;
   else if (age >= 10) recencyScore = 0.2;
-  else recencyScore = 1.0 - ((age - 3) * (0.8 / 7));
+  else recencyScore = 1.0 - (age - 3) * (0.8 / 7);
 
   return semanticScore * 0.7 + citationScore * 0.2 + recencyScore * 0.1;
 }
@@ -138,12 +145,18 @@ export async function executePhase2Jury(
       // Semantic paragraph reused for Cohere pre-ranking context below.
       // Period fit is judged solely by the LLM jury (title + abstract
       // against the box focus context) — no deterministic pre-filtering.
-      const { openAlexSemanticQuery } = parseDualSemanticQuery(r.subBox.semanticQuery);
+      const { openAlexSemanticQuery } = parseDualSemanticQuery(
+        r.subBox.semanticQuery,
+      );
 
       // 1. Cross-channel deduplication & code-level pre-filters
       // DOI exact match + metric-based title dedup (Jaccard/Levenshtein >=0.90) with year/author guard
       const seenDois = new Set<string>();
-      const seenPapers: Array<{ title: string; year: number | null; authors: string[] }> = [];
+      const seenPapers: Array<{
+        title: string;
+        year: number | null;
+        authors: string[];
+      }> = [];
       pool = pool.filter((item) => {
         const title = item.rawPaper.title ?? "";
         const abstract = item.rawPaper.abstract ?? "";
@@ -158,7 +171,10 @@ export async function executePhase2Jury(
         }
         if (isNonResearchEvent(title)) return false;
         if (!isTargetLanguage(title, abstract)) {
-          const sampleText = `${title} ${(abstract ?? "").trim()}`.slice(0, 300);
+          const sampleText = `${title} ${(abstract ?? "").trim()}`.slice(
+            0,
+            300,
+          );
           const detectedLang = detectLanguage(sampleText) || "und";
           logger.info("foreign_language_paper_dropped", {
             hidden: true,
@@ -172,7 +188,7 @@ export async function executePhase2Jury(
 
         // Metric-based duplicate check: similarity >=0.90 AND (year ±1 OR first-author match)
         const isDuplicate = seenPapers.some((prev) => {
-          if (!areTitlesDuplicateByMetric(title, prev.title, 0.90)) return false;
+          if (!areTitlesDuplicateByMetric(title, prev.title, 0.9)) return false;
           const yearMatch =
             typeof item.rawPaper.year === "number" &&
             typeof prev.year === "number" &&
@@ -190,7 +206,9 @@ export async function executePhase2Jury(
             firstAuthorB !== "anonim";
           const authorMatch = hasAuthor ? firstAuthorA === firstAuthorB : false;
           const hasMeta =
-            (typeof item.rawPaper.year === "number" && typeof prev.year === "number") || hasAuthor;
+            (typeof item.rawPaper.year === "number" &&
+              typeof prev.year === "number") ||
+            hasAuthor;
           if (hasMeta) return yearMatch || authorMatch;
           return true;
         });
@@ -216,7 +234,9 @@ export async function executePhase2Jury(
       const queryParts = [
         r.subBox.title,
         r.subBoxDescription,
-        openAlexSemanticQuery ? `Scholarly context: ${openAlexSemanticQuery}` : "",
+        openAlexSemanticQuery
+          ? `Scholarly context: ${openAlexSemanticQuery}`
+          : "",
       ].filter(Boolean);
       const queryContext = queryParts.join(". ").trim();
 

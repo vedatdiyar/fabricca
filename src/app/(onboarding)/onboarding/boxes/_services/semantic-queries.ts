@@ -142,6 +142,7 @@ export async function generateSemanticQueriesAction(
             zodSchema: bulkSemanticQuerySchema,
             seed: GEMINI_SEED,
             payloadStage: "semantic_query_generation",
+            operation: "semantic_query_generation",
             quiet: true,
           },
         );
@@ -164,7 +165,8 @@ export async function generateSemanticQueriesAction(
       return {
         error:
           "Semantik arama sorguları İngilizce üretilemediği için kaydedilmedi. Lütfen tekrar deneyin.",
-        technicalError: "Generated semantic queries failed English language validation",
+        technicalError:
+          "Generated semantic queries failed English language validation",
       };
     }
 
@@ -203,6 +205,7 @@ export async function generateSemanticQueriesAction(
       "Semantic Query Synthesis (Gemini Flash)",
       durationMs,
       "FAILED",
+      { error: err },
     );
     log.error("semantic_query_generation_failed", {
       service: "boxes",

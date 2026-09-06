@@ -15,7 +15,9 @@ export const HF_DEPRECATED_ERROR = "HF_DEPRECATED_ENDPOINT" as const;
 export class HfDeprecatedEndpointError extends Error {
   public readonly status: number;
   constructor(status: number, body: string) {
-    super(`${HF_DEPRECATED_ERROR}: HTTP ${status} — HF embedding endpoint unavailable: ${body.slice(0, 200)}`);
+    super(
+      `${HF_DEPRECATED_ERROR}: HTTP ${status} — HF embedding endpoint unavailable: ${body.slice(0, 200)}`,
+    );
     this.name = "HfDeprecatedEndpointError";
     this.status = status;
   }
@@ -40,7 +42,10 @@ function normalizeL2(vector: number[], logger?: Logger): number[] {
     logger?.warn("hf_embedding_zero_norm", {
       service: "thesis-search",
       filePath: "src/core/services/thesis-search/hf-embedding.ts",
-      data: { message: "Zero or non-finite L2 norm — returning raw vector.", dimensions: vector.length },
+      data: {
+        message: "Zero or non-finite L2 norm — returning raw vector.",
+        dimensions: vector.length,
+      },
     });
     return vector;
   }
@@ -79,23 +84,30 @@ export async function getE5QueryEmbedding(
     const endpoint = getHfEmbeddingEndpoint();
     const vector = await withRetry(
       async (): Promise<number[]> => {
-        if (externalSignal?.aborted) throw new DOMException("Aborted", "AbortError");
+        if (externalSignal?.aborted)
+          throw new DOMException("Aborted", "AbortError");
         const internalController = new AbortController();
         const timeoutId = setTimeout(() => internalController.abort(), 20_000);
         const onExternalAbort = () => internalController.abort();
-        externalSignal?.addEventListener("abort", onExternalAbort, { once: true });
+        externalSignal?.addEventListener("abort", onExternalAbort, {
+          once: true,
+        });
 
         try {
           // Prefer external signal when available; combine via `any` if possible
           const fetchSignal: AbortSignal =
             externalSignal &&
-            typeof (AbortSignal as unknown as { any?: (s: AbortSignal[]) => AbortSignal }).any ===
-              "function"
-              ? (AbortSignal as unknown as { any: (s: AbortSignal[]) => AbortSignal }).any([
-                  externalSignal,
-                  internalController.signal,
-                ])
-              : externalSignal ?? internalController.signal;
+            typeof (
+              AbortSignal as unknown as {
+                any?: (s: AbortSignal[]) => AbortSignal;
+              }
+            ).any === "function"
+              ? (
+                  AbortSignal as unknown as {
+                    any: (s: AbortSignal[]) => AbortSignal;
+                  }
+                ).any([externalSignal, internalController.signal])
+              : (externalSignal ?? internalController.signal);
 
           const res = await fetch(endpoint, {
             method: "POST",

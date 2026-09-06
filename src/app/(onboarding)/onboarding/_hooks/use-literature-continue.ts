@@ -125,7 +125,9 @@ export function useLiteratureContinue() {
       if ("error" in finalizeResult && finalizeResult.error) {
         // Merkezi quota-aware toast: RPM→ saniye, RPD→ HH:mm
         handleActionErrorToast(
-          finalizeResult as unknown as Parameters<typeof handleActionErrorToast>[0],
+          finalizeResult as unknown as Parameters<
+            typeof handleActionErrorToast
+          >[0],
         );
         return { success: false, error: finalizeResult.error };
       }

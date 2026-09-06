@@ -18,11 +18,7 @@ import { compareBoxTypes } from "@/lib/box-constants";
 
 /** Processing status of a single sub-box within the literature review grid. */
 export type BoxStatus =
-  | "idle"
-  | "loading"
-  | "done"
-  | "error"
-  | "manual_entry_required";
+  "idle" | "loading" | "done" | "error" | "manual_entry_required";
 
 /** Shape returned by {@link useLiteratureReview}. */
 export interface UseLiteratureReviewResult {

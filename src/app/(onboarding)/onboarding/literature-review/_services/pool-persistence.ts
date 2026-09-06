@@ -70,22 +70,12 @@ export async function insertLiteratureBatch(
   return { toInsert, skipped };
 }
 
-/**
- * Persists articles directly to the target box using its database ID.
- *
- * @param thesisBoxId - The target sub-box's database ID.
- * @param articles - The articles to persist.
- */
 export async function persistSubBoxEntry(
   thesisBoxId: number,
   articles: JuryArticle[],
-): Promise<void> {
+): Promise<number[]> {
   const createdIds = await db.transaction(async (tx) => {
-    const limit = 4;
-    const sorted = [...articles].sort(
-      (a, b) => b.relevanceScore - a.relevanceScore,
-    );
-    const sliced = limit !== undefined ? sorted.slice(0, limit) : sorted;
+    const sliced = articles.slice(0, 4);
 
     const { toInsert } = await insertLiteratureBatch(tx, thesisBoxId, sliced);
 
@@ -99,10 +89,7 @@ export async function persistSubBoxEntry(
     return [];
   });
 
-  // Fire-and-forget: never blocks onboarding confirmation.
-  if (createdIds.length > 0) {
-    void hydrateSemanticScholarIds(createdIds).catch(() => {});
-  }
+  return createdIds;
 }
 
 /**
@@ -116,10 +103,7 @@ export async function persistLiteraturePool(
   const allTopArticles: { entry: LiteraturePoolEntry; article: JuryArticle }[] =
     [];
   for (const entry of literaturePool) {
-    const sorted = [...entry.articles].sort(
-      (a, b) => b.relevanceScore - a.relevanceScore,
-    );
-    const sliced = sorted.slice(0, 4);
+    const sliced = entry.articles.slice(0, 4);
     for (const article of sliced) {
       allTopArticles.push({ entry, article });
     }

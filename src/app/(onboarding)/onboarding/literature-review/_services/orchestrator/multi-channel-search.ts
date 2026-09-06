@@ -5,7 +5,10 @@ import {
   searchOpenAlexByTitleFilter,
   searchOpenAlexBooks,
 } from "../openalex/client";
-import { healAuthorsByTitle, normalizeHealedTitle } from "../openalex/openalex-healing";
+import {
+  healAuthorsByTitle,
+  normalizeHealedTitle,
+} from "../openalex/openalex-healing";
 import { searchTheses } from "@/core/services/thesis-search";
 
 import {
@@ -135,7 +138,11 @@ export async function searchMultiChannelForSubBox(
       (async (): Promise<RawPaper[]> => {
         if (!safeSemanticQuery || checkCancelled?.()) return [];
         try {
-          const raw = await searchOpenAlex(safeSemanticQuery, 50, checkCancelled);
+          const raw = await searchOpenAlex(
+            safeSemanticQuery,
+            50,
+            checkCancelled,
+          );
           return raw.map((p) => ({
             ...p,
             source: "openalex" as const,
@@ -314,9 +321,8 @@ export async function searchMultiChannelForSubBox(
         try {
           return await withProviderTimeout(
             async (signal) => {
-              const { openAlexQueue, queryOpenAlexWorks } = await import(
-                "../openalex/openalex-http"
-              );
+              const { openAlexQueue, queryOpenAlexWorks } =
+                await import("../openalex/openalex-http");
               const params = new URLSearchParams({
                 search: `"${titleQuery}"`,
                 filter: "type:book",
@@ -346,7 +352,7 @@ export async function searchMultiChannelForSubBox(
                 review.openAlexId &&
                 (review.citedByCount ?? 0) >= (chosen?.citedByCount ?? 0)
                   ? review.openAlexId
-                  : chosen?.openAlexId ?? review.openAlexId;
+                  : (chosen?.openAlexId ?? review.openAlexId);
 
               const maxCitations = Math.max(
                 chosen?.citedByCount ?? 0,
@@ -357,9 +363,17 @@ export async function searchMultiChannelForSubBox(
               const mergedDoi = chosen?.doi ?? null;
 
               if (chosen) {
-                const baseChosenTitle = normalizeHealedTitle(chosen.title || "");
-                const cleanCore = cleanTitle.split(":")[0]?.trim().toLowerCase();
-                const chosenCore = (chosen.title || "").split(":")[0]?.trim().toLowerCase();
+                const baseChosenTitle = normalizeHealedTitle(
+                  chosen.title || "",
+                );
+                const cleanCore = cleanTitle
+                  .split(":")[0]
+                  ?.trim()
+                  .toLowerCase();
+                const chosenCore = (chosen.title || "")
+                  .split(":")[0]
+                  ?.trim()
+                  .toLowerCase();
                 let healedTitle = baseChosenTitle || cleanTitle;
                 if (
                   cleanTitle.includes(":") &&

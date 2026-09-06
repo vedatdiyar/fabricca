@@ -14,6 +14,7 @@ import {
   persistLiteraturePool,
   persistSubBoxEntry,
 } from "@/app/(onboarding)/onboarding/literature-review/_services/pool-persistence";
+import { hydrateSemanticScholarIds } from "@/core/services/academic/s2-hydrator";
 import { loadThesisMatrixAndBoxes } from "@/app/(onboarding)/onboarding/literature-review/_services/process-boxes-data";
 import { isLiteratureCancelled } from "./cancel-state";
 import { resetLiteratureCancelledAction } from "./cancel-actions";
@@ -26,9 +27,7 @@ import { handleActionError } from "@/lib/errors/handle-error";
  * @param boxes - The sub-box inputs to process.
  * @returns The persisted literature pool entries or an error message.
  */
-export async function processAllBoxesAction(
-  boxes: SubBoxInput[],
-): Promise<{
+export async function processAllBoxesAction(boxes: SubBoxInput[]): Promise<{
   data?: LiteraturePoolEntry[];
   error?: string;
   code?: string;
@@ -69,17 +68,26 @@ export async function processAllBoxesAction(
 
     const { poolEntries } = await run.execute(
       "scan",
-      () =>
-        orchestrateBatchProcess(
+      async () => {
+        const hydratedIds: number[] = [];
+        const result = await orchestrateBatchProcess(
           boxes,
           run.logger,
           thesisMatrixContext,
           () => isLiteratureCancelled(userId),
           async (thesisBoxId, articles) => {
-            await persistSubBoxEntry(thesisBoxId, articles);
+            const ids = await persistSubBoxEntry(thesisBoxId, articles);
+            hydratedIds.push(...ids);
           },
           run,
-        ),
+        );
+        // Single batched hydration (fire-and-forget): one stage-line log
+        // instead of one per sub-box.
+        if (hydratedIds.length > 0) {
+          void hydrateSemanticScholarIds(hydratedIds).catch(() => {});
+        }
+        return result;
+      },
       { description: "Academic Sources Scan & Evaluation" },
     );
 
@@ -150,17 +158,27 @@ export async function runLiteraturePipelineAction(
 
     const { poolEntries } = await run.execute(
       "scan",
-      () =>
-        orchestrateBatchProcess(
+      async () => {
+        const hydratedIds: number[] = [];
+        const result = await orchestrateBatchProcess(
           boxes,
           run.logger,
           thesisMatrixContext,
           () => isLiteratureCancelled(userId),
           async (thesisBoxId, articles) => {
-            await persistSubBoxEntry(thesisBoxId, articles);
+            const ids = await persistSubBoxEntry(thesisBoxId, articles);
+            hydratedIds.push(...ids);
           },
           run,
-        ),
+        );
+        // Single batched hydration (fire-and-forget): one stage-line log
+        // instead of one per sub-box. The final persist stage dedups the
+        // same top articles, so its own hydration is a no-op here.
+        if (hydratedIds.length > 0) {
+          void hydrateSemanticScholarIds(hydratedIds).catch(() => {});
+        }
+        return result;
+      },
       { description: "Academic Sources Scan & Evaluation" },
     );
 

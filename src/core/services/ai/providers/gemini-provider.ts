@@ -352,7 +352,11 @@ export async function generateStructuredContent<T>(
       throw new AiProviderError({
         cause: error,
         message: error instanceof Error ? error.message : String(error),
-        quotaType: isRpdError(error) ? "RPD" : isRateLimitError(error) ? "RPM" : undefined,
+        quotaType: isRpdError(error)
+          ? "RPD"
+          : isRateLimitError(error)
+            ? "RPM"
+            : undefined,
         retryAfterMs: extractRetryDelayMs(error) ?? undefined,
       });
     }
